@@ -129,7 +129,7 @@ set -e
 rm -rf *main* >/dev/null 2>&1
 rm -rf *FootOnsat* >/dev/null 2>&1
 wget "https://github.com/fairbird/FootOnsat/archive/refs/heads/main.tar.gz"
-tar -xzf FootOnsat-main.tar.gz
+tar -xzf main.tar.gz
 cp -r FootOnsat-main/usr /
 rm -rf *FootOnsat* >/dev/null 2>&1
 rm -rf *main* >/dev/null 2>&1

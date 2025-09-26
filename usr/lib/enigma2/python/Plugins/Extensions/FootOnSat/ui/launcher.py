@@ -2,11 +2,11 @@
 from Screens.Screen import Screen
 from Components.ActionMap import ActionMap
 from Screens.MessageBox import MessageBox
-from Components.Console import Console
 from Components.Sources.StaticText import StaticText
 from Components.Label import Label
 from Components.ConfigList import ConfigListScreen
 from Components.config import config, ConfigYesNo, ConfigSubsection, getConfigListEntry, NoSave, configfile
+from Plugins.Extensions.FootOnSat.ui.Console import Console
 from Plugins.Extensions.FootOnSat.ui.interface import FootOnSat, WebClientContextFactory, readFromFile
 from Plugins.Extensions.FootOnSat.component.configs import ConfigDictionarySet
 from Components.FootMenu import FlexibleMenu
@@ -342,11 +342,11 @@ class FootOnsatLauncher(Screen):
 				cmdlist = []
 				cmd="wget https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh"
 				cmdlist.append(cmd)
-				self.session.open(Console, title = "Installing last update, enigma will be started after install", cmdlist = cmdlist, finishedCallback = self.myCallback, closeOnSuccess=False)
+				self.session.open(Console, title='Installing last update, enigma will be started after install', cmdlist=cmdlist, finishedCallback=self.myCallback, closeOnSuccess=False)
 		except:
 			trace_error()
         
-	def myCallback(self,result):
+	def myCallback(self):
 		return
 
 
