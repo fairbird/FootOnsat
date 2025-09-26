@@ -9,7 +9,6 @@ TMP_DB='/tmp/footonsat.db'
 if [ -f /etc/apt/apt.conf ] ; then
     STATUS='/var/lib/dpkg/status'
     OS='DreamOS'
-    VERSION=1.6
 elif [ -f /etc/opkg/opkg.conf ] ; then
    STATUS='/var/lib/opkg/status'
    OS='Opensource'
