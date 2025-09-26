@@ -97,9 +97,10 @@ class FootOnsatLauncher(Screen):
 			data = data.decode("utf-8")
 		compet = json.loads(data).keys()
 		ordering = ["today", "championsleague", "europaleague", "ConferenceLeague", "premierleague", "laliga", "seriea",
-		"bundesliga", "ligue1", "superLig", "afcchampions","championship"]
-		# Filter compet to only include items in ordering
-		self.menuList = [c for c in ordering if c in compet]
+		"bundesliga", "ligue1", "superLig", "saudiarabia", "afcchampions","championship"]
+		# Keep only items in ordering, then sort according to ordering
+		filtered_compet = [c for c in ordering if c in compet]
+		self.menuList = self.custom_sort(ordering, filtered_compet)
 
 		self.sub_menu_sort = NoSave(ConfigDictionarySet())
 		self.sub_menu_sort.value = config.plugins.FootOnSat.sort.getConfigValue("footmenu", "footsubmenu") or {}
