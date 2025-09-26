@@ -1,6 +1,6 @@
 #!/bin/sh
 
-#wget -q "--no-check-certificate" https://raw.githubusercontent.com/ziko-ZR1/FootOnsat/main/Download/install.sh -O - | /bin/sh
+#wget -q "--no-check-certificate" https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh
 VERSION=1.7
 PLUGIN_PATH='/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat'
 DB_PATH='/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/db'
@@ -124,28 +124,22 @@ else
 	echo "#########################################################"
     exit 1
 fi
-
-if [ $OS = "Opensource" ]; then
-    wget "--no-check-certificate" "https://github.com/ziko-ZR1/FootOnsat/blob/main/Download/enigma2-plugin-extensions-footonsat_$VERSION.ipk?raw=true" -O "/tmp/enigma2-plugin-extensions-footonsat_$VERSION.ipk";
-    opkg install /tmp/enigma2-plugin-extensions-footonsat_$VERSION.ipk
-    rm -f /tmp/enigma2-plugin-extensions-footonsat_$VERSION.ipk
-else
-    wget "--no-check-certificate" "https://github.com/ziko-ZR1/FootOnsat/blob/main/Download/enigma2-plugin-extensions-footonsat_$VERSION.deb?raw=true" -O "/tmp/enigma2-plugin-extensions-footonsat_$VERSION.deb";
-    dpkg -i --force-overwrite /tmp/enigma2-plugin-extensions-footonsat_$VERSION.deb; apt-get install -f -y
-    rm -f /tmp/enigma2-plugin-extensions-footonsat_$VERSION.deb
-fi
-
-if [ -d $PLUGIN_PATH  ]; then
-    if [ -f $TMP_DB ]; then
-        cp -a $TMP_DB $DB_PATH
-        rm -f $TMP_DB
-    fi
-fi
-
+echo " ** Download and install FootOnsat ** "
+cd /tmp
+set -e
+rm -rf *main* >/dev/null 2>&1
+rm -rf *FootOnsat* >/dev/null 2>&1
+wget "https://github.com/fairbird/FootOnsat/archive/refs/heads/main.tar.gz"
+tar -xzf FootOnsat-main.tar.gz
+cp -r FootOnsat-main/usr /
+rm -rf *FootOnsat* >/dev/null 2>&1
+rm -rf *main* >/dev/null 2>&1
+echo
+echo
 echo ""
 echo "#########################################################"
 echo "#          FootOnsat INSTALLED SUCCESSFULLY             #"
-echo "#                BY ZIKO  & Redouane                    #"
+echo "#              BY ZIKO  & Redouane & Raed               #"
 echo "#########################################################"
 echo "#                Restart Enigma2 GUI                    #"
 echo "#########################################################"
