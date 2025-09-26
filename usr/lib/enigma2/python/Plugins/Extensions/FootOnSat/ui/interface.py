@@ -294,22 +294,39 @@ class FootOnSat(Screen):
 			self.session.openWithCallback(self.exit, MessageBox, _('An Unexpected HTTP Error Occurred During The API Request !!'), MessageBox.TYPE_ERROR, timeout=10)
 
 	def getData(self, data):
-		list = []
-		self.js = json.loads(data)
-		if self.js['footonsat'] != []:
-			for match in self.js['footonsat']:
-				try:
-					match_date = datetime.strptime(match['date'] + ' ' + match['time'], '%Y-%m-%d %H:%M')
-					last_3 = datetime.strptime((datetime.now() - timedelta(minutes=130)).strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M")
-					if match_date > last_3:
-						list.append((str(match['match']), str(match['time']) + ' - ' + str(match['date']), str(match['compet']),
-									str(match['flags']['team1']), str(match['flags']['team2']), ))
-				except KeyError:
-					pass
-			self.matches = list
-			self.onWindowShow()
-		else:
-			self.session.openWithCallback(self.exit, MessageBox, _('No schedules in this section at this time'), MessageBox.TYPE_ERROR, timeout=10)
+		#print("[FootOnSat] getData() called")
+		raw_type = type(data)
+		#print("[FootOnSat] Raw type:", raw_type)
+		if raw_type == bytes:
+			data = data.decode('utf-8')
+			#print("[FootOnSat] Decoded to str, length:", len(data))
+		try:
+			self.js = json.loads(data)
+			#print("[FootOnSat] JSON parsed OK, raw_type:", type(self.js))
+		except Exception as e:
+			#print("[FootOnSat] Error parsing JSON:", e)
+			self.js = []
+			return
+
+		self.matches = []
+		try:
+			for item in self.js:
+				if isinstance(item, dict) and 'match' in item:
+					match_date = item.get('date', '')
+					match_time = item.get('time', '')
+					compet = item.get('compet', '')
+					flags = item.get('flags', {})
+					team1 = flags.get('team1', 'unknown')
+					team2 = flags.get('team2', 'unknown')
+					self.matches.append((item['match'], match_time + ' - ' + match_date, compet, team1, team2))
+			#print("[FootOnSat] Matches loaded:", len(self.matches))
+		except Exception as e:
+			#print("[FootOnSat] Error loading matches:", e)
+			self.matches = []
+
+		if len(self.matches) == 0:
+			print("[FootOnSat] No valid schedules found in JSON")
+		self.onWindowShow()
 
 	def getChannels(self):
 		list = []
@@ -320,19 +337,44 @@ class FootOnSat(Screen):
 		index = self['list1'].getSelectionIndex()
 		if len(self.matches) > 0:
 			self.match = self.matches[index][0]
-			for data in self.js['footonsat']:
-				try:
-					if data['related_to'] == self.match:
-						list.append((str(data['channel']), str(data['sat']), str(data['freq']), str(data['encry']), str(data['link'])))
+			
+			# Find the selected match in self.js
+			selected_match = None
+			for m in self.js:
+				if m.get('match') == self.match:
+					selected_match = m
+					break
+			
+			if selected_match:
+				#print("[FootOnSat] Selected match JSON data:", selected_match)  # debug
+				
+				# Loop through channels inside the selected match
+				for ch in selected_match.get('channels', []):
+					channel_name = ch.get('channel', '')
+					link = ch.get('link', '#')
+					streams = ch.get('streams', [])
+					
+					for s in streams:
+						sat = s.get('sat', '')
+						freq = s.get('freq', '')
+						encry = s.get('encry', '')
+						
+						channel_info = (channel_name, sat, freq, encry, link)
+						#print("[FootOnSat] Widget data appended:", channel_info)  # debug
+						list.append(channel_info)
+						
 						res.append(MultiContentEntryText())
-						res.append(MultiContentEntryText(pos=(7, 6), size=(510, 40), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(data['channel'])))
+						res.append(MultiContentEntryText(
+							pos=(7, 6), size=(510, 40), font=0,
+							flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT,
+							text=str(channel_name)
+						))
 						gList.append(res)
 						res = []
-				except KeyError:
-					pass
-			self["list2"].setList([])
-			self["list2"].setList(gList)
-			self.channelData = list
+
+		self["list2"].setList([])
+		self["list2"].setList(gList)
+		self.channelData = list
 
 	def updateChannelData(self):
 		if len(self.channelData) > 0:

@@ -2,20 +2,52 @@
 from Screens.Screen import Screen
 from Components.ActionMap import ActionMap
 from Screens.MessageBox import MessageBox
+from Components.Sources.StaticText import StaticText
 from Components.Label import Label
-from Components.config import config, ConfigSubsection, NoSave
+from Components.ConfigList import ConfigListScreen
+from Components.config import config, ConfigYesNo, ConfigSubsection, getConfigListEntry, NoSave, configfile
 from Plugins.Extensions.FootOnSat.ui.interface import FootOnSat, WebClientContextFactory, readFromFile
 from Plugins.Extensions.FootOnSat.component.configs import ConfigDictionarySet
 from Components.FootMenu import FlexibleMenu
 from Plugins.Extensions.FootOnSat.__init__ import __version__
 from twisted.web.client import getPage
+import re
+import os
 import json
+import sys
+import traceback
 from sys import version_info
 
 PY3 = version_info[0] == 3
 
 config.plugins.FootOnSat = ConfigSubsection()
 config.plugins.FootOnSat.sort = ConfigDictionarySet(default={"footmenu": {"footsubmenu": {}}})
+config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
+
+def DreamOS():
+	if os.path.exists('/var/lib/dpkg/status'):
+		return True
+	return False
+
+def trace_error():
+	try:
+		traceback.print_exc(file=sys.stdout)
+		traceback.print_exc(file=open("/tmp/FootOnSat.log", "a"))
+	except:
+		pass
+
+def logdata(label_name = "", data = None):
+	try:
+		data=str(data)
+		fp = open("/tmp/FootOnSat.log", "a")
+		fp.write( str(label_name) + " : " + data+"\n")
+		fp.close()
+	except:
+		trace_error()    
+		pass
+
+VER = float(__version__)
+
 
 class FootOnsatLauncher(Screen):
 
@@ -34,7 +66,8 @@ class FootOnsatLauncher(Screen):
 			'blue': self.keyBlue,
 			'red': self.exit,
 			"yellow": self.keyYellow,
-			"cancel": self.exit
+			"cancel": self.exit,
+			"menu": self.showMenu,
 		}, -1)
 		self['menu'] = FlexibleMenu([])
 		self["menu"].onSelectionChanged.append(self.selectionChanged)
@@ -48,16 +81,24 @@ class FootOnsatLauncher(Screen):
 		self.selected_entry = None
 		self.onLayoutFinish.append(self.callAPI)
 
+	def showMenu(self):
+		self.session.open(MenuFootOnSat)
+
 	def callAPI(self):
+		if config.plugins.FootOnSat.updateonline.value:
+			self.checkupdates()
 		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/api.json'
 		sniFactory = WebClientContextFactory(url)
 		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
 
 	def getData(self, data):
+		if isinstance(data, bytes):
+			data = data.decode("utf-8")
 		compet = json.loads(data).keys()
-		ordering = ["today", "worldCup", "championsleague", "europaleague", "ConferenceLeague", "premierleague", "laliga", "seriea",
-		"bundesliga", "ligue1", "liganos","cafchampions", "afcchampions", "rsl", "euro2024", "copa2024","championship", "laliga2", "nba"]
-		self.menuList = self.custom_sort(ordering, compet)
+		ordering = ["today", "championsleague", "europaleague", "ConferenceLeague", "premierleague", "laliga", "seriea",
+		"bundesliga", "ligue1", "superLig", "afcchampions","championship"]
+		# Filter compet to only include items in ordering
+		self.menuList = [c for c in ordering if c in compet]
 
 		self.sub_menu_sort = NoSave(ConfigDictionarySet())
 		self.sub_menu_sort.value = config.plugins.FootOnSat.sort.getConfigValue("footmenu", "footsubmenu") or {}
@@ -225,3 +266,144 @@ class FootOnsatLauncher(Screen):
 			self.toggleSortMode()
 		else:
 			self.close()
+
+	def checkupdates(self):
+		try:
+			from twisted.web.client import getPage, error
+			url = b"https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh"
+			getPage(url,timeout=10).addCallback(self.parseData).addErrback(self.errBack)
+		except Exception as error:
+			trace_error()
+
+	def errBack(self,error=None):
+		logdata("errBack-error",error)
+
+	def parseData(self, data):
+		if PY3:
+			data = data.decode("utf-8")
+		else:
+			data = data.encode("utf-8")
+
+		# initialize defaults
+		self.new_version = None
+		self.new_description = ""
+
+		if data:
+			lines = data.split("\n")
+			desc_started = False
+			desc_lines = []
+			for line in lines:
+				line = line.strip()
+				if line.lower().startswith("version"):
+					parts = line.split("=")
+					if len(parts) > 1:
+						version_str = parts[1].strip().strip('"').strip("'")
+						if version_str:
+							self.new_version = version_str
+				elif line.startswith("description="):
+					desc_started = True
+					first_part = line.split("=", 1)[1].lstrip('"')
+					if first_part.endswith('"'):
+						self.new_description = first_part.rstrip('"').strip().strip('"').strip("'")
+						desc_started = False
+					else:
+						desc_lines.append(first_part)
+				elif desc_started:
+					if line.endswith('"'):
+						desc_lines.append(line.rstrip('"'))
+						desc_started = False
+						self.new_description = "\n".join(desc_lines)
+					else:
+						desc_lines.append(line)
+
+			# version comparison with logging safeguard
+			if self.new_version:
+				try:
+					if float(VER) >= float(self.new_version):
+						logdata("Updates", "No new version available")
+					else:
+						new_description = self.new_description
+						logdata("Updates", "New version %s is available" % self.new_version)
+						self.session.openWithCallback(
+							self.install,
+							MessageBox,
+							_("New version %s is available.\n\nDo want ot install now." % self.new_version),
+							MessageBox.TYPE_YESNO
+						)
+				except Exception as e:
+					logdata("Update-check-error", str(e))
+			else:
+				logdata("Update-check", "No version found in install.sh")
+
+	def install(self,answer=False):
+		try:
+			if answer:
+				cmdlist = []
+				cmd="wget https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh"
+				cmdlist.append(cmd)
+				self.session.open(Console, title = "Installing last update, enigma will be started after install", cmdlist = cmdlist, finishedCallback = self.myCallback, closeOnSuccess=False)
+		except:
+			trace_error()
+        
+	def myCallback(self,result):
+		return
+
+
+class MenuFootOnSat(ConfigListScreen, Screen):
+	if DreamOS():
+		skin = """
+				<screen name="MenuFootOnSat" position="center,center" size="1040,560" title="Menu FootOnSat">
+					<widget source="global.CurrentTime" render="Label" position="5,5" size="1022,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
+						<convert type="ClockToText">Format:%d-%m-%Y	%H:%M:%S</convert>
+					</widget>
+					<widget name="config" position="18,70" size="1005,344" scrollbarMode="showOnDemand"/>
+					<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,550" zPosition="-10"/>
+					<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,550" zPosition="-10"/>
+					<widget render="Label" source="key_red" position="223,515" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
+					<widget render="Label" source="key_green" position="585,515" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
+				</screen>"""
+	else:
+		skin = """
+				<screen name="MenuFootOnSat" position="center,center" size="1040,560" title="Menu FootOnSat">
+					<widget source="global.CurrentTime" render="Label" position="5,5" size="1022,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
+						<convert type="ClockToText">Format:%d-%m-%Y	%H:%M:%S</convert>
+					</widget>
+					<widget name="config" font="Regular;28" secondfont="Regular;28" itemHeight="45" position="18,70" size="1005,344" scrollbarMode="showOnDemand"/>
+					<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,550" zPosition="-10"/>
+					<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,550" zPosition="-10"/>
+					<widget render="Label" source="key_red" position="223,515" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
+					<widget render="Label" source="key_green" position="585,515" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
+				</screen>"""
+
+	def __init__(self, session):
+		self.session = session
+		Screen.__init__(self, session)
+		self.list = []
+		ConfigListScreen.__init__(self, self.list)
+
+		self["setupActions"] = ActionMap(["FootOnsatActions"],
+		{
+			"cancel": self.cancel,
+			"red": self.cancel,
+			"green": self.save,
+		}, -1)
+
+		self["key_red"] = StaticText(_("Exit"))
+		self["key_green"] = StaticText(_("Save"))
+		self.createSetup()
+
+	def createSetup(self):
+		self.list = []
+		self.list.append(getConfigListEntry(_("Enable checking for Online Update"), config.plugins.FootOnSat.updateonline, _(" This option to Enable or Disable checking for Online Update")))
+		self['config'].list = self.list
+		self['config'].l.setList(self.list)
+
+	def cancel(self):
+		self.close()
+
+	def save(self):
+		for x in self["config"].list:
+			if len(x)>1:
+				x[1].save()
+		configfile.save()
+		self.close()
