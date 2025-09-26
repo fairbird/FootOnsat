@@ -1,8 +1,10 @@
 # FootOnsat
-ENIGMA2 PLUGIN FootOnsat developed By ziko & redouane
+ENIGMA2 PLUGIN FootOnsat developed By ziko & redouane & Raed
 
-Install plugin online
-> wget -q "--no-check-certificate" https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh
+To install plugin directly online from telnet be this command / لتثبيت البلجن مباشرة من خلال الإنترنيت بواسطة التلنت بهذا الأمر
+```
+wget https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh
+```
 
 ![1_0_19_4440_1000_1_CFDACE7_0_0_0_20210423111603](https://user-images.githubusercontent.com/43075184/115863673-50b95300-a425-11eb-9862-5f1261a6de74.jpg)
 
