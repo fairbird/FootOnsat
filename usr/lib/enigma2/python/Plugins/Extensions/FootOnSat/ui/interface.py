@@ -23,6 +23,12 @@ from twisted.internet._sslverify import ClientTLSOptions
 from sqlite3 import connect
 from sys import version_info
 
+try:
+	from enigma import BT_SCALE, RT_VALIGN_CENTER, RT_HALIGN_LEFT
+except ImportError:
+	BT_SCALE = 0
+	RT_VALIGN_CENTER = 0
+	RT_HALIGN_LEFT = 0
 
 try:
 	from urllib.parse import urlparse
@@ -122,25 +128,17 @@ class FootOnSat(Screen):
 					notif = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/icon/notif_on.png")
 				else:
 					notif = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/icon/notif_off.png")
-				res = []  # Initialize res as empty list
+				res.append(MultiContentEntryText())
+				res.append(MultiContentEntryPixmapAlphaBlend(pos=(420, 69), size=(40, 30), png=loadPNG(flagTeam1)))
+				res.append(MultiContentEntryPixmapAlphaBlend(pos=(1092, 69), size=(40, 30), png=loadPNG(flagTeam2)))
 				try:
-					from enigma import BT_SCALE, RT_VALIGN_CENTER, RT_HALIGN_LEFT
-					res.append(MultiContentEntryPixmapAlphaBlend(pos=(420, 69), size=(40, 30), png=loadPNG(flagTeam1)))
-					res.append(MultiContentEntryPixmapAlphaBlend(pos=(1092, 69), size=(40, 30), png=loadPNG(flagTeam2)))
 					res.append(MultiContentEntryPixmapAlphaTest(pos=(65, 6), size=(320, 163), png=loadPNG(banner), flags=BT_SCALE))
-					res.append(MultiContentEntryPixmapAlphaBlend(pos=(-20, 63), size=(70, 50), png=loadPNG(notif)))
-					res.append(MultiContentEntryText(pos=(467, 66), size=(570, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(match)))
-					res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text="Kick-off : " + str(match_date)))
-					res.append(MultiContentEntryText(pos=(420, 15), size=(785, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
-				except ImportError:
-					# Fallback if rendering flags are not available
-					res.append(MultiContentEntryPixmapAlphaBlend(pos=(420, 69), size=(40, 30), png=loadPNG(flagTeam1)))
-					res.append(MultiContentEntryPixmapAlphaBlend(pos=(1092, 69), size=(40, 30), png=loadPNG(flagTeam2)))
+				except TypeError:
 					res.append(MultiContentEntryPixmapAlphaTest(pos=(65, 6), size=(320, 163), png=loadPNG(banner)))
-					res.append(MultiContentEntryPixmapAlphaBlend(pos=(-20, 63), size=(70, 50), png=loadPNG(notif)))
-					res.append(MultiContentEntryText(pos=(467, 66), size=(570, 36), font=0, text=str(match)))
-					res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, text="Kick-off : " + str(match_date)))
-					res.append(MultiContentEntryText(pos=(420, 15), size=(785, 36), font=0, text=str(compet)))
+				res.append(MultiContentEntryPixmapAlphaBlend(pos=(-20, 63), size=(70, 50), png=loadPNG(notif)))
+				res.append(MultiContentEntryText(pos=(467, 66), size=(570, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(match)))
+				res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text="Kick-off : " + str(match_date)))
+				res.append(MultiContentEntryText(pos=(420, 15), size=(785, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 				gList.append(res)
 				res = []
 			self["list1"].setList(gList)
