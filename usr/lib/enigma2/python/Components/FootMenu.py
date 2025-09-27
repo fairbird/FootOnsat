@@ -1,6 +1,6 @@
 from Components.GUIComponent import GUIComponent
 from Components.MultiContent import MultiContentEntryText , MultiContentEntryPixmap, MultiContentEntryPixmapAlphaTest
-from enigma import eListboxPythonMultiContent, eListbox, ePixmap, eLabel, eSize, ePoint, gFont, BT_SCALE, BT_KEEP_ASPECT_RATIO, BT_ALIGN_CENTER
+from enigma import eListboxPythonMultiContent, eListbox, ePixmap, eLabel, eSize, ePoint, gFont
 from Tools.LoadPixmap import LoadPixmap
 from Tools.Directories import resolveFilename, SCOPE_PLUGINS, fileExists
 from skin import parseColor
@@ -154,20 +154,40 @@ class FlexibleMenu(GUIComponent):
 				logoPath = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/icons/{}.png".format(elem[0]))
 				if fileExists(logoPath):
 					logo = LoadPixmap(logoPath)
+				# Determine which entries to use based on availability of BT_SCALE
+				try:
+					from enigma import BT_SCALE, BT_ALIGN_CENTER, BT_KEEP_ASPECT_RATIO
+					# If BT_SCALE is available
+					active_entries = (
+						MultiContentEntryPixmap(pos=(x, y), size=(self.activeboxwidth,self.activeboxheight), png=self.selPixmap, flags=BT_SCALE),
+						MultiContentEntryPixmapAlphaTest(pos=(x, y), size=(self.activeboxwidth,self.activeboxheight), png=logo, flags=BT_SCALE|BT_ALIGN_CENTER|BT_KEEP_ASPECT_RATIO),
+						MultiContentEntryText(pos=(x+57, y+168), size=(self.activeboxwidth, 34), font=0, text="Match" if elem[0] == "today" else ""),
+						MultiContentEntryText(pos=(x+170, y+168), size=(self.activeboxwidth, 34), font=0, text="Today" if elem[0] == "today" else ""),
+					)
+					u_active_entries = (
+						MultiContentEntryPixmap(pos=(x+xoffset, y+yoffset), size=(self.boxwidth,self.boxheight), png=self.itemPixmap, flags=BT_SCALE),
+						MultiContentEntryPixmapAlphaTest(pos=(x+xoffset, y+yoffset), size=(self.boxwidth,self.boxheight), png=logo, flags=BT_SCALE|BT_ALIGN_CENTER|BT_KEEP_ASPECT_RATIO),
+						MultiContentEntryText(pos=(x+60, y+160), size=(self.boxwidth, 34), font=0, text="Match" if elem[0] == "today" else ""),
+						MultiContentEntryText(pos=(x+170, y+160), size=(self.boxwidth, 34), font=0, text="Today" if elem[0] == "today" else ""),
+					)
+				except ImportError:
+					# Fallback if BT_SCALE is not available
+					active_entries = (
+						MultiContentEntryPixmap(pos=(x, y), size=(self.activeboxwidth,self.activeboxheight), png=self.selPixmap),
+						MultiContentEntryPixmapAlphaTest(pos=(x, y), size=(self.activeboxwidth,self.activeboxheight), png=logo),
+						MultiContentEntryText(pos=(x+57, y+168), size=(self.activeboxwidth, 34), font=0, text="Match" if elem[0] == "today" else ""),
+						MultiContentEntryText(pos=(x+170, y+168), size=(self.activeboxwidth, 34), font=0, text="Today" if elem[0] == "today" else ""),
+					)
+					u_active_entries = (
+						MultiContentEntryPixmap(pos=(x+xoffset, y+yoffset), size=(self.boxwidth,self.boxheight), png=self.itemPixmap),
+						MultiContentEntryPixmapAlphaTest(pos=(x+xoffset, y+yoffset), size=(self.boxwidth,self.boxheight), png=logo),
+						MultiContentEntryText(pos=(x+60, y+160), size=(self.boxwidth, 34), font=0, text="Match" if elem[0] == "today" else ""),
+						MultiContentEntryText(pos=(x+170, y+160), size=(self.boxwidth, 34), font=0, text="Today" if elem[0] == "today" else ""),
+					)
 				self.entries.update({
 					elem[0]:{
-						"active":(
-							MultiContentEntryPixmap(pos=(x, y), size=(self.activeboxwidth,self.activeboxheight), png=self.selPixmap, flags=BT_SCALE),
-							MultiContentEntryPixmapAlphaTest(pos=(x, y), size=(self.activeboxwidth,self.activeboxheight), png=logo, flags=BT_SCALE|BT_ALIGN_CENTER|BT_KEEP_ASPECT_RATIO),
-							MultiContentEntryText(pos=(x+57, y+168), size=(self.activeboxwidth, 34), font=0, text="Match" if elem[0] == "today" else ""),
-							MultiContentEntryText(pos=(x+170, y+168), size=(self.activeboxwidth, 34), font=0, text="Today" if elem[0] == "today" else ""),
-						),
-						"u_active":(
-							MultiContentEntryPixmap(pos=(x+xoffset, y+yoffset), size=(self.boxwidth,self.boxheight), png=self.itemPixmap, flags=BT_SCALE),
-							MultiContentEntryPixmapAlphaTest(pos=(x+xoffset, y+yoffset), size=(self.boxwidth,self.boxheight), png=logo, flags=BT_SCALE|BT_ALIGN_CENTER|BT_KEEP_ASPECT_RATIO),
-							MultiContentEntryText(pos=(x+60, y+160), size=(self.boxwidth, 34), font=0, text="Match" if elem[0] == "today" else ""),
-							MultiContentEntryText(pos=(x+170, y+160), size=(self.boxwidth, 34), font=0, text="Today" if elem[0] == "today" else ""),
-						),
+						"active":active_entries,
+						"u_active":u_active_entries,
 						"page":page
 					}
 				})

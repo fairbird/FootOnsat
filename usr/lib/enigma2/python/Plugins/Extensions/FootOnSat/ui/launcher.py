@@ -90,14 +90,25 @@ class FootOnsatLauncher(Screen):
 			self.checkupdates()
 		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/api.json'
 		sniFactory = WebClientContextFactory(url)
-		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
+		if PY3:
+			url = str.encode(url)
+		try:
+			getPage(url, contextFactory=sniFactory, timeout=10).addCallback(self.getData).addErrback(self.error)
+		except Exception as e:
+			logdata("callAPI-error", str(e))
+			self.error(str(e))
 
 	def getData(self, data):
-		if isinstance(data, bytes):
+		if not PY3:
 			data = data.decode("utf-8")
-		compet = json.loads(data).keys()
+		try:
+			compet = json.loads(data).keys()
+		except Exception as e:
+			logdata("getData-json-error", str(e))
+			self.error("JSON parsing failed: " + str(e))
+			return
 		ordering = ["today", "championsleague", "europaleague", "ConferenceLeague", "premierleague", "laliga", "seriea",
-		"bundesliga", "ligue1", "superLig", "saudiarabia", "afcchampions","championship"]
+		"bundesliga", "ligue1", "saudiarabia", "afcchampions","championship", "superLig"]
 		# Keep only items in ordering, then sort according to ordering
 		filtered_compet = [c for c in ordering if c in compet]
 		self.menuList = self.custom_sort(ordering, filtered_compet)
@@ -116,9 +127,13 @@ class FootOnsatLauncher(Screen):
 			i += 10
 		self.full_list = list(self.menuList)
 		self["blue"].setText("Edit mode on")
-		self.hide_show_entries()
-		self["menu"].setList(self.menuList)
-		self.selectionChanged()
+		try:
+			self.hide_show_entries()
+			self["menu"].setList(self.menuList)
+			self.selectionChanged()
+		except Exception as e:
+			logdata("getData-menu-error", str(e))
+			self.error("Menu rendering failed: " + str(e))
 
 	def custom_sort(self, ordem_custom, origin):
 		list_order_equals = [c for c in ordem_custom if (c in origin)]
@@ -128,7 +143,8 @@ class FootOnsatLauncher(Screen):
 
 	def error(self, error=None):
 		if error:
-			self.session.openWithCallback(self.exit, MessageBox, _('An Unexpected Error Occurred During The API Request !!'), MessageBox.TYPE_ERROR, timeout=10)
+			logdata("API-error", str(error))
+			self.session.openWithCallback(self.exit, MessageBox, _('Error: %s') % str(error), MessageBox.TYPE_ERROR, timeout=10)
 
 	def ok(self):
 		if self.sort_mode and len(self.menuList):

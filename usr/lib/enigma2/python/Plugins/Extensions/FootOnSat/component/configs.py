@@ -1,4 +1,5 @@
 from Components.config import ConfigElement
+import ast
 
 class ConfigDictionarySet(ConfigElement):
 	def __init__(self, default={}):
@@ -6,7 +7,7 @@ class ConfigDictionarySet(ConfigElement):
 		self.default = default
 		self.dirs = {}
 		self.value = self.default
-		self.callback = None
+		self.callback = None  # Explicitly ensure callback is initialized
 
 	def load(self):
 		# self.dirs = self.default if self.saved_value is None else self.fromString(self.saved_value)
@@ -24,7 +25,7 @@ class ConfigDictionarySet(ConfigElement):
 			except KeyError:
 				pass
 			self.changed()
-			if callable(self.callback):
+			if hasattr(self, 'callback') and self.callback is not None and callable(self.callback):
 				self.callback()
 		self.saved_value = self.toString(self.dirs)
 
@@ -32,7 +33,10 @@ class ConfigDictionarySet(ConfigElement):
 		self.callback = callback
 
 	def fromString(self, val):
-		return eval(val)
+		try:
+			return ast.literal_eval(val)
+		except (ValueError, SyntaxError):
+			return self.default
 
 	def toString(self, value):
 		return str(value)
@@ -46,7 +50,7 @@ class ConfigDictionarySet(ConfigElement):
 			self.dirs = value
 			if self.dirs != prev:
 				self.changed()
-				if callable(self.callback):
+				if hasattr(self, 'callback') and self.callback is not None and callable(self.callback):
 					self.callback()
 
 	value = property(getValue, setValue)
@@ -64,15 +68,15 @@ class ConfigDictionarySet(ConfigElement):
 			else:
 				self.dirs[value] = {config_key: config_value}
 			self.changed()
-			if callable(self.callback):
+			if hasattr(self, 'callback') and self.callback is not None and callable(self.callback):
 				self.callback()
 
 	def removeConfigValue(self, value, config_key):
 		if isinstance(value, str) and isinstance(config_key, str) and value in self.dirs and config_key in self.dirs[value]:
 			del self.dirs[value][config_key]
 			self.changed()
-			if callable(self.callback):
+			if hasattr(self, 'callback') and self.callback is not None and callable(self.callback):
 				self.callback()
 
 	def getKeys(self):
-		return self.dir_pathes
+		return self.dirs.keys()
