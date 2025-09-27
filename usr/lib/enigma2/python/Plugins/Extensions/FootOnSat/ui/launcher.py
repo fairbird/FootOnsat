@@ -2,10 +2,13 @@
 from Screens.Screen import Screen
 from Components.ActionMap import ActionMap
 from Screens.MessageBox import MessageBox
+from Tools.LoadPixmap import LoadPixmap
+from Tools.Directories import resolveFilename, SCOPE_PLUGINS, SCOPE_LANGUAGE
+from Components.Pixmap import Pixmap
 from Components.Sources.StaticText import StaticText
 from Components.Label import Label
 from Components.ConfigList import ConfigListScreen
-from Components.config import config, ConfigYesNo, ConfigSubsection, getConfigListEntry, NoSave, configfile
+from Components.config import config, ConfigYesNo, ConfigSubsection, ConfigSelection, getConfigListEntry, NoSave, configfile
 from Plugins.Extensions.FootOnSat.ui.Console import Console
 from Plugins.Extensions.FootOnSat.ui.interface import FootOnSat, WebClientContextFactory, readFromFile
 from Plugins.Extensions.FootOnSat.component.configs import ConfigDictionarySet
@@ -24,6 +27,9 @@ PY3 = version_info[0] == 3
 config.plugins.FootOnSat = ConfigSubsection()
 config.plugins.FootOnSat.sort = ConfigDictionarySet(default={"footmenu": {"footsubmenu": {}}})
 config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
+config.plugins.FootOnSat.icons = ConfigSelection(default = "default_icons", choices = [
+			("default_icons", _("default_icons")), ("ramzus007_icons", _("ramzus007_icons"))
+			])
 
 def DreamOS():
 	if os.path.exists('/var/lib/dpkg/status'):
@@ -83,7 +89,11 @@ class FootOnsatLauncher(Screen):
 		self.onLayoutFinish.append(self.callAPI)
 
 	def showMenu(self):
-		self.session.open(MenuFootOnSat)
+		self.session.openWithCallback(self.closeLauncher, MenuFootOnSat)
+
+	def closeLauncher(self, result=None):
+		if result == "exit_launcher":
+			self.close()
 
 	def callAPI(self):
 		if config.plugins.FootOnSat.updateonline.value:
@@ -379,6 +389,8 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 					<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,550" zPosition="-10"/>
 					<widget render="Label" source="key_red" position="223,515" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
 					<widget render="Label" source="key_green" position="585,515" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
+					<widget source="help" render="Label" position="18,220" size="1004,40" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
+					<widget name="Picture" position="313,275" size="400,225" zPosition="5" alphatest="blend"/>
 				</screen>"""
 	else:
 		skin = """
@@ -391,6 +403,8 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 					<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,550" zPosition="-10"/>
 					<widget render="Label" source="key_red" position="223,515" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
 					<widget render="Label" source="key_green" position="585,515" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
+					<widget source="help" render="Label" position="18,220" size="1004,40" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
+					<widget name="Picture" position="313,275" size="400,225" zPosition="5" alphatest="blend"/>
 				</screen>"""
 
 	def __init__(self, session):
@@ -398,6 +412,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		Screen.__init__(self, session)
 		self.list = []
 		ConfigListScreen.__init__(self, self.list)
+		self.configChanged = False
 
 		self["setupActions"] = ActionMap(["FootOnsatActions"],
 		{
@@ -408,20 +423,70 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 
 		self["key_red"] = StaticText(_("Exit"))
 		self["key_green"] = StaticText(_("Save"))
+
+		self["Picture"] = Pixmap()
+		self["help"] = StaticText()
+		self.icons_value = config.plugins.FootOnSat.icons.value
 		self.createSetup()
 
 	def createSetup(self):
+		self.configChanged = True
 		self.list = []
 		self.list.append(getConfigListEntry(_("Enable checking for Online Update"), config.plugins.FootOnSat.updateonline, _(" This option to Enable or Disable checking for Online Update")))
-		self['config'].list = self.list
-		self['config'].l.setList(self.list)
+		self.list.append(getConfigListEntry(_("Select Icons Style"), config.plugins.FootOnSat.icons, _(" This option to enable to select Icons Style")))
+		self["config"].list = self.list
+		self["config"].l.setList(self.list)
+		self["config"].onSelectionChanged.append(self.updateHelp)
+		self["config"].onSelectionChanged.append(self.Picture)
+		self.onShow.append(self.Picture)
+
+	def updateHelp(self):
+		cur = self["config"].getCurrent()
+		if cur:
+			self["help"].text = cur[2]
+
+	def Picture(self):
+		try:
+			cur = self["config"].getCurrent()
+			if not cur:
+				self['Picture'].hide()
+				return
+			index = cur[1].value if hasattr(cur[1], "value") else None
+			pic = None
+			if index == "default_icons":
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/default_icons.png')
+			elif index == "ramzus007_icons":
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/ramzus007_icons.png')
+			if pic and self['Picture'].instance and os.path.exists(pic):
+				self['Picture'].instance.setPixmapFromFile(pic)
+				self['Picture'].show()
+			else:
+				self['Picture'].hide()
+		except Exception as error:
+			logdata("Picture preview:", error)
+
+	def keyLeft(self):
+		ConfigListScreen.keyLeft(self)
+		self.Picture()
+		self.createSetup()
+
+	def keyRight(self):
+		ConfigListScreen.keyRight(self)
+		self.Picture()
+		self.createSetup()
 
 	def cancel(self):
 		self.close()
 
 	def save(self):
+		if self.icons_value != config.plugins.FootOnSat.icons.value:
+		  folder_path = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/compet/icons"
+		  if config.plugins.FootOnSat.icons.value == "default_icons":
+			  os.system("tar -xzf %s/default_icons.tar.gz -C %s" % (folder_path, folder_path))
+		  elif config.plugins.FootOnSat.icons.value == "ramzus007_icons":
+			  os.system("tar -xzf %s/ramzus007_icons.tar.gz -C %s" % (folder_path, folder_path))
 		for x in self["config"].list:
-			if len(x)>1:
-				x[1].save()
+		  if len(x)>1:
+			  x[1].save()
 		configfile.save()
-		self.close()
+		self.close("exit_launcher")

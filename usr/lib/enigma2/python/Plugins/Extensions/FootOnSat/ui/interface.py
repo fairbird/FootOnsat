@@ -390,11 +390,15 @@ class FootOnSat(Screen):
 	def updateChannelData(self):
 		if len(self.channelData) > 0:
 			index = self['list2'].getSelectionIndex()
-			self["channel"].setText(self.channelData[index][0])
-			self["sat"].setText(self.channelData[index][1])
-			self["freq"].setText(self.channelData[index][2])
-			self["enc"].setText(self.channelData[index][3])
-			if 'V' in self.channelData[index][2] or 'H' in self.channelData[index][2]:
+			channel = str(self.channelData[index][0] or "")
+			sat = str(self.channelData[index][1] or "")
+			freq = str(self.channelData[index][2] or "")
+			enc = str(self.channelData[index][3] or "")
+			self["channel"].setText(channel)
+			self["sat"].setText(sat)
+			self["freq"].setText(freq)
+			self["enc"].setText(enc)
+			if 'V' in freq or 'H' in freq:
 				self['key_blue'].show()
 				self.canScan = True
 			else:
@@ -432,7 +436,10 @@ class FootOnSat(Screen):
 						nimList.append(elem)
 
 			index = self['list2'].getSelectionIndex()
-			freq = self.channelData[index][2].split(' ')[0]
+			freq_str = self.channelData[index][2].split(' ')[0]
+			# Convert GHz string to MHz integer (11.919 GHz → 11919 MHz)
+			freq = int(float(freq_str) * 1000)
+
 			symbolrate = self.channelData[index][2].split(' ')[2]
 			pos = self.channelData[index][1].split(' ')[-1].replace('°', ' ').split(' ')
 			sat = self.getSat(pos)
