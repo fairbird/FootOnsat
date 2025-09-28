@@ -78,6 +78,8 @@ class FootOnsatLauncher(Screen):
 			self.close()
 
 	def callAPI(self):
+		if config.plugins.FootOnSat.updateonline.value:
+			self.checkupdates()
 		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/api.json'
 		sniFactory = WebClientContextFactory(url)
 		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
