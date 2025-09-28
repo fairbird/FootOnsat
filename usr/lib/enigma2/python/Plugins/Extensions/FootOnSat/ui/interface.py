@@ -12,9 +12,11 @@ from Tools.Directories import resolveFilename, SCOPE_PLUGINS, fileExists
 from Components.Pixmap import Pixmap
 from Tools.LoadPixmap import LoadPixmap
 from Components.NimManager import nimmanager, getConfigSatlist
+import sys
 import json
 import random
 import math
+import traceback
 from time import strftime
 from datetime import datetime, timedelta
 from twisted.web.client import getPage, downloadPage
@@ -40,6 +42,22 @@ PY3 = version_info[0] == 3
 
 DB_PATH = '/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/db/footonsat.db'
 
+def logdata(label_name = "", data = None):
+	try:
+		data=str(data)
+		fp = open("/tmp/FootOnSat.log", "a")
+		fp.write( str(label_name) + " : " + data+"\n")
+		fp.close()
+	except:
+		trace_error()    
+		pass
+
+def trace_error():
+	try:
+		traceback.print_exc(file=sys.stdout)
+		traceback.print_exc(file=open("/tmp/FootOnSat.log", "a"))
+	except:
+		pass
 
 def DreamOS():
 	if os.path.exists('/var/lib/dpkg/status'):
@@ -114,6 +132,7 @@ class FootOnSat(Screen):
 				match = self.matches[i][0]
 				match_date = self.matches[i][1]
 				compet = self.matches[i][2]
+				
 				team1 = self.matches[i][3]
 				team2 = self.matches[i][4]
 				flagTeam1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/{}.png".format(team1))
@@ -304,40 +323,29 @@ class FootOnSat(Screen):
 	def callAPI(self):
 		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/{}.json'.format(self.link)
 		sniFactory = WebClientContextFactory(url)
-		if PY3:
-			url = str.encode(url)
-		getPage(url, contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
+		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
 
 	def error(self, error=None):
 		if error:
 			self.session.openWithCallback(self.exit, MessageBox, _('An Unexpected HTTP Error Occurred During The API Request !!'), MessageBox.TYPE_ERROR, timeout=10)
 
 	def getData(self, data):
-		if not PY3:
-			data = data.decode('utf-8')
-		try:
-			self.js = json.loads(data)
-		except Exception as e:
-			self.js = []
-			return
-
-		self.matches = []
-		try:
-			for item in self.js:
-				if isinstance(item, dict) and 'match' in item:
-					match_date = item.get('date', '')
-					match_time = item.get('time', '')
-					compet = item.get('compet', '')
-					flags = item.get('flags', {})
-					team1 = flags.get('team1', 'unknown')
-					team2 = flags.get('team2', 'unknown')
-					self.matches.append((item['match'], match_time + ' - ' + match_date, compet, team1, team2))
-		except Exception as e:
-			self.matches = []
-
-		if len(self.matches) == 0:
-			print("[FootOnSat] No valid schedules found in JSON")
-		self.onWindowShow()
+		list = []
+		self.js = json.loads(data)
+		if self.js['footonsat'] != []:
+			for match in self.js['footonsat']:
+				try:
+					match_date = datetime.strptime(match['date'] + ' ' + match['time'], '%Y-%m-%d %H:%M')
+					last_3 = datetime.strptime((datetime.now() - timedelta(minutes=130)).strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M")
+					if match_date > last_3:
+						list.append((str(match['match']), str(match['time']) + ' - ' + str(match['date']), str(match['compet']),
+							str(match['flags']['team1']), str(match['flags']['team2']), ))
+				except KeyError:
+					pass
+			self.matches = list
+			self.onWindowShow()
+		else:
+			self.session.openWithCallback(self.exit, MessageBox, _('No schedules in this section at this time'), MessageBox.TYPE_ERROR, timeout=10)
 
 	def getChannels(self):
 		list = []
@@ -348,44 +356,19 @@ class FootOnSat(Screen):
 		index = self['list1'].getSelectionIndex()
 		if len(self.matches) > 0:
 			self.match = self.matches[index][0]
-			
-			# Find the selected match in self.js
-			selected_match = None
-			for m in self.js:
-				if m.get('match') == self.match:
-					selected_match = m
-					break
-			
-			if selected_match:
-				#print("[FootOnSat] Selected match JSON data:", selected_match)  # debug
-				
-				# Loop through channels inside the selected match
-				for ch in selected_match.get('channels', []):
-					channel_name = ch.get('channel', '')
-					link = ch.get('link', '#')
-					streams = ch.get('streams', [])
-					
-					for s in streams:
-						sat = s.get('sat', '')
-						freq = s.get('freq', '')
-						encry = s.get('encry', '')
-						
-						channel_info = (channel_name, sat, freq, encry, link)
-						#print("[FootOnSat] Widget data appended:", channel_info)  # debug
-						list.append(channel_info)
-						
+			for data in self.js['footonsat']:
+				try:
+					if data['related_to'] == self.match:
+						list.append((str(data['channel']), str(data['sat']), str(data['freq']), str(data['encry']), str(data['link'])))
 						res.append(MultiContentEntryText())
-						res.append(MultiContentEntryText(
-							pos=(7, 6), size=(510, 40), font=0,
-							flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT,
-							text=str(channel_name)
-						))
+						res.append(MultiContentEntryText(pos=(7, 6), size=(510, 40), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(data['channel'])))
 						gList.append(res)
 						res = []
-
-		self["list2"].setList([])
-		self["list2"].setList(gList)
-		self.channelData = list
+				except KeyError:
+					pass
+			self["list2"].setList([])
+			self["list2"].setList(gList)
+			self.channelData = list
 
 	def updateChannelData(self):
 		if len(self.channelData) > 0:
@@ -427,8 +410,7 @@ class FootOnSat(Screen):
 				nim = nimmanager.getNimConfig(elem)
 				if hasattr(nim, 'dvbs'):
 					self.openatv = True
-					if nim.dvbs.configMode.value not in ('loopthrough', 'satposdepends',
-														'nothing'):
+					if nim.dvbs.configMode.value not in ('loopthrough', 'satposdepends','nothing'):
 						nimList.append(elem)
 				elif hasattr(nim, 'configMode'):
 					self.openpli = True
@@ -436,10 +418,7 @@ class FootOnSat(Screen):
 						nimList.append(elem)
 
 			index = self['list2'].getSelectionIndex()
-			freq_str = self.channelData[index][2].split(' ')[0]
-			# Convert GHz string to MHz integer (11.919 GHz → 11919 MHz)
-			freq = int(float(freq_str) * 1000)
-
+			freq = self.channelData[index][2].split(' ')[0]
 			symbolrate = self.channelData[index][2].split(' ')[2]
 			pos = self.channelData[index][1].split(' ')[-1].replace('°', ' ').split(' ')
 			sat = self.getSat(pos)

@@ -10,7 +10,7 @@ from Components.Label import Label
 from Components.ConfigList import ConfigListScreen
 from Components.config import config, ConfigYesNo, ConfigSubsection, ConfigSelection, getConfigListEntry, NoSave, configfile
 from Plugins.Extensions.FootOnSat.ui.Console import Console
-from Plugins.Extensions.FootOnSat.ui.interface import FootOnSat, WebClientContextFactory, readFromFile
+from Plugins.Extensions.FootOnSat.ui.interface import FootOnSat, WebClientContextFactory, readFromFile, logdata
 from Plugins.Extensions.FootOnSat.component.configs import ConfigDictionarySet
 from Components.FootMenu import FlexibleMenu
 from Plugins.Extensions.FootOnSat.__init__ import __version__
@@ -19,7 +19,6 @@ import re
 import os
 import json
 import sys
-import traceback
 from sys import version_info
 
 PY3 = version_info[0] == 3
@@ -35,23 +34,6 @@ def DreamOS():
 	if os.path.exists('/var/lib/dpkg/status'):
 		return True
 	return False
-
-def trace_error():
-	try:
-		traceback.print_exc(file=sys.stdout)
-		traceback.print_exc(file=open("/tmp/FootOnSat.log", "a"))
-	except:
-		pass
-
-def logdata(label_name = "", data = None):
-	try:
-		data=str(data)
-		fp = open("/tmp/FootOnSat.log", "a")
-		fp.write( str(label_name) + " : " + data+"\n")
-		fp.close()
-	except:
-		trace_error()    
-		pass
 
 VER = float(__version__)
 
@@ -96,17 +78,9 @@ class FootOnsatLauncher(Screen):
 			self.close()
 
 	def callAPI(self):
-		if config.plugins.FootOnSat.updateonline.value:
-			self.checkupdates()
 		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/api.json'
 		sniFactory = WebClientContextFactory(url)
-		if PY3:
-			url = str.encode(url)
-		try:
-			getPage(url, contextFactory=sniFactory, timeout=10).addCallback(self.getData).addErrback(self.error)
-		except Exception as e:
-			logdata("callAPI-error", str(e))
-			self.error(str(e))
+		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
 
 	def getData(self, data):
 		if not PY3:
@@ -118,10 +92,11 @@ class FootOnsatLauncher(Screen):
 			self.error("JSON parsing failed: " + str(e))
 			return
 		ordering = ["today", "championsleague", "europaleague", "ConferenceLeague", "premierleague", "laliga", "seriea",
-		"bundesliga", "ligue1", "saudiarabia", "afcchampions","championship", "superLig"]
+		"bundesliga", "ligue1", "saudiarabia", "afcchampions","championship", "cafchampions", "superLig", "laliga2", "liganos", "nba", "formula1"]
 		# Keep only items in ordering, then sort according to ordering
-		filtered_compet = [c for c in ordering if c in compet]
-		self.menuList = self.custom_sort(ordering, filtered_compet)
+		# filtered_compet = [c for c in ordering if c in compet]
+		# self.menuList = self.custom_sort(ordering, filtered_compet)
+		self.menuList = self.custom_sort(ordering, compet)
 
 		self.sub_menu_sort = NoSave(ConfigDictionarySet())
 		self.sub_menu_sort.value = config.plugins.FootOnSat.sort.getConfigValue("footmenu", "footsubmenu") or {}
@@ -147,9 +122,10 @@ class FootOnsatLauncher(Screen):
 
 	def custom_sort(self, ordem_custom, origin):
 		list_order_equals = [c for c in ordem_custom if (c in origin)]
-		list_no_equals = [c for c in origin if (not c in ordem_custom)]
-		list_order = list_order_equals + list_no_equals
-		return list_order
+		#list_no_equals = [c for c in origin if (not c in ordem_custom)] ## This follow # Keep only items in ordering in getData
+		#list_order = list_order_equals + list_no_equals
+		#return list_order
+		return list_order_equals
 
 	def error(self, error=None):
 		if error:
