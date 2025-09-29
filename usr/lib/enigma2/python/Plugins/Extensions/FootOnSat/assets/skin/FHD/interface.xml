@@ -9,6 +9,8 @@
     <widget name="sat" position="1450,684" size="385,39" font="Regular;25" halign="left" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
     <widget name="freq" position="1450,765" size="385,39" font="Regular;25" halign="left" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
     <widget name="enc" position="1450,860" size="385,40" font="Regular;25" halign="left" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+    <widget name="key_red" position="108,880" size="385,40" font="Regular;28" halign="center" foregroundColor="#FF0000" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+    <widget name="key_yellow" position="849,880" size="385,40" font="Regular;28" halign="center" foregroundColor="#FFFF00" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
     <widget name="key_blue" position="1550,900" size="385,40" font="Regular;28" halign="left" foregroundColor="#1E90FF" backgroundColor="#0000FF" zPosition="5" transparent="1" />
     <widget name="list1" position="57,145" size="1220,700" scrollbarMode="showNever" selectionPixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/button1180x45.png" foregroundColor="white" backgroundColorSelected="#0000FF" enableWrapAround="1"  transparent="1" zPosition="2" /> 
     <widget name="list2" position="1315,150" size="560,350" scrollbarMode="showNever" selectionPixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/list2selectionpixmap.png" foregroundColor="white" backgroundColorSelected="#0000FF" enableWrapAround="1" transparent="1" zPosition="3" />

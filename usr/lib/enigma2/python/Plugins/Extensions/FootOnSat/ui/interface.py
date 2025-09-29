@@ -1,24 +1,27 @@
 # -*- coding: utf-8 -*-
-from enigma import eTimer, gRGB, loadPNG, gPixmapPtr, RT_WRAP, ePoint, RT_HALIGN_LEFT, RT_VALIGN_CENTER, eListboxPythonMultiContent, gFont, getDesktop, eConsoleAppContainer
-from Components.MultiContent import MultiContentEntryText, MultiContentEntryPixmap, MultiContentEntryPixmapAlphaTest, MultiContentEntryPixmapAlphaBlend
-from Screens.Screen import Screen
-from Components.MenuList import MenuList
-from Components.Label import Label
-from Components.Button import Button
-from Components.ActionMap import ActionMap
-from Screens.MessageBox import MessageBox
-from Components.NimManager import nimmanager, getConfigSatlist
-from Tools.Directories import resolveFilename, SCOPE_PLUGINS, fileExists
-from Components.Pixmap import Pixmap
-from Tools.LoadPixmap import LoadPixmap
-from Components.NimManager import nimmanager, getConfigSatlist
+import os
 import sys
 import json
-import random
 import math
+import codecs
+import random
 import traceback
 from time import strftime
 from datetime import datetime, timedelta
+from enigma import eTimer, gRGB, loadPNG, gPixmapPtr, RT_WRAP, ePoint, RT_HALIGN_LEFT, RT_VALIGN_CENTER, eListboxPythonMultiContent, gFont, getDesktop, eConsoleAppContainer
+from Components.MultiContent import MultiContentEntryText, MultiContentEntryPixmap, MultiContentEntryPixmapAlphaTest, MultiContentEntryPixmapAlphaBlend
+from Components.MenuList import MenuList
+from Components.Label import Label
+from Components.Button import Button
+from Components.Pixmap import Pixmap
+from Components.ActionMap import ActionMap
+from Components.NimManager import nimmanager, getConfigSatlist
+from Components.NimManager import nimmanager, getConfigSatlist
+from Screens.Screen import Screen
+from Screens.ChoiceBox import ChoiceBox
+from Screens.MessageBox import MessageBox
+from Tools.Directories import resolveFilename, SCOPE_PLUGINS, fileExists
+from Tools.LoadPixmap import LoadPixmap
 from twisted.web.client import getPage, downloadPage
 from twisted.internet.ssl import ClientContextFactory
 from twisted.internet._sslverify import ClientTLSOptions
@@ -39,7 +42,8 @@ except ImportError:
 
 PY3 = version_info[0] == 3
 
-
+ignore_dir = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/ignore")
+ignore_file = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/ignore/ignore-match.json")
 DB_PATH = '/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/db/footonsat.db'
 
 def logdata(label_name = "", data = None):
@@ -75,7 +79,7 @@ class WebClientContextFactory(ClientContextFactory):
 	def __init__(self, url=None):
 		domain = urlparse(url).netloc
 		self.hostname = domain
-	
+
 	def getContext(self, hostname=None, port=None):
 		ctx = ClientContextFactory.getContext(self)
 		if self.hostname and ClientTLSOptions is not None: # workaround for TLS SNI
@@ -91,13 +95,15 @@ class FootOnSat(Screen):
 		self.skin = readFromFile(skin)
 		self["setupActions"] = ActionMap(["FootOnsatActions"],
 		{
-			"ok": self.ok,
-			"down": self.listDOWN,
-			"up": self.listUP,
-			"left": self.left,
-			"right": self.right,
-			"blue": self.keyBlue,
-			"cancel": self.exit,
+		    "ok": self.ok,
+		    "down": self.listDOWN,
+		    "up": self.listUP,
+		    "left": self.left,
+		    "right": self.right,
+		    "red": self.keyRed,
+		    "yellow": self.keyYellow,
+		    "blue": self.keyBlue,
+		    "cancel": self.exit,
 		}, -1)
 		self.link = link
 		self["counter"] = Label()
@@ -105,7 +111,11 @@ class FootOnSat(Screen):
 		self["sat"] = Label()
 		self["freq"] = Label()
 		self["enc"] = Label()
+		self["key_red"] = Button(_("Ignore Competition"))
+		self["key_yellow"] = Button(_("Reset Ignore List"))
 		self["key_blue"] = Button(_("Scan"))
+		self["key_red"].hide()
+		self["key_yellow"].hide()
 		self["key_blue"].hide()
 		self["list1"] = MenuList([], enableWrapAround=True, content=eListboxPythonMultiContent)
 		self["list2"] = MenuList([], enableWrapAround=True, content=eListboxPythonMultiContent)
@@ -161,6 +171,12 @@ class FootOnSat(Screen):
 				gList.append(res)
 				res = []
 			self["list1"].setList(gList)
+			if self.link == "today":
+				self['key_red'].show()
+				self['key_yellow'].show()
+			else:
+				self['key_red'].hide()
+				self['key_yellow'].hide()
 			self.updateCounter()
 		else:
 			self.session.openWithCallback(self.exit, MessageBox, _('No schedules in this section at this time'), MessageBox.TYPE_INFO, timeout=10)
@@ -331,18 +347,38 @@ class FootOnSat(Screen):
 
 	def getData(self, data):
 		list = []
-		self.js = json.loads(data)
+		try:
+			self.js = json.loads(data)
+		except Exception as e:
+			# logdata("getData", "JSON decode error: " + str(e))
+			self.session.openWithCallback(self.exit, MessageBox, _('Invalid API data! Check logs.'), MessageBox.TYPE_ERROR, timeout=10)
+			return
+		# Load ignored competitions safely
+		ignored_competitions = []
+		try:
+			ignored_competitions = self.manageIgnoreFile()
+			# logdata("getData", "Ignored competitions: " + str(ignored_competitions))
+		except Exception as e:
+			logdata("getData", "Failed to load ignored competitions: " + str(e))
 		if self.js['footonsat'] != []:
 			for match in self.js['footonsat']:
 				try:
-					match_date = datetime.strptime(match['date'] + ' ' + match['time'], '%Y-%m-%d %H:%M')
-					last_3 = datetime.strptime((datetime.now() - timedelta(minutes=130)).strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M")
-					if match_date > last_3:
-						list.append((str(match['match']), str(match['time']) + ' - ' + str(match['date']), str(match['compet']),
-							str(match['flags']['team1']), str(match['flags']['team2']), ))
+					compet = str(match['compet']).strip()
+					# Remove week/round/matchday suffixes for comparison
+					for suffix in [' - Week ', ' - Matchday ', ' - Round ']:
+						if suffix in compet:
+							compet = compet.split(suffix)[0].strip()
+					# logdata("getData", "Processing match compet: " + compet)
+					if compet not in ignored_competitions:
+						match_date = datetime.strptime(match['date'] + ' ' + match['time'], '%Y-%m-%d %H:%M')
+						last_3 = datetime.strptime((datetime.now() - timedelta(minutes=130)).strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M")
+						if match_date > last_3:
+							list.append((str(match['match']), str(match['time']) + ' - ' + str(match['date']), str(match['compet']),
+										str(match['flags']['team1']), str(match['flags']['team2']), ))
 				except KeyError:
 					pass
 			self.matches = list
+			# logdata("getData", "Filtered matches: " + str(len(list)))
 			self.onWindowShow()
 		else:
 			self.session.openWithCallback(self.exit, MessageBox, _('No schedules in this section at this time'), MessageBox.TYPE_ERROR, timeout=10)
@@ -460,6 +496,189 @@ class FootOnSat(Screen):
 
 	def exit(self, ret=None):
 		self.close()
+
+	def manageIgnoreFile(self, compet=None, reset=False, remove=None):
+		# logdata("manageIgnoreFile", "Called with compet={}, reset={}, remove={}".format(compet, reset, remove))
+
+		# Create ignore directory if it doesn't exist
+		if not os.path.exists(ignore_dir):
+			try:
+				os.makedirs(ignore_dir, 0o755)
+				# logdata("manageIgnoreFile", "Created ignore directory: " + ignore_dir)
+			except Exception as e:
+				logdata("manageIgnoreFile", "Failed to create ignore dir: " + str(e))
+				return []
+
+		# Determine file open function for Python 2 and 3
+		try:
+			PY3 = True
+		except NameError:
+			PY3 = False
+		if not PY3:
+			import io
+			def fopen(fname, mode):
+				return io.open(fname, mode, encoding='utf-8')
+		else:
+			fopen = open
+
+		# Handle reset case
+		if reset:
+			try:
+				with fopen(ignore_file, 'w') as f:
+					json.dump({"ignored_competitions": []}, f)
+				# logdata("manageIgnoreFile", "Reset ignore-match.json to empty")
+				return []
+			except Exception as e:
+				logdata("manageIgnoreFile", "Failed to reset ignore file: " + str(e))
+				return []
+
+		# Load or initialize ignored competitions
+		ignored = []
+		if os.path.exists(ignore_file):
+			try:
+				with fopen(ignore_file, 'r') as f:
+					data = json.load(f)
+					ignored = data.get("ignored_competitions", [])
+				# logdata("manageIgnoreFile", "Loaded ignored competitions: " + str(ignored))
+			except Exception as e:
+				logdata("manageIgnoreFile", "Failed to read ignore file: " + str(e))
+				# Create empty file if reading fails
+				try:
+					with fopen(ignore_file, 'w') as f:
+						json.dump({"ignored_competitions": []}, f)
+					# logdata("manageIgnoreFile", "Created empty ignore-match.json after read failure")
+				except Exception as e:
+					logdata("manageIgnoreFile", "Failed to create ignore file: " + str(e))
+					return []
+		else:
+			try:
+				with fopen(ignore_file, 'w') as f:
+					json.dump({"ignored_competitions": []}, f)
+				# logdata("manageIgnoreFile", "Created empty ignore-match.json")
+			except Exception as e:
+				logdata("manageIgnoreFile", "Failed to create ignore file: " + str(e))
+				return []
+
+		# Remove competition if provided
+		if remove:
+			try:
+				compet_str = str(remove).strip()
+			except UnicodeEncodeError:
+				compet_str = unicode(remove).encode('utf-8').strip()  # Python 2 compatibility
+			# logdata("manageIgnoreFile", "Attempting to remove compet: " + (compet_str if compet_str else "None"))
+			if compet_str in ignored:
+				ignored.remove(compet_str)
+				try:
+					with fopen(ignore_file, 'w') as f:
+						json.dump({"ignored_competitions": ignored}, f)
+					# logdata("manageIgnoreFile", "Removed competition: " + compet_str + ", New list: " + str(ignored))
+				except Exception as e:
+					logdata("manageIgnoreFile", "Failed to update ignore file after removing " + compet_str + ": " + str(e))
+					return ignored
+			else:
+				logdata("manageIgnoreFile", "Competition not removed: " + (compet_str if compet_str else "None") + " (not in ignore list)")
+			return ignored
+
+		# Add competition if provided
+		if compet:
+			try:
+				compet_str = str(compet).strip()
+			except UnicodeEncodeError:
+				compet_str = unicode(compet).encode('utf-8').strip()  # Python 2 compatibility
+			# logdata("manageIgnoreFile", "Received compet: " + (compet_str if compet_str else "None"))
+			if compet_str and compet_str not in ignored:
+				ignored.append(compet_str)
+				try:
+					with fopen(ignore_file, 'w') as f:
+						json.dump({"ignored_competitions": ignored}, f)
+					# logdata("manageIgnoreFile", "Added competition to ignore: " + compet_str + ", New list: " + str(ignored))
+					return ignored
+				except Exception as e:
+					logdata("manageIgnoreFile", "Failed to update ignore file with " + compet_str + ": " + str(e))
+					return ignored
+			else:
+				logdata("manageIgnoreFile", "Competition not added: " + (compet_str if compet_str else "None") + " (already ignored or empty)")
+
+		return ignored
+
+
+	def selectCompetitionToRemove(self, selected):
+		if not selected or not selected[1]:
+			self.session.open(MessageBox, _('No competition selected to remove'), MessageBox.TYPE_INFO, timeout=5)
+			return
+		compet = selected[1]
+		# logdata("selectCompetitionToRemove", "Removing competition: " + compet)
+		self.manageIgnoreFile(remove=compet)
+		self.session.open(MessageBox, _('Competition "%s" removed from ignore list') % compet, MessageBox.TYPE_INFO, timeout=5)
+		# Refresh the match list to include removed competition's matches
+		self.matches = []
+		self["list1"].setList([])
+		self.callAPI()
+
+	def keyRed(self):
+		if self.link == "today" and self.selectedList == self["list1"] and len(self.matches) > 0:
+			try:
+				index = self['list1'].getSelectionIndex()
+				# logdata("keyRed", "Selected match tuple: " + str(self.matches[index]))
+				compet = str(self.matches[index][2]).strip()
+				# Remove week/round/matchday suffixes
+				for suffix in [' - Week ', ' - Matchday ', ' - Round ']:
+					if suffix in compet:
+						compet = compet.split(suffix)[0].strip()
+				# logdata("keyRed", "Attempting to ignore competition: " + (compet if compet else "None"))
+				if not compet:
+					# logdata("keyRed", "Competition is empty or invalid")
+					self.session.open(MessageBox, _('No valid competition selected!'), MessageBox.TYPE_ERROR, timeout=5)
+					return
+				# Load current ignored competitions
+				ignored_before = self.manageIgnoreFile()
+				# Add selected competition to ignore list
+				self.manageIgnoreFile(compet=compet)
+				ignored_after = self.manageIgnoreFile()
+				if compet in ignored_after and compet not in ignored_before:
+					self.session.open(MessageBox, _('Competition "%s" added to ignore list') % compet, MessageBox.TYPE_INFO, timeout=5)
+				else:
+					logdata("keyRed", "Competition " + compet + " not added (already ignored or failed)")
+				# Refresh the match list to exclude ignored competitions
+				self.matches = []
+				self["list1"].setList([])
+				self.callAPI()
+			except Exception as e:
+				logdata("keyRed", "Error ignoring competition: " + str(e))
+				self.session.open(MessageBox, _('Error ignoring competition!'), MessageBox.TYPE_ERROR, timeout=5)
+
+	def keyYellow(self):
+		if self.link == "today":
+			try:
+				ignored_list = self.manageIgnoreFile()
+				if not ignored_list:
+					self.session.open(MessageBox, _('No competitions in the ignore list'), MessageBox.TYPE_INFO, timeout=5)
+					return
+				# logdata("keyYellow", "Ignored competitions: " + str(ignored_list))
+				list = []
+				for comp in ignored_list:
+					# Ensure competition name is a string/byte string suitable for ChoiceBox in PY2 and PY3
+					if PY3:
+						# Python 3: Competition names loaded from JSON are standard strings
+						comp_str = comp
+					else:
+						# Python 2: Competition names loaded from JSON are unicode (u'...')
+						# We convert them to a utf-8 encoded byte string for compatibility with ChoiceBox
+						try:
+							comp_str = comp.encode('utf-8') if isinstance(comp, unicode) else comp
+						except Exception as e:
+							# logdata("keyYellow", "Error converting competition to byte string: " + str(e))
+							comp_str = str(comp) # Fallback
+					list.append((comp_str, comp_str))
+				# If the list is empty after processing, stop
+				if not list:
+					self.session.open(MessageBox, _('Error processing ignore list items!'), MessageBox.TYPE_ERROR, timeout=5)
+					return
+				self.session.openWithCallback(self.selectCompetitionToRemove, ChoiceBox, _('Select the competition to remove from list'), list)
+			except Exception as e:
+				# logdata("keyYellow", "Error selecting competition to remove: " + str(e))
+				# This addresses the original error which likely occurred here due to string conversion failure
+				self.session.open(MessageBox, _('Error accessing ignore list!'), MessageBox.TYPE_ERROR, timeout=5)
 
 
 class FootOnSatNotif():
