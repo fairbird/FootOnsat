@@ -455,6 +455,11 @@ class FootOnSat(Screen):
 
 			index = self['list2'].getSelectionIndex()
 			freq = self.channelData[index][2].split(' ')[0]
+			try:
+				freq = int(float(freq))
+			except Exception as e:
+				logdata("scan_exception", "Failed to parse freq '{}': {}".format(freq, e))
+
 			symbolrate = self.channelData[index][2].split(' ')[2]
 			pos = self.channelData[index][1].split(' ')[-1].replace('°', ' ').split(' ')
 			sat = self.getSat(pos)
