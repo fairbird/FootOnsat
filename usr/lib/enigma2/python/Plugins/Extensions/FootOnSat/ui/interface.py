@@ -361,6 +361,7 @@ class FootOnSat(Screen):
 		except Exception as e:
 			logdata("getData", "Failed to load ignored competitions: " + str(e))
 		if self.js['footonsat'] != []:
+			#logdata("getData", "Ignored competitions: " + str(ignored_competitions))  # Log ignored list
 			for match in self.js['footonsat']:
 				try:
 					compet = str(match['compet']).strip()
@@ -368,14 +369,19 @@ class FootOnSat(Screen):
 					for suffix in [' - Week ', ' - Matchday ', ' - Round ']:
 						if suffix in compet:
 							compet = compet.split(suffix)[0].strip()
-					# logdata("getData", "Processing match compet: " + compet)
+					#logdata("getData", "Processing match: " + str(match['match']) + ", Compet: " + compet)  # Log each match
 					if compet not in ignored_competitions:
+						#logdata("getData", "Not ignored: " + str(match['match']) + ", Time: " + str(match['time']))  # Log non-ignored
 						match_date = datetime.strptime(match['date'] + ' ' + match['time'], '%Y-%m-%d %H:%M')
-						last_3 = datetime.strptime((datetime.now() - timedelta(minutes=130)).strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M")
-						if match_date > last_3:
+						last_2 = datetime.strptime((datetime.now() - timedelta(minutes=300)).strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M")
+						if match_date > last_2:
+							#logdata("getData", "Appending: " + str(match['match']) + " at " + str(match['time']))  # Log appended
 							list.append((str(match['match']), str(match['time']) + ' - ' + str(match['date']), str(match['compet']),
 										str(match['flags']['team1']), str(match['flags']['team2']), ))
+					else:
+						logdata("getData", "Ignored: " + str(match['match']) + ", Compet: " + compet)  # Log ignored
 				except KeyError:
+					logdata("getData", "KeyError on match: " + str(match))  # Log KeyError
 					pass
 			self.matches = list
 			# logdata("getData", "Filtered matches: " + str(len(list)))
