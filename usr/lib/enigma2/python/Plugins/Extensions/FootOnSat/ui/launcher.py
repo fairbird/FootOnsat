@@ -27,8 +27,10 @@ config.plugins.FootOnSat = ConfigSubsection()
 config.plugins.FootOnSat.sort = ConfigDictionarySet(default={"footmenu": {"footsubmenu": {}}})
 config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
 config.plugins.FootOnSat.icons = ConfigSelection(default = "default_icons", choices = [
-			("default_icons", _("default_icons")), ("ramzus007_icons", _("ramzus007_icons"))
-			])
+	("default_icons", _("default icons")),
+	("ramzus007_icons", _("ramzus007 icons")),
+	("italia2012_icons", _("ramzus007 Full style color"))
+	])
 
 def DreamOS():
 	if os.path.exists('/var/lib/dpkg/status'):
@@ -435,6 +437,8 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/default_icons.png')
 			elif index == "ramzus007_icons":
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/ramzus007_icons.png')
+			elif index == "italia2012_icons":
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/italia2012_icons.png')
 			if pic and self['Picture'].instance and os.path.exists(pic):
 				self['Picture'].instance.setPixmapFromFile(pic)
 				self['Picture'].show()
@@ -458,11 +462,14 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 
 	def save(self):
 		if self.icons_value != config.plugins.FootOnSat.icons.value:
-		  folder_path = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/compet/icons"
+		  extract_path = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
+		  tarfile_path = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/tar"
 		  if config.plugins.FootOnSat.icons.value == "default_icons":
-			  os.system("tar -xzf %s/default_icons.tar.gz -C %s" % (folder_path, folder_path))
+			  os.system("tar -xzf %s/default_icons.tar.gz -C %s" % (tarfile_path, extract_path))
 		  elif config.plugins.FootOnSat.icons.value == "ramzus007_icons":
-			  os.system("tar -xzf %s/ramzus007_icons.tar.gz -C %s" % (folder_path, folder_path))
+			  os.system("tar -xzf %s/ramzus007_icons.tar.gz -C %s" % (tarfile_path, extract_path))
+		  elif config.plugins.FootOnSat.icons.value == "italia2012_icons":
+			  os.system("tar -xzf %s/italia2012_icons.tar.gz -C %s" % (tarfile_path, extract_path))
 		for x in self["config"].list:
 		  if len(x)>1:
 			  x[1].save()

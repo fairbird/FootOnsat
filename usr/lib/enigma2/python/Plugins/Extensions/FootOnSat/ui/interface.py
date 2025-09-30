@@ -371,18 +371,10 @@ class FootOnSat(Screen):
 					# logdata("getData", "Processing match compet: " + compet)
 					if compet not in ignored_competitions:
 						match_date = datetime.strptime(match['date'] + ' ' + match['time'], '%Y-%m-%d %H:%M')
-						# For today section: include all matches of today
-						today = datetime.now().date()
-						if self.link == "today":
-							if match_date.date() == today:
-								list.append((str(match['match']), str(match['time']) + ' - ' + str(match['date']), str(match['compet']),
-											str(match['flags']['team1']), str(match['flags']['team2']), ))
-						# For other sections: include only upcoming or recently finished matches (last 130 minutes)
-						else:
-							last_3 = datetime.strptime((datetime.now() - timedelta(minutes=130)).strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M")
-							if match_date > last_3:
-								list.append((str(match['match']), str(match['time']) + ' - ' + str(match['date']), str(match['compet']),
-											str(match['flags']['team1']), str(match['flags']['team2']), ))
+						last_3 = datetime.strptime((datetime.now() - timedelta(minutes=130)).strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M")
+						if match_date > last_3:
+							list.append((str(match['match']), str(match['time']) + ' - ' + str(match['date']), str(match['compet']),
+										str(match['flags']['team1']), str(match['flags']['team2']), ))
 				except KeyError:
 					pass
 			self.matches = list
