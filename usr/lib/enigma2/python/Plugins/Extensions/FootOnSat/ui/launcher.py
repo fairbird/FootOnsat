@@ -29,6 +29,7 @@ config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
 config.plugins.FootOnSat.icons = ConfigSelection(default = "default_icons", choices = [
 	("default_icons", _("default icons")),
 	("ramzus007_icons", _("ramzus007 icons")),
+	("icons_renkli", _("renkli icons")),
 	("italia2012_icons", _("italia2012 Full style color"))
 	])
 
@@ -437,6 +438,8 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/default_icons.png')
 			elif index == "ramzus007_icons":
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/ramzus007_icons.png')
+			elif index == "icons_renkli":
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/icons_renkli.png')
 			elif index == "italia2012_icons":
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/italia2012_icons.png')
 			if pic and self['Picture'].instance and os.path.exists(pic):
@@ -468,6 +471,8 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			  os.system("tar -xzf %s/default_icons.tar.gz -C %s" % (tarfile_path, extract_path))
 		  elif config.plugins.FootOnSat.icons.value == "ramzus007_icons":
 			  os.system("tar -xzf %s/ramzus007_icons.tar.gz -C %s" % (tarfile_path, extract_path))
+		  elif config.plugins.FootOnSat.icons.value == "icons_renkli":
+			  os.system("tar -xzf %s/icons_renkli.tar.gz -C %s" % (tarfile_path, extract_path))
 		  elif config.plugins.FootOnSat.icons.value == "italia2012_icons":
 			  os.system("tar -xzf %s/italia2012_icons.tar.gz -C %s" % (tarfile_path, extract_path))
 		for x in self["config"].list:
