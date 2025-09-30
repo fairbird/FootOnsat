@@ -29,7 +29,7 @@ config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
 config.plugins.FootOnSat.icons = ConfigSelection(default = "default_icons", choices = [
 	("default_icons", _("default icons")),
 	("ramzus007_icons", _("ramzus007 icons")),
-	("italia2012_icons", _("ramzus007 Full style color"))
+	("italia2012_icons", _("italia2012 Full style color"))
 	])
 
 def DreamOS():
