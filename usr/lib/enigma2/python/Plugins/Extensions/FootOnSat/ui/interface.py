@@ -42,6 +42,8 @@ except ImportError:
 
 PY3 = version_info[0] == 3
 
+reswidth = getDesktop(0).size().width()
+
 ignore_dir = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/ignore")
 ignore_file = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/ignore/ignore-match.json")
 DB_PATH = '/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/db/footonsat.db'
@@ -91,7 +93,12 @@ class FootOnSat(Screen):
 	def __init__(self, session, link, *args):
 		self.session = session
 		Screen.__init__(self, session)
-		skin = "assets/skin/FHD/interface.xml"
+		if reswidth == 1920:
+			skin = "assets/skin/FHD/interface.xml"
+		elif reswidth == 2560:
+			skin = "assets/skin/UHD/interface.xml"
+		else:
+			skin = "assets/skin/FHD/interface.xml"
 		self.skin = readFromFile(skin)
 		self["setupActions"] = ActionMap(["FootOnsatActions"],
 		{
@@ -706,7 +713,12 @@ class FootOnsatNotifScreen(Screen):
 
 	def __init__(self, session):
 		Screen.__init__(self, session)
-		skin = "assets/skin/FHD/FootOnsatNotif.xml"
+		if reswidth == 1920:
+			skin = "assets/skin/FHD/FootOnsatNotif.xml"
+		elif reswidth == 2560:
+			skin = "assets/skin/UHD/FootOnsatNotif.xml"
+		else:
+			skin = "assets/skin/FHD/FootOnsatNotif.xml"
 		self.skin = readFromFile(skin)
 		self['match'] = Label()
 		self['message'] = Label()
