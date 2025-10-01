@@ -381,7 +381,7 @@ class FootOnSat(Screen):
 					else:
 						logdata("getData", "Ignored: " + str(match['match']) + ", Compet: " + compet)  # Log ignored
 				except KeyError:
-					logdata("getData", "KeyError on match: " + str(match))  # Log KeyError
+					#logdata("getData", "KeyError on match: " + str(match))  # Log KeyError
 					pass
 			self.matches = list
 			# logdata("getData", "Filtered matches: " + str(len(list)))
