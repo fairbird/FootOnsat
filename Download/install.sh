@@ -26,7 +26,7 @@ if [ -d $PLUGIN_PATH ]; then
 #        opkg remove enigma2-plugin-extensions-footonsat
 #    else
 #       apt-get purge --auto-remove enigma2-plugin-extensions-footonsat
-    fi
+#    fi
 
 fi
 
