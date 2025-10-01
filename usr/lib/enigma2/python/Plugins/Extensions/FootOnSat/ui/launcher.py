@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from enigma import getDesktop
 from Screens.Screen import Screen
 from Components.ActionMap import ActionMap
 from Screens.MessageBox import MessageBox
@@ -33,12 +34,14 @@ config.plugins.FootOnSat.icons = ConfigSelection(default = "default_icons", choi
 	("italia2012_icons", _("italia2012 Full style color"))
 	])
 
+VER = float(__version__)
+
+reswidth = getDesktop(0).size().width()
+
 def DreamOS():
 	if os.path.exists('/var/lib/dpkg/status'):
 		return True
 	return False
-
-VER = float(__version__)
 
 
 class FootOnsatLauncher(Screen):
@@ -46,7 +49,12 @@ class FootOnsatLauncher(Screen):
 	def __init__(self, session, *args):
 		self.session = session
 		Screen.__init__(self, session)
-		skin = "assets/skin/FHD/launcher.xml"
+		if reswidth == 1920:
+			skin = "assets/skin/FHD/launcher.xml"
+		elif reswidth == 2560:
+			skin = "assets/skin/UHD/launcher.xml"
+		else:
+			skin = "assets/skin/FHD/launcher.xml"
 		self.skin = readFromFile(skin)
 		self["setupActions"] = ActionMap(["FootOnsatActions"],
 		{
