@@ -21,11 +21,11 @@ if [ -d $PLUGIN_PATH ]; then
         cp -a /usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/db/footonsat.db /tmp
     fi
 
-    echo "Remove old version."
-    if [ $OS = "Opensource" ]; then
-        opkg remove enigma2-plugin-extensions-footonsat
-    else
-       apt-get purge --auto-remove enigma2-plugin-extensions-footonsat
+#    echo "Remove old version."
+#    if [ $OS = "Opensource" ]; then
+#        opkg remove enigma2-plugin-extensions-footonsat
+#    else
+#       apt-get purge --auto-remove enigma2-plugin-extensions-footonsat
     fi
 
 fi
