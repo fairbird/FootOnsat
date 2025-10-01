@@ -1,6 +1,9 @@
 # FootOnsat
 ENIGMA2 PLUGIN FootOnsat developed By ziko & redouane & Raed
 
+The orignal source is
+https://github.com/zKhadiri/FootOnsat
+
 To install plugin directly online from telnet be this command / لتثبيت البلجن مباشرة من خلال الإنترنيت بواسطة التلنت بهذا الأمر
 ```
 wget https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh
