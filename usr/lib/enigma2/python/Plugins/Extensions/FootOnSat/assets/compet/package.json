@@ -117,10 +117,6 @@
             "banner": "all-island cup"
         },
         {
-             "label": "all-island womens cup",
-             "banner": "all island womens cup"
-        },
-        {
             "label": "angolan girabola",
             "banner": "angolan girabola"
         },
@@ -421,7 +417,7 @@
             "banner": "caf african womens championship"
         },
         {
-            "label": "caf african women's cup of nations",
+            "label": "caf african womens cup of nations",
             "banner": "caf african womens cup of nations"
         },
         {
@@ -554,7 +550,7 @@
         },
         {
             "label": "conmebol copa américa femenina",
-            "banner": "conmebol copa america femenina"
+            "banner": "conmebol copa américa femenina "
         },
         {
             "label": "conmebol copa libertadores",
@@ -669,10 +665,6 @@
             "banner": "danish 1. division"
         },
         {
-            "label": "danish a-liga women",
-            "banner": "danish a liga"
-        },
-        {
             "label": "danish cup",
             "banner": "danish cup"
         },
@@ -705,8 +697,8 @@
             "banner": "dutch eredivisie"
         },
         {
-            "label": "dutch super cup",
-            "banner": "dutch super cup"
+            "label": "dutch supercup",
+            "banner": "dutch supercup"
         },
         {
             "label": "dutch tweede divisie (3rd)",
@@ -838,7 +830,7 @@
         },
         {
             "label": "english womens championship",
-            "banner": "english wsl2"
+            "banner": "english wchampionship"
         },
         {
             "label": "english womens fa cup",
@@ -850,7 +842,7 @@
         },
         {
             "label": "english womens super league",
-            "banner": "english wsl"
+            "banner": "english wsuper league"
         },
         {
             "label": "english w/super cup (community shield)",
@@ -1082,7 +1074,7 @@
         },
         {
             "label": "german super cup",
-            "banner": "franz beckenbauer supercup"
+            "banner": "german super cup"
         },
         {
             "label": "german w/cup (dfb-pokal frauen)",
@@ -1122,7 +1114,7 @@
         },
         {
             "label": "hungarian nb 1",
-            "banner": "hungarian fizz liga 1"
+            "banner": "hungarian nb 1"
         },
         {
             "label": "hungarian nb 2",
@@ -1245,11 +1237,7 @@
             "banner": "italian super cup"
         },
         {
-            "label": "italian womens cup - serie a cup",
-            "banner": "italian serie a women's cup"
-        },
-        {
-            "label": "italian wcup (coppa italia)",
+            "label": "italian w/cup (coppa italia)",
             "banner": "italian wcup (coppa italia)"
         },
         {
@@ -1465,10 +1453,6 @@
             "banner": "northern ireland women premiership"
         },
         {
-            "label": "northern ireland cup",
-            "banner": "northern ireland cup"
-        },
-        {
             "label": "north macedonian cup",
             "banner": "north macedonian cup"
         },
@@ -1565,12 +1549,8 @@
             "banner": "polish womens ekstraliga"
         },
         {
-            "label": "portuguese liga portugal 2",
-            "banner": "portuguese liga 2"
-        },
-        {
-            "label": "portuguese liga portugal",
-            "banner": "portuguese liga portugal"
+            "label": "portuguese liga",
+            "banner": "portuguese liga"
         },
         {
             "label": "portuguese campeonato nacional feminino",
@@ -1583,6 +1563,10 @@
         {
             "label": "portuguese league cup",
             "banner": "portuguese league cup"
+        },
+        {
+            "label": "portuguese liga 2",
+            "banner": "portuguese liga 2"
         },
         {
             "label": "portuguese liga 3",
@@ -1799,10 +1783,6 @@
         {
             "label": "serbian womens cup",
             "banner": "serbian cup"
-        },
-        {
-            "label": "serbian srpske lige",
-            "banner": "serbian srpske lige"
         },
         {
             "label": "shebelieves cup",
@@ -2033,10 +2013,6 @@
             "banner": "türkiye süper lig"
         },
         {
-            "label": "off-season: tsyd ankara cup",
-            "banner": "tsyd"
-        },
-        {
             "label": "uae president's cup",
             "banner": "uae president's cup"
         },
@@ -2197,7 +2173,7 @@
             "banner": "welsh league cup"
         },
         {
-            "label": "cymru premier",
+            "label": "welsh premier league",
             "banner": "welsh premier league"
         },
         {
@@ -2227,6 +2203,10 @@
         {
             "label": "ncaab",
             "banner": "ncaa"
+        },
+        {
+            "label": "uleb euroleague",
+            "banner": "euroleague"
         },
         {
             "label": "formula 1",
