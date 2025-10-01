@@ -1,0 +1,9 @@
+<screen name="LiveOnsatNotifScreen" position="734,54" zPosition="10" size="1200,234" title="Notif" backgroundColor="#101c1c1c" flags="wfNoBorder">
+    <widget name="compet" zPosition="3" position="10,8" size="427,218" />
+    <widget name="flag1" zPosition="5" position="444,94" size="54,40" alphatest="blend" />
+    <widget name="flag2" zPosition="5" position="1134,94" size="54,40" alphatest="blend" />
+    <widget name="match" font="Regular;32" position="507,54" zPosition="2" valign="center" halign="center" size="614,120" backgroundColor="#31000000" transparent="1" />
+    <widget name="message" font="Regular;35" position="520,114" zPosition="2" valign="center" halign="center" size="560,120" backgroundColor="#31000000" transparent="1" />
+    <widget name="live" zPosition="5" position="1074,4" size="134,67" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/live_notif.png" alphatest="blend" />
+    <ePixmap position="0,0" zPosition="1" size="1200,234" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/notif_bar.png" alphatest="blend" />
+</screen>

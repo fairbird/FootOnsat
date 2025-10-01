@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from enigma import getDesktop
 from Screens.Screen import Screen
 from Components.ActionMap import ActionMap
 from Screens.MessageBox import MessageBox
@@ -20,6 +21,7 @@ import os
 import json
 import sys
 from sys import version_info
+from . import compat
 
 PY3 = version_info[0] == 3
 
@@ -29,15 +31,39 @@ config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
 config.plugins.FootOnSat.icons = ConfigSelection(default = "default_icons", choices = [
 	("default_icons", _("default icons")),
 	("ramzus007_icons", _("ramzus007 icons")),
+	("icons_renkli", _("renkli icons")),
 	("italia2012_icons", _("italia2012 Full style color"))
 	])
+
+
+options = [
+    ("2", _("Two hours after the end of the match")), 
+    ("3", _("Three hours after the end of the match"))
+]
+
+finishedmatches_map = {
+    "2": 300,
+    "3": 200
+}
+
+if not hasattr(config.plugins, "FootOnSat"):
+    config.plugins.FootOnSat = ConfigSubsection()
+
+config.plugins.FootOnSat.finishedmatches = ConfigSelection(default="2", choices=options)
+
+def on_finishedmatches_change(config_element):
+	new_value = finishedmatches_map[config.plugins.FootOnSat.finishedmatches.value]
+
+config.plugins.FootOnSat.finishedmatches.addNotifier(on_finishedmatches_change, initial_call=False)
+
+VER = float(__version__)
+
+reswidth = getDesktop(0).size().width()
 
 def DreamOS():
 	if os.path.exists('/var/lib/dpkg/status'):
 		return True
 	return False
-
-VER = float(__version__)
 
 
 class FootOnsatLauncher(Screen):
@@ -45,7 +71,12 @@ class FootOnsatLauncher(Screen):
 	def __init__(self, session, *args):
 		self.session = session
 		Screen.__init__(self, session)
-		skin = "assets/skin/FHD/launcher.xml"
+		if reswidth == 1920:
+			skin = "assets/skin/FHD/launcher.xml"
+		elif reswidth == 2560:
+			skin = "assets/skin/UHD/launcher.xml"
+		else:
+			skin = "assets/skin/FHD/launcher.xml"
 		self.skin = readFromFile(skin)
 		self["setupActions"] = ActionMap(["FootOnsatActions"],
 		{
@@ -360,17 +391,17 @@ class FootOnsatLauncher(Screen):
 class MenuFootOnSat(ConfigListScreen, Screen):
 	if DreamOS():
 		skin = """
-				<screen name="MenuFootOnSat" position="center,center" size="1040,560" title="Menu FootOnSat">
+				<screen name="MenuFootOnSat" position="center,center" size="1040,600" title="Menu FootOnSat">
 					<widget source="global.CurrentTime" render="Label" position="5,5" size="1022,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
-						<convert type="ClockToText">Format:%d-%m-%Y	%H:%M:%S</convert>
+						<convert type="ClockToText">Format:%d-%m-%Y&#160;%H:%M:%S</convert>
 					</widget>
 					<widget name="config" position="18,70" size="1005,344" scrollbarMode="showOnDemand"/>
-					<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,550" zPosition="-10"/>
-					<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,550" zPosition="-10"/>
-					<widget render="Label" source="key_red" position="223,515" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
-					<widget render="Label" source="key_green" position="585,515" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
-					<widget source="help" render="Label" position="18,220" size="1004,40" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
-					<widget name="Picture" position="313,275" size="400,225" zPosition="5" alphatest="blend"/>
+					<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,590" zPosition="-10"/>
+					<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,590" zPosition="-10"/>
+					<widget render="Label" source="key_red" position="223,555" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
+					<widget render="Label" source="key_green" position="585,555" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
+					<widget source="help" render="Label" position="18,260" size="1004,40" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
+					<widget name="Picture" position="313,330" size="400,225" zPosition="5" alphatest="blend"/>
 				</screen>"""
 	else:
 		skin = """
@@ -412,8 +443,9 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 	def createSetup(self):
 		self.configChanged = True
 		self.list = []
-		self.list.append(getConfigListEntry(_("Enable checking for Online Update"), config.plugins.FootOnSat.updateonline, _(" This option to Enable or Disable checking for Online Update")))
-		self.list.append(getConfigListEntry(_("Select Icons Style"), config.plugins.FootOnSat.icons, _(" This option to enable to select Icons Style")))
+		self.list.append(getConfigListEntry(_("Enable checking for Online Update"), config.plugins.FootOnSat.updateonline, _("This option to Enable or Disable checking for Online Update")))
+		self.list.append(getConfigListEntry(_("Select Icons Style"), config.plugins.FootOnSat.icons, _("This option to enable to select Icons Style")))
+		self.list.append(getConfigListEntry(_("Hide matches from the list"), config.plugins.FootOnSat.finishedmatches, _("This feature allows you to hide matches from the list after")))
 		self["config"].list = self.list
 		self["config"].l.setList(self.list)
 		self["config"].onSelectionChanged.append(self.updateHelp)
@@ -437,6 +469,8 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/default_icons.png')
 			elif index == "ramzus007_icons":
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/ramzus007_icons.png')
+			elif index == "icons_renkli":
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/icons_renkli.png')
 			elif index == "italia2012_icons":
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/italia2012_icons.png')
 			if pic and self['Picture'].instance and os.path.exists(pic):
@@ -468,6 +502,8 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			  os.system("tar -xzf %s/default_icons.tar.gz -C %s" % (tarfile_path, extract_path))
 		  elif config.plugins.FootOnSat.icons.value == "ramzus007_icons":
 			  os.system("tar -xzf %s/ramzus007_icons.tar.gz -C %s" % (tarfile_path, extract_path))
+		  elif config.plugins.FootOnSat.icons.value == "icons_renkli":
+			  os.system("tar -xzf %s/icons_renkli.tar.gz -C %s" % (tarfile_path, extract_path))
 		  elif config.plugins.FootOnSat.icons.value == "italia2012_icons":
 			  os.system("tar -xzf %s/italia2012_icons.tar.gz -C %s" % (tarfile_path, extract_path))
 		for x in self["config"].list:

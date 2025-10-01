@@ -16,7 +16,7 @@ from Components.Button import Button
 from Components.Pixmap import Pixmap
 from Components.ActionMap import ActionMap
 from Components.NimManager import nimmanager, getConfigSatlist
-from Components.NimManager import nimmanager, getConfigSatlist
+from Components.config import config
 from Screens.Screen import Screen
 from Screens.ChoiceBox import ChoiceBox
 from Screens.MessageBox import MessageBox
@@ -27,6 +27,7 @@ from twisted.internet.ssl import ClientContextFactory
 from twisted.internet._sslverify import ClientTLSOptions
 from sqlite3 import connect
 from sys import version_info
+from .compat import PY3, get_finished_matches_value
 
 try:
 	from enigma import BT_SCALE, RT_VALIGN_CENTER, RT_HALIGN_LEFT
@@ -40,7 +41,7 @@ try:
 except ImportError:
 	from urlparse import urlparse
 
-PY3 = version_info[0] == 3
+reswidth = getDesktop(0).size().width()
 
 ignore_dir = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/ignore")
 ignore_file = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/ignore/ignore-match.json")
@@ -91,7 +92,12 @@ class FootOnSat(Screen):
 	def __init__(self, session, link, *args):
 		self.session = session
 		Screen.__init__(self, session)
-		skin = "assets/skin/FHD/interface.xml"
+		if reswidth == 1920:
+			skin = "assets/skin/FHD/interface.xml"
+		elif reswidth == 2560:
+			skin = "assets/skin/UHD/interface.xml"
+		else:
+			skin = "assets/skin/FHD/interface.xml"
 		self.skin = readFromFile(skin)
 		self["setupActions"] = ActionMap(["FootOnsatActions"],
 		{
@@ -373,15 +379,15 @@ class FootOnSat(Screen):
 					if compet not in ignored_competitions:
 						#logdata("getData", "Not ignored: " + str(match['match']) + ", Time: " + str(match['time']))  # Log non-ignored
 						match_date = datetime.strptime(match['date'] + ' ' + match['time'], '%Y-%m-%d %H:%M')
-						last_2 = datetime.strptime((datetime.now() - timedelta(minutes=300)).strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M")
-						if match_date > last_2:
+						last = datetime.strptime((datetime.now() - timedelta(minutes=get_finished_matches_value())).strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M")
+						if match_date > last:
 							#logdata("getData", "Appending: " + str(match['match']) + " at " + str(match['time']))  # Log appended
 							list.append((str(match['match']), str(match['time']) + ' - ' + str(match['date']), str(match['compet']),
 										str(match['flags']['team1']), str(match['flags']['team2']), ))
 					else:
 						logdata("getData", "Ignored: " + str(match['match']) + ", Compet: " + compet)  # Log ignored
 				except KeyError:
-					logdata("getData", "KeyError on match: " + str(match))  # Log KeyError
+					#logdata("getData", "KeyError on match: " + str(match))  # Log KeyError
 					pass
 			self.matches = list
 			# logdata("getData", "Filtered matches: " + str(len(list)))
@@ -706,7 +712,12 @@ class FootOnsatNotifScreen(Screen):
 
 	def __init__(self, session):
 		Screen.__init__(self, session)
-		skin = "assets/skin/FHD/FootOnsatNotif.xml"
+		if reswidth == 1920:
+			skin = "assets/skin/FHD/FootOnsatNotif.xml"
+		elif reswidth == 2560:
+			skin = "assets/skin/UHD/FootOnsatNotif.xml"
+		else:
+			skin = "assets/skin/FHD/FootOnsatNotif.xml"
 		self.skin = readFromFile(skin)
 		self['match'] = Label()
 		self['message'] = Label()

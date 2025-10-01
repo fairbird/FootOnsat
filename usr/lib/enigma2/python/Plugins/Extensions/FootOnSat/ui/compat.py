@@ -1,8 +1,32 @@
 # Source code from (https://github.com/Taapat/enigma2-plugin-youtube/blob/master/src/compat.py)
 from sys import version_info
+from Components.config import config, ConfigSubsection, ConfigInteger
 
 PY3 = version_info[0] == 3
 
+# --- Ensure plugin config exists ---
+if not hasattr(config, "plugins"):
+	config.plugins = ConfigSubsection()
+
+if not hasattr(config.plugins, "FootOnSat"):
+	config.plugins.FootOnSat = ConfigSubsection()
+
+if not hasattr(config.plugins.FootOnSat, "finishedmatches"):
+	config.plugins.FootOnSat.finishedmatches = ConfigInteger(default=0)
+
+# --- Map selection key to actual minutes ---
+finishedmatches_map = {
+	2: 300,  # Two hours after match
+	3: 200,  # Three hours after match
+}
+
+def get_finished_matches_value():
+	try:
+		key = int(config.plugins.FootOnSat.finishedmatches.value)
+		return finishedmatches_map.get(key, 0)
+	except Exception:
+		# fallback default
+		return 0
 
 # Disable certificate verification on python 2.7.9
 if version_info >= (2, 7, 9):
