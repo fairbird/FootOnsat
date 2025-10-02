@@ -1549,8 +1549,8 @@
             "banner": "polish womens ekstraliga"
         },
         {
-            "label": "portuguese liga portugal",
-            "banner": "portuguese liga portugal"
+            "label": "portuguese primeira liga",
+            "banner": "portuguese primeira liga"
         },
         {
             "label": "portuguese campeonato nacional feminino",
@@ -2214,3 +2214,4 @@
         }
     ]
 }
+
