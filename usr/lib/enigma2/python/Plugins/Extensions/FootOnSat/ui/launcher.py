@@ -492,7 +492,10 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.createSetup()
 
 	def cancel(self):
+		for x in self["config"].list:
+			x[1].cancel()
 		self.close()
+		return
 
 	def save(self):
 		if self.icons_value != config.plugins.FootOnSat.icons.value:
