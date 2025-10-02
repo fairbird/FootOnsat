@@ -2,25 +2,34 @@
 
 #wget -q "--no-check-certificate" https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh
 VERSION=2.7
-PLUGIN_PATH='/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat'
-DB_PATH='/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/db'
-TMP_DB='/tmp/footonsat.db'
+PLUGIN_PATH="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
+DB_FILE="$PLUGIN_PATH/db/footonsat.db"
+ASSETS_PATH="$PLUGIN_PATH/assets"
+TMP_DB="/tmp/footonsat.db"
+TMP_ASSETS="/tmp/assets"
 
 if [ -f /etc/apt/apt.conf ] ; then
-    STATUS='/var/lib/dpkg/status'
-    OS='DreamOS'
+	STATUS='/var/lib/dpkg/status'
+	OS='DreamOS'
 elif [ -f /etc/opkg/opkg.conf ] ; then
-   STATUS='/var/lib/opkg/status'
-   OS='Opensource'
+	STATUS='/var/lib/opkg/status'
+	OS='Opensource'
 fi
 
 if [ -d $PLUGIN_PATH ]; then
 
-    if [ -f '/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/db/footonsat.db' ]; then
-        echo "Keep old db...."
-        cp -a /usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/db/footonsat.db /tmp
-    fi
-
+	if [ -f "$DB_FILE" ]; then
+		echo "Backup old db..."
+		cp -a "$DB_FILE" "$TMP_DB"
+	fi
+	echo ""
+	if [ -f "$DB_FILE" ]; then
+		echo "Backup current style ..."
+		mkdir -p "$TMP_ASSETS/compet"
+		cp -a "$ASSETS_PATH/compet/icons" "$TMP_ASSETS"
+		cp -a "$ASSETS_PATH/icon" "$TMP_ASSETS"
+		cp -a "$ASSETS_PATH/skin" "$TMP_ASSETS"
+	fi
 #    echo "Remove old version."
 #    if [ $OS = "Opensource" ]; then
 #        opkg remove enigma2-plugin-extensions-footonsat
@@ -131,6 +140,16 @@ rm -rf *FootOnsat* >/dev/null 2>&1
 wget "https://github.com/fairbird/FootOnsat/archive/refs/heads/main.tar.gz"
 tar -xzf main.tar.gz
 cp -r FootOnsat-main/usr /
+echo ""
+if [ -d $PLUGIN_PATH ]; then
+	if [ -f "$TMP_DB" ]; then
+		echo "Restore old db ..."
+		cp -a "$TMP_DB" "$DB_FILE"
+	fi
+	echo ""
+	echo "Restore current style ..."
+	cp -a "$TMP_ASSETS" "$PLUGIN_PATH"
+fi
 rm -rf *FootOnsat* >/dev/null 2>&1
 rm -rf *main* >/dev/null 2>&1
 echo
