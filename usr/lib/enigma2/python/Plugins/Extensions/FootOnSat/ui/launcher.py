@@ -37,8 +37,8 @@ config.plugins.FootOnSat.icons = ConfigSelection(default = "default_icons", choi
 
 
 options = [
-    ("2", _("Two hours after the end of the match")), 
-    ("3", _("Three hours after the end of the match"))
+    ("2", _("Two hours after the start of the match")), 
+    ("3", _("Three hours after the start of the match"))
 ]
 
 finishedmatches_map = {
