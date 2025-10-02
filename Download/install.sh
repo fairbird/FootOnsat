@@ -152,6 +152,8 @@ if [ -d $PLUGIN_PATH ]; then
 fi
 rm -rf *FootOnsat* >/dev/null 2>&1
 rm -rf *main* >/dev/null 2>&1
+rm -rf *assets* >/dev/null 2>&1
+cd ..
 echo
 echo
 echo ""
