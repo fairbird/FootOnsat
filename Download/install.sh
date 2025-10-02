@@ -26,7 +26,7 @@ if [ -d $PLUGIN_PATH ]; then
 	if [ -f "$DB_FILE" ]; then
 		echo "Backup current style ..."
 		mkdir -p "$TMP_ASSETS/compet"
-		cp -a "$ASSETS_PATH/compet/icons" "$TMP_ASSETS"
+		cp -a "$ASSETS_PATH/compet/icons" "$TMP_ASSETS/compet"
 		cp -a "$ASSETS_PATH/icon" "$TMP_ASSETS"
 		cp -a "$ASSETS_PATH/skin" "$TMP_ASSETS"
 	fi
@@ -138,21 +138,31 @@ set -e
 rm -rf *main* >/dev/null 2>&1
 rm -rf *FootOnsat* >/dev/null 2>&1
 wget "https://github.com/fairbird/FootOnsat/archive/refs/heads/main.tar.gz"
-tar -xzf main.tar.gz
-cp -r FootOnsat-main/usr /
-echo ""
-if [ -d $PLUGIN_PATH ]; then
-	if [ -f "$TMP_DB" ]; then
-		echo "Restore old db ..."
-		cp -a "$TMP_DB" "$DB_FILE"
-	fi
+if [ -f "/tmp/main.tar.gz" ]; then
+	echo "remove old version"
 	echo ""
-	echo "Restore current style ..."
-	cp -a "$TMP_ASSETS" "$PLUGIN_PATH"
+	rm -rf $PLUGIN_PATH >/dev/null 2>&1
+	echo "Send new version"
+	echo ""
+	tar -xzf main.tar.gz
+	cp -r FootOnsat-main/usr /
+	if [ -d $PLUGIN_PATH ]; then
+		if [ -f "$TMP_DB" ]; then
+			echo "Restore old db ..."
+			cp -a "$TMP_DB" "$DB_FILE"
+		fi
+		echo ""
+		echo "Restore current style ..."
+		echo ""
+		cp -a "$TMP_ASSETS" "$PLUGIN_PATH"
+	fi
 fi
+echo "clean tmp ..."
+echo ""
 rm -rf *FootOnsat* >/dev/null 2>&1
 rm -rf *main* >/dev/null 2>&1
 rm -rf *assets* >/dev/null 2>&1
+rm -rf *TMP_DB* >/dev/null 2>&1
 cd ..
 echo
 echo
