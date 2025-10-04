@@ -42,8 +42,8 @@ options = [
 ]
 
 finishedmatches_map = {
-    "2": 300,
-    "3": 200
+    "2": 180,  # Two hours after match
+    "3": 120  # Three hours after match
 }
 
 if not hasattr(config.plugins, "FootOnSat"):
