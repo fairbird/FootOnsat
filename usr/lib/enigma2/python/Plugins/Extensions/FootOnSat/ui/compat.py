@@ -17,8 +17,8 @@ if not hasattr(config.plugins.FootOnSat, "finishedmatches"):
 
 # --- Map selection key to actual minutes ---
 finishedmatches_map = {
-	2: 300,  # Two hours after match
-	3: 200,  # Three hours after match
+	2: 180,  # Two hours after match
+	3: 120,  # Three hours after match
 }
 
 def get_finished_matches_value():
