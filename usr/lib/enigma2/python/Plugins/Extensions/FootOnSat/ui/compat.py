@@ -1,6 +1,7 @@
 # Source code from (https://github.com/Taapat/enigma2-plugin-youtube/blob/master/src/compat.py)
 from sys import version_info
 from Components.config import config, ConfigSubsection, ConfigInteger
+from threading import Thread
 
 PY3 = version_info[0] == 3
 
