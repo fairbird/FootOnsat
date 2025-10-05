@@ -30,7 +30,7 @@ from Tools.LoadPixmap import LoadPixmap
 from twisted.web.client import getPage, downloadPage
 from twisted.internet.ssl import ClientContextFactory
 from twisted.internet._sslverify import ClientTLSOptions
-from .compat import PY3, get_finished_matches_value, compat_urlopen, compat_str, compat_HTTPError, compat_URLError, compat_Request
+from .compat import PY3, compat_urlopen, compat_str, compat_HTTPError, compat_URLError, compat_Request
 
 try:
     from enigma import BT_SCALE, RT_VALIGN_CENTER, RT_HALIGN_LEFT
@@ -400,7 +400,7 @@ class FootOnSat(Screen):
 
                 team1_score, team2_score = score_text.split(":")
                 match_name = "%s vs %s" % (team1, team2)
-                logdata("fetch_live_results", "DEBUG LIVE MATCH NAME: '%s'" % match_name)
+                #logdata("fetch_live_results", "DEBUG LIVE MATCH NAME: '%s'" % match_name)
                 matches_data.append({
                     "match_name": match_name,
                     "team1_score": team1_score.strip(),
@@ -465,10 +465,19 @@ class FootOnSat(Screen):
                     if compet not in ignored_competitions:
                         #logdata("getData", "Not ignored: " + str(match['match']) + ", Time: " + str(match['time']))  # Log non-ignored
                         match_date = datetime.strptime(match['date'] + ' ' + match['time'], '%Y-%m-%d %H:%M')
-                        last = datetime.strptime((datetime.now() - timedelta(minutes=get_finished_matches_value())).strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M")
-                        if match_date > last:
-                            #logdata("getData", "Appending: " + str(match['match']) + " at " + str(match['time']))  # Log appended
-                            list.append([str(match['match']), str(match['time']) + ' - ' + str(match['date']), str(match['compet']), str(match['flags']['team1']), str(match['flags']['team2']), "", ""])
+                        match_date_adjusted = datetime.strptime(self.getTime(match['time'] + ' - ' + match['date']), '%H:%M - %Y-%m-%d')
+                        if self.link != "today" or match['time'] < '21:00':  # Process if not today or time < 21:00
+                             #logdata("getData", f"Match: {match['match']}, Match date: {match_date}, Adjusted: {match_date_adjusted}, Now: {datetime.now()}, FinishedMatches: {config.plugins.FootOnSat.finishedmatches.value}")
+                            if not config.plugins.FootOnSat.finishedmatches.value:
+                                if self.link == "today" and match_date_adjusted > datetime.now():
+                                    #logdata("getData", "Appending future match: " + str(match['match']) + " at " + str(match['time']))
+                                    list.append([str(match['match']), str(match['time']) + ' - ' + str(match['date']), str(match['compet']), str(match['flags']['team1']), str(match['flags']['team2']), "", ""])
+                            else:
+                                last = datetime.strptime((datetime.now() - timedelta(minutes=180)).strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M")
+                                 #logdata("getData", f"Match: {match['match']}, Last: {last}, Include: {match_date_adjusted >= last}")
+                                if match_date_adjusted >= last:
+                                    #logdata("getData", "Appending: " + str(match['match']) + " at " + str(match['time']))  # Log appended
+                                    list.append([str(match['match']), str(match['time']) + ' - ' + str(match['date']), str(match['compet']), str(match['flags']['team1']), str(match['flags']['team2']), "", ""])
                     else:
                         logdata("getData", "Ignored: " + str(match['match']) + ", Compet: " + compet)  # Log ignored
                 except KeyError:
