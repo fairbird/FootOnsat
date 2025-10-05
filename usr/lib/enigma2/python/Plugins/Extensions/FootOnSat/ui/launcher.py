@@ -25,14 +25,14 @@ from . import compat
 
 PY3 = version_info[0] == 3
 
-if not hasattr(config.plugins, "FootOnSat"):
-	config.plugins.FootOnSat = ConfigSubsection()
-
 config.plugins.FootOnSat = ConfigSubsection()
 config.plugins.FootOnSat.sort = ConfigDictionarySet(default={"footmenu": {"footsubmenu": {}}})
 config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
-config.plugins.FootOnSat.livescore = ConfigYesNo(default=False)
-config.plugins.FootOnSat.finishedmatches = ConfigYesNo(default=True)
+config.plugins.FootOnSat.livescore = ConfigSelection(default = "3", choices = [
+	("1", _("No Live matche")),
+	("2", _("Live match + No live Score")),
+	("3", _("Live match + Live Score"))
+	])
 config.plugins.FootOnSat.icons = ConfigSelection(default = "default_icons", choices = [
 	("default_icons", _("default icons")),
 	("icons_renkli", _("renkli icons")),
@@ -442,9 +442,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.configChanged = True
 		self.list = []
 		self.list.append(getConfigListEntry(_("Enable checking for Online Update"), config.plugins.FootOnSat.updateonline, _("This option to Enable or Disable checking for Online Update")))
-		self.list.append(getConfigListEntry(_("Enable live match"), config.plugins.FootOnSat.finishedmatches, _("This feature allows you to show or hide the matches still live")))
-		if config.plugins.FootOnSat.finishedmatches.value:
-			self.list.append(getConfigListEntry(_("Enable live score of match"), config.plugins.FootOnSat.livescore, _("This option is to enable or disable live score for ongoing matches")))
+		self.list.append(getConfigListEntry(_("Enable live match + Live score"), config.plugins.FootOnSat.livescore, _("This feature allows you to show or hide the matches still live with or withou result")))
 		self.list.append(getConfigListEntry(_("Select Icons Style"), config.plugins.FootOnSat.icons, _("This option to enable to select Icons Style")))
 		self["config"].list = self.list
 		self["config"].l.setList(self.list)
