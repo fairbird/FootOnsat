@@ -25,19 +25,19 @@ from . import compat
 
 PY3 = version_info[0] == 3
 
+if not hasattr(config.plugins, "FootOnSat"):
+	config.plugins.FootOnSat = ConfigSubsection()
+
 config.plugins.FootOnSat = ConfigSubsection()
 config.plugins.FootOnSat.sort = ConfigDictionarySet(default={"footmenu": {"footsubmenu": {}}})
 config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
 config.plugins.FootOnSat.livescore = ConfigYesNo(default=False)
+config.plugins.FootOnSat.finishedmatches = ConfigYesNo(default=True)
 config.plugins.FootOnSat.icons = ConfigSelection(default = "default_icons", choices = [
 	("default_icons", _("default icons")),
 	("icons_renkli", _("renkli icons")),
 	("italia2012_icons", _("italia2012 Full style color"))
 	])
-
-if not hasattr(config.plugins, "FootOnSat"):
-	config.plugins.FootOnSat = ConfigSubsection()
-config.plugins.FootOnSat.finishedmatches = ConfigYesNo(default=True)
 
 VER = float(__version__)
 
