@@ -397,10 +397,8 @@ class FootOnSat(Screen):
                 if len(teams) != 2:
                     continue
                 team1, team2 = [t.strip() for t in teams]
-
                 team1_score, team2_score = score_text.split(":")
                 match_name = "%s vs %s" % (team1, team2)
-                #logdata("fetch_live_results", "DEBUG LIVE MATCH NAME: '%s'" % match_name)
                 matches_data.append({
                     "match_name": match_name,
                     "team1_score": team1_score.strip(),
@@ -411,8 +409,7 @@ class FootOnSat(Screen):
         matches_list = [list(match) for match in self.matches]
 
         def normalize_name(name):
-            name = name.strip().lower()
-            return name
+            return name.strip().lower()
 
         for match in matches_list:
             match_date = datetime.strptime(match[1], "%H:%M - %Y-%m-%d")
@@ -423,9 +420,13 @@ class FootOnSat(Screen):
                     live_name_norm = normalize_name(live_match["match_name"])
                     similarity = SequenceMatcher(None, match_name_norm, live_name_norm).ratio()
                     if similarity >= 0.60:
-                        match[5] = compat_str(live_match["team1_score"]).strip()
-                        match[6] = compat_str(live_match["team2_score"]).strip()
-                        #logdata("fetch_live_results","DEBUG ASSIGN LIVE: match[5]=%r, match[6]=%r, similarity=%.2f" %(match[5], match[6], similarity))
+                        if config.plugins.FootOnSat.livescore.value == "3":
+                            # Only fill scores for choice 3
+                            match[5] = compat_str(live_match["team1_score"]).strip()
+                            match[6] = compat_str(live_match["team2_score"]).strip()
+                        else:
+                            match[5] = ""
+                            match[6] = ""
                         found = True
                         break
                 if not found:
@@ -441,55 +442,75 @@ class FootOnSat(Screen):
         try:
             self.js = json.loads(data)
         except Exception as e:
-            # logdata("getData", "JSON decode error: " + str(e))
             self.session.openWithCallback(self.exit, MessageBox, _('Invalid API data! Check logs.'), MessageBox.TYPE_ERROR, timeout=10)
             return
-        # Load ignored competitions safely
+
         ignored_competitions = []
         try:
             ignored_competitions = self.manageIgnoreFile()
-            # logdata("getData", "Ignored competitions: " + str(ignored_competitions))
         except Exception as e:
             logdata("getData", "Failed to load ignored competitions: " + str(e))
+
+        now = datetime.now()
+        LIVE_DURATION = timedelta(hours=2)  # Consider matches live for 2 hours
+
         if self.js['footonsat'] != []:
-            #logdata("getData", "Ignored competitions: " + str(ignored_competitions))  # Log ignored list
             for match in self.js['footonsat']:
                 try:
                     compet = str(match['compet']).strip()
-                    # Remove week/round/matchday suffixes for comparison
                     for suffix in [' - Week ', ' - Matchday ', ' - Round ']:
                         if suffix in compet:
                             compet = compet.split(suffix)[0].strip()
-                    #logdata("getData", "DEBUG MATCH NAME: '%s'" % str(match['match']))
-                    #logdata("getData", "Processing match: " + str(match['match']) + ", Compet: " + compet)  # Log each match
+
                     if compet not in ignored_competitions:
-                        #logdata("getData", "Not ignored: " + str(match['match']) + ", Time: " + str(match['time']))  # Log non-ignored
                         match_date = datetime.strptime(match['date'] + ' ' + match['time'], '%Y-%m-%d %H:%M')
                         match_date_adjusted = datetime.strptime(self.getTime(match['time'] + ' - ' + match['date']), '%H:%M - %Y-%m-%d')
-                        if self.link != "today" or match['time'] < '21:00':  # Process if not today or time < 21:00
-                             #logdata("getData", f"Match: {match['match']}, Match date: {match_date}, Adjusted: {match_date_adjusted}, Now: {datetime.now()}, FinishedMatches: {config.plugins.FootOnSat.finishedmatches.value}")
-                            if not config.plugins.FootOnSat.finishedmatches.value:
-                                if self.link == "today" and match_date_adjusted > datetime.now():
-                                    #logdata("getData", "Appending future match: " + str(match['match']) + " at " + str(match['time']))
-                                    list.append([str(match['match']), str(match['time']) + ' - ' + str(match['date']), str(match['compet']), str(match['flags']['team1']), str(match['flags']['team2']), "", ""])
-                            else:
-                                last = datetime.strptime((datetime.now() - timedelta(minutes=180)).strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M")
-                                 #logdata("getData", f"Match: {match['match']}, Last: {last}, Include: {match_date_adjusted >= last}")
-                                if match_date_adjusted >= last:
-                                    #logdata("getData", "Appending: " + str(match['match']) + " at " + str(match['time']))  # Log appended
-                                    list.append([str(match['match']), str(match['time']) + ' - ' + str(match['date']), str(match['compet']), str(match['flags']['team1']), str(match['flags']['team2']), "", ""])
+
+                        is_upcoming = match_date_adjusted > now
+                        is_live = now >= match_date_adjusted and now <= match_date_adjusted + LIVE_DURATION
+
+                        team1_score = ""
+                        team2_score = ""
+
+                        append_match = False
+
+                        if is_upcoming:
+                            append_match = True
+                            logdata("getData-debug", f"Upcoming match appended: {match['match']} at {match['time']}")
+                        elif is_live:
+                            if config.plugins.FootOnSat.livescore.value in ["2", "3"]:
+                                append_match = True
+                                if config.plugins.FootOnSat.livescore.value == "3":
+                                    team1_score = str(match.get('score1', "")).strip()
+                                    team2_score = str(match.get('score2', "")).strip()
+                                logdata("getData-debug", f"Live match appended: {match['match']} at {match['time']} (scores: {team1_score}-{team2_score})")
+                        else:
+                            logdata("getData-debug", f"Skipped past match: {match['match']} at {match['time']}")
+
+                        if append_match:
+                            list.append([str(match['match']),
+                                         str(match['time']) + ' - ' + str(match['date']),
+                                         str(match['compet']),
+                                         str(match['flags']['team1']),
+                                         str(match['flags']['team2']),
+                                         team1_score,
+                                         team2_score])
                     else:
-                        logdata("getData", "Ignored: " + str(match['match']) + ", Compet: " + compet)  # Log ignored
+                        logdata("getData", "Ignored competition: " + str(match['match']) + ", Compet: " + compet)
                 except KeyError:
-                    #logdata("getData", "KeyError on match: " + str(match))  # Log KeyError
+                    logdata("getData-error", "KeyError on match: " + str(match))
                     pass
+
             self.matches = list
-            if config.plugins.FootOnSat.livescore.value:
-            	self.fetch_live_results()  # Fetch results for all sections
-            # logdata("getData", "Filtered matches: " + str(len(list)))
+
+            # Only fetch live results for live matches if needed
+            if config.plugins.FootOnSat.livescore.value == "3":
+                self.fetch_live_results()
+
             self.onWindowShow()
         else:
             self.session.openWithCallback(self.exit, MessageBox, _('No schedules in this section at this time'), MessageBox.TYPE_ERROR, timeout=10)
+
 
     def getChannels(self):
         list = []
