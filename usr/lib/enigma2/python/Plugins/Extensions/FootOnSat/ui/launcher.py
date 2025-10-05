@@ -35,26 +35,9 @@ config.plugins.FootOnSat.icons = ConfigSelection(default = "default_icons", choi
 	("italia2012_icons", _("italia2012 Full style color"))
 	])
 
-
-options = [
-    ("2", _("Two hours after the end of the match")), 
-    ("3", _("Three hours after the end of the match"))
-]
-
-finishedmatches_map = {
-    "2": 180,  # Two hours after match
-    "3": 120  # Three hours after match
-}
-
 if not hasattr(config.plugins, "FootOnSat"):
-    config.plugins.FootOnSat = ConfigSubsection()
-
-config.plugins.FootOnSat.finishedmatches = ConfigSelection(default="2", choices=options)
-
-def on_finishedmatches_change(config_element):
-	new_value = finishedmatches_map[config.plugins.FootOnSat.finishedmatches.value]
-
-config.plugins.FootOnSat.finishedmatches.addNotifier(on_finishedmatches_change, initial_call=False)
+	config.plugins.FootOnSat = ConfigSubsection()
+config.plugins.FootOnSat.finishedmatches = ConfigYesNo(default=True)
 
 VER = float(__version__)
 
@@ -459,9 +442,10 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.configChanged = True
 		self.list = []
 		self.list.append(getConfigListEntry(_("Enable checking for Online Update"), config.plugins.FootOnSat.updateonline, _("This option to Enable or Disable checking for Online Update")))
-		self.list.append(getConfigListEntry(_("Enable live score of match"), config.plugins.FootOnSat.livescore, _("This option is to enable or disable live score for ongoing matches")))
+		self.list.append(getConfigListEntry(_("Enable live match"), config.plugins.FootOnSat.finishedmatches, _("This feature allows you to show or hide the matches still live")))
+		if config.plugins.FootOnSat.finishedmatches.value:
+			self.list.append(getConfigListEntry(_("Enable live score of match"), config.plugins.FootOnSat.livescore, _("This option is to enable or disable live score for ongoing matches")))
 		self.list.append(getConfigListEntry(_("Select Icons Style"), config.plugins.FootOnSat.icons, _("This option to enable to select Icons Style")))
-		self.list.append(getConfigListEntry(_("Hide matches from the list"), config.plugins.FootOnSat.finishedmatches, _("This feature allows you to hide matches from the list after")))
 		self["config"].list = self.list
 		self["config"].l.setList(self.list)
 		self["config"].onSelectionChanged.append(self.updateHelp)
