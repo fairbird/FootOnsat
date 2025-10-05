@@ -143,7 +143,10 @@ class FootOnSat(Screen):
             res = []
             gList = []
             self["list1"].l.setItemHeight(175)
-            self["list1"].l.setFont(0, gFont('Regular', 28))
+            if reswidth == 2560:
+            	self["list1"].l.setFont(0, gFont('Regular', 36))
+            else:
+            	self["list1"].l.setFont(0, gFont('Regular', 28))
             for i in range(0, len(self.matches)):
                 match = self.matches[i][0]
                 match_date = self.matches[i][1]
@@ -167,7 +170,10 @@ class FootOnSat(Screen):
                 res.append(MultiContentEntryText())
                 res.append(MultiContentEntryPixmapAlphaBlend(pos=(420, 69), size=(40, 30), png=loadPNG(flagTeam1)))
                 res.append(MultiContentEntryText(pos=(482, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
-                res.append(MultiContentEntryPixmapAlphaBlend(pos=(1142, 69), size=(40, 30), png=loadPNG(flagTeam2)))
+                if reswidth == 2560:
+                		res.append(MultiContentEntryPixmapAlphaBlend(pos=(1190, 69), size=(40, 30), png=loadPNG(flagTeam2)))
+                else:
+                		res.append(MultiContentEntryPixmapAlphaBlend(pos=(1142, 69), size=(40, 30), png=loadPNG(flagTeam2)))
                 res.append(MultiContentEntryText(pos=(1092, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
                 try:
                     res.append(MultiContentEntryPixmapAlphaTest(pos=(65, 6), size=(320, 163), png=loadPNG(banner), flags=BT_SCALE))
@@ -481,7 +487,10 @@ class FootOnSat(Screen):
         res = []
         gList = []
         self["list2"].l.setItemHeight(50)
-        self["list2"].l.setFont(0, gFont('Regular', 30))
+        if reswidth == 2560:
+        	self["list2"].l.setFont(0, gFont('Regular', 32))
+        else:
+        	self["list2"].l.setFont(0, gFont('Regular', 30))
         index = self['list1'].getSelectionIndex()
         if len(self.matches) > 0:
             self.match = self.matches[index][0]
@@ -697,7 +706,7 @@ class FootOnSat(Screen):
             return
         compet = selected[1]
         # logdata("selectCompetitionToRemove", "Removing competition: " + compet)
-        self.manageIgnoreFile(remove=comput)
+        self.manageIgnoreFile(remove=compet)
         self.session.open(MessageBox, _('Competition "%s" removed from ignore list') % compet, MessageBox.TYPE_INFO, timeout=5)
         # Refresh the match list to include removed competition's matches
         self.matches = []
