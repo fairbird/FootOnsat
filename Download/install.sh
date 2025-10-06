@@ -16,6 +16,28 @@ elif [ -f /etc/opkg/opkg.conf ] ; then
 	OS='Opensource'
 fi
 
+# Find the highest python3.xx version in /usr/bin
+PYTHON_BIN=$(ls /usr/bin/python3.*[0-9] 2>/dev/null | sort -V | tail -n 1)
+if [ -n "$PYTHON_BIN" ]; then
+    PYTHON_VERSION=$(basename "$PYTHON_BIN")
+    # Check if /usr/bin/python3 symlink exists
+    if [ ! -L /usr/bin/python3 ]; then
+        echo "Creating symlink: /usr/bin/python3 -> $PYTHON_BIN"
+        sudo ln -sf "$PYTHON_BIN" /usr/bin/python3
+    else
+        echo "/usr/bin/python3 symlink already exists"
+    fi
+	echo ""
+    # Check if /usr/bin/python symlink exists
+    if [ ! -L /usr/bin/python ]; then
+        echo "Creating symlink: /usr/bin/python -> $PYTHON_BIN"
+        sudo ln -sf "$PYTHON_BIN" /usr/bin/python
+    else
+        echo "/usr/bin/python symlink already exists"
+    fi
+	echo ""
+fi
+
 if [ -d $PLUGIN_PATH ]; then
 
 	if [ -f "$DB_FILE" ]; then
