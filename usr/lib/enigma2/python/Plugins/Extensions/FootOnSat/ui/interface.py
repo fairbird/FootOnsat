@@ -501,16 +501,16 @@ class FootOnSat(Screen):
 
                         if is_upcoming:
                             append_match = True
-                            logdata("getData-debug", f"Upcoming match appended: {match['match']} at {match['time']}")
+                            #logdata("getData-debug", f"Upcoming match appended: {match['match']} at {match['time']}")
                         elif is_live:
                             if config.plugins.FootOnSat.livescore.value in ["2", "3"]:
                                 append_match = True
                                 if config.plugins.FootOnSat.livescore.value == "3":
                                     team1_score = str(match.get('score1', "")).strip()
                                     team2_score = str(match.get('score2', "")).strip()
-                                logdata("getData-debug", f"Live match appended: {match['match']} at {match['time']} (scores: {team1_score}-{team2_score})")
+                                #logdata("getData-debug", f"Live match appended: {match['match']} at {match['time']} (scores: {team1_score}-{team2_score})")
                         else:
-                            logdata("getData-debug", f"Skipped past match: {match['match']} at {match['time']}")
+                            logdata("getData-debug", "Skipped past match: %s at %s" % (match['match'], match['time']))
 
                         if append_match:
                             list.append([str(match['match']),
