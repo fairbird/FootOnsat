@@ -110,6 +110,8 @@ class FootOnSat(Screen):
             "yellow": self.keyYellow,
             "blue": self.keyBlue,
             "cancel": self.exit,
+            "Forward": self.forward,
+            "Backward": self.backward,
         }, -1)
         self.link = link
         self["counter"] = Label()
@@ -212,6 +214,29 @@ class FootOnSat(Screen):
     def disablelist2(self):
         instance = self["list2"].instance
         instance.setSelectionEnable(0)
+
+    def forward(self):
+        if len(self.matches) > 0:
+            current_index = self["list1"].getSelectionIndex()
+            items_per_page = 4
+            total_pages = int(math.ceil(float(len(self.matches)) / items_per_page))
+            current_page = int(math.ceil((current_index + 1) / float(items_per_page)))
+            if current_page < total_pages:
+                new_index = min(current_page * items_per_page, len(self.matches) - 1)
+                self["list1"].instance.moveSelectionTo(new_index)
+                self.updateCounter()
+                self.resetChannelinfo()
+
+    def backward(self):
+        if len(self.matches) > 0:
+            current_index = self["list1"].getSelectionIndex()
+            items_per_page = 4
+            current_page = int(math.ceil((current_index + 1) / float(items_per_page)))
+            if current_page > 1:
+                new_index = max((current_page - 2) * items_per_page, 0)
+                self["list1"].instance.moveSelectionTo(new_index)
+                self.updateCounter()
+                self.resetChannelinfo()
 
     def left(self):
         if self.selectedList == self["list2"]:
