@@ -206,7 +206,6 @@ if [ -d $PLUGIN_PATH ]; then
 	fi
 	echo ""
 fi
-fi
 echo "clean tmp ..."
 echo ""
 rm -rf *FootOnsat* >/dev/null 2>&1
