@@ -495,13 +495,12 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 	def save(self):
 		if self.icons_value != config.plugins.FootOnSat.icons.value:
 		  extract_path = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
-		  tarfile_path = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/tar"
 		  if config.plugins.FootOnSat.icons.value == "default_icons":
-			  os.system("tar -xzf %s/default_icons.tar.gz -C %s" % (tarfile_path, extract_path))
+			  os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/default_icons.tar.gz | tar -xz -C %s" % extract_path)
 		  elif config.plugins.FootOnSat.icons.value == "icons_renkli":
-			  os.system("tar -xzf %s/icons_renkli.tar.gz -C %s" % (tarfile_path, extract_path))
+			  os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/icons_renkli.tar.gz | tar -xz -C %s" % extract_path)
 		  elif config.plugins.FootOnSat.icons.value == "italia2012_icons":
-			  os.system("tar -xzf %s/italia2012_icons.tar.gz -C %s" % (tarfile_path, extract_path))
+			  os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/italia2012_icons.tar.gz | tar -xz -C %s" % extract_path)
 		for x in self["config"].list:
 		  if len(x)>1:
 			  x[1].save()
