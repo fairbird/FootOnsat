@@ -20,16 +20,14 @@ if [ -d $PLUGIN_PATH ]; then
 
 	if [ -f "$DB_FILE" ]; then
 		echo "Backup old db..."
-		cp -a "$DB_FILE" "$TMP_DB"
+		cp -a "$DB_FILE" "$TMP_DB" >/dev/null 2>&1
 	fi
 	echo ""
-	if [ -f "$DB_FILE" ]; then
-		echo "Backup current style ..."
-		mkdir -p "$TMP_ASSETS/compet"
-		cp -a "$ASSETS_PATH/compet/icons" "$TMP_ASSETS/compet"
-		cp -a "$ASSETS_PATH/icon" "$TMP_ASSETS"
-		cp -a "$ASSETS_PATH/skin" "$TMP_ASSETS"
-	fi
+	echo "Backup current style ..."
+	mkdir -p "$TMP_ASSETS/compet" >/dev/null 2>&1
+	cp -a "$ASSETS_PATH/compet/icons" "$TMP_ASSETS/compet" >/dev/null 2>&1
+	cp -a "$ASSETS_PATH/icon" "$TMP_ASSETS" >/dev/null 2>&1
+	cp -a "$ASSETS_PATH/skin" "$TMP_ASSETS" >/dev/null 2>&1
 #    echo "Remove old version."
 #    if [ $OS = "Opensource" ]; then
 #        opkg remove enigma2-plugin-extensions-footonsat
@@ -194,16 +192,18 @@ if [ -f "/tmp/main.tar.gz" ]; then
 	echo "Send new version"
 	echo ""
 	tar -xzf main.tar.gz
-	cp -r FootOnsat-main/usr /
+	cp -r FootOnsat-main/usr / >/dev/null 2>&1
 	if [ -d $PLUGIN_PATH ]; then
 		if [ -f "$TMP_DB" ]; then
 			echo "Restore old db ..."
-			cp -a "$TMP_DB" "$DB_FILE"
+			cp -a "$TMP_DB" "$DB_FILE" >/dev/null 2>&1
 		fi
 		echo ""
-		echo "Restore current style ..."
+		if [ -f "$TMP_ASSETS" ]; then
+			echo "Restore current style ..."
+			cp -a "$TMP_ASSETS" "$PLUGIN_PATH" >/dev/null 2>&1
+		fi
 		echo ""
-		cp -a "$TMP_ASSETS" "$PLUGIN_PATH"
 	fi
 fi
 echo "clean tmp ..."
