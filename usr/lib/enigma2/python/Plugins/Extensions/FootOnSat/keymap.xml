@@ -13,5 +13,7 @@
 		<key id="KEY_RED" mapto="red" flags="m"/>
 		<key id="KEY_YELLOW" mapto="yellow" flags="m"/>
 		<key id="KEY_MENU" mapto="menu" flags="m" />
+		<key id="KEY_NEXT" mapto="Forward" flags="mr" />
+		<key id="KEY_PREVIOUS" mapto="Backward" flags="mr" />
 	</map>
 </keymap>

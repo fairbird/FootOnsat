@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #wget -q "--no-check-certificate" https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh
-VERSION=2.8
+VERSION=2.9
 PLUGIN_PATH="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
 DB_FILE="$PLUGIN_PATH/db/footonsat.db"
 ASSETS_PATH="$PLUGIN_PATH/assets"
@@ -20,16 +20,14 @@ if [ -d $PLUGIN_PATH ]; then
 
 	if [ -f "$DB_FILE" ]; then
 		echo "Backup old db..."
-		cp -a "$DB_FILE" "$TMP_DB"
+		cp -a "$DB_FILE" "$TMP_DB" >/dev/null 2>&1
 	fi
 	echo ""
-	if [ -f "$DB_FILE" ]; then
-		echo "Backup current style ..."
-		mkdir -p "$TMP_ASSETS/compet"
-		cp -a "$ASSETS_PATH/compet/icons" "$TMP_ASSETS/compet"
-		cp -a "$ASSETS_PATH/icon" "$TMP_ASSETS"
-		cp -a "$ASSETS_PATH/skin" "$TMP_ASSETS"
-	fi
+	echo "Backup current style ..."
+	mkdir -p "$TMP_ASSETS/compet" >/dev/null 2>&1
+	cp -a "$ASSETS_PATH/compet/icons" "$TMP_ASSETS/compet" >/dev/null 2>&1
+	cp -a "$ASSETS_PATH/icon" "$TMP_ASSETS" >/dev/null 2>&1
+	cp -a "$ASSETS_PATH/skin" "$TMP_ASSETS" >/dev/null 2>&1
 #    echo "Remove old version."
 #    if [ $OS = "Opensource" ]; then
 #        opkg remove enigma2-plugin-extensions-footonsat
@@ -44,11 +42,17 @@ if python --version 2>&1 | grep -q '^Python 3\.'; then
    PYTHON='PY3'
    SQLITE3='python3-sqlite3'
    PYSIX='python3-six'
+   SOUP4='python3-beautifulsoup4'
+   DIFFLIB='python3-difflib'
+   THREADING='python3-threading'
 else
    echo "You have Python2 image"
    PYTHON='PY2'
    SQLITE3='python-sqlite3'
    PYSIX='python-six'
+   SOUP4='python-beautifulsoup4'
+   DIFFLIB='python-difflib'
+   THREADING='python-threading'
 fi
 
 if grep -q $SQLITE3 $STATUS; then
@@ -63,7 +67,19 @@ if grep -q 'alsa-utils-aplay' $STATUS; then
     aplay='Installed'
 fi
 
-if [ $sqlite = "Installed" -a $six = "Installed" -a $aplay = "Installed" ]; then
+if grep -q $SOUP4 $STATUS; then
+    beautifulsoup4='Installed'
+fi
+
+if grep -q $DIFFLIB $STATUS; then
+    difflib='Installed'
+fi
+
+if grep -q $THREADING $STATUS; then
+    threading='Installed'
+fi
+
+if [ $sqlite = "Installed" -a $six = "Installed" -a $aplay = "Installed" -a $beautifulsoup4 = "Installed" -a $difflib = "Installed" -a $threading = "Installed" ]; then
      echo ""
 else
 
@@ -79,10 +95,12 @@ else
         opkg install alsa-utils-aplay
         echo "========================================================================"
         echo "========================================================================"
-        echo " Downloading $SQLITE3 , $PYSIX ......"
+        echo " Downloading $SQLITE3 , $PYSIX , $SOUP4 , $DIFFLIB , $THREADING ......"
         opkg install $SQLITE3
-        echo "========================================================================"
         opkg install $PYSIX
+        opkg install $SOUP4
+        opkg install $DIFFLIB
+        opkg install $THREADING
         echo "========================================================================"
     else
         echo "=========================================================================="
@@ -96,10 +114,12 @@ else
         apt-get install alsa-utils-aplay -y
         echo "========================================================================"
         echo "========================================================================"
-        echo " Downloading $SQLITE3 , $PYSIX ......"
+        echo " Downloading $SQLITE3 , $PYSIX , $SOUP4 , $DIFFLIB , $THREADING ......"
         apt-get install $SQLITE3 -y
-        echo "========================================================================"
         apt-get install $PYSIX -y
+        apt-get install $SOUP4 -y
+        apt-get install $DIFFLIB -y
+        apt-get install $THREADING -y
         echo "========================================================================"
     fi
 
@@ -132,6 +152,33 @@ else
 	echo "#########################################################"
     exit 1
 fi
+
+if grep -q $SOUP4 $STATUS; then
+	echo ""
+else
+	echo "#########################################################"
+	echo "#       $SOUP4 Not found in feed                        #"
+	echo "#########################################################"
+    exit 1
+fi
+
+if grep -q $DIFFLIB $STATUS; then
+	echo ""
+else
+	echo "#########################################################"
+	echo "#       $DIFFLIB Not found in feed                        #"
+	echo "#########################################################"
+    exit 1
+fi
+
+if grep -q $THREADING $STATUS; then
+	echo ""
+else
+	echo "#########################################################"
+	echo "#       $THREADING Not found in feed                        #"
+	echo "#########################################################"
+    exit 1
+fi
 echo " ** Download and install FootOnsat ** "
 cd /tmp
 set -e
@@ -145,16 +192,18 @@ if [ -f "/tmp/main.tar.gz" ]; then
 	echo "Send new version"
 	echo ""
 	tar -xzf main.tar.gz
-	cp -r FootOnsat-main/usr /
+	cp -r FootOnsat-main/usr / >/dev/null 2>&1
 	if [ -d $PLUGIN_PATH ]; then
 		if [ -f "$TMP_DB" ]; then
 			echo "Restore old db ..."
-			cp -a "$TMP_DB" "$DB_FILE"
+			cp -a "$TMP_DB" "$DB_FILE" >/dev/null 2>&1
 		fi
 		echo ""
-		echo "Restore current style ..."
+		if [ -f "$TMP_ASSETS" ]; then
+			echo "Restore current style ..."
+			cp -a "$TMP_ASSETS" "$PLUGIN_PATH" >/dev/null 2>&1
+		fi
 		echo ""
-		cp -a "$TMP_ASSETS" "$PLUGIN_PATH"
 	fi
 fi
 echo "clean tmp ..."

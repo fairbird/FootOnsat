@@ -28,33 +28,16 @@ PY3 = version_info[0] == 3
 config.plugins.FootOnSat = ConfigSubsection()
 config.plugins.FootOnSat.sort = ConfigDictionarySet(default={"footmenu": {"footsubmenu": {}}})
 config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
+config.plugins.FootOnSat.livescore = ConfigSelection(default = "3", choices = [
+	("1", _("No Live matche")),
+	("2", _("Live match + No live Score")),
+	("3", _("Live match + Live Score"))
+	])
 config.plugins.FootOnSat.icons = ConfigSelection(default = "default_icons", choices = [
 	("default_icons", _("default icons")),
-	("ramzus007_icons", _("ramzus007 icons")),
 	("icons_renkli", _("renkli icons")),
 	("italia2012_icons", _("italia2012 Full style color"))
 	])
-
-
-options = [
-    ("2", _("Two hours after the start of the match")), 
-    ("3", _("Three hours after the start of the match"))
-]
-
-finishedmatches_map = {
-    "2": 300,
-    "3": 200
-}
-
-if not hasattr(config.plugins, "FootOnSat"):
-    config.plugins.FootOnSat = ConfigSubsection()
-
-config.plugins.FootOnSat.finishedmatches = ConfigSelection(default="2", choices=options)
-
-def on_finishedmatches_change(config_element):
-	new_value = finishedmatches_map[config.plugins.FootOnSat.finishedmatches.value]
-
-config.plugins.FootOnSat.finishedmatches.addNotifier(on_finishedmatches_change, initial_call=False)
 
 VER = float(__version__)
 
@@ -127,7 +110,7 @@ class FootOnsatLauncher(Screen):
 			self.error("JSON parsing failed: " + str(e))
 			return
 		ordering = ["today", "championsleague", "europaleague", "ConferenceLeague", "premierleague", "laliga", "seriea",
-		"bundesliga", "ligue1", "saudiarabia", "afcchampions","championship", "cafchampions", "superLig", "laliga2", "liganos", "nba", "formula1"]
+		"bundesliga", "ligue1", "saudiarabia", "worldcup", "afcchampions","championship", "cafchampions", "superLig", "laliga2", "liganos", "basketball", "nba", "formula1"]
 		# Keep only items in ordering, then sort according to ordering
 		# filtered_compet = [c for c in ordering if c in compet]
 		# self.menuList = self.custom_sort(ordering, filtered_compet)
@@ -390,32 +373,47 @@ class FootOnsatLauncher(Screen):
 
 class MenuFootOnSat(ConfigListScreen, Screen):
 	if DreamOS():
+		if reswidth == 2560:
+	 		skin = """
+					<screen name="MenuFootOnSat" position="center,center" size="1274,640" title="Menu FootOnSat">
+						<widget source="global.CurrentTime" render="Label" position="5,5" size="1264,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
+							<convert type="ClockToText">Format:%d-%m-%Y&#160;%H:%M:%S</convert>
+						</widget>
+						<widget name="config" position="18,70" size="1238,344" scrollbarMode="showOnDemand" />
+						<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="373,610" zPosition="-10" />
+						<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="735,610" zPosition="-10" />
+						<widget render="Label" source="key_red" position="373,570" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" />
+						<widget render="Label" source="key_green" position="735,570" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1" />
+						<widget source="help" render="Label" position="18,275" size="1238,40" font="Regular;32" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5" />
+						<widget name="Picture" position="463,330" size="400,225" zPosition="5" alphatest="blend" />
+					</screen>"""
+		else:
+			skin = """
+					<screen name="MenuFootOnSat" position="center,center" size="1040,600" title="Menu FootOnSat">
+						<widget source="global.CurrentTime" render="Label" position="5,5" size="1022,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
+							<convert type="ClockToText">Format:%d-%m-%Y&#160;%H:%M:%S</convert>
+						</widget>
+						<widget name="config" position="18,70" size="1005,344" scrollbarMode="showOnDemand"/>
+						<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,590" zPosition="-10"/>
+						<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,590" zPosition="-10"/>
+						<widget render="Label" source="key_red" position="223,555" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
+						<widget render="Label" source="key_green" position="585,555" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
+						<widget source="help" render="Label" position="18,260" size="1004,40" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
+						<widget name="Picture" position="313,330" size="400,225" zPosition="5" alphatest="blend"/>
+					</screen>"""
+	else:
 		skin = """
 				<screen name="MenuFootOnSat" position="center,center" size="1040,600" title="Menu FootOnSat">
 					<widget source="global.CurrentTime" render="Label" position="5,5" size="1022,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
-						<convert type="ClockToText">Format:%d-%m-%Y&#160;%H:%M:%S</convert>
+						<convert type="ClockToText">Format:%d-%m-%Y	%H:%M:%S</convert>
 					</widget>
-					<widget name="config" position="18,70" size="1005,344" scrollbarMode="showOnDemand"/>
+					<widget name="config" font="Regular;28" secondfont="Regular;28" itemHeight="45" position="18,70" size="1005,330" scrollbarMode="showOnDemand"/>
 					<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,590" zPosition="-10"/>
 					<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,590" zPosition="-10"/>
 					<widget render="Label" source="key_red" position="223,555" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
 					<widget render="Label" source="key_green" position="585,555" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
-					<widget source="help" render="Label" position="18,260" size="1004,40" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
+					<widget source="help" render="Label" position="18,240" size="1004,60" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
 					<widget name="Picture" position="313,330" size="400,225" zPosition="5" alphatest="blend"/>
-				</screen>"""
-	else:
-		skin = """
-				<screen name="MenuFootOnSat" position="center,center" size="1040,560" title="Menu FootOnSat">
-					<widget source="global.CurrentTime" render="Label" position="5,5" size="1022,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
-						<convert type="ClockToText">Format:%d-%m-%Y	%H:%M:%S</convert>
-					</widget>
-					<widget name="config" font="Regular;28" secondfont="Regular;28" itemHeight="45" position="18,70" size="1005,344" scrollbarMode="showOnDemand"/>
-					<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,550" zPosition="-10"/>
-					<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,550" zPosition="-10"/>
-					<widget render="Label" source="key_red" position="223,515" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
-					<widget render="Label" source="key_green" position="585,515" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
-					<widget source="help" render="Label" position="18,220" size="1004,40" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
-					<widget name="Picture" position="313,275" size="400,225" zPosition="5" alphatest="blend"/>
 				</screen>"""
 
 	def __init__(self, session):
@@ -444,8 +442,8 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.configChanged = True
 		self.list = []
 		self.list.append(getConfigListEntry(_("Enable checking for Online Update"), config.plugins.FootOnSat.updateonline, _("This option to Enable or Disable checking for Online Update")))
+		self.list.append(getConfigListEntry(_("Enable live match + Live score"), config.plugins.FootOnSat.livescore, _("This feature allows you to show or hide the matches still live with or withou result")))
 		self.list.append(getConfigListEntry(_("Select Icons Style"), config.plugins.FootOnSat.icons, _("This option to enable to select Icons Style")))
-		self.list.append(getConfigListEntry(_("Hide matches from the list"), config.plugins.FootOnSat.finishedmatches, _("This feature allows you to hide matches from the list after")))
 		self["config"].list = self.list
 		self["config"].l.setList(self.list)
 		self["config"].onSelectionChanged.append(self.updateHelp)
@@ -467,8 +465,6 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			pic = None
 			if index == "default_icons":
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/default_icons.png')
-			elif index == "ramzus007_icons":
-				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/ramzus007_icons.png')
 			elif index == "icons_renkli":
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/icons_renkli.png')
 			elif index == "italia2012_icons":
@@ -499,15 +495,12 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 	def save(self):
 		if self.icons_value != config.plugins.FootOnSat.icons.value:
 		  extract_path = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
-		  tarfile_path = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/tar"
 		  if config.plugins.FootOnSat.icons.value == "default_icons":
-			  os.system("tar -xzf %s/default_icons.tar.gz -C %s" % (tarfile_path, extract_path))
-		  elif config.plugins.FootOnSat.icons.value == "ramzus007_icons":
-			  os.system("tar -xzf %s/ramzus007_icons.tar.gz -C %s" % (tarfile_path, extract_path))
+			  os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/default_icons.tar.gz | tar -xz -C %s" % extract_path)
 		  elif config.plugins.FootOnSat.icons.value == "icons_renkli":
-			  os.system("tar -xzf %s/icons_renkli.tar.gz -C %s" % (tarfile_path, extract_path))
+			  os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/icons_renkli.tar.gz | tar -xz -C %s" % extract_path)
 		  elif config.plugins.FootOnSat.icons.value == "italia2012_icons":
-			  os.system("tar -xzf %s/italia2012_icons.tar.gz -C %s" % (tarfile_path, extract_path))
+			  os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/italia2012_icons.tar.gz | tar -xz -C %s" % extract_path)
 		for x in self["config"].list:
 		  if len(x)>1:
 			  x[1].save()

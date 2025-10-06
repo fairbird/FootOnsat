@@ -1,6 +1,6 @@
 from Components.GUIComponent import GUIComponent
 from Components.MultiContent import MultiContentEntryText , MultiContentEntryPixmap, MultiContentEntryPixmapAlphaTest
-from enigma import eListboxPythonMultiContent, eListbox, ePixmap, eLabel, eSize, ePoint, gFont
+from enigma import eListboxPythonMultiContent, eListbox, ePixmap, eLabel, eSize, ePoint, gFont, getDesktop
 from Tools.LoadPixmap import LoadPixmap
 from Tools.Directories import resolveFilename, SCOPE_PLUGINS, fileExists
 from skin import parseColor
@@ -9,6 +9,8 @@ import math
 from sys import version_info
 
 PY3 = version_info[0] == 3
+
+reswidth = getDesktop(0).size().width()
 
 try:
 	from enigma import BT_SCALE, BT_ALIGN_CENTER, BT_KEEP_ASPECT_RATIO
@@ -110,26 +112,48 @@ class FlexibleMenu(GUIComponent):
 		self.l.setFont(0, gFont("FootFont", 23))
 		self.l.setItemHeight(self.panelheight)
 
-		self.pagelabel.setFont(gFont("FootIcons", 18))
-		self.pagelabel.setVAlign(eLabel.alignCenter)
-		self.pagelabel.setHAlign(eLabel.alignCenter)
-		self.pagelabel.setBackgroundColor(parseColor("#FF272727"))
-		self.pagelabel.setTransparent(1)
-		self.pagelabel.setZPosition(100)
-		self.pagelabel.move(ePoint(0, self.panelheight - 10))
-		self.pagelabel.resize(eSize(1660, 20))
-		self.pager_center.setBackgroundColor(parseColor("#00272727"))
-		self.pager_left.resize(eSize(20,20))
-		self.pager_right.resize(eSize(20, 20))
-		self.pager_left.setPixmap(self.ptr_pagerleft)
-		self.pager_right.setPixmap(self.ptr_pagerright)
-		self.pager_left.setScale(2)
-		self.pager_right.setScale(2)
-		self.pager_left.setAlphatest(2)
-		self.pager_right.setAlphatest(2)
-		self.pager_left.hide()
-		self.pager_right.hide()
-		self.pager_center.hide()
+		if reswidth == 1920:
+			self.pagelabel.setFont(gFont("FootIcons", 18))
+			self.pagelabel.setVAlign(eLabel.alignCenter)
+			self.pagelabel.setHAlign(eLabel.alignCenter)
+			self.pagelabel.setBackgroundColor(parseColor("#FF272727"))
+			self.pagelabel.setTransparent(1)
+			self.pagelabel.setZPosition(100)
+			self.pagelabel.move(ePoint(0, self.panelheight - 10))
+			self.pagelabel.resize(eSize(1660, 20))
+			self.pager_center.setBackgroundColor(parseColor("#00272727"))
+			self.pager_left.resize(eSize(20,20))
+			self.pager_right.resize(eSize(20, 20))
+			self.pager_left.setPixmap(self.ptr_pagerleft)
+			self.pager_right.setPixmap(self.ptr_pagerright)
+			self.pager_left.setScale(2)
+			self.pager_right.setScale(2)
+			self.pager_left.setAlphatest(2)
+			self.pager_right.setAlphatest(2)
+			self.pager_left.hide()
+			self.pager_right.hide()
+			self.pager_center.hide()
+		elif reswidth == 2560:
+			self.pagelabel.setFont(gFont("FootIcons", 40))
+			self.pagelabel.setVAlign(eLabel.alignCenter)
+			self.pagelabel.setHAlign(eLabel.alignCenter)
+			self.pagelabel.setBackgroundColor(parseColor("#FF272727"))
+			self.pagelabel.setTransparent(1)
+			self.pagelabel.setZPosition(100)
+			self.pagelabel.move(ePoint(0, self.panelheight - 75))
+			self.pagelabel.resize(eSize(1985, 46))
+			self.pager_center.setBackgroundColor(parseColor("#00272727"))
+			self.pager_left.resize(eSize(20,20))
+			self.pager_right.resize(eSize(20, 20))
+			self.pager_left.setPixmap(self.ptr_pagerleft)
+			self.pager_right.setPixmap(self.ptr_pagerright)
+			self.pager_left.setScale(2)
+			self.pager_right.setScale(2)
+			self.pager_left.setAlphatest(2)
+			self.pager_right.setAlphatest(2)
+			self.pager_left.hide()
+			self.pager_right.hide()
+			self.pager_center.hide()
 
 		self.skinAttributes = attribs
 		self.buildEntry()
@@ -210,14 +234,22 @@ class FlexibleMenu(GUIComponent):
 	def setL(self,refresh=False):
 		if refresh:
 			self.entries.clear()
-			self.setpage()
+			if reswidth == 2560:
+				self.setpage()
 			self.buildEntry()
 			return
 		if len(self.entries) > 0 and len(self.list) > 0:
 			res = [None]
-			if self.current > (len(self.list)-1):
-				self.current = (len(self.list)-1)
-			current = self.entries[self.list[self.current][0]]
+			if reswidth == 2560:
+				try:
+					current = self.entries[self.list[self.current][0]]
+				except IndexError:
+					self.current -= 1
+					current = self.entries[self.list[self.current][0]]
+			else:
+				if self.current > (len(self.list)-1):
+					self.current = (len(self.list)-1)
+				current = self.entries[self.list[self.current][0]]
 			current_page = current['page']
 			for _, value in self.entries.items():
 				if current_page == value['page'] and value != current:
@@ -248,7 +280,10 @@ class FlexibleMenu(GUIComponent):
 				x1 = (self.listWidth // 2) - w + 19
 				x2 = (self.listWidth // 2) + (w-16)
 				y = self.panelheight - 10
-				self.pager_center.resize(eSize(x2-x1, 20))
+				if reswidth == 2560:
+					self.pager_center.resize(eSize(x2-x1, 40))
+				else:
+					self.pager_center.resize(eSize(x2-x1, 20))
 				self.pager_center.move(ePoint(x2-x1, y))
 				self.pager_center.move(ePoint((self.listWidth // 2)-w+20, y))
 				self.pager_left.move(ePoint((self.listWidth // 2)-w, y))
@@ -265,9 +300,16 @@ class FlexibleMenu(GUIComponent):
 
 	def getCurrentPage(self):
 		if len(self.entries) > 0 and len(self.list) >0:
-			if self.current > (len(self.list)-1):
-				self.current = (len(self.list)-1)
-			current = self.entries[self.list[self.current][0]]
+			if reswidth == 2560:
+				try:
+					current = self.entries[self.list[self.current][0]]
+				except IndexError:
+					self.current -= 1
+					current = self.entries[self.list[self.current][0]]
+			else:
+				if self.current > (len(self.list)-1):
+					self.current = (len(self.list)-1)
+				current = self.entries[self.list[self.current][0]]
 			return current['page']
 		else:
 			return 0
