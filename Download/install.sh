@@ -193,18 +193,19 @@ if [ -f "/tmp/main.tar.gz" ]; then
 	echo ""
 	tar -xzf main.tar.gz
 	cp -r FootOnsat-main/usr / >/dev/null 2>&1
-	if [ -d $PLUGIN_PATH ]; then
-		if [ -f "$TMP_DB" ]; then
-			echo "Restore old db ..."
-			cp -a "$TMP_DB" "$DB_FILE" >/dev/null 2>&1
-		fi
-		echo ""
-		if [ -f "$TMP_ASSETS" ]; then
-			echo "Restore current style ..."
-			cp -a "$TMP_ASSETS" "$PLUGIN_PATH" >/dev/null 2>&1
-		fi
-		echo ""
+fi
+if [ -d $PLUGIN_PATH ]; then
+	if [ -f "$TMP_DB" ]; then
+		echo "Restore old db ..."
+		cp -a "$TMP_DB" "$DB_FILE" >/dev/null 2>&1
 	fi
+	echo ""
+	if [ -d "$TMP_ASSETS" ]; then
+		echo "Restore current style ..."
+		cp -a "$TMP_ASSETS" "$PLUGIN_PATH" >/dev/null 2>&1
+	fi
+	echo ""
+fi
 fi
 echo "clean tmp ..."
 echo ""
