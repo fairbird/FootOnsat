@@ -1,0 +1,26 @@
+<screen name="StandingsScreen" position="0,0" size="1920,1080" backgroundColor="transparent" flags="wfNoBorder" title="Standings">
+    <ePixmap position="0,0" zPosition="-1" size="1920,1080" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/bglist2.png"/>
+    <ePixmap position="0,0" zPosition="1" size="1920,70" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/infobar_top.png" alphatest="blend" />
+ 
+    <!-- Title -->
+    <widget name="title" position="center,15" size="600,52" font="Regular;35" halign="center" foregroundColor="#00ffffff" backgroundColor="#16000000" transparent="1" zPosition="5"/>
+
+    <!-- Top separator line -->
+    <eLabel backgroundColor="#00ffffff" position="435,180" size="1020,3" zPosition="5"/>
+
+    <!-- Column headers -->
+    <eLabel text="No." font="Regular;28" foregroundColor="#00ffffff" position="455,140" size="59,35" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="Team" font="Regular;28" foregroundColor="#00ffffff" position="620,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="Matches" font="Regular;28" foregroundColor="#00ffffff" position="1025,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="Goals Df." font="Regular;28" foregroundColor="#00ffffff" position="1170,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="Points" font="Regular;28" foregroundColor="#00ffffff" position="1305,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
+
+    <!-- Standings list -->
+    <widget name="standings_list" position="430,190" size="1000,700" scrollbarMode="showNever" 
+        selectionPixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/button1180x45.png" 
+        foregroundColor="white" backgroundColorSelected="#0000FF" enableWrapAround="1" transparent="1" zPosition="2"/>
+
+    <!-- Red key label -->
+    <widget name="key_red" position="210,910" size="600,40" font="Regular;28" halign="center" 
+        foregroundColor="#FF0000" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+</screen>
