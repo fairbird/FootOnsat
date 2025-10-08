@@ -29,7 +29,7 @@ config.plugins.FootOnSat = ConfigSubsection()
 config.plugins.FootOnSat.sort = ConfigDictionarySet(default={"footmenu": {"footsubmenu": {}}})
 config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
 config.plugins.FootOnSat.livescore = ConfigSelection(default = "3", choices = [
-	("1", _("No Live matche")),
+	("1", _("No Live match")),
 	("2", _("Live match + No live Score")),
 	("3", _("Live match + Live Score"))
 	])
