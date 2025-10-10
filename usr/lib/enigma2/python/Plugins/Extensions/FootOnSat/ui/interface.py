@@ -1220,9 +1220,10 @@ class StandingsScreen(Screen):
                 im = Image.open(src_path)
                 # Save it as a PNG file
                 im.save(dest_path, "PNG")
-                logdata("Logos", "Converted GIF to PNG for %s -> %s" % (os.path.basename(src_path).replace(".gif", ""), dest_path))
+                #logdata("Logos", "Converted GIF to PNG for %s -> %s" % (os.path.basename(src_path).replace(".gif", ""), dest_path))
             except Exception as e:
-                logdata("Logos", "Failed to convert GIF for %s: %s" % (os.path.basename(src_path).replace(".gif", ""), str(e)))
+                #logdata("Logos", "Failed to convert GIF for %s: %s" % (os.path.basename(src_path).replace(".gif", ""), str(e)))
+                pass
 
         current_table = None
         headers = {
@@ -1233,7 +1234,7 @@ class StandingsScreen(Screen):
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
         }
 
-        logdata("Logos", "Starting check for league: %s" % self.league)
+        #logdata("Logos", "Starting check for league: %s" % self.league)
 
         # First: backup site (fctables.com)
         backup_url = json_urls.get(self.league)
@@ -1242,7 +1243,7 @@ class StandingsScreen(Screen):
         logos_found = 0
 
         if backup_url:
-            logdata("Logos", "Fetching from backup site...")
+            #logdata("Logos", "Fetching from backup site...")
             try:
                 request = compat_Request(backup_url, headers=headers)
                 response = compat_urlopen(request, timeout=20)
@@ -1272,7 +1273,7 @@ class StandingsScreen(Screen):
 
                         # Skip placeholder/blank images
                         if logo_url_base.endswith("/blank.gif") or 'placeholder' in logo_url_base:
-                            logdata("Logos", "Skipping placeholder logo for '%s'." % team)
+                            #logdata("Logos", "Skipping placeholder logo for '%s'." % team)
                             continue
 
                         # Convert relative URL to absolute URL using urljoin
@@ -1309,20 +1310,22 @@ class StandingsScreen(Screen):
                                         f.write(resp.read())
                                         
                                 logos_found += 1
-                                logdata("Logos", "Saved '%s' to %s" % (team, filename_png))
+                                #logdata("Logos", "Saved '%s' to %s" % (team, filename_png))
                             except Exception as e:
-                                logdata("Logos", "Failed to download/convert logo for %s: %s" % (team, logo_url, str(e)))
+                                #logdata("Logos", "Failed to download/convert logo for %s: %s" % (team, logo_url, str(e)))
+                                pass
                         missing_teams.remove(team)
                         # --- END CONVERSION LOGIC ---
                         
             except Exception as e:
-                logdata("Logos", "Error fetching from %s -> %s" % (backup_url, str(e)))
+                #logdata("Logos", "Error fetching from %s -> %s" % (backup_url, str(e)))
+                pass
 
         # Second: primary site (worldfootball.net) - Using Raw String Matching
         if missing_teams:
             primary_url = log_urls.get(self.league)
             if primary_url:
-                logdata("Logos", "Fetching missing logos from primary site...")
+                #logdata("Logos", "Fetching missing logos from primary site...")
                 try:
                     request = compat_Request(primary_url, headers=headers)
                     response = compat_urlopen(request, timeout=20)
@@ -1352,7 +1355,7 @@ class StandingsScreen(Screen):
                             match_found = True
 
                         if not match_found:
-                            logdata("Logos", "Primary Site: No close match found for team: '%s'" % team)
+                            #logdata("Logos", "Primary Site: No close match found for team: '%s'" % team)
                             continue # Skip to next team if no match was found
 
                         if match_found:
@@ -1385,20 +1388,22 @@ class StandingsScreen(Screen):
                                             f.write(resp.read())
                                             
                                     logos_found += 1
-                                    logdata("Logos", "Found logo for '%s' using match to '%s'." % (team, original_title))
+                                    #logdata("Logos", "Found logo for '%s' using match to '%s'." % (team, original_title))
                                 except Exception as e:
-                                    logdata("Logos", "Failed to download/convert logo for %s: %s" % (team, logo_url, str(e)))
+                                    #logdata("Logos", "Failed to download/convert logo for %s: %s" % (team, logo_url, str(e)))
+                                    pass
                             missing_teams.remove(team)
                             # --- END CONVERSION LOGIC ---
                             
                 except Exception as e:
-                    logdata("Logos", "Error fetching from %s -> %s" % (primary_url, str(e)))
+                    #logdata("Logos", "Error fetching from %s -> %s" % (primary_url, str(e)))
+                    pass
 
         # Final log of any still missing teams
-        for team in missing_teams:
-            logdata("Logos", "Missing logo for team: '%s'" % team)
+        #for team in missing_teams:
+            #logdata("Logos", "Missing logo for team: '%s'" % team)
 
-        logdata("Logos", "Completed check_and_download_logos(), total logos found: %d" % logos_found)
+        #logdata("Logos", "Completed check_and_download_logos(), total logos found: %d" % logos_found)
 
     def display_standings(self):
         gList = []
@@ -1438,7 +1443,7 @@ class StandingsScreen(Screen):
             goal_diff = standing[9]
             logo_url = standing[10]
 
-        # --- MAXIMIZED LOGO SIZE CODE (Using variables again) ---
+            # --- MAXIMIZED LOGO SIZE CODE (Using variables again) ---
             LOGO_SIZE_H = 50 if reswidth == 1920 else 60
             LOGO_Y_POS = 8
 
