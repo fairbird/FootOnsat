@@ -459,23 +459,6 @@ class FootOnSat(Screen):
         if error:
             self.session.openWithCallback(self.exit, MessageBox, _('An Unexpected HTTP Error Occurred During The API Request !!'), MessageBox.TYPE_ERROR, timeout=10)
 
-    def normalize_name(self, name):
-        if not PY3 and isinstance(name, str):
-            name = name.decode('ascii', 'ignore')
-        name = name.strip().lower()
-        name = normalize('NFKD', name).encode('ascii', 'ignore').decode('ascii') if not PY3 else normalize('NFKD', name)
-        logdata("normalize_name_input", "Original name: {}".format(name))
-        name = re.sub(r'\b(st\.?|saint)\b', 'st', name, flags=re.IGNORECASE)
-        name = re.sub(r'\batl\.?\b', 'atletico', name, flags=re.IGNORECASE)
-        name = re.sub(r'\butd\b', 'united', name, flags=re.IGNORECASE)
-        name = re.sub(r'\b(fc|cf)\b', '', name, flags=re.IGNORECASE)
-        name = re.sub(r'\bu-?(\d+)\b', '', name, flags=re.IGNORECASE)
-        name = re.sub(r'\b(jr|junior|reserves?|youth)\b', '', name, flags=re.IGNORECASE)
-        name = re.sub(r'[^a-z0-9]+', ' ', name)
-        name = re.sub(r'\s+', ' ', name)
-        logdata("normalize_name_output", "Normalized name: {}".format(name))
-        return name.strip()
-
     def fetch_live_results(self):
         """Fetch and parse live and finished match results from Flashscore.com (mobile)"""
         url = "https://m.flashscore.com/"
@@ -496,7 +479,7 @@ class FootOnSat(Screen):
                 html = str(html)
             #logdata("fetch_live_results_raw", "Fetched HTML from %s, length: %d" % (url, len(html)))
         except (compat_HTTPError, compat_URLError) as e:
-            logdata("fetch_live_results_error", "Failed to fetch %s: %s" % (url, str(e)))
+            #logdata("fetch_live_results_error", "Failed to fetch %s: %s" % (url, str(e)))
             return
 
         soup = BeautifulSoup(html, "html.parser")
@@ -529,81 +512,71 @@ class FootOnSat(Screen):
                 team1, team2 = teams
                 team1_score, team2_score = score_text.split(":")
                 match_name = "%s vs %s" % (team1, team2)
+
                 matches_data.append({
                     "match_name": match_name,
-                    "team1": team1,
-                    "team2": team2,
                     "team1_score": team1_score.strip(),
                     "team2_score": team2_score.strip()
                 })
-                logdata("fetch_live_results_scraped", "Scraped match: %s (%s:%s)" % (match_name, team1_score, team2_score))
+                #logdata("fetch_live_results_raw", "Scraped match: %s (%s:%s)" % (match_name, team1_score, team2_score))
             except Exception as e:
-                logdata("fetch_live_results_error", "Error processing match: %s" % str(e))
+                #logdata("fetch_live_results_error", "Error processing match: %s" % str(e))
                 continue
 
-        # Trim whitespace in all match names in self.matches to fix UI and matching
-        for m in self.matches:
-            if len(m) > 0 and isinstance(m[0], str):
-                m[0] = m[0].strip()
+        matches_list = [list(match) for match in self.matches]
 
-        matches_list = [list(match) for match in self.matches if len(match) >= 3 and isinstance(match[0], str) and isinstance(match[1], str) and isinstance(match[2], str)]
-        index = 0
+        def normalize_name(name):
+            if not PY3 and isinstance(name, str):
+                name = name.decode('ascii', 'ignore')
+            name = name.strip().lower()
+            name = normalize('NFKD', name).encode('ascii', 'ignore').decode('ascii') if not PY3 else normalize('NFKD', name)
+            name = name.replace("psg", "paris st germain")
+            name = name.replace(" paris sg", " paris st germain")
+            name = name.replace(" wolfsburg u19", " wolfsburg")
+            name = name.replace(" wolfsburg u-19", " wolfsburg")
+            name = re.sub(r'\b(st\.?|saint)\b', 'st', name)
+            name = re.sub(r'\batl\.?\b', 'atletico', name)
+            name = re.sub(r'\butd\b', 'united', name)
+            name = re.sub(r'\bfc\b', '', name)
+            name = re.sub(r'\bu-?(\d+)\b', '', name)
+            name = re.sub(r'\bw\b', '', name)
+            name = re.sub(r'[^a-z0-9]+', ' ', name)
+            return name.strip()
+
         for match in matches_list:
-            index += 1
-            logdata("fetch_live_results_match", "Index %d: Processing API match: %s, Competition: %s, Date: %s, Full entry: %s" % (index, match[0], match[2], match[1], str(match)))
             try:
                 match_date = datetime.strptime(match[1], "%H:%M - %Y-%m-%d")
-                logdata("fetch_live_results_time", "Index %d: Match: %s, Start: %s, Now: %s, Diff: %.2f minutes" % (index, match[0], match_date, now, (now - match_date).total_seconds() / 60))
+                #logdata("fetch_live_results_time", "Match: %s, Start: %s, Now: %s, Diff: %.2f minutes" % (match[0], match_date, now, (now - match_date).total_seconds() / 60))
                 if match_date <= now + timedelta(hours=2):
-                    match_name_norm = self.normalize_name(match[0])
-                    match_teams = match_name_norm.split(" vs ")
-                    if len(match_teams) != 2:
-                        logdata("fetch_live_results_error", "Index %d: Invalid match name format: %s" % (index, match[0]))
-                        continue
-                    team1_norm, team2_norm = match_teams
+                    match_name_norm = normalize_name(match[0].strip())  # Clean extra spaces
                     found = False
                     for live_match in matches_data:
-                        live_name_norm = self.normalize_name(live_match["match_name"])
-                        live_teams = live_name_norm.split(" vs ")
-                        if len(live_teams) != 2:
-                            logdata("fetch_live_results_error", "Index %d: Invalid live match name format: %s" % (index, live_match["match_name"]))
-                            continue
-                        live_team1, live_team2 = live_teams
-                        # Check both team order combinations
-                        similarity1 = SequenceMatcher(None, team1_norm, live_team1).ratio()
-                        similarity2 = SequenceMatcher(None, team2_norm, live_team2).ratio()
-                        similarity3 = SequenceMatcher(None, team1_norm, live_team2).ratio()
-                        similarity4 = SequenceMatcher(None, team2_norm, live_team1).ratio()
-                        logdata("fetch_live_results_compare", "Index %d: Comparing %s vs %s: t1=%s vs %s (%.2f), t2=%s vs %s (%.2f); reverse: t1=%s vs %s (%.2f), t2=%s vs %s (%.2f)" % (
-                            index, match_name_norm, live_name_norm, team1_norm, live_team1, similarity1, team2_norm, live_team2, similarity2,
-                            team1_norm, live_team2, similarity3, team2_norm, live_team1, similarity4))
-                        if (similarity1 >= 0.50 and similarity2 >= 0.50) or (similarity3 >= 0.50 and similarity4 >= 0.50):
+                        live_name_norm = normalize_name(live_match["match_name"])
+                        if not PY3:
+                            match_name_norm = match_name_norm.decode('ascii', 'ignore') if isinstance(match_name_norm, str) else match_name_norm
+                            live_name_norm = live_name_norm.decode('ascii', 'ignore') if isinstance(live_name_norm, str) else live_name_norm
+                        similarity = SequenceMatcher(None, match_name_norm, live_name_norm).ratio()
+                        if similarity >= 0.70:
                             if config.plugins.FootOnSat.livescore.value == "3":
                                 match[5] = str(live_match["team1_score"]).strip()
                                 match[6] = str(live_match["team2_score"]).strip()
                             else:
                                 match[5] = ""
                                 match[6] = ""
-                            logdata("fetch_live_results", "Index %d: Assigned score to %s: %s-%s" % (index, match[0], match[5], match[6]))
+                            #logdata("fetch_live_results", "Assigned score to %s: %s-%s" % (match[0], match[5], match[6]))
                             found = True
                             break
-                        else:
-                            logdata("fetch_live_results_no_match", "Index %d: No match for %s vs %s: t1=%s vs %s (%.2f), t2=%s vs %s (%.2f); reverse: t1=%s vs %s (%.2f), t2=%s vs %s (%.2f)" % (
-                                index, match_name_norm, live_name_norm, team1_norm, live_team1, similarity1, team2_norm, live_team2, similarity2,
-                                team1_norm, live_team2, similarity3, team2_norm, live_team1, similarity4))
                     if not found:
                         match[5] = ""
                         match[6] = ""
-                        logdata("fetch_live_results", "Index %d: No match found for %s" % (index, match[0]))
+                        #logdata("fetch_live_results", "No match found for %s" % match[0])
                 else:
                     match[5] = ""
                     match[6] = ""
-                    logdata("fetch_live_results", "Index %d: Skipped upcoming match %s at %s" % (index, match[0], match[1]))
+                    #logdata("fetch_live_results", "Skipped upcoming match %s at %s" % (match[0], match[1]))
             except Exception as e:
-                logdata("fetch_live_results_error", "Index %d: Error processing match %s: %s" % (index, match[0], str(e)))
+                #logdata("fetch_live_results_error", "Error processing match %s: %s" % (match[0], str(e)))
                 continue
-
-        self.matches = matches_list
 
         self.matches = matches_list
 
