@@ -172,7 +172,7 @@ else
 	echo "#########################################################"
 	echo "#       $SQLITE3 Not found in feed                      #"
 	echo "#########################################################"
-    exit 1
+    #exit 1
 fi
 
 if grep -q $PYSIX $STATUS; then
@@ -181,7 +181,7 @@ else
 	echo "#########################################################"
 	echo "#       $PYSIX Not found in feed                        #"
 	echo "#########################################################"
-    exit 1
+    #exit 1
 fi
 
 if grep -q $SOUP4 $STATUS; then
@@ -190,7 +190,7 @@ else
 	echo "#########################################################"
 	echo "#       $SOUP4 Not found in feed                        #"
 	echo "#########################################################"
-    exit 1
+    #exit 1
 fi
 
 if grep -q $DIFFLIB $STATUS; then
@@ -199,7 +199,7 @@ else
 	echo "#########################################################"
 	echo "#       $DIFFLIB Not found in feed                        #"
 	echo "#########################################################"
-    exit 1
+    #exit 1
 fi
 
 if grep -q $THREADING $STATUS; then
@@ -208,7 +208,7 @@ else
 	echo "#########################################################"
 	echo "#       $THREADING Not found in feed                        #"
 	echo "#########################################################"
-    exit 1
+    #exit 1
 fi
 
 if grep -q $PLILOW $STATUS; then
@@ -217,7 +217,7 @@ else
 	echo "#########################################################"
 	echo "#       $PLILOW Not found in feed                        #"
 	echo "#########################################################"
-    exit 1
+    #exit 1
 fi
 
 echo " ** Download and install FootOnsat ** "
