@@ -17,7 +17,9 @@ elif [ -f /etc/opkg/opkg.conf ] ; then
 fi
 
 # Find the highest python3.xx version in /usr/bin
-PYTHON_BIN=$(ls /usr/bin/python3.*[0-9] 2>/dev/null | sort -V | tail -n 1)
+PYTHON_BIN=$(ls /usr/bin/python3.*[0-9] 2>/dev/null | \
+    sed 's/[^0-9]*\([0-9]\+\)$/\1/' | sort -n | tail -n 1 | \
+    xargs -I{} ls /usr/bin/python3.{} 2>/dev/null | head -n 1)
 if [ -n "$PYTHON_BIN" ]; then
     PYTHON_VERSION=$(basename "$PYTHON_BIN")
     # Check if /usr/bin/python3 symlink exists
