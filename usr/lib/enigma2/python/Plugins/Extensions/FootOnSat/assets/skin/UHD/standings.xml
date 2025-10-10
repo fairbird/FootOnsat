@@ -1,0 +1,25 @@
+<screen name="StandingsScreen" position="0,0" size="3840,2160" backgroundColor="#16000000" flags="wfNoBorder" title="Standings">
+  <ePixmap position="0,0" zPosition="1" size="3840,140" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/infobar_top.png" alphatest="blend"/>
+ 
+    <!-- Title -->
+  <widget name="title" position="center,30" size="1200,104" font="Regular;70" halign="center" foregroundColor="#00ffffff" backgroundColor="#16000000" transparent="1" zPosition="5"/>
+
+    <!-- Top separator line -->
+    <eLabel backgroundColor="#00ffffff" position="120,360" size="3600,6" zPosition="5"/>
+
+    <!-- Column headers -->
+    <eLabel text="No." font="Regular;56" foregroundColor="#00ffffff" backgroundColor="#16000000" position="130,280" size="118,70" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="Team" font="Regular;56" foregroundColor="#00ffffff" backgroundColor="#16000000" position="460,280" size="260,70" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="Played" font="Regular;56" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1144,280" size="300,70" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="Points" font="Regular;56" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1490,280" size="260,70" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="Wins" font="Regular;56" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1778,280" size="260,70" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="Draws" font="Regular;56" foregroundColor="#00ffffff" backgroundColor="#16000000" position="2080,280" size="260,70" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="Losses" font="Regular;56" foregroundColor="#00ffffff" backgroundColor="#16000000" position="2398,280" size="260,70" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="Goals Scored|Conceded|Difference" font="Regular;56" foregroundColor="#00ffffff" backgroundColor="#16000000" position="2714,280" size="1000,70" zPosition="5" transparent="1" halign="center"/>
+    <!-- Standings list -->  
+    <widget name="standings_list" position="120,380" size="3600,1516" scrollbarMode="showNever" 
+        foregroundColor="#00ffffff" backgroundColorSelected="#0000FF" enableWrapAround="1" transparent="1" zPosition="2"/>
+    <!-- Red key label -->
+    <widget name="key_red" position="90,1970" size="1200,80" font="Regular;56" halign="center" 
+        foregroundColor="#00ff2525" backgroundColor="#16000000" zPosition="5" transparent="1" />
+</screen>
