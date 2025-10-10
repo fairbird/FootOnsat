@@ -8,12 +8,15 @@ import random
 import traceback
 import re
 import threading
+import difflib
+from PIL import Image
+from unicodedata import normalize
 from time import strftime
 from sqlite3 import connect
 from bs4 import BeautifulSoup
 from difflib import SequenceMatcher
 from datetime import datetime, timedelta
-from enigma import eTimer, gRGB, loadPNG, gPixmapPtr, RT_WRAP, ePoint, RT_HALIGN_LEFT, RT_VALIGN_CENTER, eListboxPythonMultiContent, gFont, getDesktop, eConsoleAppContainer
+from enigma import eTimer, gRGB, loadPNG, gPixmapPtr, RT_WRAP, ePoint, RT_HALIGN_CENTER, RT_HALIGN_LEFT, RT_VALIGN_CENTER, eListboxPythonMultiContent, gFont, getDesktop, eConsoleAppContainer
 from Components.MultiContent import MultiContentEntryText, MultiContentEntryPixmap, MultiContentEntryPixmapAlphaTest, MultiContentEntryPixmapAlphaBlend
 from Components.MenuList import MenuList
 from Components.Label import Label
@@ -30,7 +33,7 @@ from Tools.LoadPixmap import LoadPixmap
 from twisted.web.client import getPage, downloadPage
 from twisted.internet.ssl import ClientContextFactory
 from twisted.internet._sslverify import ClientTLSOptions
-from .compat import PY3, compat_urlopen, compat_str, compat_HTTPError, compat_URLError, compat_Request
+from .compat import PY3, compat_urlopen, compat_HTTPError, compat_URLError, compat_Request
 
 try:
     from enigma import BT_SCALE, RT_VALIGN_CENTER, RT_HALIGN_LEFT
@@ -40,15 +43,51 @@ except ImportError:
     RT_HALIGN_LEFT = 0
 
 try:
-    from urllib.parse import urlparse
+    from urllib.parse import urlparse, urljoin
 except ImportError:
-    from urlparse import urlparse
+    from urlparse import urlparse, urljoin # Python 2 compatibility
 
 reswidth = getDesktop(0).size().width()
 
 ignore_dir = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/ignore")
 ignore_file = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/ignore/ignore-match.json")
 DB_PATH = '/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/db/footonsat.db'
+
+## url for Standings table
+json_urls = {
+    "premierleague": "https://www.fctables.com/england/premier-league/",
+    "championsleague": "https://www.fctables.com/championsleague/",
+    "europaleague": "https://www.fctables.com/europaleague/",
+    "ConferenceLeague": "https://www.fctables.com/europa-conference-league/",
+    "seriea": "https://www.fctables.com/italy/serie-a/",
+    "ligue1": "https://www.fctables.com/france/ligue-1/",
+    "laliga": "https://www.fctables.com/spain/liga-bbva/",
+    "laliga2": "https://www.fctables.com/spain/liga-adelante/",
+    "bundesliga": "https://www.fctables.com/germany/1-bundesliga/",
+    "championship": "https://www.fctables.com/england/championship/",
+    "liganos": "https://www.fctables.com/portugal/liga-zon-sagres/",
+    "superLig": "https://www.fctables.com/turkey/super-lig/",
+    "saudiarabia": "https://www.fctables.com/saudi-arabia/1-division/",
+    "afcchampions": "https://www.fctables.com/afcchampionsleague/",
+}
+
+# use thess url download missing log of team (Extra code)
+log_urls = {
+    "premierleague": "https://www.worldfootball.net/competition/eng-premier-league/",
+    "championsleague": "https://www.worldfootball.net/competition/champions-league/",
+    "europaleague": "https://www.worldfootball.net/competition/europa-league/",
+    "ConferenceLeague": "https://www.worldfootball.net/competition/conference-league/",
+    "seriea": "https://www.worldfootball.net/competition/ita-serie-a/",
+    "ligue1": "https://www.worldfootball.net/competition/fra-ligue-1/",
+    "laliga": "https://www.worldfootball.net/competition/esp-primera-division/",
+    "bundesliga": "https://www.worldfootball.net/competition/bundesliga/",
+    "laliga2": "https://www.worldfootball.net/competition/esp-segunda-division/",
+    "championship": "https://www.worldfootball.net/competition/eng-championship/",
+    "liganos": "https://www.worldfootball.net/competition/por-primeira-liga/",
+    "superLig": "https://www.worldfootball.net/competition/tur-sueperlig/",
+    "saudiarabia": "https://www.worldfootball.net/competition/ksa-saudi-pro-league/",
+    "afcchampions": "https://www.worldfootball.net/competition/afc-champions-league-elite/",
+}
 
 def logdata(label_name = "", data = None):
     try:
@@ -77,6 +116,20 @@ def readFromFile(filename):
     with open(_file, 'r') as f:
         return f.read()
 
+# Place this function at the top level of your script (outside the StandingsScreen class)
+def sanitize_team_name(team):
+    """Replaces problematic characters (non-ASCII, spaces, etc.) for use in permanent filenames."""
+    # 1. Standard Replacements (spaces, slashes, quotes)
+    name = team.replace(" ", "_").replace("/", "_").replace("'", "")
+    
+    # 2. Universal Character Replacements for ASCII safety
+    name = name.replace("ü", "ue").replace("ä", "ae").replace("ö", "oe").replace("ß", "ss") 
+    name = name.replace("å", "aa").replace("æ", "ae").replace("ø", "oe") 
+    name = name.replace("ç", "c").replace("ş", "s").replace("ğ", "g") 
+    name = name.replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u") 
+    return name
+
+
 class WebClientContextFactory(ClientContextFactory):
     def __init__(self, url=None):
         domain = urlparse(url).netloc
@@ -87,6 +140,7 @@ class WebClientContextFactory(ClientContextFactory):
         if self.hostname and ClientTLSOptions is not None: # workaround for TLS SNI
             ClientTLSOptions(self.hostname, ctx)
         return ctx
+
 
 class FootOnSat(Screen):
     def __init__(self, session, link, *args):
@@ -99,7 +153,7 @@ class FootOnSat(Screen):
         else:
             skin = "assets/skin/FHD/interface.xml"
         self.skin = readFromFile(skin)
-        self["setupActions"] = ActionMap(["FootOnsatActions"],
+        self["setupActions"] = ActionMap(["FootOnsatActions", "ColorActions"],
         {
             "ok": self.ok,
             "down": self.listDOWN,
@@ -107,6 +161,7 @@ class FootOnSat(Screen):
             "left": self.left,
             "right": self.right,
             "red": self.keyRed,
+            "green": self.keyGreen,
             "yellow": self.keyYellow,
             "blue": self.keyBlue,
             "cancel": self.exit,
@@ -122,9 +177,11 @@ class FootOnSat(Screen):
         self["key_red"] = Button(_("Ignore Competition"))
         self["key_yellow"] = Button(_("Reset Ignore List"))
         self["key_blue"] = Button(_("Scan"))
+        self["key_green"] = Button(_("Standings Table"))
         self["key_red"].hide()
         self["key_yellow"].hide()
         self["key_blue"].hide()
+        self["key_green"].hide()
         self["list1"] = MenuList([], enableWrapAround=True, content=eListboxPythonMultiContent)
         self["list2"] = MenuList([], enableWrapAround=True, content=eListboxPythonMultiContent)
         self.selectedList = self["list1"]
@@ -146,9 +203,9 @@ class FootOnSat(Screen):
             gList = []
             self["list1"].l.setItemHeight(175)
             if reswidth == 2560:
-            	self["list1"].l.setFont(0, gFont('Regular', 36))
+                self["list1"].l.setFont(0, gFont('Regular', 36))
             else:
-            	self["list1"].l.setFont(0, gFont('Regular', 28))
+                self["list1"].l.setFont(0, gFont('Regular', 28))
             for i in range(0, len(self.matches)):
                 match = self.matches[i][0]
                 match_date = self.matches[i][1]
@@ -159,7 +216,7 @@ class FootOnSat(Screen):
                 team2_score = self.matches[i][6]  # Team2 score
                 flagTeam1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/{}.png".format(team1))
                 flagTeam2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/{}.png".format(team2))
-                banner = FootOnSat.setCompet(compet.lower())
+                banner = FootOnSat.setCompet(str(compet).lower())
                 match_date = self.getTime(match_date)
                 if not fileExists(flagTeam1):
                     flagTeam1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/default.png")
@@ -169,21 +226,31 @@ class FootOnSat(Screen):
                     notif = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/icon/notif_on.png")
                 else:
                     notif = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/icon/notif_off.png")
+                # Initialize list entry
                 res.append(MultiContentEntryText())
+                # Team 1 flag
                 res.append(MultiContentEntryPixmapAlphaBlend(pos=(420, 69), size=(40, 30), png=loadPNG(flagTeam1)))
+                # Score team 1
                 res.append(MultiContentEntryText(pos=(482, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
+                # Team 2 flag
                 if reswidth == 2560:
-                		res.append(MultiContentEntryPixmapAlphaBlend(pos=(1190, 69), size=(40, 30), png=loadPNG(flagTeam2)))
+                    res.append(MultiContentEntryPixmapAlphaBlend(pos=(1190, 69), size=(40, 30), png=loadPNG(flagTeam2)))
                 else:
-                		res.append(MultiContentEntryPixmapAlphaBlend(pos=(1142, 69), size=(40, 30), png=loadPNG(flagTeam2)))
+                    res.append(MultiContentEntryPixmapAlphaBlend(pos=(1142, 69), size=(40, 30), png=loadPNG(flagTeam2)))
+                # Score team 2
                 res.append(MultiContentEntryText(pos=(1092, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
+                # Competition banner
                 try:
                     res.append(MultiContentEntryPixmapAlphaTest(pos=(65, 6), size=(320, 163), png=loadPNG(banner), flags=BT_SCALE))
                 except TypeError:
                     res.append(MultiContentEntryPixmapAlphaTest(pos=(65, 6), size=(320, 163), png=loadPNG(banner)))
+                # Notification icon
                 res.append(MultiContentEntryPixmapAlphaBlend(pos=(-20, 63), size=(70, 50), png=loadPNG(notif)))
+                # Match name
                 res.append(MultiContentEntryText(pos=(498, 66), size=(570, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(match)))
-                res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text="Kick-off : " + str(match_date)))
+                # Kick-off time
+                res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
+                # Competition name
                 res.append(MultiContentEntryText(pos=(420, 15), size=(785, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
                 gList.append(res)
                 res = []
@@ -191,9 +258,15 @@ class FootOnSat(Screen):
             if self.link == "today":
                 self['key_red'].show()
                 self['key_yellow'].show()
+                self['key_green'].hide()
+            elif self.link in json_urls:
+                self['key_red'].hide()
+                self['key_yellow'].hide()
+                self['key_green'].show()
             else:
                 self['key_red'].hide()
                 self['key_yellow'].hide()
+                self['key_green'].hide()
             self.updateCounter()
             self.getChannels()  # Update channel for selected match
         else:
@@ -387,79 +460,124 @@ class FootOnSat(Screen):
             self.session.openWithCallback(self.exit, MessageBox, _('An Unexpected HTTP Error Occurred During The API Request !!'), MessageBox.TYPE_ERROR, timeout=10)
 
     def fetch_live_results(self):
-        """Fetch and parse only live results from Flashscore.com (mobile)"""
+        """Fetch and parse live and finished match results from Flashscore.com (mobile)"""
         url = "https://m.flashscore.com/"
 
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                          "AppleWebKit/537.36 (KHTML, like Gecko) "
-                          "Chrome/140.0.0.0 Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
             "Accept-Language": "en-US,en;q=0.9",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
         }
 
-        request = compat_Request(url, headers=headers)
-        response = compat_urlopen(request, timeout=6)
-        html = response.read()
-        if PY3:
-            html = html.decode('utf-8')
-        else:
-            html = compat_str(html)
+        try:
+            request = compat_Request(url, headers=headers)
+            response = compat_urlopen(request, timeout=6)
+            html = response.read()
+            if PY3:
+                html = html.decode('utf-8', errors='ignore')
+            else:
+                html = str(html)
+            #logdata("fetch_live_results_raw", "Fetched HTML from %s, length: %d" % (url, len(html)))
+        except (compat_HTTPError, compat_URLError) as e:
+            #logdata("fetch_live_results_error", "Failed to fetch %s: %s" % (url, str(e)))
+            return
 
         soup = BeautifulSoup(html, "html.parser")
         matches_data = []
+        now = datetime.now()
 
-        for a_tag in soup.find_all("a", class_=["live"]):
-            score_text = a_tag.get_text(strip=True)
-            previous_text = a_tag.find_previous(text=True)
-            if not previous_text:
-                continue
-            previous_text = previous_text.strip()
-            previous_text = re.sub(r'\s*-\s*', ' - ', previous_text)
+        for a_tag in soup.find_all("a", class_=lambda x: x is None or "live" in str(x)):
+            try:
+                score_text = a_tag.get_text(strip=True).encode('ascii', 'ignore').decode('ascii') if not PY3 else a_tag.get_text(strip=True)
+                if not re.match(r'^\d+:\d+$', score_text):
+                    continue
 
-            if ":" in score_text and " - " in previous_text:
-                teams = previous_text.split(" - ")
+                parent_div = a_tag.find_parent("div")
+                if not parent_div:
+                    continue
+
+                team_spans = parent_div.find_all("span", class_="team_name_span")
+                if len(team_spans) == 2:
+                    teams = [t.get_text(strip=True).encode('ascii', 'ignore').decode('ascii') if not PY3 else t.get_text(strip=True) for t in team_spans]
+                else:
+                    previous_text = a_tag.find_previous(text=True)
+                    if not previous_text or " - " not in previous_text:
+                        continue
+                    previous_text = previous_text.encode('ascii', 'ignore').decode('ascii') if not PY3 else previous_text
+                    teams = [t.strip() for t in previous_text.split(" - ")]
+
                 if len(teams) != 2:
                     continue
-                team1, team2 = [t.strip() for t in teams]
+
+                team1, team2 = teams
                 team1_score, team2_score = score_text.split(":")
                 match_name = "%s vs %s" % (team1, team2)
+
                 matches_data.append({
                     "match_name": match_name,
                     "team1_score": team1_score.strip(),
                     "team2_score": team2_score.strip()
                 })
+                #logdata("fetch_live_results_raw", "Scraped match: %s (%s:%s)" % (match_name, team1_score, team2_score))
+            except Exception as e:
+                #logdata("fetch_live_results_error", "Error processing match: %s" % str(e))
+                continue
 
-        # Assign live scores to matches
         matches_list = [list(match) for match in self.matches]
 
         def normalize_name(name):
-            return name.strip().lower()
+            if not PY3 and isinstance(name, str):
+                name = name.decode('ascii', 'ignore')
+            name = name.strip().lower()
+            name = normalize('NFKD', name).encode('ascii', 'ignore').decode('ascii') if not PY3 else normalize('NFKD', name)
+            name = name.replace("psg", "paris st germain")
+            name = name.replace(" paris sg", " paris st germain")
+            name = name.replace(" wolfsburg u19", " wolfsburg")
+            name = name.replace(" wolfsburg u-19", " wolfsburg")
+            name = re.sub(r'\b(st\.?|saint)\b', 'st', name)
+            name = re.sub(r'\batl\.?\b', 'atletico', name)
+            name = re.sub(r'\butd\b', 'united', name)
+            name = re.sub(r'\bfc\b', '', name)
+            name = re.sub(r'\bu-?(\d+)\b', '', name)
+            name = re.sub(r'\bw\b', '', name)
+            name = re.sub(r'[^a-z0-9]+', ' ', name)
+            return name.strip()
 
         for match in matches_list:
-            match_date = datetime.strptime(match[1], "%H:%M - %Y-%m-%d")
-            if match_date <= datetime.now():
-                match_name_norm = normalize_name(match[0])
-                found = False
-                for live_match in matches_data:
-                    live_name_norm = normalize_name(live_match["match_name"])
-                    similarity = SequenceMatcher(None, match_name_norm, live_name_norm).ratio()
-                    if similarity >= 0.60:
-                        if config.plugins.FootOnSat.livescore.value == "3":
-                            # Only fill scores for choice 3
-                            match[5] = compat_str(live_match["team1_score"]).strip()
-                            match[6] = compat_str(live_match["team2_score"]).strip()
-                        else:
-                            match[5] = ""
-                            match[6] = ""
-                        found = True
-                        break
-                if not found:
+            try:
+                match_date = datetime.strptime(match[1], "%H:%M - %Y-%m-%d")
+                #logdata("fetch_live_results_time", "Match: %s, Start: %s, Now: %s, Diff: %.2f minutes" % (match[0], match_date, now, (now - match_date).total_seconds() / 60))
+                if match_date <= now + timedelta(hours=2):
+                    match_name_norm = normalize_name(match[0].strip())  # Clean extra spaces
+                    found = False
+                    for live_match in matches_data:
+                        live_name_norm = normalize_name(live_match["match_name"])
+                        if not PY3:
+                            match_name_norm = match_name_norm.decode('ascii', 'ignore') if isinstance(match_name_norm, str) else match_name_norm
+                            live_name_norm = live_name_norm.decode('ascii', 'ignore') if isinstance(live_name_norm, str) else live_name_norm
+                        similarity = SequenceMatcher(None, match_name_norm, live_name_norm).ratio()
+                        if similarity >= 0.70:
+                            if config.plugins.FootOnSat.livescore.value == "3":
+                                match[5] = str(live_match["team1_score"]).strip()
+                                match[6] = str(live_match["team2_score"]).strip()
+                            else:
+                                match[5] = ""
+                                match[6] = ""
+                            #logdata("fetch_live_results", "Assigned score to %s: %s-%s" % (match[0], match[5], match[6]))
+                            found = True
+                            break
+                    if not found:
+                        match[5] = ""
+                        match[6] = ""
+                        #logdata("fetch_live_results", "No match found for %s" % match[0])
+                else:
                     match[5] = ""
                     match[6] = ""
-            else:
-                match[5] = ""
-                match[6] = ""
+                    #logdata("fetch_live_results", "Skipped upcoming match %s at %s" % (match[0], match[1]))
+            except Exception as e:
+                #logdata("fetch_live_results_error", "Error processing match %s: %s" % (match[0], str(e)))
+                continue
+
         self.matches = matches_list
 
     def getData(self, data):
@@ -474,7 +592,8 @@ class FootOnSat(Screen):
         try:
             ignored_competitions = self.manageIgnoreFile()
         except Exception as e:
-            logdata("getData", "Failed to load ignored competitions: " + str(e))
+            #logdata("getData", "Failed to load ignored competitions: " + str(e))
+            pass
 
         now = datetime.now()
         LIVE_DURATION = timedelta(hours=2)  # Consider matches live for 2 hours
@@ -510,7 +629,8 @@ class FootOnSat(Screen):
                                     team2_score = str(match.get('score2', "")).strip()
                                 #logdata("getData-debug", f"Live match appended: {match['match']} at {match['time']} (scores: {team1_score}-{team2_score})")
                         else:
-                            logdata("getData-debug", "Skipped past match: %s at %s" % (match['match'], match['time']))
+                            #logdata("getData-debug", f"Skipped past match: {match['match']} at {match['time']}")
+                            pass
 
                         if append_match:
                             list.append([str(match['match']),
@@ -523,7 +643,7 @@ class FootOnSat(Screen):
                     else:
                         logdata("getData", "Ignored competition: " + str(match['match']) + ", Compet: " + compet)
                 except KeyError:
-                    logdata("getData-error", "KeyError on match: " + str(match))
+                    #logdata("getData-error", "KeyError on match: " + str(match))
                     pass
 
             self.matches = list
@@ -536,16 +656,15 @@ class FootOnSat(Screen):
         else:
             self.session.openWithCallback(self.exit, MessageBox, _('No schedules in this section at this time'), MessageBox.TYPE_ERROR, timeout=10)
 
-
     def getChannels(self):
         list = []
         res = []
         gList = []
         self["list2"].l.setItemHeight(50)
         if reswidth == 2560:
-        	self["list2"].l.setFont(0, gFont('Regular', 32))
+            self["list2"].l.setFont(0, gFont('Regular', 32))
         else:
-        	self["list2"].l.setFont(0, gFont('Regular', 30))
+            self["list2"].l.setFont(0, gFont('Regular', 30))
         index = self['list1'].getSelectionIndex()
         if len(self.matches) > 0:
             self.match = self.matches[index][0]
@@ -588,6 +707,10 @@ class FootOnSat(Screen):
         self["enc"].setText("")
         self['key_blue'].hide()
         self.canScan = False
+
+    def keyGreen(self):
+        if self.link in json_urls:
+            self.session.open(StandingsScreen, self.link, json_urls[self.link])
 
     def keyBlue(self):
         if self.canScan:
@@ -928,3 +1051,502 @@ class FootOnsatNotifScreen(Screen):
 
     def hideNotif(self):
         FootOnSatNotifDialog.dialog.hide()
+
+
+class StandingsScreen(Screen):
+    def __init__(self, session, league, url):
+        self.session = session
+        Screen.__init__(self, session)
+        #logdata("StandingsScreen_init", "Initializing StandingsScreen for league: %s, url: %s" % (league, url))
+        if reswidth == 1920:
+            skin = "assets/skin/FHD/standings.xml"
+        elif reswidth == 2560:
+            skin = "assets/skin/UHD/standings.xml"
+        else:
+            skin = "assets/skin/FHD/standings.xml"
+        self.skin = readFromFile(skin)
+        self.league = str(league)
+        self.url = str(url)
+        self["standings_list"] = MenuList([], enableWrapAround=True, content=eListboxPythonMultiContent)
+        # FIX for Python 2 eLabel: encode to UTF-8 if not Python 3
+        title_text = "%s Standings" % self.league
+        if not PY3:
+            title_text = title_text.encode('utf-8')
+        self["title"] = Label(_(title_text))
+        self["key_red"] = Button(_("To Close Press Ok or Exit"))
+        self["setupActions"] = ActionMap(["OkCancelActions", "ColorActions"], {
+            "ok": self.close,
+            "cancel": self.close,
+            "red": self.close
+        }, -1)
+        self.standings_data = []
+        self.logo_cache = {}
+        self.flags_dir = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/standings/")
+        self.onShown.append(self.fetch_standings)
+
+    def fetch_standings(self):
+        #logdata("fetch_standings", "Fetching standings for league: %s" % self.league)
+        url = self.url
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        }
+        #logdata("fetch_standings", "Trying URL: %s" % url)
+        request = compat_Request(url, headers=headers)
+        try:
+            response = compat_urlopen(request, timeout=20)
+            #logdata("fetch_standings", "HTTP response status: %s" % response.getcode())
+            html = response.read()
+            if PY3:
+                html = html.decode('utf-8', errors="ignore")
+            else:
+                html = str(html)
+            #logdata("fetch_standings", "HTML fetched, length: %d" % len(html))
+            soup = BeautifulSoup(html, "html.parser")
+            standings = []
+            tables = []
+            for t in soup.find_all("table"):
+                rows = t.find_all("tr")
+                # Accept tables with at least 2 rows and multiple non-empty cells
+                if len(rows) > 1 and any(len(row.find_all("td")) > 2 and any(cell.get_text(strip=True) not in ["", "#"] for cell in row.find_all("td")) for row in rows[1:]):
+                    tables.append(t)
+            if not tables:
+                #logdata("fetch_standings", "No valid standings tables found for %s" % self.league)
+                self.standings_data = []
+                self.display_standings()
+                return
+            #logdata("fetch_standings", "Found %d potential tables for %s" % (len(tables), self.league))
+            table_limit = 2 if self.league == "afcchampions" else 1
+            tables_to_process = tables[:table_limit]
+            # FIX: If afcchampions, reverse order so that Table 2 (first table) appears before Table 1 (second table).
+            if self.league == "afcchampions" and table_limit == 2:
+                tables_to_process.reverse()
+                t_display_idx = 2 # Start the display index at 2
+            else:
+                t_display_idx = 1 # Normal index starting at 1
+            for t_idx, table in enumerate(tables_to_process, 0): # Use 0-based enumerate here
+                #logdata("fetch_standings", "Processing Table %d for %s" % (t_display_idx, self.league))
+                if self.league == "afcchampions":
+                	standings.append("Table %d" % t_display_idx)
+                	t_display_idx -= 1 # Decrement for the next table (2 -> 1)
+                rows = table.find_all("tr")[1:]
+                for row in rows:
+                    cells = row.find_all("td")
+                    if len(cells) < 2:  # Minimal: team and points
+                        #logdata("fetch_standings", "Skipping row with insufficient columns: %d" % len(cells))
+                        continue
+                    team = ""
+                    logo_url = ""
+                    position = "0"
+                    played = "0"
+                    points = "0"
+                    wins = "0"
+                    draws = "0"
+                    losses = "0"
+                    goals_scored = "0"
+                    goals_conceded = "0"
+                    goal_diff = "0"
+                    for idx, cell in enumerate(cells):
+                        class_name = cell.get("class", []) or []
+                        cell_text = cell.get_text(strip=True) or ""
+                        #logdata("fetch_standings_cell", "Table %d, Cell %d class: %s, value: %s" % (t_idx, idx, class_name, cell_text))
+                        if idx == 0:
+                            position = cell_text if cell_text.isdigit() else "0"
+                        elif "tl" in class_name or (idx == 1 and not team and cell_text):
+                            team_link = cell.find("a")
+                            team = team_link.get_text(strip=True) if team_link else cell_text
+                            img = cell.find("img")
+                            logo_url = img.get("src").split("?")[0] if img and img.get("src") else ""
+                        elif "table_games" in class_name or (idx == 2 and cell_text.isdigit()):
+                            played = cell_text if cell_text.isdigit() else "0"
+                        elif "points" in class_name or (idx == 3 and cell_text.isdigit()):
+                            points = cell_text if cell_text.isdigit() else "0"
+                        elif "wins" in class_name or (idx == 4 and cell_text.isdigit()):
+                            wins = cell_text if cell_text.isdigit() else "0"
+                        elif "draws" in class_name or (idx == 5 and cell_text.isdigit()):
+                            draws = cell_text if cell_text.isdigit() else "0"
+                        elif "defeits" in class_name or (idx == 6 and cell_text.isdigit()):
+                            losses = cell_text if cell_text.isdigit() else "0"
+                        elif "goals" in class_name and "goals_d" not in class_name or (idx == 7 and cell_text.isdigit()):
+                            goals_scored = cell_text if cell_text.isdigit() else "0"
+                        elif "goals_d" in class_name or (idx == 8 and cell_text.isdigit()):
+                            goals_conceded = cell_text if cell_text.isdigit() else "0"
+                        elif cell_text.lstrip('-').isdigit():
+                            goal_diff = cell_text if cell_text.lstrip('-').isdigit() else "0"
+                    if not team:
+                        #logdata("fetch_standings", "Skipping row with empty team name: %s" % [cell.get_text(strip=True) for cell in cells])
+                        continue
+                    #logdata("fetch_standings_row", "Table %d, Extracted: team=%s, position=%s, played=%s, points=%s, wins=%s, draws=%s, losses=%s, goals_scored=%s, goals_conceded=%s, goal_diff=%s, logo_url=%s" % (
+                    #    t_idx, team, position, played, points, wins, draws, losses, goals_scored, goals_conceded, goal_diff, logo_url))
+
+                    # ADD THIS LINE FOR CORRECTION:
+                    if team == "Sintra Football": team = "Estrela Amadora"
+                    if team == "Chengdu Qianbao FC": team = "Chengdu Rongcheng"
+                    if team == "Artsakh": team = "RC Strasbourg"
+                    #
+                    standings.append([
+                        str(team),
+                        str(position),
+                        str(played),
+                        str(points),
+                        str(wins),
+                        str(draws),
+                        str(losses),
+                        str(goals_scored),
+                        str(goals_conceded),
+                        str(goal_diff),
+                        str(logo_url)
+                    ])
+            self.standings_data = standings
+            #logdata("fetch_standings", "Total teams fetched: %d" % len([x for x in standings if not isinstance(x, str)]))
+            if standings:
+                try:
+                    self.check_and_download_logos()
+                except Exception as e:
+                    #logdata("fetch_standings_error", "Error in check_and_download_logos: %s" % str(e))
+                    pass
+            self.display_standings()
+        except (compat_HTTPError, compat_URLError, Exception) as e:
+            #logdata("fetch_standings_error", "Failed to fetch standings for URL %s: %s" % (url, str(e)))
+            self.standings_data = []
+            self.display_standings()
+
+    def check_and_download_logos(self):
+        # --- WORKING CONVERSION FUNCTION RESTORED ---
+        def convert_gif_to_png(src_path, dest_path):
+            try:
+                # Open the GIF file
+                im = Image.open(src_path)
+                # Save it as a PNG file
+                im.save(dest_path, "PNG")
+                logdata("Logos", "Converted GIF to PNG for %s -> %s" % (os.path.basename(src_path).replace(".gif", ""), dest_path))
+            except Exception as e:
+                logdata("Logos", "Failed to convert GIF for %s: %s" % (os.path.basename(src_path).replace(".gif", ""), str(e)))
+
+        current_table = None
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                          "AppleWebKit/537.36 (KHTML, like Gecko) "
+                          "Chrome/140.0.0.0 Safari/537.36",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        }
+
+        logdata("Logos", "Starting check for league: %s" % self.league)
+
+        # First: backup site (fctables.com)
+        backup_url = json_urls.get(self.league)
+        all_teams = [item[0] for item in self.standings_data if isinstance(item, list)]
+        missing_teams = list(all_teams)
+        logos_found = 0
+
+        if backup_url:
+            logdata("Logos", "Fetching from backup site...")
+            try:
+                request = compat_Request(backup_url, headers=headers)
+                response = compat_urlopen(request, timeout=20)
+                html = response.read()
+
+                if PY3:
+                    html = html.decode("utf-8", errors="ignore")
+                else:
+                    pass
+
+                soup = BeautifulSoup(html, "html.parser")
+                imgs = soup.find_all("img")
+
+                titles = [img.get("title") or img.get("alt") for img in imgs if img.get("title") or img.get("alt")]
+
+                for team in missing_teams[:]:
+                    match = difflib.get_close_matches(team, titles, n=1, cutoff=0.6)
+
+                    if match:
+                        img_tag = next(img for img in imgs if (img.get("title") == match[0] or img.get("alt") == match[0]))
+
+                        logo_src = img_tag.get("src")
+                        if not logo_src:
+                            continue
+
+                        logo_url_base = logo_src.split("?")[0]
+
+                        # Skip placeholder/blank images
+                        if logo_url_base.endswith("/blank.gif") or 'placeholder' in logo_url_base:
+                            logdata("Logos", "Skipping placeholder logo for '%s'." % team)
+                            continue
+
+                        # Convert relative URL to absolute URL using urljoin
+                        if not logo_url_base.startswith(("http://", "https://")):
+                            logo_url = urljoin(backup_url, logo_url_base)
+                        else:
+                            logo_url = logo_url_base
+                        
+                        
+                        # --- CONVERSION LOGIC FOR BACKUP SITE ---
+                        ext = ".gif" if logo_url.endswith(".gif") else (".png" if logo_url.endswith(".png") else ".jpg")
+                        
+                        # Final destination filename (ALWAYS .png for plugin)
+                        filename_png = resolveFilename(SCOPE_PLUGINS,
+                                                   "Extensions/FootOnSat/assets/standings/{}{}".format(
+                                                       sanitize_team_name(team), ".png"))
+                        
+                        if not os.path.exists(filename_png):
+                            try:
+                                req = compat_Request(logo_url, headers=headers)
+                                resp = compat_urlopen(req)
+                                
+                                if ext == ".gif" or ext == ".jpg":
+                                    # Save temporarily if conversion is needed
+                                    temp_file = filename_png.replace(".png", ext)
+                                    with open(temp_file, "wb") as f:
+                                        f.write(resp.read())
+                                    
+                                    convert_gif_to_png(temp_file, filename_png)
+                                    os.remove(temp_file) # Delete temporary file
+                                else:
+                                    # Save directly if it's already a PNG
+                                    with open(filename_png, "wb") as f:
+                                        f.write(resp.read())
+                                        
+                                logos_found += 1
+                                logdata("Logos", "Saved '%s' to %s" % (team, filename_png))
+                            except Exception as e:
+                                logdata("Logos", "Failed to download/convert logo for %s: %s" % (team, logo_url, str(e)))
+                        missing_teams.remove(team)
+                        # --- END CONVERSION LOGIC ---
+                        
+            except Exception as e:
+                logdata("Logos", "Error fetching from %s -> %s" % (backup_url, str(e)))
+
+        # Second: primary site (worldfootball.net) - Using Raw String Matching
+        if missing_teams:
+            primary_url = log_urls.get(self.league)
+            if primary_url:
+                logdata("Logos", "Fetching missing logos from primary site...")
+                try:
+                    request = compat_Request(primary_url, headers=headers)
+                    response = compat_urlopen(request, timeout=20)
+                    html = response.read()
+
+                    if PY3:
+                        html = html.decode("utf-8", errors="ignore")
+                    else:
+                        pass
+
+                    soup = BeautifulSoup(html, "html.parser")
+                    imgs = soup.find_all("img")
+
+                    # Use raw titles for matching
+                    titles = [img.get("title") or img.get("alt") for img in imgs if img.get("title") or img.get("alt")]
+
+                    for team in missing_teams[:]:
+
+                        # Match raw input string against raw scraped titles
+                        match = difflib.get_close_matches(team, titles, n=1, cutoff=0.6) 
+
+                        match_found = False
+                        if match:
+                            original_title = match[0]
+                            # Find the image tag based on title/alt
+                            img_tag = next(img for img in imgs if (img.get("title") == original_title or img.get("alt") == original_title))
+                            match_found = True
+
+                        if not match_found:
+                            logdata("Logos", "Primary Site: No close match found for team: '%s'" % team)
+                            continue # Skip to next team if no match was found
+
+                        if match_found:
+                            logo_url = img_tag.get("src").split("?")[0]
+                            
+                            # --- CONVERSION LOGIC FOR PRIMARY SITE ---
+                            ext = ".gif" if logo_url.endswith(".gif") else (".png" if logo_url.endswith(".png") else ".jpg")
+                            
+                            # Final destination filename (ALWAYS .png for plugin)
+                            filename_png = resolveFilename(SCOPE_PLUGINS,
+                                                         "Extensions/FootOnSat/assets/standings/{}{}".format(
+                                                             sanitize_team_name(team), ".png"))
+
+                            if not os.path.exists(filename_png):
+                                try:
+                                    req = compat_Request(logo_url, headers=headers)
+                                    resp = compat_urlopen(req)
+                                    
+                                    if ext == ".gif" or ext == ".jpg":
+                                        # Save temporarily if conversion is needed
+                                        temp_file = filename_png.replace(".png", ext)
+                                        with open(temp_file, "wb") as f:
+                                            f.write(resp.read())
+                                        
+                                        convert_gif_to_png(temp_file, filename_png)
+                                        os.remove(temp_file) # Delete temporary file
+                                    else:
+                                        # Save directly if it's already a PNG
+                                        with open(filename_png, "wb") as f:
+                                            f.write(resp.read())
+                                            
+                                    logos_found += 1
+                                    logdata("Logos", "Found logo for '%s' using match to '%s'." % (team, original_title))
+                                except Exception as e:
+                                    logdata("Logos", "Failed to download/convert logo for %s: %s" % (team, logo_url, str(e)))
+                            missing_teams.remove(team)
+                            # --- END CONVERSION LOGIC ---
+                            
+                except Exception as e:
+                    logdata("Logos", "Error fetching from %s -> %s" % (primary_url, str(e)))
+
+        # Final log of any still missing teams
+        for team in missing_teams:
+            logdata("Logos", "Missing logo for team: '%s'" % team)
+
+        logdata("Logos", "Completed check_and_download_logos(), total logos found: %d" % logos_found)
+
+    def display_standings(self):
+        gList = []
+
+        # Determine ITEM_HEIGHT based on resolution (used multiple times)
+        ITEM_HEIGHT = 65 if reswidth == 1920 else 85
+
+        self["standings_list"].l.setItemHeight(ITEM_HEIGHT)
+        if reswidth == 2560:
+            self["standings_list"].l.setFont(0, gFont('Regular', 32))
+        else:
+            self["standings_list"].l.setFont(0, gFont('Regular', 28))
+
+        club_idx = 1  # numbering for clubs only
+
+        for standing in self.standings_data:
+            if isinstance(standing, str) and standing.startswith("Table "):
+                club_idx = 1  # reset numbering for new table
+                if reswidth == 1920:
+                        res = [ITEM_HEIGHT, MultiContentEntryText(pos=(450, 0), size=(960, ITEM_HEIGHT), font=0,
+                                                           flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(standing))]
+                else: # UHD skins
+                        res = [ITEM_HEIGHT, MultiContentEntryText(pos=(900, 0), size=(1920, ITEM_HEIGHT), font=0,
+                                                           flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(standing))]
+                gList.append(res)
+                continue
+
+            team = standing[0]
+            position = standing[1]
+            played = standing[2]
+            points = standing[3]
+            wins = standing[4]
+            draws = standing[5]
+            losses = standing[6]
+            goals_scored = standing[7]
+            goals_conceded = standing[8]
+            goal_diff = standing[9]
+            logo_url = standing[10]
+
+        # --- MAXIMIZED LOGO SIZE CODE (Using variables again) ---
+            LOGO_SIZE_H = 50 if reswidth == 1920 else 60
+            LOGO_Y_POS = 8
+
+            # Adjust team name position to account for the larger logo space
+            TEAM_NAME_X_POS = 130 + LOGO_SIZE_H + 10
+
+            res = [ITEM_HEIGHT]
+            # number
+            res.append(MultiContentEntryText(pos=(20, 0), size=(50, ITEM_HEIGHT), font=0,
+                                             flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, text=str(club_idx)))
+            club_idx += 1
+
+            # logo using file path
+            flagteam_png = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/standings/{}.png".format(sanitize_team_name(team)))
+            flagteam_jpg = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/standings/{}.jpg".format(sanitize_team_name(team)))
+            if reswidth == 1920:
+              if os.path.exists(flagteam_png):
+              	if PY3:
+              		res.append(MultiContentEntryPixmapAlphaBlend(pos=(95, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+                                                               png=loadPNG(flagteam_png), flags=BT_SCALE))
+              	else: # DreamOS
+              		res.append(MultiContentEntryPixmapAlphaBlend(pos=(95, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+                                                               png=loadPNG(flagteam_png)))
+              # logo fallback to jpg
+              elif os.path.exists(flagteam_jpg):
+              	if PY3:
+              		res.append(MultiContentEntryPixmapAlphaBlend(pos=(95, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+                                                               png=LoadPixmap(flagteam_jpg), flags=BT_SCALE))
+              	else: # DreamOS
+              		res.append(MultiContentEntryPixmapAlphaBlend(pos=(95, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+                                                               png=LoadPixmap(flagteam_jpg)))
+              # team name
+              res.append(MultiContentEntryText(pos=(TEAM_NAME_X_POS, 0), size=(400, ITEM_HEIGHT), font=0,
+                                               flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team or "")))
+              # matches played
+              res.append(MultiContentEntryText(pos=(553, 0), size=(80, ITEM_HEIGHT), font=0,
+                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(played or "")))
+              # points
+              res.append(MultiContentEntryText(pos=(708, 0), size=(80, ITEM_HEIGHT), font=0,
+                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(points or "")))
+              # wins
+              res.append(MultiContentEntryText(pos=(852, 0), size=(80, ITEM_HEIGHT), font=0,
+                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(wins or "")))
+              # draws
+              res.append(MultiContentEntryText(pos=(997, 0), size=(80, ITEM_HEIGHT), font=0,
+                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(draws or "")))
+              # losses
+              res.append(MultiContentEntryText(pos=(1152, 0), size=(80, ITEM_HEIGHT), font=0,
+                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(losses or "")))
+              # goals scored
+              res.append(MultiContentEntryText(pos=(1342, 0), size=(80, ITEM_HEIGHT), font=0,
+                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_scored or "")))
+              # goals conceded
+              res.append(MultiContentEntryText(pos=(1520, 0), size=(80, ITEM_HEIGHT), font=0,
+                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_conceded or "")))
+              # goal diff
+              res.append(MultiContentEntryText(pos=(1680, 0), size=(80, ITEM_HEIGHT), font=0,
+                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goal_diff or "")))
+            else: # UHD skins
+              if os.path.exists(flagteam_png):
+              	if PY3:
+              		res.append(MultiContentEntryPixmapAlphaBlend(pos=(190, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+                                                               png=LoadPixmap(flagteam_png), flags=BT_SCALE))
+              	else: # DreamOS
+              		res.append(MultiContentEntryPixmapAlphaBlend(pos=(190, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+                                                               png=LoadPixmap(flagteam_png)))
+              # logo fallback to jpg
+              elif os.path.exists(flagteam_jpg):
+              	if PY3:
+              		res.append(MultiContentEntryPixmapAlphaBlend(pos=(190, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+                                                               png=LoadPixmap(flagteam_jpg), flags=BT_SCALE))
+              	else: # DreamOS
+              		res.append(MultiContentEntryPixmapAlphaBlend(pos=(190, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+                                                               png=LoadPixmap(flagteam_jpg)))
+              # team name
+              res.append(MultiContentEntryText(pos=(TEAM_NAME_X_POS, 0), size=(800, ITEM_HEIGHT), font=0,
+                                               flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team or "")))
+              # matches played
+              res.append(MultiContentEntryText(pos=(1106, 0), size=(160, ITEM_HEIGHT), font=0,
+                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(played or "")))
+              # points
+              res.append(MultiContentEntryText(pos=(1416, 0), size=(160, ITEM_HEIGHT), font=0,
+                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(points or "")))
+              # wins
+              res.append(MultiContentEntryText(pos=(1704, 0), size=(160, ITEM_HEIGHT), font=0,
+                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(wins or "")))
+              # draws
+              res.append(MultiContentEntryText(pos=(1994, 0), size=(160, ITEM_HEIGHT), font=0,
+                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(draws or "")))
+              # losses
+              res.append(MultiContentEntryText(pos=(2304, 0), size=(160, ITEM_HEIGHT), font=0,
+                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(losses or "")))
+              # goals scored
+              res.append(MultiContentEntryText(pos=(2684, 0), size=(160, ITEM_HEIGHT), font=0,
+                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_scored or "")))
+              # goals conceded
+              res.append(MultiContentEntryText(pos=(3040, 0), size=(160, ITEM_HEIGHT), font=0,
+                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_conceded or "")))
+              # goal diff
+              res.append(MultiContentEntryText(pos=(3360, 0), size=(160, ITEM_HEIGHT), font=0,
+                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goal_diff or "")))
+
+            gList.append(res)
+
+        self["standings_list"].setList(gList)
+        if not self.standings_data:
+            #logdata("display_standings", "No standings data, showing MessageBox")
+            self.session.openWithCallback(self.close, MessageBox, _('No standings available for this league.'), MessageBox.TYPE_INFO, timeout=10)
+        else:
+            #logdata("display_standings", "Displaying standings, total entries: %d" % len(gList))
+            pass
