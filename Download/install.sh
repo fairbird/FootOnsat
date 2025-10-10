@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #wget -q "--no-check-certificate" https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh
-VERSION=2.9
+VERSION=3.0
 PLUGIN_PATH="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
 DB_FILE="$PLUGIN_PATH/db/footonsat.db"
 ASSETS_PATH="$PLUGIN_PATH/assets"
@@ -237,11 +237,12 @@ if [ -f "/tmp/main.tar.gz" ]; then
 fi
 if [ -d $PLUGIN_PATH ]; then
 	if [ -f "$TMP_DB" ]; then
+			echo ""
 			echo "Restore old db ..."
 			cp -a "$TMP_DB" "$DB_FILE" >/dev/null 2>&1
 	fi
 	echo ""
-	if [ -f "$TMP_ASSETS" ]; then
+	if [ -d "$TMP_ASSETS" ]; then
 			echo "Restore current style ..."
 			cp -a "$TMP_ASSETS" "$PLUGIN_PATH" >/dev/null 2>&1
 	fi
