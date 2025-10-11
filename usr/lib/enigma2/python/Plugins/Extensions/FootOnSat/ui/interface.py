@@ -59,7 +59,8 @@ json_urls = {
     "championsleague": "https://www.fctables.com/championsleague/",
     "europaleague": "https://www.fctables.com/europaleague/",
     "ConferenceLeague": "https://www.fctables.com/europa-conference-league/",
-    "seriea": "https://www.fctables.com/italy/serie-a/",
+    "seriea": "https://www.skysports.com/serie-a-table",
+#    "seriea": "https://www.fctables.com/italy/serie-a/",
     "ligue1": "https://www.fctables.com/france/ligue-1/",
     "laliga": "https://www.fctables.com/spain/liga-bbva/",
     "laliga2": "https://www.fctables.com/spain/liga-adelante/",
@@ -1096,95 +1097,60 @@ class StandingsScreen(Screen):
         request = compat_Request(url, headers=headers)
         try:
             response = compat_urlopen(request, timeout=20)
-            #logdata("fetch_standings", "HTTP response status: %s" % response.getcode())
+            logdata("fetch_standings", "HTTP response status: %s" % response.getcode())
             html = response.read()
             if PY3:
                 html = html.decode('utf-8', errors="ignore")
             else:
                 html = str(html)
-            #logdata("fetch_standings", "HTML fetched, length: %d" % len(html))
+            logdata("fetch_standings", "HTML fetched, length: %d" % len(html))
+            # Save HTML for manual inspection
+            with open("/tmp/standings_%s.html" % self.league, "w") as f:
+                f.write(html)
+            logdata("fetch_standings", "HTML saved to /tmp/standings_%s.html for inspection" % self.league)
             soup = BeautifulSoup(html, "html.parser")
             standings = []
             tables = []
-            for t in soup.find_all("table"):
-                rows = t.find_all("tr")
-                # Accept tables with at least 2 rows and multiple non-empty cells
-                if len(rows) > 1 and any(len(row.find_all("td")) > 2 and any(cell.get_text(strip=True) not in ["", "#"] for cell in row.find_all("td")) for row in rows[1:]):
-                    tables.append(t)
-            if not tables:
-                #logdata("fetch_standings", "No valid standings tables found for %s" % self.league)
-                self.standings_data = []
-                self.display_standings()
-                return
-            #logdata("fetch_standings", "Found %d potential tables for %s" % (len(tables), self.league))
-            table_limit = 2 if self.league == "afcchampions" else 1
-            tables_to_process = tables[:table_limit]
-            # FIX: If afcchampions, reverse order so that Table 2 (first table) appears before Table 1 (second table).
-            if self.league == "afcchampions" and table_limit == 2:
-                tables_to_process.reverse()
-                t_display_idx = 2 # Start the display index at 2
-            else:
-                t_display_idx = 1 # Normal index starting at 1
-            for t_idx, table in enumerate(tables_to_process, 0): # Use 0-based enumerate here
-                #logdata("fetch_standings", "Processing Table %d for %s" % (t_display_idx, self.league))
-                if self.league == "afcchampions":
-                	standings.append("Table %d" % t_display_idx)
-                	t_display_idx -= 1 # Decrement for the next table (2 -> 1)
-                rows = table.find_all("tr")[1:]
-                for row in rows:
+            if self.league == "seriea":
+                logdata("fetch_standings", "Processing Serie A standings from Sky Sports")
+                # Find the standings table (likely <table> with headers like Position, Team, etc.)
+                table = soup.find("table")
+                if not table:
+                    logdata("fetch_standings", "No table found for Serie A")
+                    self.standings_data = []
+                    self.display_standings()
+                    return
+                rows = table.find_all("tr")[1:]  # Skip header row
+                logdata("fetch_standings", "Found %d rows for Serie A" % len(rows))
+                for row_idx, row in enumerate(rows):
                     cells = row.find_all("td")
-                    if len(cells) < 2:  # Minimal: team and points
-                        #logdata("fetch_standings", "Skipping row with insufficient columns: %d" % len(cells))
+                    if len(cells) < 9:  # Expect at least 9 columns: Position, Team, Played, Won, Drawn, Lost, GF, GA, GD, Points
+                        logdata("fetch_standings", "Skipping row %d with insufficient columns: %d" % (row_idx, len(cells)))
                         continue
-                    team = ""
+                    position = cells[0].get_text(strip=True) if cells[0].get_text(strip=True).isdigit() else "0"
+                    team = cells[1].get_text(strip=True)
+                    played = cells[2].get_text(strip=True) if cells[2].get_text(strip=True).isdigit() else "0"
+                    wins = cells[3].get_text(strip=True) if cells[3].get_text(strip=True).isdigit() else "0"
+                    draws = cells[4].get_text(strip=True) if cells[4].get_text(strip=True).isdigit() else "0"
+                    losses = cells[5].get_text(strip=True) if cells[5].get_text(strip=True).isdigit() else "0"
+                    goals_scored = cells[6].get_text(strip=True) if cells[6].get_text(strip=True).isdigit() else "0"
+                    goals_conceded = cells[7].get_text(strip=True) if cells[7].get_text(strip=True).isdigit() else "0"
+                    goal_diff_text = cells[8].get_text(strip=True) if len(cells) > 8 else "0"
+                    if goal_diff_text.lstrip('-+').isdigit():
+                        goal_diff_value = int(goal_diff_text.lstrip('-+'))
+                        goal_diff = "+" + str(goal_diff_value) if goal_diff_value > 0 else str(goal_diff_value)
+                    else:
+                        goal_diff = "0"
+                    points = cells[9].get_text(strip=True) if len(cells) > 9 and cells[9].get_text(strip=True).isdigit() else "0"
                     logo_url = ""
-                    position = "0"
-                    played = "0"
-                    points = "0"
-                    wins = "0"
-                    draws = "0"
-                    losses = "0"
-                    goals_scored = "0"
-                    goals_conceded = "0"
-                    goal_diff = "0"
-                    for idx, cell in enumerate(cells):
-                        class_name = cell.get("class", []) or []
-                        cell_text = cell.get_text(strip=True) or ""
-                        #logdata("fetch_standings_cell", "Table %d, Cell %d class: %s, value: %s" % (t_idx, idx, class_name, cell_text))
-                        if idx == 0:
-                            position = cell_text if cell_text.isdigit() else "0"
-                        elif "tl" in class_name or (idx == 1 and not team and cell_text):
-                            team_link = cell.find("a")
-                            team = team_link.get_text(strip=True) if team_link else cell_text
-                            img = cell.find("img")
-                            logo_url = img.get("src").split("?")[0] if img and img.get("src") else ""
-                        elif "table_games" in class_name or (idx == 2 and cell_text.isdigit()):
-                            played = cell_text if cell_text.isdigit() else "0"
-                        elif "points" in class_name or (idx == 3 and cell_text.isdigit()):
-                            points = cell_text if cell_text.isdigit() else "0"
-                        elif "wins" in class_name or (idx == 4 and cell_text.isdigit()):
-                            wins = cell_text if cell_text.isdigit() else "0"
-                        elif "draws" in class_name or (idx == 5 and cell_text.isdigit()):
-                            draws = cell_text if cell_text.isdigit() else "0"
-                        elif "defeits" in class_name or (idx == 6 and cell_text.isdigit()):
-                            losses = cell_text if cell_text.isdigit() else "0"
-                        elif "goals" in class_name and "goals_d" not in class_name or (idx == 7 and cell_text.isdigit()):
-                            goals_scored = cell_text if cell_text.isdigit() else "0"
-                        elif "goals_d" in class_name or (idx == 8 and cell_text.isdigit()):
-                            goals_conceded = cell_text if cell_text.isdigit() else "0"
-                        elif cell_text.lstrip('-').isdigit():
-                            goal_diff = cell_text if cell_text.lstrip('-').isdigit() else "0"
+                    img = cells[1].find("img")
+                    if img and img.get("src"):
+                        logo_url = img.get("src").split("?")[0]
                     if not team:
-                        #logdata("fetch_standings", "Skipping row with empty team name: %s" % [cell.get_text(strip=True) for cell in cells])
+                        logdata("fetch_standings", "Skipping row %d with empty team name" % row_idx)
                         continue
-                    #logdata("fetch_standings_row", "Table %d, Extracted: team=%s, position=%s, played=%s, points=%s, wins=%s, draws=%s, losses=%s, goals_scored=%s, goals_conceded=%s, goal_diff=%s, logo_url=%s" % (
-                    #    t_idx, team, position, played, points, wins, draws, losses, goals_scored, goals_conceded, goal_diff, logo_url))
-
-                    # ADD THIS LINE FOR CORRECTION:
-                    if team == "Sintra Football": team = "Estrela Amadora"
-                    if team == "Chengdu Qianbao FC": team = "Chengdu Rongcheng"
-                    if team == "Artsakh": team = "RC Strasbourg"
-                    #
+                    logdata("fetch_standings_row", "Serie A Row %d Extracted: team=%s, position=%s, played=%s, points=%s, wins=%s, draws=%s, losses=%s, goals_scored=%s, goals_conceded=%s, goal_diff=%s, logo_url=%s" % (
+                        row_idx, team, position, played, points, wins, draws, losses, goals_scored, goals_conceded, goal_diff, logo_url))
                     standings.append([
                         str(team),
                         str(position),
@@ -1198,17 +1164,109 @@ class StandingsScreen(Screen):
                         str(goal_diff),
                         str(logo_url)
                     ])
+            else:
+                for t in soup.find_all("table"):
+                    rows = t.find_all("tr")
+                    # Accept tables with at least 2 rows and multiple non-empty cells
+                    if len(rows) > 1 and any(len(row.find_all("td")) > 2 and any(cell.get_text(strip=True) not in ["", "#"] for cell in row.find_all("td")) for row in rows[1:]):
+                        tables.append(t)
+                if not tables:
+                    logdata("fetch_standings", "No valid standings tables found for %s" % self.league)
+                    self.standings_data = []
+                    self.display_standings()
+                    return
+                logdata("fetch_standings", "Found %d potential tables for %s" % (len(tables), self.league))
+                table_limit = 2 if self.league == "afcchampions" else 1
+                tables_to_process = tables[:table_limit]
+                # FIX: If afcchampions, reverse order so that Table 2 (first table) appears before Table 1 (second table).
+                if self.league == "afcchampions" and table_limit == 2:
+                    tables_to_process.reverse()
+                    t_display_idx = 2 # Start the display index at 2
+                else:
+                    t_display_idx = 1 # Normal index starting at 1
+                for t_idx, table in enumerate(tables_to_process, 0): # Use 0-based enumerate here
+                    logdata("fetch_standings", "Processing Table %d for %s" % (t_display_idx, self.league))
+                    if self.league == "afcchampions":
+                        standings.append("Table %d" % t_display_idx)
+                        t_display_idx -= 1 # Decrement for the next table (2 -> 1)
+                    rows = table.find_all("tr")[1:]
+                    for row in rows:
+                        cells = row.find_all("td")
+                        if len(cells) < 2:  # Minimal: team and points
+                            logdata("fetch_standings", "Skipping row with insufficient columns: %d" % len(cells))
+                            continue
+                        team = ""
+                        logo_url = ""
+                        position = "0"
+                        played = "0"
+                        points = "0"
+                        wins = "0"
+                        draws = "0"
+                        losses = "0"
+                        goals_scored = "0"
+                        goals_conceded = "0"
+                        goal_diff = "0"
+                        for idx, cell in enumerate(cells):
+                            class_name = cell.get("class", []) or []
+                            cell_text = cell.get_text(strip=True) or ""
+                            logdata("fetch_standings_cell", "Table %d, Cell %d class: %s, value: %s" % (t_idx, idx, class_name, cell_text))
+                            if idx == 0:
+                                position = cell_text if cell_text.isdigit() else "0"
+                            elif "tl" in class_name or (idx == 1 and not team and cell_text):
+                                team_link = cell.find("a")
+                                team = team_link.get_text(strip=True) if team_link else cell_text
+                                img = cell.find("img")
+                                logo_url = img.get("src").split("?")[0] if img and img.get("src") else ""
+                            elif "table_games" in class_name or (idx == 2 and cell_text.isdigit()):
+                                played = cell_text if cell_text.isdigit() else "0"
+                            elif "points" in class_name or (idx == 3 and cell_text.isdigit()):
+                                points = cell_text if cell_text.isdigit() else "0"
+                            elif "wins" in class_name or (idx == 4 and cell_text.isdigit()):
+                                wins = cell_text if cell_text.isdigit() else "0"
+                            elif "draws" in class_name or (idx == 5 and cell_text.isdigit()):
+                                draws = cell_text if cell_text.isdigit() else "0"
+                            elif "defeits" in class_name or (idx == 6 and cell_text.isdigit()):
+                                losses = cell_text if cell_text.isdigit() else "0"
+                            elif "goals" in class_name and "goals_d" not in class_name or (idx == 7 and cell_text.isdigit()):
+                                goals_scored = cell_text if cell_text.isdigit() else "0"
+                            elif "goals_d" in class_name or (idx == 8 and cell_text.isdigit()):
+                                goals_conceded = cell_text if cell_text.isdigit() else "0"
+                            elif cell_text.lstrip('-+').isdigit():
+                                goal_diff_value = int(cell_text.lstrip('-+'))
+                                goal_diff = "+" + str(goal_diff_value) if goal_diff_value > 0 else str(goal_diff_value)
+                        if not team:
+                            logdata("fetch_standings", "Skipping row with empty team name: %s" % [cell.get_text(strip=True) for cell in cells])
+                            continue
+                        logdata("fetch_standings_row", "Table %d, Extracted: team=%s, position=%s, played=%s, points=%s, wins=%s, draws=%s, losses=%s, goals_scored=%s, goals_conceded=%s, goal_diff=%s, logo_url=%s" % (
+                            t_idx, team, position, played, points, wins, draws, losses, goals_scored, goals_conceded, goal_diff, logo_url))
+                        # ADD THIS LINE FOR CORRECTION:
+                        if team == "Sintra Football": team = "Estrela Amadora"
+                        if team == "Chengdu Qianbao FC": team = "Chengdu Rongcheng"
+                        if team == "Artsakh": team = "RC Strasbourg"
+                        standings.append([
+                            str(team),
+                            str(position),
+                            str(played),
+                            str(points),
+                            str(wins),
+                            str(draws),
+                            str(losses),
+                            str(goals_scored),
+                            str(goals_conceded),
+                            str(goal_diff),
+                            str(logo_url)
+                        ])
             self.standings_data = standings
-            #logdata("fetch_standings", "Total teams fetched: %d" % len([x for x in standings if not isinstance(x, str)]))
+            logdata("fetch_standings", "Total teams fetched: %d" % len([x for x in standings if not isinstance(x, str)]))
             if standings:
                 try:
                     self.check_and_download_logos()
                 except Exception as e:
-                    #logdata("fetch_standings_error", "Error in check_and_download_logos: %s" % str(e))
+                    logdata("fetch_standings_error", "Error in check_and_download_logos: %s" % str(e))
                     pass
             self.display_standings()
         except (compat_HTTPError, compat_URLError, Exception) as e:
-            #logdata("fetch_standings_error", "Failed to fetch standings for URL %s: %s" % (url, str(e)))
+            logdata("fetch_standings_error", "Failed to fetch standings for URL %s: %s" % (url, str(e)))
             self.standings_data = []
             self.display_standings()
 
