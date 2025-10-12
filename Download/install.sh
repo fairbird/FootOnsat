@@ -70,7 +70,6 @@ if python --version 2>&1 | grep -q '^Python 3\.'; then
    DIFFLIB='python3-difflib'
    THREADING='python3-threading'
    PLILOW='python3-pillow'
-   REQUESTES='python3-requests'
 else
    echo "You have Python2 image"
    PYTHON='PY2'
@@ -80,7 +79,6 @@ else
    DIFFLIB='python-difflib'
    THREADING='python-threading'
    PLILOW='python-pillow'
-   REQUESTES='python-requests'
 fi
 
 if grep -q $SQLITE3 $STATUS; then
@@ -111,12 +109,8 @@ if grep -q $PLILOW $STATUS; then
     pillow='Installed'
 fi
 
-if grep -q $REQUESTES $STATUS; then
-    requestes='Installed'
-fi
-
 if [ $sqlite = "Installed" -a $six = "Installed" -a $aplay = "Installed" -a $beautifulsoup4 = "Installed" -a \
-     $difflib = "Installed" -a $threading = "Installed" -a $pillow = "Installed" -a $requestes = "Installed" ]; then
+     $difflib = "Installed" -a $threading = "Installed" -a $pillow = "Installed" ]; then
      echo ""
 else
 
@@ -132,14 +126,13 @@ else
         opkg install alsa-utils-aplay
         echo "========================================================================"
         echo "========================================================================"
-        echo " Downloading $SQLITE3 , $PYSIX , $SOUP4 , $DIFFLIB , $THREADING, $PLILOW, $REQUESTES  ......"
+        echo " Downloading $SQLITE3 , $PYSIX , $SOUP4 , $DIFFLIB , $THREADING, $PLILOW  ......"
         opkg install $SQLITE3
         opkg install $PYSIX
         opkg install $SOUP4
         opkg install $DIFFLIB
         opkg install $THREADING
         opkg install $PLILOW
-		opkg install $REQUESTES
         echo "========================================================================"
     else
         echo "=========================================================================="
@@ -153,14 +146,13 @@ else
         apt-get install alsa-utils-aplay -y
         echo "========================================================================"
         echo "========================================================================"
-        echo " Downloading $SQLITE3 , $PYSIX , $SOUP4 , $DIFFLIB , $THREADING, $PLILOW, $REQUESTES ......"
+        echo " Downloading $SQLITE3 , $PYSIX , $SOUP4 , $DIFFLIB , $THREADING, $PLILOW ......"
         apt-get install $SQLITE3 -y
         apt-get install $PYSIX -y
         apt-get install $SOUP4 -y
         apt-get install $DIFFLIB -y
         apt-get install $THREADING -y
         apt-get install $PLILOW -y
-		apt-get install $REQUESTES -y
         echo "========================================================================"
     fi
 
@@ -226,15 +218,6 @@ if grep -q $PLILOW $STATUS; then
 else
 	echo "#########################################################"
 	echo "#       $PLILOW Not found in feed                        #"
-	echo "#########################################################"
-    #exit 1
-fi
-
-if grep -q $$REQUESTES $STATUS; then
-	echo ""
-else
-	echo "#########################################################"
-	echo "#       $REQUESTES Not found in feed                        #"
 	echo "#########################################################"
     #exit 1
 fi
