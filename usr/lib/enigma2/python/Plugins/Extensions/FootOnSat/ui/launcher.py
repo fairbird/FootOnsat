@@ -28,6 +28,10 @@ PY3 = version_info[0] == 3
 config.plugins.FootOnSat = ConfigSubsection()
 config.plugins.FootOnSat.sort = ConfigDictionarySet(default={"footmenu": {"footsubmenu": {}}})
 config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
+config.plugins.FootOnSat.finished = ConfigSelection(default = "2", choices = [
+	("2", _("2 hours")),
+	("3", _("3 hours"))
+	])
 config.plugins.FootOnSat.livescore = ConfigSelection(default = "3", choices = [
 	("1", _("No Live match")),
 	("2", _("Live match + No live Score")),
@@ -398,7 +402,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 						<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,590" zPosition="-10"/>
 						<widget render="Label" source="key_red" position="223,555" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
 						<widget render="Label" source="key_green" position="585,555" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
-						<widget source="help" render="Label" position="18,260" size="1004,40" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
+						<widget source="help" render="Label" position="18,280" size="1004,40" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
 						<widget name="Picture" position="313,330" size="400,225" zPosition="5" alphatest="blend"/>
 					</screen>"""
 	else:
@@ -412,7 +416,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 					<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,590" zPosition="-10"/>
 					<widget render="Label" source="key_red" position="223,555" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
 					<widget render="Label" source="key_green" position="585,555" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
-					<widget source="help" render="Label" position="18,240" size="1004,60" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
+					<widget source="help" render="Label" position="18,280" size="1004,60" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
 					<widget name="Picture" position="313,330" size="400,225" zPosition="5" alphatest="blend"/>
 				</screen>"""
 
@@ -443,6 +447,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.list = []
 		self.list.append(getConfigListEntry(_("Enable checking for Online Update"), config.plugins.FootOnSat.updateonline, _("This option to Enable or Disable checking for Online Update")))
 		self.list.append(getConfigListEntry(_("Enable live match + Live score"), config.plugins.FootOnSat.livescore, _("This feature allows you to show or hide the matches still live with or withou result")))
+		self.list.append(getConfigListEntry(_("Hide matches that started before"), config.plugins.FootOnSat.finished, _("This option is to specify the time that matches that have finished remain before they disappear from the list.")))
 		self.list.append(getConfigListEntry(_("Select Icons Style"), config.plugins.FootOnSat.icons, _("This option to enable to select Icons Style")))
 		self["config"].list = self.list
 		self["config"].l.setList(self.list)
