@@ -1,158 +1,178 @@
 {
     "compet": [
         {
-            "label": "abn amro u-17 future cup",
+	    "label": "abn amro u-17 future cup",
             "banner": "abn amro u-17 future cup"
         },
-        {
-            "label": "afc asian cup 2027 qualificiers",
-            "banner": "afc asian cup"
+	{
+	    "label": "afc asian cup 2027",
+            "banner": "afc asian cup 2027"
         },
         {
+            "label": "afc asian qualifiers",
+            "banner": "afc asian qualifiers"
+        },
+	{            
             "label": "afc cafa nations cup",
             "banner": "afc cafa nations cup"
         },
         {
+            "label": "afc challence league",
+            "banner": "afc challence league"
+        },
+	{
             "label": "afc challenge cup",
             "banner": "afc challenge cup"
+        },
+	{
+            "label": "afc champions league 2",
+            "banner": "afc champions league 2"
         },
         {
             "label": "afc champions league elite",
             "banner": "afc champions league elite"
         },
-        {  
-            "label": "afc champions league 2",
-            "banner": "afc champions league 2"
-        },
-        {
+	{
             "label": "afc cup",
             "banner": "afc cup"
         },
-        {
+	{
             "label": "afc u-16 asian championship",
             "banner": "afc u-16 asian championship"
         },
-        {
+	{
             "label": "afc u-17 asian cup",
             "banner": "afc u-17 asian cup"
         },
-        {
+	{
             "label": "afc u-19 asian championship",
             "banner": "afc u-19 asian championship"
         },
-        {
+	{
             "label": "afc u-20 asian cup",
             "banner": "afc u-20 asian cup"
         },
-        {
+	{
             "label": "afc u-23 asian cup",
             "banner": "afc u-23 asian cup"
         },
-        {
+	{
             "label": "afc women's asian cup",
             "banner": "afc womens asian cup"
         },
         {
-            "label": "afc womens champions league ",
+            "label": "afc womens champions league",
             "banner": "afc womens champions league"
         },
         {
             "label": "aff championship (mitsubishi electric cup)",
             "banner": "aff championship (mitsubishi electric cup)"
         },
-        {
+	{
             "label": "african football league",
             "banner": "african football league"
         },
-        {
+	{
             "label": "aisha buhari invitational cup",
             "banner": "aisha buhari invitational cup"
         },
-        {
-            "label": "asean club championship",
-            "banner": "asean"
-        },
-        {
+       	{
             "label": "albanian cup",
             "banner": "albanian cup"
         },
-        {
+	{
             "label": "albanian first division",
             "banner": "albanian first division"
         },
-        {
+	{
             "label": "albanian super cup",
             "banner": "albanian super cup"
         },
-        {
+	{
             "label": "albanian superliga",
             "banner": "albanian superliga"
         },
-        {
+	{
             "label": "albanian womens national championship",
             "banner": "albanian womens national championship"
         },
-        {
+	{
             "label": "algerian cup (coupe d'algerie)",
             "banner": "algerian cup (coupe d'algerie)"
         },
-        {
+	{
             "label": "algerian ligue 1",
             "banner": "algerian ligue 1"
         },
-        {
+	{
             "label": "algerian ligue 2",
             "banner": "algerian ligue 2"
         },
-        {
+	{
             "label": "algerian super cup",
             "banner": "algerian super cup"
         },
-        {
+	{
             "label": "all-ireland football championship",
             "banner": "all-ireland football championship"
         },
-        {
+	{
             "label": "all-island cup",
             "banner": "all-island cup"
         },
         {
+            "label": "all-island womens cup",
+            "banner": "all-island womens cup"
+        },
+	{
             "label": "angolan girabola",
             "banner": "angolan girabola"
         },
-        {
+	{
             "label": "arab cup u-20",
             "banner": "arab cup u-20"
         },
-        {
+	{
             "label": "arabian gulf cup",
             "banner": "arabian gulf cup"
         },
-        {
+	{
             "label": "argentinean copa de la superliga",
             "banner": "argentinean copa de la superliga"
         },
-        {
+	{
             "label": "argentinean cup (copa argentina)",
             "banner": "argentinean cup (copa argentina)"
         },
-        {
-            "label": "argentinean primera nacional",
-            "banner": "argentinean primera nacional"
-        },
-        {
-            "label": "argentinean super copa",
-            "banner": "argentinean super copa"
+	{
+            "label": "argentinean primera división",
+            "banner": "argentinean primera división"
         },
         {
             "label": "argentinean primera división",
             "banner": "argentinean primera división"
         },
+	{
+            "label": "argentinean prim b nacional",
+            "banner": "argentinean prim b nacional"
+        },
+	{
+            "label": "argentinean super copa",
+            "banner": "argentinean super copa"
+        },
         {
+            "label": "argentinean supercopa",
+            "banner": "argentinean supercopa"
+        },
+	{
+            "label": "argentinean superliga",
+            "banner": "argentinean superliga"
+        },
+	{
             "label": "argentinean torneos de veranoes",
             "banner": "argentinean torneos de veranoes"
         },
-        {
+	{
             "label": "argentinean trofeo de campeones",
             "banner": "argentinean trofeo de campeones"
         },
@@ -160,115 +180,119 @@
             "label": "armenian cup",
             "banner": "armenian cup"
         },
-        {
+	{
             "label": "armenian premier league",
             "banner": "armenian premier league"
         },
-        {
+	{
             "label": "armenian super cup",
             "banner": "armenian super cup"
         },
-        {
+	{
             "label": "arnold clark cup",
             "banner": "arnold clark cup"
         },
         {
+            "label": "asean club championship",
+            "banner": "asean club championship"
+        },
+	{
             "label": "australian a league",
             "banner": "australian a league"
         },
-        {
+	{
             "label": "australian cup",
             "banner": "australian cup"
         },
-        {
+	{
             "label": "australian w-league",
             "banner": "australian w-league"
         },
-        {
+	{
             "label": "austrian 2. liga",
             "banner": "austrian 2. liga"
         },
-        {
+	{
             "label": "austrian bundesliga",
             "banner": "austrian bundesliga"
         },
-        {
+	{
             "label": "austrian cup (öfb cup)",
-            "banner": "austrian cup"
+            "banner": "austrian cup (öfb cup)"
         },
-        {
+	{
             "label": "austrian frauenliga",
             "banner": "austrian frauenliga"
         },
-        {
+	{
             "label": "austrian regionalliga ost",
             "banner": "austrian regionalliga ost"
         },
-        {
+	{
             "label": "austrian womens cup",
             "banner": "austrian womens cup"
         },
-        {
+	{
             "label": "azerbaijan 1st division (birinci dasta)",
-            "banner": "azerbaijan 1.liga"
+            "banner": "azerbaijan 1st division (birinci dasta)"
         },
-        {
+	{
             "label": "azerbaijan cup",
             "banner": "azerbaijan cup"
         },
         {
+            "label": "azerbaijan 1.liga",
+            "banner": "azerbaijan 1.liga"
+        },
+	{
             "label": "azerbaijan premier league",
             "banner": "azerbaijan premier league"
         },
-        {
+	{
             "label": "azerbaijan super cup",
             "banner": "azerbaijan super cup"
         },
-        {
+	{
             "label": "bahrain kings cup",
             "banner": "bahrain kings cup"
         },
-        {
+	{
             "label": "bahrain premiere league",
             "banner": "bahrain premiere league"
         },
-        {
+	{
             "label": "baltic cup",
             "banner": "baltic cup"
         },
-        {
+	{
             "label": "belarus 1st division",
             "banner": "belarus 1st division"
         },
-        {
+	{
             "label": "belarus 2st division",
             "banner": "belarus 2st division"
         },
-        {
+	{
             "label": "belarus cup",
             "banner": "belarus cup"
         },
-        {
+	{
             "label": "belarus premier league",
             "banner": "belarus premier league"
         },
-        {
+	{
             "label": "belarus super cup",
             "banner": "belarus super cup"
         },
-        {
+	{
             "label": "belarus womens cup",
             "banner": "belarus womens cup"
         },
-        {
+	{
             "label": "belarus womens league",
             "banner": "belarus womens league"
         },
-        {
-            "label": "belgian pro league",
-            "banner": "belgian pro league"
-        },
-        {
+	{
             "label": "belgian challenger pro league",
             "banner": "belgian challenger pro league"
         },
@@ -276,291 +300,339 @@
             "label": "belgian cup",
             "banner": "belgian cup"
         },
+	{
+            "label": "belgian jupiler pro league",
+            "banner": "belgian jupiler pro league"
+        },
         {
+            "label": "belgian lotto super league",
+            "banner": "belgian lotto super league"
+        },
+        {
+            "label": "belgian pro league",
+            "banner": "belgian pro league"
+        },
+	{
             "label": "belgian super cup",
             "banner": "belgian super cup"
+        },
+	{
+            "label": "belgian womens cup",
+            "banner": "belgian womens cup"
         },
         {
             "label": "belgian w/super league",
             "banner": "belgian wsuper league"
         },
-        {
-            "label": "belgian womens cup",
-            "banner": "belgian womens cup"
-        },
-        {
+	{
             "label": "bosnia-herzegovina cup",
             "banner": "bosnia-herzegovina cup"
         },
-        {
-           "label": "bosnia-herzegovina super cup",
-            "banner": "bosnia-herzegovina super cup"
-        },
-        {
+	{
             "label": "bosnia-herzegovina premier liga",
             "banner": "bosnia-herzegovina premier liga"
         },
-        {
-            "label": "bosnia-herzegovina fbih 1st league",
-            "banner": "bosnia-herzegovina 1st league"
+	{
+            "label": "bosnia-herzegovina rs 1st league",
+            "banner": "bosnia-herzegovina rs 1st league"
         },
         {
+            "label": "bosnia-hercegovina super cup",
+            "banner": "bosnia-hercegovina super cup"
+        },
+        {
+            "label": "bosnia-hercegovina women's premier league",
+            "banner": "bosnia-hercegovina women's premier league"
+        },
+	{
             "label": "brazilian baiano 1",
             "banner": "brazilian baiano 1"
         },
-        {
+	{
             "label": "brazilian campeonato carioca",
             "banner": "brazilian campeonato carioca"
         },
-        {
+	{
             "label": "brazilian campeonato catarinense",
             "banner": "brazilian campeonato catarinense"
         },
-        {
+	{
             "label": "brazilian campeonato gaúcho",
             "banner": "brazilian campeonato gaúcho"
         },
-        {
+	{
             "label": "brazilian campeonato mineiro",
             "banner": "brazilian campeonato mineiro"
         },
-        {
+	{
             "label": "brazilian campeonato paranaense",
             "banner": "brazilian campeonato paranaense"
         },
-        {
+	{
             "label": "brazilian campeonato paulista",
             "banner": "brazilian campeonato paulista"
         },
-        {
+	{
             "label": "brazilian campeonato pernambucano",
             "banner": "brazilian campeonato pernambucano"
         },
-        {
+	{
             "label": "brazilian copa da primeira liga",
             "banner": "brazilian copa da primeira liga"
         },
-        {
+	{
             "label": "brazilian copa do nordeste",
             "banner": "brazilian copa do nordeste"
         },
-        {
+	{
             "label": "brazilian cup (copo do brasil)",
             "banner": "brazilian cup (copo do brasil)"
         },
-        {
+	{
             "label": "brazilian goiano 1",
             "banner": "brazilian goiano 1"
         },
-        {
+	{
             "label": "brazilian paulista a2",
             "banner": "brazilian paulista a2"
         },
-        {
+	{
             "label": "brazilian paulista série b",
             "banner": "brazilian paulista série b"
         },
-        {
+	{
             "label": "brazilian recopa catarinense",
             "banner": "brazilian recopa catarinense"
         },
-        {
+	{
             "label": "brazilian série a",
             "banner": "brazilian série a"
         },
-        {
+	{
             "label": "brazilian série b",
             "banner": "brazilian série b"
         },
-        {
+	{
             "label": "brazilian série c",
             "banner": "brazilian série c"
         },
         {
+            "label": "bristol street motors trophy",
+            "banner": "bristol street motors trophy"
+        },
+	{
             "label": "bulgarian cup",
             "banner": "bulgarian cup"
         },
-        {
+	{
             "label": "bulgarian first league",
             "banner": "bulgarian first league"
         },
-        {
+	{
             "label": "bulgarian second league",
             "banner": "bulgarian second league"
         },
-        {
+	{
             "label": "bulgarian super cup",
             "banner": "bulgarian super cup"
         },
         {
+            "label": "bulgarian women's league",
+            "banner": "bulgarian women's league"
+        },
+	{
             "label": "caf african champions league",
             "banner": "caf african champions league"
         },
-        {
+	{
             "label": "caf african confederation cup",
             "banner": "caf african confederation cup"
         },
-        {
+	{            
             "label": "caf african cup of nations",
             "banner": "caf african cup of nations"
         },
-        {
+	{
             "label": "caf african nations championship",
             "banner": "caf african nations championship"
         },
-        {
+	{
             "label": "caf african womens champions league",
             "banner": "caf african womens champions league"
         },
-        {
+	{
             "label": "caf african womens championship",
             "banner": "caf african womens championship"
         },
-        {
-            "label": "caf african womens cup of nations",
+	{
+            "label": "caf african women's cup of nations",
             "banner": "caf african womens cup of nations"
         },
-        {
+	{            
             "label": "caf super cup",
             "banner": "caf super cup"
         },
-        {
+	{            
             "label": "caf u-17 championship",
             "banner": "caf u-17 championship"
         },
-        {
+	{            
             "label": "caf u-20 african cup of nations",
             "banner": "caf u-20 african cup of nations"
         },
-        {
+	{            
             "label": "caf u-20 championship",
             "banner": "caf u-20 championship"
         },
-        {
+	{            
             "label": "caf u-23 african cup of nations",
             "banner": "caf u-23 african cup of nations"
         },
-        {
+	{
             "label": "campeones cup",
             "banner": "campeones cup"
         },
-        {
+	{
             "label": "canadian championship",
             "banner": "canadian championship"
         },
-        {
+	{
             "label": "canadian premier league",
             "banner": "canadian premier league"
         },
-        {
+	{
             "label": "cecafa cup 2023",
             "banner": "cecafa cup 2023"
         },
-        {
+	{
             "label": "centenary shield 2023",
             "banner": "centenary shield 2023"
         },
-        {
+	{
             "label": "chile primera división",
             "banner": "chile primera división"
         },
-        {
+	{
             "label": "chilean primera b",
             "banner": "chilean primera b"
         },
-        {
+	{
             "label": "chilean copa",
             "banner": "chilean copa"
         },
-        {
+	{
             "label": "chilean super copa",
             "banner": "chilean super copa"
         },
-        {
+	{
             "label": "china cup",
             "banner": "china cup"
         },
-        {
+	{
             "label": "chinese fa cup",
             "banner": "chinese fa cup"
         },
-        {
+	{
             "label": "chinese league one",
             "banner": "chinese league one"
         },
-        {
+	{
             "label": "chinese super cup",
             "banner": "chinese super cup"
         },
-        {
+	{
             "label": "chinese super league",
             "banner": "chinese super league"
         },
         {
+            "label": "club fifa world cup 2025",
+            "banner": "club fifa world cup 2025"
+        },
+	{
             "label": "colombian cup (copa colombia)",
             "banner": "colombian cup (copa colombia)"
         },
-        {
+	{
             "label": "colombian primera a",
             "banner": "colombian primera a"
         },
-        {
+	{
             "label": "colombian superliga",
             "banner": "colombian superliga"
         },
-        {
+	{
             "label": "colombian torneo aquila",
             "banner": "colombian torneo aquila"
         },
-        {
+	{
             "label": "concacaf caribbean club cup",
             "banner": "concacaf caribbean club cup"
         },
-        {
+	{
             "label": "concacaf caribbean club shield",
             "banner": "concacaf caribbean club shield"
         },
-        {
+	{
             "label": "concacaf central american cup",
             "banner": "concacaf central american cup"
         },
-        {
+	{
             "label": "concacaf champions league",
             "banner": "concacaf champions league"
         },
-        {
+	{
             "label": "concacaf gold cup",
             "banner": "concacaf gold cup"
+        },
+	{
+            "label": "concacaf nations league - finals",
+            "banner": "concacaf nations league finals"
         },
         {
             "label": "concacaf nations league",
             "banner": "concacaf nations league"
         },
         {
+            "label": "concacaf champions cup",
+            "banner": "concacaf champions cup"
+        },
+	{
             "label": "concacaf u-17 championship",
             "banner": "concacaf u-17 championship"
         },
-        {
+	{
             "label": "concacaf u-20 championship",
             "banner": "concacaf u-20 championship"
         },
         {
+            "label": "concacaf womens u-17 championship",
+            "banner": "concacaf womens u-17 championship"
+        },
+        {
+            "label": "concacaf womens u-20 championship",
+            "banner": "concacaf womens u-20 championship"
+        },
+	{
             "label": "conifa world cup",
             "banner": "conifa world cup"
         },
-        {
-            "label": "conmebol copa américa femenina",
-            "banner": "conmebol copa américa femenina "
+	{
+            "label": "conmebol/concacaf copa américa",
+            "banner": "conmebol concacaf copa américa"
         },
-        {
+	{
+            "label": "conmebol copa américa femenina",
+            "banner": "conmebol copa america femenina"
+        },
+	{
             "label": "conmebol copa libertadores",
             "banner": "conmebol copa libertadores"
         },
-        {
+	{
             "label": "conmebol copa libertadores femenina",
             "banner": "conmebol copa libertadores femenina"
         },
-        {
+	{
             "label": "conmebol copa libertadores u-20",
             "banner": "conmebol copa libertadores u-20"
         },
@@ -568,391 +640,443 @@
             "label": "conmebol copa sudamericana",
             "banner": "conmebol copa sudamericana"
         },
-        {
+	{
             "label": "conmebol recopa sudamericana",
             "banner": "conmebol recopa sudamericana"
         },
-        {
+	{
             "label": "conmebol u-20 femenina",
             "banner": "conmebol u-20 femenina"
         },
-        {
+	{
             "label": "copa catalunya",
             "banner": "copa catalunya"
         },
-        {
+	{
             "label": "copa del sol",
             "banner": "copa del sol"
         },
-        {
+	{
             "label": "copa euroamericana",
             "banner": "copa euroamericana"
         },
-        {
+	{            
             "label": "cosafa cup",
             "banner": "cosafa cup"
         },
-        {
+	{            
             "label": "cosafa senior challenge",
             "banner": "cosafa senior challenge"
         },
-        {
+	{
             "label": "coupe de la ligue",
             "banner": "coupe de la ligue"
         },
-        {
+	{
             "label": "croatian cup",
             "banner": "croatian cup"
         },
-        {
+	{
             "label": "croatian druga nl",
             "banner": "croatian druga nl"
         },
-        {
+	{
             "label": "croatian hnl",
             "banner": "croatian hnl"
         },
-        {
+	{
             "label": "croatian prva hnlž",
             "banner": "croatian prva hnlž"
         },
-        {
+	{
             "label": "croatian prva nl",
             "banner": "croatian prva nl"
+        },
+	{
+            "label": "croatian super cup",
+            "banner": "croatian super cup"
         },
         {
             "label": "croatian womens cup",
             "banner": "croatian womens cup"
         },
         {
-           "label": "croatian super cup",
-            "banner": "croatian super cup"
+            "label": "cymru premier",
+            "banner": "welsh premier league"
         },
-        {
+	{
             "label": "cypriot 1. division",
             "banner": "cypriot 1. division"
         },
-        {
+	{
             "label": "cypriot 2. division",
             "banner": "cypriot 2. division"
         },
-        {
+	{
             "label": "cypriot cup",
             "banner": "cypriot cup"
         },
-        {
+	{
             "label": "cypriot womens cup",
-            "banner": "cyprus women's cup"
+            "banner": "cypriot womens cup"
         },
         {
+            "label": "cyprus women's cup",
+            "banner": "cyprus women's cup"
+        },
+	{
             "label": "czech 1. liga women",
             "banner": "czech 1. liga women"
         },
-        {
+	{
             "label": "czech cup",
             "banner": "czech cup"
         },
-        {
+	{
             "label": "czech first league",
             "banner": "czech first league"
         },
-        {
+	{
             "label": "czech fnl (division 2)",
             "banner": "czech fnl (division 2)"
         },
-        {
+	{
             "label": "danish 1. division",
             "banner": "danish 1. division"
         },
         {
+            "label": "danish 2. division",
+            "banner": "danish 2. division"
+        },
+        {
+            "label": "danish a-liga women",
+            "banner": "danish a-liga women"
+        },
+	{
             "label": "danish cup",
             "banner": "danish cup"
         },
-        {
+	{
             "label": "danish kvindeliga",
             "banner": "danish kvindeliga"
         },
-        {
+	{
             "label": "danish superliga",
             "banner": "danish superliga"
         },
-        {
+	{
             "label": "danish womens cup",
             "banner": "danish womens cup"
         },
-        {
-            "label": "dubai globe soccer awards",
-            "banner": "dubai globe soccer awards"
-        },
-        {
+	{
             "label": "dutch cup",
             "banner": "dutch cup"
         },
-        {
+	{
             "label": "dutch eerste divisie (2nd)",
             "banner": "dutch eerste divisie (2nd)"
         },
-        {
+	{
             "label": "dutch eredivisie",
             "banner": "dutch eredivisie"
         },
-        {
-            "label": "dutch supercup",
-            "banner": "dutch supercup"
+	{
+            "label": "dutch super cup",
+            "banner": "dutch super cup"
         },
-        {
+	{
             "label": "dutch tweede divisie (3rd)",
             "banner": "dutch tweede divisie (3rd)"
         },
-        {
+	{
             "label": "dutch vrouwen eredivisie",
             "banner": "dutch vrouwen eredivisie"
         },
-        {
+	{
             "label": "dutch womens cup",
             "banner": "dutch womens cup"
         },
         {
+            "label": "dutch womens league cup",
+            "banner": "dutch womens league cup"
+        },
+	{
             "label": "eaff e-1 football championship",
             "banner": "eaff e-1 football championship"
         },
-        {
+	{
             "label": "ecuadorian cup (copa ecuador)",
             "banner": "ecuadorian cup (copa ecuador)"
         },
-        {
+	{
             "label": "ecuadorian liga pro",
             "banner": "ecuadorian liga pro"
         },
-        {
+	{
             "label": "ecuadorian primera b",
             "banner": "ecuadorian primera b"
         },
-        {
+	{
             "label": "ecuadorian supercopa",
             "banner": "ecuadorian supercopa"
         },
-        {
+	{
             "label": "ecuadorian womens superliga",
             "banner": "ecuadorian womens superliga"
-        },
-        {
-            "label": "egyptian premier league",
-            "banner": "egyptian premier league"
         },
         {
             "label": "egyptian cup",
             "banner": "egyptian cup"
         },
         {
+            "label": "egyptian league cup",
+            "banner": "egyptian league cup"
+        },
+	{
+            "label": "egyptian premier league",
+            "banner": "egyptian premier league"
+        },
+	{
             "label": "egyptian super cup",
             "banner": "egyptian super cup"
         },
-        {
+	{
             "label": "el salvador primera división",
             "banner": "el salvador primera división"
         },
-        {
+	{
             "label": "emirates cup",
             "banner": "emirates cup"
         },
-        {
+	{
             "label": "english championship",
             "banner": "english championship"
         },
         {
+            "label": "english efl play-offs",
+            "banner": "english efl play-offs"
+        },
+	{
             "label": "english fa community shield",
             "banner": "english fa community shield"
         },
-        {
+	{
             "label": "english fa cup",
             "banner": "english fa cup"
         },
-        {
+	{
             "label": "english fa trophy",
             "banner": "english fa trophy"
         },
-        {
+	{
             "label": "english fa vase",
             "banner": "english fa vase"
         },
-        {
+	{
             "label": "english fa youth cup",
             "banner": "english fa youth cup"
         },
-        {
+	{
             "label": "english league cup",
             "banner": "english league cup"
         },
-        {
+	{
             "label": "english league one",
             "banner": "english league one"
         },
-        {
+	{
             "label": "english league trophy",
             "banner": "english league trophy"
         },
-        {
+	{
             "label": "english league two",
             "banner": "english league two"
         },
-        {
+	{
             "label": "english national league",
             "banner": "english national league"
         },
-        {
+	{
             "label": "english national league north",
             "banner": "english national league north"
         },
-        {
+	{
             "label": "english national league south",
             "banner": "english national league south"
         },
-        {
+	{
+            "label": "english premier league 2",
+            "banner": "english premier league 2"
+        },
+	{
             "label": "english premier league",
             "banner": "english premier league"
-        },
-        {
-            "label": "english premier league 2",
-            "banner": "english premier league2"
-        },
-        {
-            "label": "english professional development league",
-            "banner": "english professional development league"
         },
         {
             "label": "english premier league cup",
             "banner": "english premier league cup"
         },
-        {
+	{
+            "label": "english professional development league",
+            "banner": "english professional development league"
+        },
+	{
             "label": "english u-18 premier league",
             "banner": "english u-18 premier league"
         },
         {
             "label": "english womens championship",
-            "banner": "english wchampionship"
+            "banner": "english womens championship"
         },
         {
+            "label": "english womens community shield",
+            "banner": "english womens community shield"
+        },
+	{
             "label": "english womens fa cup",
-            "banner": "english wfa cup"
+            "banner": "english womens fa cup"
         },
         {
+            "label": "english women's premier 15s",
+            "banner": "english women's premier 15s"
+        },
+        {
+            "label": "english womens league cup",
+            "banner": "english womens league cup"
+        },
+        {
+            "label": "english womens national league cup",
+            "banner": "english womens national league cup"
+        },
+	{
             "label": "english w/league cup",
             "banner": "english wleague cup"
         },
-        {
+	{
             "label": "english womens super league",
-            "banner": "english wsuper league"
+            "banner": "english womens super league"
         },
         {
+            "label": "english wsl 2",
+            "banner": "english wsl 2"
+        },
+	{
             "label": "english w/super cup (community shield)",
             "banner": "english wsuper cup (community shield)"
         },
-        {
+	{
             "label": "estonia cup",
             "banner": "estonia cup"
         },
-        {
+	{
             "label": "estonian meistriliiga",
             "banner": "estonian meistriliiga"
         },
-        {
+	{            
             "label": "faroe islands meistaradeildin",
             "banner": "faroe islands meistaradeildin"
         },
         {
+            "label": "fifa/afc wc 2026 qualifiers",
+            "banner": "fifa afc wc 2026 qualifiers"
+        },
+	{            
             "label": "fifa ballon d'or",
             "banner": "fifa ballon d'or"
         },
-        {
+	{            
             "label": "fifa blue stars youth cup",
             "banner": "fifa blue stars youth cup"
         },
-        {
-            "label": "fifa/afc wc 2026 qualifiers",
-            "banner": "fifa afc wc 2026 qualifiers" 
+	{            
+            "label": "fifa/caf wc 2026 qualifiers",
+            "banner": "fifacaf wc 2026 qualifiers"
         },
-        {
+	{            
+            "label": "fifa club world cup",
+            "banner": "fifa club world cup"
+        },
+        {            
             "label": "fifa/concacaf wc 2026 qualifiers",
             "banner": "fifa concacaf wc 2026 qualifiers"
         },
-        {
-            "label": "fifa/uefa wc 2026 qualifiers",
-            "banner": "fifa uefa wc 2026 qualifiers"
+        {            
+            "label": "fifa intercontinental cup",
+            "banner": "fifa intercontinental cup"
         },
-        {
-            "label": "fifa/caf wc 2026 qualifiers",
-            "banner": "fifa caf wc 2026 qualifiers"
-        },
-        {
-            "label": "fifa ofc wc 2026 qualifiers",
+        {            
+            "label": "fifa/ofc wc 2026 qualifiers",
             "banner": "fifa ofc wc 2026 qualifiers"
         },
-        {
-            "label": "fifa club world cup 2025",
-            "banner": "fifa club world cup"
+	{            
+            "label": "fifa u-17 world cup 2025",
+            "banner": "fifa u-17 world cup 2025"
         },
-        {
-            "label": "fifa u-17 world cup",
-            "banner": "fifa u-17 world cup"
-        },
-        {
+	{            
             "label": "fifa u-20 world cup",
             "banner": "fifa u-20 world cup"
         },
-        {
+        {            
+            "label": "fifa u-17 womens world cup 2025",
+            "banner": "fifa u-17 womens world cup 2025"
+        },
+        {            
+            "label": "fifa u-20 womens world cup 2025",
+            "banner": "fifa u-20 womens world cup 2025"
+        },
+        {            
+            "label": "fifa/uefa wc 2026 qualifiers",
+            "banner": "fifa uefa wc 2026 qualifiers"
+        },
+	{            
             "label": "fifa womens world cup 2027",
             "banner": "fifa womens world cup 2027"
         },
-        {
+	{
             "label": "fifa world cup 2026",
             "banner": "fifa world cup 2026"
         },
-        {
+	{
             "label": "fifa/conmebol wc 2026 qualifiers",
             "banner": "fifa conmebol wc 2026 qualifiers"
         },
-        {
+	{
             "label": "finnish veikkausliiga",
             "banner": "finnish veikkausliiga"
         },
-        {
+	{
             "label": "finnish cup",
             "banner": "finnish cup"
         },
-        {
+	{
             "label": "finnish womens cup",
             "banner": "finnish womens cup"
         },
-        {
+	{
             "label": "florida cup series",
             "banner": "florida cup series"
         },
-        {
-            "label": "french coupe gambardella (u-19)",
-            "banner": "french coupe gambardella (u-19)"
-        },
-        {
+	{
             "label": "french coupe gambardella",
             "banner": "french coupe gambardella"
         },
-        {
+	{
             "label": "french cup (coupe de france)",
             "banner": "french cup (coupe de france)"
         },
-        {
+	{
             "label": "french féminine première ligue",
-            "banner": "french arkema premiere ligue"
+            "banner": "french féminine première ligue"
         },
         {
             "label": "french féminine seconde ligue",
             "banner": "french féminine seconde ligue"
         },
-        {
+	{
             "label": "french league cup (coupe de la ligue)",
             "banner": "french league cup (coupe de la ligue)"
         },
-        {
+	{
             "label": "french ligue 1",
             "banner": "french ligue 1"
         },
@@ -960,7 +1084,7 @@
             "label": "french ligue 2",
             "banner": "french ligue 2"
         },
-        {
+	{
             "label": "french national 1",
             "banner": "french national 1"
         },
@@ -968,259 +1092,335 @@
             "label": "french national 2",
             "banner": "french national 2"
         },
-        {
+	{
             "label": "french super cup (trophée des champions)",
             "banner": "french super cup (trophée des champions)"
         },
-        {
+	{
             "label": "french w/coupe de france",
             "banner": "french wcoupe de france"
         },
-        {
+	{
             "label": "french w/super cup (trophée des champions)",
             "banner": "french wsuper cup (trophée des champions)"
         },
         {
+            "label": "friendly club match",
+            "banner": "friendly club match"
+        },
+        {
+            "label": "friendly hybrid match",
+            "banner": "friendly hybrid match"
+        },
+        {
+            "label": "friendly international",
+            "banner": "friendly international"
+        },
+	{
             "label": "georgian cup",
             "banner": "georgian cup"
         },
-        {
+	{
             "label": "georgian erovnuli liga",
             "banner": "georgian erovnuli liga"
         },
-        {
+	{
             "label": "georgian erovnuli liga 2",
             "banner": "georgian erovnuli liga 2"
         },
-        {
+	{
             "label": "georgian super cup",
             "banner": "georgian super cup"
         },
-        {
+	{
             "label": "german 1. bundesliga",
             "banner": "german 1. bundesliga"
         },
-        {
+	{
             "label": "german 2. bundesliga",
             "banner": "german 2. bundesliga"
         },
-        {
+	{
             "label": "german 3. liga",
             "banner": "german 3. liga"
         },
-        {
-            "label": "german u-17 bundesliga",
-            "banner": "german u-17 bundesliga"
-        },
-        {
+	{
             "label": "german cup (dfb-pokal)",
             "banner": "german cup (dfb-pokal)"
+        },
+        {
+            "label": "german cup (dfb-pokal) - u19",
+            "banner": "german cup (dfb-pokal) - u19"
+        },
+	{
+            "label": "german frauen bundesliga",
+            "banner": "german frauen bundesliga"
         },
         {
             "label": "german junior cup",
             "banner": "german junior cup"
         },
-        {
-            "label": "german frauen bundesliga",
-            "banner": "german frauen bundesliga"
-        },
-        {
+	{
             "label": "german regional cup - baden",
             "banner": "german regional cup - baden"
         },
-        {
+	{
             "label": "german regional cup - bayern",
             "banner": "german regional cup - bayern"
         },
         {
+            "label": "german regional cup - berlin",
+            "banner": "german regional cup - berlin"
+        },
+        {
+            "label": "german regional cup - brandenburg",
+            "banner": "german regional cup - brandenburg"
+        },
+        {
+            "label": "german regional cup - bremen",
+            "banner": "german regional cup - bremen"
+        },
+        {
+            "label": "german regional cup - hamburg",
+            "banner": "german regional cup - hamburg"
+        },
+        {
+            "label": "german regional cup - mecklenburg-vorpommern",
+            "banner": "german regional cup - mecklenburg-vorpommern"
+        },
+        {
+            "label": "german regional cup - mittelrhein",
+            "banner": "german regional cup - mittelrhein"
+        },
+        {
+            "label": "german regional cup - niedersachsen",
+            "banner": "german regional cup - niedersachsen"
+        },
+        {
+            "label": "german regional cup - rheinland",
+            "banner": "german regional cup - rheinland"
+        },
+        {
+            "label": "german regional cup - saarland",
+            "banner": "german regional cup - saarland"
+        },
+	{
             "label": "german regional cup - sachsen",
             "banner": "german regional cup - sachsen"
         },
-        {
+	{
             "label": "german regional cup - sachsen-anhalt",
             "banner": "german regional cup - sachsenanhalt"
         },
-        {
+	{
             "label": "german regional cup - schleswig-holstein",
             "banner": "german regional cup - schleswig-holstein"
         },
         {
+            "label": "german regional cup - südbaden",
+            "banner": "german regional cup - südbaden"
+        },
+        {
+            "label": "german regional cup - südwest",
+            "banner": "german regional cup - südwest"
+        },
+	{
             "label": "german regional cup - thüringen",
             "banner": "german regional cup - thüringen"
         },
-        {
+	{
             "label": "german regionalliga: bayern",
             "banner": "german regionalliga bayern"
         },
-        {
+	{
             "label": "german regionalliga: nordost",
             "banner": "german regionalliga nordost"
         },
-        {
+	{
             "label": "german regionalliga: nord",
             "banner": "german regionalliga nord"
         },
-        {
+	{
             "label": "german regionalliga: südwest",
             "banner": "german regionalliga südwest"
         },
-        {
+	{
             "label": "german regionalliga: west",
             "banner": "german regionalliga west"
         },
-        {
-            "label": "german regionalliga: play-offs",
-            "banner": "play offs"
-        },
-        {
+	{
             "label": "german super cup",
             "banner": "german super cup"
         },
         {
+            "label": "german u-17 bundesliga",
+            "banner": "german u-17 bundesliga"
+        },
+	{
             "label": "german w/cup (dfb-pokal frauen)",
             "banner": "german wcup (dfb-pokal frauen)"
         },
-        {
+	{
             "label": "german womens regionalliga",
             "banner": "german womens regionalliga"
         },
-        {
+	{
             "label": "gibraltar premier division",
             "banner": "gibraltar premier division"
         },
         {
+            "label": "globe soccer awards",
+            "banner": "globe soccer awards"
+        },
+	{
             "label": "greek cup",
             "banner": "greek cup"
         },
-        {
-            "label": "greek u-19 super league cup",
-            "banner": "greek u-19 super league"
-        },
-        {
+	{
             "label": "greek super league 1",
             "banner": "greek super league 1"
         },
-        {
+	{
             "label": "greek super league 2",
             "banner": "greek super league 2"
         },
         {
-            "label": "greek womens a division",
-            "banner": "greek womens"
+            "label": "greek u-19 super league",
+            "banner": "greek u-19 super league"
         },
         {
+            "label": "greek womens a division",
+            "banner": "greek womens a division"
+        },
+	{
             "label": "hungarian cup",
             "banner": "hungarian cup"
         },
         {
+            "label": "hungarian fizz liga 1",
+            "banner": "hungarian fizz liga 1"
+        },
+	{
             "label": "hungarian nb 1",
             "banner": "hungarian nb 1"
         },
-        {
+	{
             "label": "hungarian nb 2",
             "banner": "hungarian nb 2"
         },
-        {
+	{
             "label": "hungarian noi nb 1 (w)",
             "banner": "hungarian noi nb 1 (w)"
         },
-        {
+	{
             "label": "hungarian women's cup",
             "banner": "hungarian women's cup"
         },
-        {
+	{
             "label": "icelandic cup",
             "banner": "icelandic cup"
-        },
+	},
         {
             "label": "icelandic super cup",
-            "banner": "iceland super cup"
-        },
-        {
+            "banner": "icelandic super cup"
+	},
+	{
             "label": "icelandic úrvalsdeild",
             "banner": "icelandic úrvalsdeild"
         },
-        {
+	{
             "label": "icelandic womens úrvalsdeild",
             "banner": "icelandic womens úrvalsdeild"
         },
-        {
+	{
             "label": "indian super league",
             "banner": "indian super league"
         },
-        {
+	{
             "label": "indian super cup",
             "banner": "indian super cup"
         },
-        {
+	{
             "label": "iranian hazfi cup",
             "banner": "iranian hazfi cup"
         },
-        {
+	{
             "label": "iranian persian gulf cup",
             "banner": "iranian persian gulf cup"
         },
         {
-            "label": "irish fai president's cup",
-            "banner": "irish fai president's cup"
-        },
-        {
-            "label": "irish fai senior cup",
-            "banner": "irish fai senior cup"
-        },
-        {
-            "label": "irish fai w/senior cup",
-            "banner": "irish fai wsenior cup"
-        },
-        {
-            "label": "irish first division",
-            "banner": "irish first division"
-        },
-        {
-            "label": "northern ireland irish cup",
-            "banner": "irish league cup"
-        },
-        {
-            "label": "irish premier division",
-            "banner": "irish premier division"
+            "label": "irish cup",
+            "banner": "irish cup"
         },
         {
             "label": "irish divisional play offs",
             "banner": "irish divisional play offs"
         },
-        {
-            "label": "irish womens national league",
-            "banner": "irish womens national league"
+	{
+            "label": "irish fai president's cup",
+            "banner": "irish fai president's cup"
         },
-        {
+	{
+            "label": "irish fai cup",
+            "banner": "irish fai cup"
+        },
+	{
+            "label": "irish fai w/senior cup",
+            "banner": "irish fai wsenior cup"
+        },
+	{
+            "label": "irish first division",
+            "banner": "irish first division"
+        },
+	{
+            "label": "irish league cup",
+            "banner": "irish league cup"
+        },
+	{
+            "label": "irish premier division",
+            "banner": "irish premier division"
+        },
+       	{
             "label": "irish womens premier division",
             "banner": "irish womens premier division"
         },
-        {
+	{
             "label": "israeli ligat ha'al (premier)",
             "banner": "israeli ligat ha'al (premier)"
         },
-        {
+	{
             "label": "israeli liga leumit",
             "banner": "israeli liga leumit"
         },
-        {
+	{
             "label": "israeli toto cup",
             "banner": "israeli toto cup"
         },
-        {
+	{
             "label": "israeli cup",
             "banner": "israeli cup"
         },
-        {
+	{
             "label": "italian campionato primavera 1",
             "banner": "italian campionato primavera 1"
         },
         {
+            "label": "italian campionato primavera 2",
+            "banner": "italian campionato primavera 2"
+        },
+	{
             "label": "italian cup (coppa italia)",
             "banner": "italian cup (coppa italia)"
         },
         {
+            "label": "italian primevera 1 women",
+            "banner": "italian primevera 1 women"
+        },
+        {
+            "label": "italian serie a women's cup",
+            "banner": "italian serie a women's cup"
+        },
+	{
             "label": "italian serie a",
             "banner": "italian serie a"
         },
@@ -1228,159 +1428,195 @@
             "label": "italian serie bkt",
             "banner": "italian serie bkt"
         },
-        {
+	{
             "label": "italian serie c",
             "banner": "italian serie c"
+        },
+        {
+            "label": "italian serie d",
+            "banner": "italian serie d"
         },
         {
             "label": "italian super cup",
             "banner": "italian super cup"
         },
+	{
+            "label": "italian super cup (supercoppa)",
+            "banner": "italian super cup (supercoppa)"
+        },
         {
+            "label": "italian supercoppa women",
+            "banner": "italian supercoppa women"
+        },
+	{
             "label": "italian w/cup (coppa italia)",
             "banner": "italian wcup (coppa italia)"
         },
         {
+            "label": "italian womens cup",
+            "banner": "italian womens cup"
+        },
+	{
             "label": "italian w/serie a",
             "banner": "italian wserie a"
         },
-        {
+	{
             "label": "italian w/serie b",
             "banner": "italian wserie b"
         },
-        {
+	{
             "label": "italian w/super cup",
             "banner": "italian wsuper cup"
         },
-        {
+	{
             "label": "ivory coast ligue 1",
             "banner": "ivory coast ligue 1"
         },
-        {
+	{
             "label": "japanese emperors cup",
             "banner": "japanese emperors cup"
         },
-        {
+	{
             "label": "japanese j league cup",
             "banner": "japanese j league cup"
         },
-        {
+	{
             "label": "japanese j1 league",
             "banner": "japanese j1 league"
         },
-        {
+	{
             "label": "japanese j2 league",
             "banner": "japanese j2 league"
         },
         {
+            "label": "japanese j3 league",
+            "banner": "japanese j3 league"
+        },
+	{
             "label": "japanese super cup",
             "banner": "japanese super cup"
         },
-        {
+	{
             "label": "japanese we league",
-            "banner": "japanese we league"   
+            "banner": "japanese we league"
         },
         {
-            "label": "jordanian pro league",
-            "banner": "jordanian pro league"
+            "label": "jordanian cup",
+            "banner": "jordanian cup"
         },
         {
             "label": "jordanian fa shield cup",
             "banner": "jordanian fa shield cup"
+        },
+	{
+            "label": "jordanian pro league",
+            "banner": "jordanian pro league"
+        },
+	{
+            "label": "jordanian super cup",
+            "banner": "jordanian super cup"
         },
         {
             "label": "kazakhstan cup",
             "banner": "kazakhstan cup"
         },
         {
+            "label": "kazakhstan league cup",
+            "banner": "kazakhstan league cup"
+        },
+	{
             "label": "kazakhstan premier league",
             "banner": "kazakhstan premier league"
         },
-        {
+	{
             "label": "kazakhstan super cup",
             "banner": "kazakhstan super cup"
         },
-        {
+	{
             "label": "kirin challenge cup 2023",
             "banner": "kirin challenge cup 2023"
         },
-        {
+	{
             "label": "kosovar cup",
             "banner": "kosovar cup"
         },
-        {
+	{
             "label": "kosovo liga e parë",
             "banner": "kosovo liga e parë"
         },
-        {
+	{
             "label": "kosovo superliga",
             "banner": "kosovo superliga"
         },
-        {
+	{
             "label": "kuwaiti amir cup",
             "banner": "kuwaiti amir cup"
         },
-        {
+	{
             "label": "kuwaiti premier league",
             "banner": "kuwaiti premier league"
         },
-        {
+	{
             "label": "latvian cup",
             "banner": "latvian cup"
         },
-        {
+	{
             "label": "latvian virsliga",
             "banner": "latvian virsliga"
         },
-        {
+	{
             "label": "leagues cup",
             "banner": "leagues cup"
         },
-        {
+	{
             "label": "liga profesional boliviana",
             "banner": "liga profesional boliviana"
         },
-        {
+	{
             "label": "lithuanian a lyga",
             "banner": "lithuanian a lyga"
         },
-        {
+	{
             "label": "lithuanian cup",
             "banner": "lithuanian cup"
         },
-        {
+	{
             "label": "lithuanian super cup",
             "banner": "lithuanian super cup"
         },
-        {
+	{
             "label": "luxembourg cup",
             "banner": "luxembourg cup"
         },
         {
+            "label": "luxembourg national division",
+            "banner": "luxembourg national division"
+        },
+	{
             "label": "major league soccer (mls)",
             "banner": "major league soccer (mls)"
         },
-        {
+	{
             "label": "malaysian challenge cup",
             "banner": "malaysian challenge cup"
         },
-        {
+	{
             "label": "malaysian fa cup",
             "banner": "malaysian fa cup"
         },
-        {
+	{
             "label": "malaysian league cup",
             "banner": "malaysian league cup"
         },
-        {
+	{
             "label": "malaysian super league",
             "banner": "malaysian super league"
         },
-        {
+	{
             "label": "maltese fa trophy",
             "banner": "maltese fa trophy"
         },
-        {
+	{
             "label": "maltese premier league",
             "banner": "maltese premier league"
         },
@@ -1388,779 +1624,911 @@
             "label": "maurice revello tournament",
             "banner": "maurice revello tournament"
         },
-        {
+	{
             "label": "mexican cup (copa mx)",
             "banner": "mexican cup (copa mx)"
         },
-        {
+	{
             "label": "mexican liga de expansión mx",
             "banner": "mexican liga de expansión mx"
         },
-        {
+	{
             "label": "mexican liga mx",
             "banner": "mexican liga mx"
         },
         {
+            "label": "mexican liga mx femenil",
+            "banner": "mexican liga mx femenil"
+        },
+	{
             "label": "mls cup",
             "banner": "mls cup"
         },
         {
+            "label": "mls leagues cup",
+            "banner": "mls leagues cup"
+        },
+	{
             "label": "moldovan cupa",
             "banner": "moldovan cupa"
         },
-        {
+	{
             "label": "moldovan super liga",
             "banner": "moldovan super liga"
         },
-        {
-            "label": "moldovan divizia nationala",
-            "banner": "moldovan super liga"
-        },
-        {
+	{
             "label": "montenegrin cup",
             "banner": "montenegrin cup"
         },
-        {
+	{
             "label": "montenegrin first league",
             "banner": "montenegrin first league"
         },
-        {
+	{
             "label": "moroccan botola 1",
             "banner": "moroccan botola 1"
         },
-        {
+	{
             "label": "moroccan botola 2",
             "banner": "moroccan botola 2"
         },
-        {
+	{
             "label": "moroccan cup (coupe du trône)",
             "banner": "moroccan cup (coupe du trône)"
         },
         {
+            "label": "nba",
+            "banner": "nba"
+        },
+        {
+            "label": "ncaa",
+            "banner": "ncaa"
+        },
+        {
+            "label": "ncaab",
+            "banner": "ncaab"
+        },
+	{
             "label": "national womens soccer league (nwsl)",
             "banner": "national womens soccer league (nwsl)"
         },
-        {
+	{
             "label": "northern ireland championship",
             "banner": "northern ireland championship"
         },
         {
+            "label": "northern ireland irish cup",
+            "banner": "northern ireland irish cup"
+        },
+        {
+            "label": "northern ireland league cup",
+            "banner": "northern ireland league cup"
+        },
+	{
             "label": "northern ireland premiership",
             "banner": "northern ireland premiership"
         },
         {
             "label": "northern ireland w/premiership",
-            "banner": "northern ireland women premiership"
+            "banner": "northern ireland w premiership"
         },
         {
+            "label": "northern ireland youth cup",
+            "banner": "northern ireland youth cup"
+        },
+	{
             "label": "north macedonian cup",
             "banner": "north macedonian cup"
         },
-        {
+	{
             "label": "north macedonian first league",
             "banner": "north macedonian first league"
         },
-        {
+	{
             "label": "north macedonian second league",
             "banner": "north macedonian second league"
         },
-        {
+	{
             "label": "norwegian 1. divisjon",
             "banner": "norwegian 1. divisjon"
         },
-        {
+	{
             "label": "norwegian cup",
             "banner": "norwegian cup"
         },
-        {
+	{
+            "label": "norwegian divisional play offs",
+            "banner": "norwegian divisional play offs"
+        },
+	{
             "label": "norwegian eliteserien",
             "banner": "norwegian eliteserien"
         },
-        {
+	{
             "label": "norwegian toppserien (w)",
             "banner": "norwegian toppserien (w)"
         },
-        {
+	{
             "label": "norwegian women's cup",
             "banner": "norwegian women's cup"
         },
-        {
+	{
             "label": "nwsl challenge cup",
             "banner": "nwsl challenge cup"
         },
-        {
+	{
             "label": "ofc champions league",
             "banner": "ofc champions league"
         },
-        {
+	{
             "label": "ofc nations cup",
-            "banner": "ofc nations cup "
+            "banner": "ofc nations cup"
         },
         {
+            "label": "off-season: atlantic cup",
+            "banner": "off-season atlantic cup"
+        },
+	{
+            "label": "off-season: malta cup",
+            "banner": "off-season malta cup"
+        },
+        {
+            "label": "off-season: tsyd ankara cup",
+            "banner": "off-season tsyd ankara cup"
+        },
+        {
+            "label": "olympic games mens football",
+            "banner": "olympic games mens football"
+        },
+        {
+            "label": "olympic games womens football",
+            "banner": "olympic games womens football"
+        },
+	{
             "label": "oman professional league",
             "banner": "oman professional league"
         },
-        {
+	{
             "label": "pan american games",
             "banner": "pan american games"
         },
-        {
+	{
             "label": "paraguay copa",
             "banner": "paraguay copa"
         },
-        {
+	{
             "label": "paraguay primera división",
             "banner": "paraguay primera división"
         },
-        {
+	{
             "label": "paraguay super copa",
             "banner": "paraguay super copa"
         },
-        {
+	{
             "label": "peru primera división",
             "banner": "peru primera división"
         },
         {
+            "label": "play offs",
+            "banner": "play offs"
+        },
+	{
             "label": "polish 1. liga",
             "banner": "polish 1. liga"
         },
-        {
+	{
             "label": "polish 2. liga",
             "banner": "polish 2. liga"
         },
-        {
+	{
             "label": "polish cup (puchar polski)",
             "banner": "polish cup (puchar polski)"
         },
-        {
+	{
             "label": "polish ekstraklasa",
             "banner": "polish ekstraklasa"
         },
-        {
+	{
             "label": "polish super cup",
             "banner": "polish super cup"
         },
-        {
+	{
             "label": "polish womens cup",
             "banner": "polish womens cup"
         },
-        {
+	{
             "label": "polish womens ekstraliga",
             "banner": "polish womens ekstraliga"
+        },
+        {
+            "label": "portuguese campeonato nacional u-19",
+            "banner": "portuguese campeonato nacional u-19"
+        },
+	{
+            "label": "portuguese campeonato nacional feminino",
+            "banner": "portuguese campeonato nacional feminino"
+        },
+	{
+            "label": "portuguese cup (taça de portugal)",
+            "banner": "portuguese cup (taca de portugal)"
+        },
+	{
+            "label": "portuguese league cup",
+            "banner": "portuguese league cup"
+        },
+	{
+            "label": "portuguese liga 2",
+            "banner": "portuguese liga 2"
+        },
+	{
+            "label": "portuguese liga 3",
+            "banner": "portuguese liga 3"
         },
         {
             "label": "portuguese liga portugal",
             "banner": "portuguese liga portugal"
         },
-        {
-            "label": "portuguese campeonato nacional feminino",
-            "banner": "portuguese campeonato nacional feminino"
-        },
-        {
-            "label": "portuguese cup (taça de portugal)",
-            "banner": "portuguese cup (taca de portugal)"
-        },
-        {
-            "label": "portuguese league cup",
-            "banner": "portuguese league cup"
-        },
-        {
-            "label": "portuguese liga 2",
-            "banner": "portuguese liga 2"
-        },
-        {
-            "label": "portuguese liga 3",
-            "banner": "portuguese liga 3"
-        },
-        {
+	{
             "label": "portuguese liga revelação u-23",
             "banner": "portuguese liga revelacao u-23"
         },
-        {
+       	{
             "label": "portuguese super cup",
             "banner": "portuguese super cup"
         },
-        {
+	{
             "label": "portuguese taça da liga feminina",
             "banner": "portuguese taca da liga feminina"
         },
-        {
+	{
             "label": "portuguese taça revelação u-23",
             "banner": "portuguese taca revelacao u-23"
         },
-        {
+	{
             "label": "portuguese womens cup",
             "banner": "portuguese womens cup"
         },
-        {
+	{
             "label": "portuguese womens super cup",
             "banner": "portuguese womens super cup"
         },
-        {
+	{
             "label": "premier league international cup",
             "banner": "premier league international cup"
         },
         {
-            "label": "qatar emir cup",
-            "banner": "qatar amir cup"
+            "label": "qatar cup",
+            "banner": "qatar cup"
         },
-        {
+	{
+            "label": "qatar emir cup",
+            "banner": "qatar emir cup"
+        },
+	{
             "label": "qatar crown prince cup",
             "banner": "qatar crown prince cup"
         },
-        {
+	{
             "label": "qatar qsl cup",
             "banner": "qatar qsl cup"
         },
-        {
+	{
             "label": "qatar stars league",
             "banner": "qatar stars league"
         },
-        {
+	{
             "label": "romanian cup",
             "banner": "romanian cup"
+        },
+	{
+            "label": "romanian liga 1",
+            "banner": "romanian liga 1"
+        },
+	{
+            "label": "romanian liga 1 feminin",
+            "banner": "romanian liga 1 feminin"
+        },
+	{
+            "label": "romanian liga 2",
+            "banner": "romanian liga 2"
+        },
+	{
+            "label": "romanian liga elitelor u19",
+            "banner": "romanian liga elitelor u19"
+        },
+	{
+            "label": "romanian super cup",
+            "banner": "romanian super cup"
+        },
+	{
+            "label": "romanian superliga",
+            "banner": "romanian superliga"
+        },
+        {
+            "label": "romanian superliga feminina",
+            "banner": "romanian superliga feminina"
         },
         {
             "label": "romanian womens cup",
             "banner": "romanian womens cup"
         },
-        {
-            "label": "romanian liga 1 feminin",
-            "banner": "romanian superliga feminina"
-        },
-        {
-            "label": "romanian liga 2",
-            "banner": "romanian liga 2"
-        },
-        {
-            "label": "romanian liga elitelor u19",
-            "banner": "romanian liga elitelor u19"
-        },
-        {
-            "label": "romanian super cup",
-            "banner": "romanian super cup"
-        },
-        {
-            "label": "romanian superliga",
-            "banner": "romanian superliga"
-        },
-        {
+	{
             "label": "russian cup",
             "banner": "russian cup"
         },
-        {
+	{
             "label": "russian fnl",
             "banner": "russian fnl"
         },
-        {
+	{
             "label": "russian premier league",
             "banner": "russian premier league"
         },
-        {
+	{
             "label": "russian womens supreme division",
-            "banner": "russian womens super league"
+            "banner": "russian womens supreme division"
         },
-        {
+	{
             "label": "russian super cup",
             "banner": "russian super cup"
         },
-        {
+	{
             "label": "russian womens cup",
             "banner": "russian womens cup"
         },
-        {
+	{
             "label": "russian womens super cup",
             "banner": "russian womens super cup"
         },
-        {
+	{
             "label": "russian womens super league",
             "banner": "russian womens super league"
         },
         {
+            "label": "san marino coppa titano",
+            "banner": "san marino coppa titano"
+        },
+        {
+            "label": "san marino league",
+            "banner": "san marino league"
+        },
+	{
             "label": "saudi division 1",
             "banner": "saudi division 1"
         },
-        {
-            "label": "san marino coppa titano",
-            "banner": "coppa titano"
-        },
-        {
+	{
             "label": "saudi king's cup",
             "banner": "saudi king's cup"
         },
         {
+            "label": "saudi premier league",
+            "banner": "saudi premier league"
+        },
+	{
             "label": "saudi professional league",
             "banner": "saudi professional league"
         },
-        {
+	{
             "label": "saudi super cup",
             "banner": "saudi super cup"
         },
         {
-            "label": "scottish fa cup",
-            "banner": "scottish fa cup"
-        },
-        {
-            "label": "scottish fa youth cup",
-            "banner": "scottish fa youth cup"
-        },
-        {
-            "label": "scottish junior cup",
-            "banner": "scottish junior cup"
-        },
-        {
-            "label": "scottish fa youth cup",
-            "banner": "scottish fa youth cup"
+            "label": "scottish challenge cup",
+            "banner": "scottish challenge cup"
         },
         {
             "label": "scottish championship",
             "banner": "scottish championship"
         },
         {
-            "label": "scottish premiership",
-            "banner": "scottish premiership"
-        },
-        {
-            "label": "scottish league 1",
-            "banner": "scottish league 1"
-        },
-        {
-            "label": "scottish league 2",
-            "banner": "scottish league 2"
-        },
-        {
             "label": "scottish cup",
             "banner": "scottish cup"
         },
         {
+            "label": "scottish divisional play offs - championship play-off",
+            "banner": "scottish divisional play offs - championship play-off"
+        },
+        {
+            "label": "scottish divisional play offs - c/ship play-off",
+            "banner": "scottish divisional play offs - championship play-off"
+        },
+        {
+            "label": "scottish divisional play offs - league 1 play-off",
+            "banner": "scottish divisional play offs - league 1 play-off"
+        },
+        {
+            "label": "scottish divisional play offs - spl play-off",
+            "banner": "scottish divisional play offs - spl play-off"
+        },
+	{
+            "label": "scottish fa cup",
+            "banner": "scottish fa cup"
+        },
+       	{
+            "label": "scottish fa youth cup",
+            "banner": "scottish fa youth cup"
+        },
+	{
+            "label": "scottish glasgow cup",
+            "banner": "scottish glasgow cup"
+        },
+        {
+            "label": "scottish junior cup",
+            "banner": "scottish junior cup"
+        },
+	{
+            "label": "scottish premiership",
+            "banner": "scottish premiership"
+        },
+	{
+            "label": "scottish league 1",
+            "banner": "scottish league 1"
+        },
+	{
+            "label": "scottish league 2",
+            "banner": "scottish league 2"
+        },
+	{
             "label": "scottish league cup",
             "banner": "scottish league cup"
         },
-        {   
-            "label": "scottish challenge cup",
-            "banner": "scottish challenge cup"
-        },
-        {
+	{
             "label": "scottish swpl 1",
-            "banner": "swpl 1"
+            "banner": "scottish swpl 1"
+        },
+	{
+            "label": "scottish swpl cup",
+            "banner": "scottish swpl cup"
+        },
+	{
+            "label": "scottish w/fa cup",
+            "banner": "scottish wfa cup"
         },
         {
             "label": "scottish womens cup",
             "banner": "scottish womens cup"
         },
-        {
-            "label": "scottish swpl cup",
-            "banner": "scottish swpl cup"
-        },
-        {
-            "label": "scottish w/fa cup",
-            "banner": "scottish wfa cup"
-        },
-        {
-            "label": "scottish glasgow cup",
-            "banner": "glasgow cup"
-        },
-        {
-            "label": "scottish divisional play offs",
-            "banner": "play offs"
-        },
-        {
+	{
             "label": "serbian 1st league",
             "banner": "serbian 1st league"
         },
-        {
+	{
             "label": "serbian cup",
             "banner": "serbian cup"
         },
         {
+            "label": "serbian srpske lige",
+            "banner": "serbian srpske lige"
+        },
+	{
             "label": "serbian super league",
             "banner": "serbian super league"
         },
-        {
+	{
             "label": "serbian w/super league",
             "banner": "serbian wsuper league"
         },
-        {
+	{
             "label": "serbian womens cup",
-            "banner": "serbian cup"
+            "banner": "serbian womens cup"
         },
-        {
+	{
             "label": "shebelieves cup",
             "banner": "shebelieves cup"
         },
-        {
+	{
             "label": "singapore premier league",
             "banner": "singapore premier league"
         },
-        {
+	{
             "label": "slovak 2. liga",
             "banner": "slovak 2. liga"
         },
         {
+            "label": "slovak 1. liga women",
+            "banner": "slovak 1. liga women"
+        },
+	{
             "label": "slovak cup",
             "banner": "slovak cup"
         },
-        {
+	{
             "label": "slovak super liga",
             "banner": "slovak super liga"
         },
-        {
-            "label": "slovak 1. liga women",
-            "banner": "slovak womens liga"
-        },
-        {
+	{
             "label": "slovenian 1. snl",
             "banner": "slovenian 1. snl"
         },
-        {
+	{
             "label": "slovenian 1. ženska liga",
             "banner": "slovenian 1. ženska liga"
         },
-        {
+	{
             "label": "slovenian 2. snl",
             "banner": "slovenian 2. snl"
         },
-        {
+	{
             "label": "slovenian 3. snl",
             "banner": "slovenian 3. snl"
         },
-        {
+	{
             "label": "slovenian cup",
             "banner": "slovenian cup"
         },
-        {
-           "label": "slovenian womens cup",
-            "banner": "slovenian womens cup"
-        },
-        {
-             "label": "south african 8 cup",
+	{
+            "label": "south african 8 cup",
             "banner": "south african 8 cup"
         },
-        {
-            "label": "south african nedbank cup",
-            "banner": "south african nedbank cup"
-        },
-        {
-            "label": "south african premiership",
-            "banner": "south african psl"
+	{
+            "label": "south african league cup",
+            "banner": "south african league cup"
         },
         {
             "label": "south african national 1st division",
             "banner": "south african national 1st division"
         },
         {
+            "label": "south african nedbank cup",
+            "banner": "south african nedbank cup"
+        },
+	{
+            "label": "south african premiership",
+            "banner": "south african premiership"
+        },
+	{
             "label": "south korean fa cup",
             "banner": "south korean fa cup"
         },
-        {
+	{
             "label": "south korean k-league",
             "banner": "south korean k-league"
+        },
+	{
+            "label": "spanish copa de la reina",
+            "banner": "spanish copa de la reina"
         },
         {
             "label": "spanish cup (copa del rey)",
             "banner": "spanish cup (copa del rey)"
         },
-        {
+	{
             "label": "spanish división de honor",
             "banner": "spanish división de honor"
         },
-        {
+	{
             "label": "spanish la liga (primera)",
             "banner": "spanish la liga (primera)"
         },
-        {
+	{
             "label": "spanish la liga 2",
             "banner": "spanish la liga 2"
         },
-        {
+	{
             "label": "spanish liga f femenino",
             "banner": "spanish liga f femenino"
         },
-        {
+	{
             "label": "spanish primera federación",
             "banner": "spanish primera federación"
         },
         {
-            "label": "spanish primera rfef promotion play-offs",
+            "label": "spanish primera rfef",
             "banner": "spanish primera rfef"
         },
         {
+            "label": "spanish primera rfef promotion play-offs",
+            "banner": "spanish primera rfef promotion play-offs"
+        },
+	{
             "label": "spanish segunda división b",
             "banner": "spanish segunda división b"
         },
-        {
+	{
             "label": "spanish super cup (supercopa)",
             "banner": "spanish super cup (supercopa)"
         },
-        {
+	{
             "label": "spanish tercera división",
             "banner": "spanish tercera división"
         },
-        {
-            "label": "spanish copa de la reina",
-            "banner": "spanish copa de la reina"
+	{
+            "label": "spanish w/copa de la reina",
+            "banner": "spanish wcopa de la reina"
         },
-        {
+	{
             "label": "spanish w/super cup",
             "banner": "spanish wsuper cup"
         },
-        {
+	{
             "label": "sudanese premier league",
             "banner": "sudanese premier league"
         },
-        {
+	{
             "label": "super cup northern ireland",
             "banner": "super cup northern ireland"
         },
-        {
+	{
             "label": "swedish allsvenskan",
             "banner": "swedish allsvenskan"
         },
-        {
+	{
             "label": "swedish cup (svenska cupen)",
             "banner": "swedish cup (svenska cupen)"
         },
-        {
+	{
             "label": "swedish damallsvenskan",
             "banner": "swedish damallsvenskan"
+        },
+	{
+            "label": "swedish divisional play offs",
+            "banner": "swedish divisional play offs"
         },
         {
             "label": "swedish division 1",
             "banner": "swedish division 1"
         },
-        {
+	{
             "label": "swedish superettan",
             "banner": "swedish superettan"
         },
-        {
-            "label": "swedish divisional play off",
-            "banner": "swedish superettan"
-        },
-        {
+	{
             "label": "swedish womens cup",
             "banner": "swedish womens cup"
         },
-        {
+	{
             "label": "swiss challenge league",
             "banner": "swiss challenge league"
         },
-        {
+	{
             "label": "swiss cup (schweizer pokal)",
             "banner": "swiss cup (schweizer pokal)"
         },
-        {
+	{
             "label": "swiss super league",
             "banner": "swiss super league"
         },
-        {
+	{
             "label": "swiss womens cup",
             "banner": "swiss womens cup"
         },
-        {
+	{
             "label": "swiss womens super league",
             "banner": "swiss womens super league"
         },
         {
-            "label": "tajik vysshaya liga",
-            "banner": "tajik premier league"
+            "label": "tajik cup",
+            "banner": "tajik cup"
         },
         {
+            "label": "tajik premier league",
+            "banner": "tajik premier league"
+        },
+	{
             "label": "tajik super cup",
             "banner": "tajik super cup"
         },
         {
+            "label": "tajik vysshaya liga",
+            "banner": "tajik vysshaya liga"
+        },
+        {
+            "label": "thai league 1",
+            "banner": "thai league 1"
+        },
+	{
             "label": "the best fifa football awards",
             "banner": "the best fifa football awards"
+        },
+	{
+            "label": "tipsport winter league",
+            "banner": "tipsport winter league"
+        },
+	{
+            "label": "toulon international youth festival",
+            "banner": "toulon international youth festival"
         },
         {
             "label": "tunisian ligue 1",
             "banner": "tunisian ligue 1"
         },
-        {
+	{
             "label": "tunisian ligue 2",
             "banner": "tunisian ligue 2"
         },
-        {
+	{
             "label": "tunisian cup",
             "banner": "tunisian cup"
         },
-        {
+	{
             "label": "türkiye 1. lig",
             "banner": "türkiye 1. lig"
         },
-        {
+	{
             "label": "türkiye 2. lig",
             "banner": "türkiye 2. lig"
         },
-        {
+	{
             "label": "türkiye 3. lig",
             "banner": "türkiye 3. lig"
         },
-        {
+	{
             "label": "türkiye kadin süper lig",
             "banner": "türkiye kadin süper lig"
         },
-        {
+	{
             "label": "türkiye cup",
             "banner": "türkiye cup"
         },
-        {
+	{
             "label": "türkiye super cup",
             "banner": "türkiye super cup"
         },
-        {
+	{
             "label": "türkiye süper lig",
             "banner": "türkiye süper lig"
         },
-        {
+	{
             "label": "uae president's cup",
             "banner": "uae president's cup"
         },
-        {
+	{
             "label": "uae pro league",
             "banner": "uae pro league"
         },
-        {
+	{
             "label": "uae super cup",
             "banner": "uae super cup"
         },
-        {
+	{
             "label": "uafa arab club champions cup",
             "banner": "uafa arab club champions cup"
         },
-        {
+	{
             "label": "uefa champions league",
             "banner": "uefa champions league"
         },
-        {
+	{
             "label": "uefa conference league",
             "banner": "uefa conference league"
         },
-        {
+	{
             "label": "uefa europa league",
             "banner": "uefa europa league"
-        },
-        {
-            "label": "uefa nations league",
-            "banner": "uefa nations league"
-        },
-        {
-            "label": "uefa regions cup",
-            "banner": "uefa regions cup"
-        },
-        {
-            "label": "uefa super cup",
-            "banner": "uefa super cup"
-        },
-        {
-            "label": "uefa u-17 championship",
-            "banner": "uefa u-17 championship"
-        },
-        {
-            "label": "uefa u-19 championship",
-            "banner": "uefa u-19 championship"
-        },
-        {
-            "label": "uefa u-21 championship",
-            "banner": "uefa u-21 championship"
-        },
-        {
-            "label": "uefa womens champions league",
-            "banner": "uefa womens champions league"
-        },
-        {
-            "label": "uefa womens euro 2025",
-            "banner": "uefa womens euro 2025"
-        },
-        {
-            "label": "uefa womens nations league",
-            "banner": "uefa womens nations league"
-        },
-        {
-            "label": "uefa womens u-17 championship",
-            "banner": "uefa womens u-17 championship"
-        },
-        {
-            "label": "uefa womens u-19 championship",
-            "banner": "uefa womens u-19 championship"
-        },
-        {
-            "label": "uefa womens u-21 championship 2025",
-            "banner": "uefa womens u-21 championship"
-        },
-        {
-            "label": "uefa youth league",
-            "banner": "uefa youth league"
         },
         {
             "label": "uefa friendship cup",
             "banner": "uefa friendship cup"
         },
-        { 
-            "label": "ukrainian cup",
-            "banner": "ukrainian cup"
+	{            
+            "label": "uefa nations league",
+            "banner": "uefa nations league"
+        },
+	{
+            "label": "uefa regions cup",
+            "banner": "uefa regions cup"
+        },
+	{
+            "label": "uefa super cup",
+            "banner": "uefa super cup"
         },
         {
-            "label": "ukrainian druha liga",
-            "banner": "ukrainian druha liga"
+            "label": "uefa u-17 championship 2026 qualifiers",
+            "banner": "uefa u-17 championship 2026 qualifiers"
+        },
+	{
+            "label": "uefa u-17 championships 2026",
+            "banner": "uefa u-17 championships 2026"
+        },
+	{
+            "label": "uefa u-19 championship 2026 qualifiers",
+            "banner": "uefa u-19 championship 2026 qualifiers"
         },
         {
-            "label": "ukrainian persha liga",
-            "banner": "ukrainian persha liga"
-        },
-        {
-            "label": "ukrainian premier league",
-            "banner": "ukrainian premier league"
-        },
-        {
-            "label": "ukrainian super cup",
-            "banner": "ukrainian super cup"
-        },
-        {
-            "label": "ukrainian womens premier league",
-            "banner": "ukrainian womens premier league"
+            "label": "uefa u-19 championships 2026",
+            "banner": "uefa u-19 championships 2026"
         },
         {
             "label": "uefa u-20 elite league",
             "banner": "under 20 elite league"
         },
         {
+            "label": "uefa u-21 championship 2027 qualifiers",
+            "banner": "uefa u-21 championship 2027 qualifiers"
+        },
+	{
+            "label": "uefa u-21 championships 2027 ",
+            "banner": "uefa u-21 championships 2027"
+        },
+	{
+            "label": "uefa womens champions league",
+            "banner": "uefa womens champions league"
+        },
+	{
+            "label": "uefa womens euro 2025",
+            "banner": "uefa womens euro 2025"
+        },
+	{            
+            "label": "uefa womens nations league",
+            "banner": "uefa womens nations league"
+        },
+	{            
+            "label": "uefa womens u-17 championship",
+            "banner": "uefa womens u-17 championship"
+        },
+	{            
+            "label": "uefa womens u-19 championship",
+            "banner": "uefa womens u-19 championship"
+        },
+	{
+            "label": "uefa youth league",
+            "banner": "uefa youth league"
+        },
+	{
+            "label": "ukrainian cup",
+            "banner": "ukrainian cup"
+        },
+	{
+            "label": "ukrainian druha liga",
+            "banner": "ukrainian druha liga"
+        },
+	{
+            "label": "ukrainian persha liga",
+            "banner": "ukrainian persha liga"
+        },
+	{
+            "label": "ukrainian premier league",
+            "banner": "ukrainian premier league"
+        },
+	{
+            "label": "ukrainian super cup",
+            "banner": "ukrainian super cup"
+        },
+	{
+            "label": "ukrainian womens premier league",
+            "banner": "ukrainian womens premier league"
+        },
+	{
+            "label": "under 20 elite league",
+            "banner": "under 20 elite league"
+        },
+	{            
             "label": "under-20 intercontinental cup",
             "banner": "under-20 intercontinental cup"
         },
-        {
+	{
             "label": "uruguay copa",
             "banner": "uruguay copa"
         },
-        {
+	{
             "label": "uruguay primera división",
             "banner": "uruguay primera división"
         },
-        {
+	{
             "label": "uruguay super copa",
             "banner": "uruguay super copa"
         },
-        {
+	{
             "label": "usl championship",
             "banner": "usl championship"
         },
-        {
+	{
             "label": "us open cup",
             "banner": "us open cup"
         },
-        {
+	{
             "label": "uzbekistan super league",
             "banner": "uzbekistan super league"
         },
-        {
+	{
             "label": "waff federation championship",
             "banner": "waff federation championship"
         },
-        {
+	{
             "label": "wafu cup of nations",
             "banner": "wafu cup of nations"
         },
-        {
+	{
             "label": "welsh faw cup",
             "banner": "welsh faw cup"
         },
@@ -2168,29 +2536,29 @@
             "label": "welsh faw womens cup",
             "banner": "welsh faw womens cup"
         },
-        {
+	{
             "label": "welsh league cup",
             "banner": "welsh league cup"
         },
-        {
+	{
             "label": "welsh premier league",
             "banner": "welsh premier league"
         },
-        {
+	{
             "label": "welsh womens premier",
             "banner": "welsh womens premier"
         },
-        {
+	{
             "label": "venezuela primera división",
             "banner": "venezuela primera división"
         },
-        {
+	{
             "label": "zambia super league",
             "banner": "zambia super league"
         },
         {
             "label": "friendly",
-            "banner": "friendly match"
+            "banner": "FIFA"
         },
         {
             "label": "olympic games",
@@ -2202,13 +2570,109 @@
         },
         {
             "label": "ncaab",
-            "banner": "ncaa"
+            "banner": "ncaab"
         },
         {
             "label": "uleb euroleague",
             "banner": "euroleague"
         },
         {
+            "label": "formula 1 grand prix - round 10",
+            "banner": "formula 1 grand prix - round 10"
+        },
+        {
+            "label": "formula 1 grand prix - round 11",
+            "banner": "formula 1 grand prix - round 11"
+        },
+	{
+            "label": "formula 1 grand prix - round 12",
+            "banner": "formula 1 grand prix - round 12"
+        },
+	{
+            "label": "formula 1 grand prix - round 13",
+            "banner": "formula 1 grand prix - round 13"
+        },
+	{
+            "label": "formula 1 grand prix - round 14",
+            "banner": "formula 1 grand prix - round 14"
+        },
+	{
+            "label": "formula 1 grand prix - round 15",
+            "banner": "formula 1 grand prix - round 15"
+        },
+	{
+            "label": "formula 1 grand prix - round 16",
+            "banner": "formula 1 grand prix - round 16"
+        },
+	{
+            "label": "formula 1 grand prix - round 17",
+            "banner": "formula 1 grand prix - round 17"
+        },
+	{
+            "label": "formula 1 grand prix - round 18",
+            "banner": "formula 1 grand prix - round 18"
+        },
+	{
+            "label": "formula 1 grand prix - round 19",
+            "banner": "formula 1 grand prix - round 19"
+        },
+	{
+            "label": "formula 1 grand prix - round 1",
+            "banner": "formula 1 grand prix - round 1"
+        },
+        {
+            "label": "formula 1 grand prix - round 20",
+            "banner": "formula 1 grand prix - round 20"
+        },
+	{
+            "label": "formula 1 grand prix - round 21",
+            "banner": "formula 1 grand prix - round 21"
+        },
+	{
+            "label": "formula 1 grand prix - round 22",
+            "banner": "formula 1 grand prix - round 22"
+        },
+	{
+            "label": "formula 1 grand prix - round 23",
+            "banner": "formula 1 grand prix - round 23"
+        },
+        {
+            "label": "formula 1 grand prix - round 24",
+            "banner": "formula 1 grand prix - round 24"
+        },
+	{
+            "label": "formula 1 grand prix - round 2",
+            "banner": "formula 1 grand prix - round 2"
+        },
+	{
+            "label": "formula 1 grand prix - round 3",
+            "banner": "formula 1 grand prix - round 3"
+        },
+	{
+            "label": "formula 1 grand prix - round 4",
+            "banner": "formula 1 grand prix - round 4"
+        },
+	{
+            "label": "formula 1 grand prix - round 5",
+            "banner": "formula 1 grand prix - round 5"
+        },
+	{
+            "label": "formula 1 grand prix - round 6",
+            "banner": "formula 1 grand prix - round 6"
+        },
+	{
+            "label": "formula 1 grand prix - round 7",
+            "banner": "formula 1 grand prix - round 7"
+        },
+	{
+            "label": "formula 1 grand prix - round 8",
+            "banner": "formula 1 grand prix - round 8"
+        },
+	{
+            "label": "formula 1 grand prix - round 9",
+            "banner": "formula 1 grand prix - round 9"
+        },
+	{
             "label": "formula 1",
             "banner": "f1"
         }

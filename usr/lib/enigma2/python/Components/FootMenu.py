@@ -133,7 +133,7 @@ class FlexibleMenu(GUIComponent):
 			self.pager_left.hide()
 			self.pager_right.hide()
 			self.pager_center.hide()
-		elif reswidth == 2560:
+		elif reswidth >= 2560:
 			self.pagelabel.setFont(gFont("FootIcons", 40))
 			self.pagelabel.setVAlign(eLabel.alignCenter)
 			self.pagelabel.setHAlign(eLabel.alignCenter)
@@ -234,13 +234,13 @@ class FlexibleMenu(GUIComponent):
 	def setL(self,refresh=False):
 		if refresh:
 			self.entries.clear()
-			if reswidth == 2560:
+			if reswidth >= 2560:
 				self.setpage()
 			self.buildEntry()
 			return
 		if len(self.entries) > 0 and len(self.list) > 0:
 			res = [None]
-			if reswidth == 2560:
+			if reswidth >= 2560:
 				try:
 					current = self.entries[self.list[self.current][0]]
 				except IndexError:
@@ -280,18 +280,23 @@ class FlexibleMenu(GUIComponent):
 				x1 = (self.listWidth // 2) - w + 19
 				x2 = (self.listWidth // 2) + (w-16)
 				y = self.panelheight - 10
-				if reswidth == 2560:
+				if reswidth >= 2560:
 					self.pager_center.resize(eSize(x2-x1, 40))
 				else:
 					self.pager_center.resize(eSize(x2-x1, 20))
 				self.pager_center.move(ePoint(x2-x1, y))
 				self.pager_center.move(ePoint((self.listWidth // 2)-w+20, y))
-				self.pager_left.move(ePoint((self.listWidth // 2)-w, y))
-				self.pager_right.move(ePoint((self.listWidth // 2) + (w-16), y))
-				self.pager_left.show()
-				self.pager_right.show()
-				self.pager_center.show()
-				self.pagelabel.show()
+				if reswidth == 1920:
+					self.pager_left.move(ePoint((self.listWidth // 2)-w, y))
+					self.pager_right.move(ePoint((self.listWidth // 2) + (w-16), y))
+					self.pager_left.show()
+					self.pager_right.show()
+					self.pager_center.show()
+					self.pagelabel.show()
+				elif reswidth >= 2560:
+					self.pager_left.hide()
+					self.pager_right.hide()
+					self.pager_center.hide()
 		else:
 			self.pager_left.hide()
 			self.pager_right.hide()
@@ -300,7 +305,7 @@ class FlexibleMenu(GUIComponent):
 
 	def getCurrentPage(self):
 		if len(self.entries) > 0 and len(self.list) >0:
-			if reswidth == 2560:
+			if reswidth >= 2560:
 				try:
 					current = self.entries[self.list[self.current][0]]
 				except IndexError:

@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #wget -q "--no-check-certificate" https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh
-VERSION=3.2
+VERSION=3.3
 PLUGIN_PATH="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
 DB_FILE="$PLUGIN_PATH/db/footonsat.db"
 ASSETS_PATH="$PLUGIN_PATH/assets"
@@ -123,6 +123,7 @@ else
         opkg update
         echo "========================================================================"
         echo " Downloading alsa-utils-aplay ......"
+		opkg install ffmpeg
         opkg install alsa-utils-aplay
         echo "========================================================================"
         echo "========================================================================"
@@ -143,6 +144,7 @@ else
         apt-get update
         echo "========================================================================"
         echo " Downloading alsa-utils-aplay ......"
+		apt-get install ffmpeg -y
         apt-get install alsa-utils-aplay -y
         echo "========================================================================"
         echo "========================================================================"
@@ -159,13 +161,11 @@ else
 
 fi
 
-if grep -q 'alsa-utils-aplay' $STATUS; then
-	echo ""
-else
-	echo "#########################################################"
-	echo "#       alsa-utils-aplay Not found in feed              #"
-	echo "#  Notification sound will not work without alsa aplay  #"
-	echo "#########################################################"
+if ! grep -q 'ffmpeg' "$STATUS" || ! grep -q 'alsa-utils-aplay' "$STATUS"; then
+    echo "#########################################################"
+    echo "#   ffmpeg and/or alsa-utils-aplay Not found in feed    #"
+    echo "#  Notification sound will not work without alsa aplay  #"
+    echo "#########################################################"
 fi
 
 if grep -q $SQLITE3 $STATUS; then

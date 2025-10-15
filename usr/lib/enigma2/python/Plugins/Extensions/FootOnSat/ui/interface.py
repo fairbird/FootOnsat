@@ -1,19 +1,20 @@
 # -*- coding: utf-8 -*-
 import os
+import re
 import sys
 import json
 import math
 import codecs
 import random
+import time
+import shutil
 import traceback
-import re
 import threading
 import difflib
-from PIL import Image
-from unicodedata import normalize
 from time import strftime
 from sqlite3 import connect
 from bs4 import BeautifulSoup
+from unicodedata import normalize
 from difflib import SequenceMatcher
 from datetime import datetime, timedelta
 from enigma import eTimer, gRGB, loadPNG, gPixmapPtr, RT_WRAP, ePoint, RT_HALIGN_CENTER, RT_HALIGN_LEFT, RT_VALIGN_CENTER, eListboxPythonMultiContent, gFont, getDesktop, eConsoleAppContainer
@@ -33,7 +34,16 @@ from Tools.LoadPixmap import LoadPixmap
 from twisted.web.client import getPage, downloadPage
 from twisted.internet.ssl import ClientContextFactory
 from twisted.internet._sslverify import ClientTLSOptions
-from .compat import PY3, compat_urlopen, compat_HTTPError, compat_URLError, compat_Request
+from .compat import PY3, compat_urlopen, compat_HTTPError, compat_URLError, compat_Request, compat_str
+
+# Check for PIL availability first, and import if found
+try:
+    from PIL import Image
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
+    # Log a warning if PIL is not available, as conversion will fail
+    logdata("Logos", "WARNING: PIL/Pillow library not found. Non-PNG logo conversion will fail.")
 
 try:
     from enigma import BT_SCALE, RT_VALIGN_CENTER, RT_HALIGN_LEFT
@@ -55,39 +65,73 @@ DB_PATH = '/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/db/footonsat.db'
 
 ## url for Standings table
 json_urls = {
-    "premierleague": "https://www.fctables.com/england/premier-league/",
-    "championsleague": "https://www.fctables.com/championsleague/",
-    "europaleague": "https://www.fctables.com/europaleague/",
-    "ConferenceLeague": "https://www.fctables.com/europa-conference-league/",
-    "seriea": "https://www.skysports.com/serie-a-table",
-#    "seriea": "https://www.fctables.com/italy/serie-a/",
-    "ligue1": "https://www.fctables.com/france/ligue-1/",
-    "laliga": "https://www.fctables.com/spain/liga-bbva/",
-    "laliga2": "https://www.fctables.com/spain/liga-adelante/",
-    "bundesliga": "https://www.fctables.com/germany/1-bundesliga/",
-    "championship": "https://www.fctables.com/england/championship/",
-    "liganos": "https://www.fctables.com/portugal/liga-zon-sagres/",
-    "superLig": "https://www.fctables.com/turkey/super-lig/",
-    "saudiarabia": "https://www.fctables.com/saudi-arabia/1-division/",
-    "afcchampions": "https://www.fctables.com/afcchampionsleague/",
+	# Champions league
+	"championsleague": "https://www.fctables.com/championsleague/",
+	# Europa league
+	"europaleague": "https://www.fctables.com/europaleague/",
+	# Conference league
+	"ConferenceLeague": "https://www.fctables.com/europa-conference-league/",
+
+	# England league
+	"premierleague": "https://www.fctables.com/england/premier-league/",
+	# champion ship league
+	"championship": "https://www.fctables.com/england/championship/",
+	# Italy league
+	"seriea": "https://www.skysports.com/serie-a-table",
+	#"seriea": "https://www.fctables.com/italy/serie-a/",
+	# France league
+	"ligue1": "https://www.fctables.com/france/ligue-1/",
+	# Spain league 1 + 2
+	"laliga": "https://www.fctables.com/spain/liga-bbva/",
+	"laliga2": "https://www.fctables.com/spain/liga-adelante/",
+	# Germany league
+	"bundesliga": "https://www.fctables.com/germany/1-bundesliga/",
+	# Portugal league
+	"liganos": "https://www.fctables.com/portugal/liga-zon-sagres/",
+	# Belgium league
+	"belgianpro": "https://www.fctables.com/belgium/jupiler-league/",
+	# Turkey league
+	"superLig": "https://www.fctables.com/turkey/super-lig/",
+
+	# Saudi Arabia league
+	"saudiarabia": "https://www.fctables.com/saudi-arabia/1-division/",
+	# Asia Champions league
+	"afcchampions": "https://www.fctables.com/afcchampionsleague/",
 }
 
-# use thess url download missing log of team (Extra code)
+# Use thess url to download missing log of team (Extra code)
 log_urls = {
-    "premierleague": "https://www.worldfootball.net/competition/eng-premier-league/",
-    "championsleague": "https://www.worldfootball.net/competition/champions-league/",
-    "europaleague": "https://www.worldfootball.net/competition/europa-league/",
-    "ConferenceLeague": "https://www.worldfootball.net/competition/conference-league/",
-    "seriea": "https://www.worldfootball.net/competition/ita-serie-a/",
-    "ligue1": "https://www.worldfootball.net/competition/fra-ligue-1/",
-    "laliga": "https://www.worldfootball.net/competition/esp-primera-division/",
-    "bundesliga": "https://www.worldfootball.net/competition/bundesliga/",
-    "laliga2": "https://www.worldfootball.net/competition/esp-segunda-division/",
-    "championship": "https://www.worldfootball.net/competition/eng-championship/",
-    "liganos": "https://www.worldfootball.net/competition/por-primeira-liga/",
-    "superLig": "https://www.worldfootball.net/competition/tur-sueperlig/",
-    "saudiarabia": "https://www.worldfootball.net/competition/ksa-saudi-pro-league/",
-    "afcchampions": "https://www.worldfootball.net/competition/afc-champions-league-elite/",
+	# Champions league
+	"championsleague": "https://www.worldfootball.net/competition/champions-league/",
+	# Europa league
+	"europaleague": "https://www.worldfootball.net/competition/europa-league/",
+	# Conference league
+	"ConferenceLeague": "https://www.worldfootball.net/competition/conference-league/",
+
+	# England league
+	"premierleague": "https://www.worldfootball.net/competition/eng-premier-league/",
+	# champion ship league
+	"championship": "https://www.worldfootball.net/competition/eng-championship/",
+	# Italy league
+	"seriea": "https://www.worldfootball.net/competition/ita-serie-a/",
+	# France league
+	"ligue1": "https://www.worldfootball.net/competition/fra-ligue-1/",
+	# Spain league 1 + 2
+	"laliga": "https://www.worldfootball.net/competition/esp-primera-division/",
+	"laliga2": "https://www.worldfootball.net/competition/esp-segunda-division/",
+	# Germany league
+	"bundesliga": "https://www.worldfootball.net/competition/bundesliga/",
+	# Portugal league
+	"liganos": "https://www.worldfootball.net/competition/por-primeira-liga/",
+	# Belgium league
+	"belgianpro": "https://www.worldfootball.net/competition/bel-pro-league/",
+	# Turkey league
+	"superLig": "https://www.worldfootball.net/competition/tur-sueperlig/",
+
+	# Saudi Arabia league
+	"saudiarabia": "https://www.worldfootball.net/competition/ksa-saudi-pro-league/",
+	# Asia Champions league
+	"afcchampions": "https://www.worldfootball.net/competition/afc-champions-league-elite/",
 }
 
 def logdata(label_name = "", data = None):
@@ -149,7 +193,7 @@ class FootOnSat(Screen):
         Screen.__init__(self, session)
         if reswidth == 1920:
             skin = "assets/skin/FHD/interface.xml"
-        elif reswidth == 2560:
+        elif reswidth >= 2560:
             skin = "assets/skin/UHD/interface.xml"
         else:
             skin = "assets/skin/FHD/interface.xml"
@@ -189,6 +233,8 @@ class FootOnSat(Screen):
         self.canScan = False
         self.channelData = []
         self.matches = []
+        # Set items per page based on resolution (5 for QHD/2560, 4 for others)
+        self.items_per_page = 5 if reswidth >= 2560 else 4
         self.create_table()
         self.callAPI()
 
@@ -203,7 +249,7 @@ class FootOnSat(Screen):
             res = []
             gList = []
             self["list1"].l.setItemHeight(175)
-            if reswidth == 2560:
+            if reswidth >= 2560:
                 self["list1"].l.setFont(0, gFont('Regular', 36))
             else:
                 self["list1"].l.setFont(0, gFont('Regular', 28))
@@ -215,6 +261,46 @@ class FootOnSat(Screen):
                 team2 = self.matches[i][4]
                 team1_score = self.matches[i][5]  # Team1 score
                 team2_score = self.matches[i][6]  # Team2 score
+                match_status = self.matches[i][7]  # Match status (e.g., '70', 'HT', 'FT')
+                
+                # =======================================================
+                # *** NEW LOGIC START: Format the Status/Time ***
+                # =======================================================
+                display_status = str(match_status).strip()
+                
+                # 1. Remove the single quote and plus sign for cleaning purposes
+                clean_status = display_status.replace("'", "").replace("+", "").strip()
+
+                # 2. Map known status abbreviations to full text and check for running time
+                # NOTE: Assuming clean_status is the uppercased status from the scraper (e.g., 'FINISHED', 'HALFTIME', '90')
+                # NOTE: Assuming display_status is the original status (e.g., 'Half Time', '90+', 'FINISHED')
+                if clean_status == 'FINISHED': # <-- NEW: Check for the status returned by the scraper
+                    status_text = "Finished"
+                    display_prefix = "Status: "
+                elif clean_status == 'FT':
+                    status_text = "Full Time"
+                    display_prefix = "Status: "
+                elif clean_status == 'AET':
+                    status_text = "After Extra Time"
+                    display_prefix = "Status: "
+                elif clean_status == 'PEN':
+                    status_text = "Penalties"
+                    display_prefix = "Status: "
+                elif clean_status == 'HALFTIME': # Using the exact clean status 'HALFTIME' from the scraper logic
+                    status_text = "Half Time"
+                    display_prefix = "Live: " # Typically, Half Time is still considered a "Live" state
+                elif clean_status.isdigit() or re.search(r'^\d+[\'+]*\+?\d*$', clean_status):
+                    # Covers minutes like '51', '77', '90+', etc.
+                    status_text = "%s min" % display_status 
+                    display_prefix = "Live: " # Prefix for running matches
+                else:
+                    # Catch-all for "LIVE", "POSTPONED", "CANCELLED", etc.
+                    status_text = display_status
+                    display_prefix = "Live: "
+                # =======================================================
+                # *** NEW LOGIC END ***
+                # =======================================================
+
                 flagTeam1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/{}.png".format(team1))
                 flagTeam2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/{}.png".format(team2))
                 banner = FootOnSat.setCompet(str(compet).lower())
@@ -230,16 +316,22 @@ class FootOnSat(Screen):
                 # Initialize list entry
                 res.append(MultiContentEntryText())
                 # Team 1 flag
-                res.append(MultiContentEntryPixmapAlphaBlend(pos=(420, 69), size=(40, 30), png=loadPNG(flagTeam1)))
+                res.append(MultiContentEntryPixmapAlphaBlend(pos=(420, 70), size=(40, 30), png=loadPNG(flagTeam1)))
                 # Score team 1
-                res.append(MultiContentEntryText(pos=(482, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
-                # Team 2 flag
-                if reswidth == 2560:
-                    res.append(MultiContentEntryPixmapAlphaBlend(pos=(1190, 69), size=(40, 30), png=loadPNG(flagTeam2)))
+                if reswidth >= 2560:
+                    res.append(MultiContentEntryText(pos=(500, 69), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
+                else:
+                    res.append(MultiContentEntryText(pos=(482, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
+                 # Team 2 flag
+                if reswidth >= 2560:
+                    res.append(MultiContentEntryPixmapAlphaBlend(pos=(1450, 70), size=(40, 30), png=loadPNG(flagTeam2)))
                 else:
                     res.append(MultiContentEntryPixmapAlphaBlend(pos=(1142, 69), size=(40, 30), png=loadPNG(flagTeam2)))
                 # Score team 2
-                res.append(MultiContentEntryText(pos=(1092, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
+                if reswidth >= 2560:
+                    res.append(MultiContentEntryText(pos=(1390, 69), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
+                else:
+                    res.append(MultiContentEntryText(pos=(1092, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
                 # Competition banner
                 try:
                     res.append(MultiContentEntryPixmapAlphaTest(pos=(65, 6), size=(320, 163), png=loadPNG(banner), flags=BT_SCALE))
@@ -248,11 +340,28 @@ class FootOnSat(Screen):
                 # Notification icon
                 res.append(MultiContentEntryPixmapAlphaBlend(pos=(-20, 63), size=(70, 50), png=loadPNG(notif)))
                 # Match name
-                res.append(MultiContentEntryText(pos=(500, 66), size=(570, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
-                # Kick-off time
-                res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
+                if reswidth >= 2560:
+                    res.append(MultiContentEntryText(pos=(575, 69), size=(750, 40), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
+                else:
+                    res.append(MultiContentEntryText(pos=(500, 66), size=(570, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
+                # status_text + match_status
+                if team1_score != "" or match_status != "":
+                    # If score or status exists, display the dynamic status/time (e.g., "Live: 70 min" or "Status: FT")
+                    if reswidth >= 2560:
+                    	res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=0xFF0000))
+                    else:
+                    	res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=0xFF0000))
+                else:
+                    # Otherwise, display the scheduled Kick-off time
+                    if reswidth >= 2560:
+                    	res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
+                    else:
+                    	res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
                 # Competition name
-                res.append(MultiContentEntryText(pos=(420, 15), size=(785, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
+                if reswidth >= 2560:
+                    res.append(MultiContentEntryText(pos=(420, 15), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
+                else:
+                    res.append(MultiContentEntryText(pos=(420, 15), size=(785, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
                 gList.append(res)
                 res = []
             self["list1"].setList(gList)
@@ -292,11 +401,10 @@ class FootOnSat(Screen):
     def forward(self):
         if len(self.matches) > 0:
             current_index = self["list1"].getSelectionIndex()
-            items_per_page = 4
-            total_pages = int(math.ceil(float(len(self.matches)) / items_per_page))
-            current_page = int(math.ceil((current_index + 1) / float(items_per_page)))
+            total_pages = int(math.ceil(float(len(self.matches)) / self.items_per_page))
+            current_page = int(math.ceil((current_index + 1) / float(self.items_per_page)))
             if current_page < total_pages:
-                new_index = min(current_page * items_per_page, len(self.matches) - 1)
+                new_index = min(current_page * self.items_per_page, len(self.matches) - 1)
                 self["list1"].instance.moveSelectionTo(new_index)
                 self.updateCounter()
                 self.resetChannelinfo()
@@ -304,13 +412,19 @@ class FootOnSat(Screen):
     def backward(self):
         if len(self.matches) > 0:
             current_index = self["list1"].getSelectionIndex()
-            items_per_page = 4
-            current_page = int(math.ceil((current_index + 1) / float(items_per_page)))
+            current_page = int(math.ceil((current_index + 1) / float(self.items_per_page)))
             if current_page > 1:
-                new_index = max((current_page - 2) * items_per_page, 0)
+                new_index = max((current_page - 2) * self.items_per_page, 0)
                 self["list1"].instance.moveSelectionTo(new_index)
                 self.updateCounter()
                 self.resetChannelinfo()
+
+    def updateCounter(self):
+        if len(self.matches) > 0:
+            current_index = self["list1"].getSelectionIndex()
+            total_pages = int(math.ceil(float(len(self.matches)) / self.items_per_page))
+            current_page = int(math.ceil((current_index) // self.items_per_page)) +1
+            self["counter"].setText("{}/{}".format(current_page, total_pages))
 
     def left(self):
         if self.selectedList == self["list2"]:
@@ -370,33 +484,59 @@ class FootOnSat(Screen):
                 flag1 = self.matches[index][3].decode('utf8')
                 flag2 = self.matches[index][4].decode('utf8')
 
+            # Only allow selection/unselection for future matches
             if datetime.strptime(match_date, "%H:%M - %Y-%m-%d") > datetime.now():
                 if self.checkIfexist(match):
+                    # --- UNSELECT ACTION --- (Match is already in the DB)
                     with connect(DB_PATH) as conn:
                         cur = conn.cursor()
                         cur.execute("DELETE FROM LIVE_NOTIF WHERE MATCH = ?", (match,))
+                    # Re-enable the log line for clarity on unselect
+                    #logdata("FootOnSatNotif", "UNSELECT: Deleted notification for match: %s" % match) 
                 else:
-                    if not self.sameDate(match_date):
-                        with connect(DB_PATH) as conn:
-                            cur = conn.cursor()
-                            first_notif, message = self.setFirstNotifTime(match_date)
-                            cur.execute("INSERT INTO LIVE_NOTIF(MATCH,COMPET,DATE,TEAM1_FLAG,TEAM2_FLAG,FIRST_NOTIF,FIRST_NOTIF_STATUS,LIVE_NOTIF_STATUS,MESSAGE) values (?,?,?,?,?,?,?,?,?)", (
-                                match, compet, match_date, flag1, flag2, first_notif, "Waiting", "Waiting", message,))
-                self.iniMenu()
+                    # --- SELECT ACTION --- (Match is NOT in the DB)
+                    
+                    # NOTE: Removed the 'if not self.sameDate(match_date):' check 
+                    #       to allow multiple matches at the same time.
+                    
+                    with connect(DB_PATH) as conn:
+                        cur = conn.cursor()
+                        first_notif, message = self.setFirstNotifTime(match_date)
+                        
+                        # Use "Waiting" for both status fields as per current schema, 
+                        # relying on FIRST_NOTIF time for sequential updates.
+                        cur.execute("INSERT INTO LIVE_NOTIF(MATCH,COMPET,DATE,TEAM1_FLAG,TEAM2_FLAG,FIRST_NOTIF,FIRST_NOTIF_STATUS,LIVE_NOTIF_STATUS,MESSAGE) values (?,?,?,?,?,?,?,?,?)", (
+                            match, compet, match_date, flag1, flag2, first_notif, "Waiting", "Waiting", message,))
+                        
+                        # Re-enable the log line for clarity on select
+                        #logdata("FootOnSatNotif", "SELECT: Inserted notification for match: %s. Notif time: %s" % (match, first_notif))
+            
+            self.iniMenu()
 
     def setFirstNotifTime(self, dt):
         dt_obj = datetime.strptime(dt, "%H:%M - %Y-%m-%d")
         now = datetime.now()
-        duration = dt_obj - now
-        duration_in_s = duration.total_seconds()
-        minutes = divmod(duration_in_s, 60)[0]
-        if minutes < 30:
-            first_notif = (dt_obj - timedelta(minutes=minutes / 2)).strftime("%H:%M - %Y-%m-%d")
-            message = "Kick-off in {} minutes".format(int(minutes / 2))
-        else:
-            first_notif = (dt_obj - timedelta(minutes=30)).strftime("%H:%M - %Y-%m-%d")
+        # 1. 30-minute reminder
+        notif_30min_time = dt_obj - timedelta(minutes=30)
+        if notif_30min_time > now:
+            first_notif_str = notif_30min_time.strftime("%H:%M - %Y-%m-%d")
             message = "Kick-off in 30 minutes"
-        return [first_notif, message]
+            return [first_notif_str, message]
+        # 2. 15-minute reminder
+        notif_15min_time = dt_obj - timedelta(minutes=15)
+        if notif_15min_time > now:
+            first_notif_str = notif_15min_time.strftime("%H:%M - %Y-%m-%d")
+            message = "Kick-off in 15 minutes"
+            return [first_notif_str, message]
+        # 3. Match Start time reminder
+        if dt_obj > now:
+            first_notif_str = dt_obj.strftime("%H:%M - %Y-%m-%d")
+            message = "Kick-off in 1 minute"
+            return [first_notif_str, message]
+        # 4. Fallback: Match already started or passed (should be immediately deleted by cleanup)
+        first_notif_str = dt_obj.strftime("%H:%M - %Y-%m-%d")
+        message = "Match has started" 
+        return [first_notif_str, message]
 
     def sameDate(self, dt):
         with connect(DB_PATH) as conn:
@@ -434,13 +574,6 @@ class FootOnSat(Screen):
             calc = (datetime.strptime(match_date, '%H:%M - %Y-%m-%d') - timedelta(hours=dif)).strftime('%H:%M - %Y-%m-%d')
         return calc
 
-    def updateCounter(self):
-        if len(self.matches) > 0:
-            index = self['list1'].getSelectionIndex()
-            total_pages = int(math.ceil(float(len(self.matches)) / 4))
-            current_page = int(math.ceil((index) // 4)) +1
-            self["counter"].setText("{}/{}".format(current_page, total_pages))
-
     @classmethod
     def setCompet(cls, compet):
         with open('/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/compet/package.json', 'r') as f:
@@ -461,124 +594,307 @@ class FootOnSat(Screen):
             self.session.openWithCallback(self.exit, MessageBox, _('An Unexpected HTTP Error Occurred During The API Request !!'), MessageBox.TYPE_ERROR, timeout=10)
 
     def fetch_live_results(self):
-        """Fetch and parse live and finished match results from Flashscore.com (mobile)"""
-        url = "https://m.flashscore.com/"
-
+        """
+        Fetch and parse live results from Flashscore.com (mobile) using a resilient 
+        parsing strategy for the br-separated, non-table HTML structure provided.
+        """
+        
+        # NOTE: This code assumes necessary imports (like re, datetime, BeautifulSoup, etc.) are available.
+        url = "https://m.flashscore.com/" 
+        #logdata("FootOnSat-LiveFetch", "Starting fetch: %s" % url)
+        
+        # Using the base URL as confirmed in your HTML sample
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.0.0 Mobile Safari/537.36",
             "Accept-Language": "en-US,en;q=0.9",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9",
         }
-
+        
+        html = None
+        # --- Network Fetch ---
         try:
             request = compat_Request(url, headers=headers)
-            response = compat_urlopen(request, timeout=6)
-            html = response.read()
+            response = compat_urlopen(request, timeout=5)  
+            raw_html_content = response.read()
+            
             if PY3:
-                html = html.decode('utf-8', errors='ignore')
+                html = raw_html_content.decode('utf-8', errors="ignore")
             else:
-                html = str(html)
-            #logdata("fetch_live_results_raw", "Fetched HTML from %s, length: %d" % (url, len(html)))
-        except (compat_HTTPError, compat_URLError) as e:
-            #logdata("fetch_live_results_error", "Failed to fetch %s: %s" % (url, str(e)))
+                html = compat_str(raw_html_content)
+            
+            #logdata("FootOnSat-LiveFetch", "Fetched HTML length: %d" % len(html))
+        except Exception as e:
+            #logdata("FootOnSat-LiveFetch-ERROR", "Failed to fetch %s: %s" % (url, str(e)))
+            return
+        
+        if not html:
             return
 
-        soup = BeautifulSoup(html, "html.parser")
+        # <<< CRITICAL SPEED OPTIMIZATION: Extract only the data block >>>
+        # Look for the block containing match results
+        match_block = re.search(r'<div id="score-data">(.*?)</div><p class="advert-bottom', html, re.DOTALL)
+        
+        if match_block:
+            html_to_parse = match_block.group(1)
+            #logdata("FootOnSat-LiveFetch-OPT", "Parsing small block (length: %d)" % len(html_to_parse))
+        else:
+            html_to_parse = html
+            #logdata("FootOnSat-LiveFetch-OPT", "WARNING: Data block not found, parsing full page (slow fallback).")
+            
+        soup = BeautifulSoup(html_to_parse, "html.parser")
         matches_data = []
-        now = datetime.now()
-
-        for a_tag in soup.find_all("a", class_=lambda x: x is None or "live" in str(x)):
+        
+        # --- Data Extraction (Targeting the <a> tag with score and its siblings) ---
+        # The structure is: <span>Time/Status</span>Team1 - Team2 <a class="fin/sched/live">Score</a><br />
+        for score_link in soup.find_all("a", class_=re.compile(r'(fin|live|sched)')):
             try:
-                score_text = a_tag.get_text(strip=True).encode('ascii', 'ignore').decode('ascii') if not PY3 else a_tag.get_text(strip=True)
-                if not re.match(r'^\d+:\d+$', score_text):
+                # 1. Extract Score and Base Status
+                score_text = score_link.get_text(strip=True)
+                score_class = score_link.get('class', [''])[0] 
+                
+                # Check for scheduled or unplayed scores
+                if score_text == "-:-":
                     continue
-
-                parent_div = a_tag.find_parent("div")
-                if not parent_div:
-                    continue
-
-                team_spans = parent_div.find_all("span", class_="team_name_span")
-                if len(team_spans) == 2:
-                    teams = [t.get_text(strip=True).encode('ascii', 'ignore').decode('ascii') if not PY3 else t.get_text(strip=True) for t in team_spans]
+                
+                # Extract the team string (e.g., "Equatorial Guinea - Liberia")
+                # This text node is a preceding sibling of the score_link <a>
+                team_string = score_link.previous_sibling
+                if team_string and isinstance(team_string, compat_str):
+                    team_string = team_string.strip()
                 else:
-                    previous_text = a_tag.find_previous(text=True)
-                    if not previous_text or " - " not in previous_text:
-                        continue
-                    previous_text = previous_text.encode('ascii', 'ignore').decode('ascii') if not PY3 else previous_text
-                    teams = [t.strip() for t in previous_text.split(" - ")]
-
-                if len(teams) != 2:
+                    # Fallback for complex structure with images/other elements
                     continue
 
-                team1, team2 = teams
-                team1_score, team2_score = score_text.split(":")
-                match_name = "%s vs %s" % (team1, team2)
+                # 2. Extract Status/Time
+                # The status is in a span tag or a text node before the team string.
+                status_span = score_link.find_previous_sibling("span")
+                scraped_status = ""
+                
+                if status_span and status_span.get('class', [''])[0] == 'live':
+                    scraped_status = status_span.get_text(strip=True)
+                elif status_span: 
+                    # Use the text of the span element that contains the scheduled time (for live matches it will be minute)
+                    scraped_status = status_span.get_text(strip=True)
 
+                # 3. Status Normalization (The Fix)
+                match_status = scraped_status.strip().upper() if scraped_status else ''
+                
+                # A. FINISHED matches: Check the link class or known text status
+                if score_class == 'fin' or match_status in ('FT', 'AET', 'PEN'):
+                    match_status = 'FINISHED'
+                # B. HALFTIME matches: Check for HT status
+                elif match_status == 'HALF TIME': # Based on the HTML: <span class="live">Half Time</span>
+                    match_status = 'HALFTIME'
+                # C. LIVE minute matches: Preserve the minute number
+                elif re.match(r'^\d{1,3}[\'+]*\+?\d*$', match_status):
+                    # This preserves minutes like '51', '77', '90+' etc.
+                    pass 
+                # D. Any other non-recognized status, defaults to LIVE if score link is "live"
+                elif score_class == 'live':
+                    match_status = 'LIVE'
+                else:
+                    # For scheduled/unknown types that weren't captured by 'fin' class
+                    continue 
+
+                # 4. Extract Teams and Scores
+                teams = re.split(r'\s*-\s*', team_string)
+                if len(teams) != 2:
+                    # Try to strip out noise before splitting (e.g., the red card images)
+                    team_string_clean = re.sub(r'<img[^>]*>', '', team_string)
+                    teams = re.split(r'\s*-\s*', team_string_clean)
+                    if len(teams) != 2:
+                        #logdata("FootOnSat-Scrape-WARN", "Failed to parse teams from: '%s'" % team_string)
+                        continue
+                        
+                team1, team2 = [t.strip() for t in teams]
+                
+                # Strip score from noise like red card images or extra text near the score
+                score_text_clean = re.sub(r'[^0-9:]', '', score_text)
+                if ":" not in score_text_clean:
+                    continue
+                    
+                team1_score, team2_score = score_text_clean.split(":")
+                match_name = "%s vs %s" % (team1, team2)
+                
                 matches_data.append({
                     "match_name": match_name,
                     "team1_score": team1_score.strip(),
-                    "team2_score": team2_score.strip()
+                    "team2_score": team2_score.strip(),
+                    "team1": team1,  
+                    "team2": team2,  
+                    "match_status": match_status 
                 })
-                #logdata("fetch_live_results_raw", "Scraped match: %s (%s:%s)" % (match_name, team1_score, team2_score))
+                #logdata("FootOnSat-Scrape", "Scraped Live: %s (%s:%s) Status: %s" % (match_name, team1_score, team2_score, match_status))
             except Exception as e:
-                #logdata("fetch_live_results_error", "Error processing match: %s" % str(e))
+                #logdata("FootOnSat-Scrape-ERROR", "Error processing scraped match: %s" % str(e))
                 continue
-
+        
+        # --- Match Assignment Logic ---
         matches_list = [list(match) for match in self.matches]
-
-        def normalize_name(name):
+        
+        now = datetime.now()
+        TIME_OFFSET = timedelta(minutes=3) 
+        now_adjusted = now - TIME_OFFSET
+        #logdata("FootOnSat-Time-Adjust", "Local time adjusted by %s seconds for sync." % TIME_OFFSET.total_seconds())
+        
+        # --- Debugging Name Cleaning Helper (Acronym Focus) ---
+        def _clean_name(name, source=""):
+            # Log the raw input name
+            #logdata("FootOnSatNotif", "DEBUG CLEAN START: Source='%s', Raw Name='%s'" % (source, name))
+            
+            # Normalization and Python 2/3 handling (unchanged for safety)
             if not PY3 and isinstance(name, str):
                 name = name.decode('ascii', 'ignore')
+            
+            try:
+                if PY3:
+                    name = normalize('NFKD', name).encode('ascii', 'ignore').decode('ascii')
+                else:
+                    name = normalize('NFKD', name.decode('utf-8')).encode('ascii', 'ignore')
+            except: 
+                pass 
+                
             name = name.strip().lower()
-            name = normalize('NFKD', name).encode('ascii', 'ignore').decode('ascii') if not PY3 else normalize('NFKD', name)
-            name = name.replace("psg", "paris st germain")
-            name = name.replace(" paris sg", " paris st germain")
-            name = name.replace(" wolfsburg u19", " wolfsburg")
-            name = name.replace(" wolfsburg u-19", " wolfsburg")
-            name = re.sub(r'\b(st\.?|saint)\b', 'st', name)
-            name = re.sub(r'\batl\.?\b', 'atletico', name)
-            name = re.sub(r'\butd\b', 'united', name)
-            name = re.sub(r'\bfc\b', '', name)
-            name = re.sub(r'\bu-?(\d+)\b', '', name)
-            name = re.sub(r'\bw\b', '', name)
+
+            # Handle dotted abbreviations (e.g., U.A.E. -> uae, U.S.A. -> usa)
+            name = re.sub(r'\b([a-z])\.([a-z])(?:\.([a-z]))*\.?\b', lambda m: ''.join(c for c in m.group(0) if c.isalpha()), name)
+            if 'uae' in name:
+            	name = name.replace('uae', 'united arab emirates')
+            # CRITICAL ADDITION: Add the words from the full name that MUST be ignored
+            NOISE_PATTERN = r'\b(reserves?|club|team|squad|sport|athletic|calcio|foot|junior|senior|amateur|ii|b|of|the|and|a|utd|atl|fc|cf|as|ac|republic|federal|states|city|borough|county|national|squadra|selec|internacional)\b'
+            name = re.sub(NOISE_PATTERN, ' ', name, flags=re.IGNORECASE)
+
+            name = re.sub(r'\sw\s*$', ' ', name)
+            name = re.sub(r'\sw\s', ' ', name)
+            
+            # Aggressively remove all non-alphanumeric characters (dots/hyphens are now gone)
             name = re.sub(r'[^a-z0-9]+', ' ', name)
-            return name.strip()
+            
+            # Collapse multiple spaces into a single space
+            name = re.sub(r'\s+', ' ', name) 
+            
+            final_cleaned_name = name.strip()
+            
+            # Log the final cleaned output name
+            #logdata("FootOnSatNotif", "DEBUG CLEAN END: Cleaned Name='%s'" % final_cleaned_name)
+            
+            return final_cleaned_name
+        # -----------------------------------------------------------------------
+        SIMILARITY_THRESHOLD = 0.50  # Change from 0.60 to 0.50
 
         for match in matches_list:
+            match_name_full = match[0]
             try:
+                # Assuming match[1] is the time string "HH:MM - YYYY-MM-DD"
                 match_date = datetime.strptime(match[1], "%H:%M - %Y-%m-%d")
-                #logdata("fetch_live_results_time", "Match: %s, Start: %s, Now: %s, Diff: %.2f minutes" % (match[0], match_date, now, (now - match_date).total_seconds() / 60))
-                if match_date <= now + timedelta(hours=2):
-                    match_name_norm = normalize_name(match[0].strip())  # Clean extra spaces
-                    found = False
-                    for live_match in matches_data:
-                        live_name_norm = normalize_name(live_match["match_name"])
-                        if not PY3:
-                            match_name_norm = match_name_norm.decode('ascii', 'ignore') if isinstance(match_name_norm, str) else match_name_norm
-                            live_name_norm = live_name_norm.decode('ascii', 'ignore') if isinstance(live_name_norm, str) else live_name_norm
-                        similarity = SequenceMatcher(None, match_name_norm, live_name_norm).ratio()
-                        if similarity >= 0.70:
-                            if config.plugins.FootOnSat.livescore.value == "3":
-                                match[5] = str(live_match["team1_score"]).strip()
-                                match[6] = str(live_match["team2_score"]).strip()
-                            else:
-                                match[5] = ""
-                                match[6] = ""
-                            #logdata("fetch_live_results", "Assigned score to %s: %s-%s" % (match[0], match[5], match[6]))
-                            found = True
+            except ValueError:
+                match_date = now_adjusted 
+                
+            # CRITICAL CHECK: Check if match is finished based on scraped data 
+            is_finished = False
+            local_teams_temp = re.split(r'\s+vs\s+|\s+-\s+', match_name_full)
+            
+            if len(local_teams_temp) == 2:
+                local_t1_norm_simple = _clean_name(local_teams_temp[0])
+                local_t2_norm_simple = _clean_name(local_teams_temp[1])
+                
+                for live_match in matches_data:
+                    if live_match["match_status"] == 'FINISHED':
+                        live_t1_norm_simple = _clean_name(live_match["team1"])
+                        live_t2_norm_simple = _clean_name(live_match["team2"])
+                        
+                        # Direct match OR swapped match
+                        if ((local_t1_norm_simple == live_t1_norm_simple and local_t2_norm_simple == live_t2_norm_simple) or
+                            (local_t1_norm_simple == live_t2_norm_simple and local_t2_norm_simple == live_t1_norm_simple)):
+                            is_finished = True
                             break
+                        
+            if match_date <= now_adjusted or is_finished:
+                # Proceed with score matching
+                local_teams = re.split(r'\s+vs\s+|\s+-\s+', match_name_full)
+                if len(local_teams) != 2:
+                    continue
+                    
+                local_t1_norm = _clean_name(local_teams[0])
+                local_t2_norm = _clean_name(local_teams[1])
+                
+                found = False
+                best_similarity = 0.0
+                best_live_match = None
+                
+                for live_match in matches_data:
+                    live_t1_norm = _clean_name(live_match["team1"])
+                    live_t2_norm = _clean_name(live_match["team2"])
+                    
+                    # Calculate similarity for both straight and swapped orders
+                    sim_t1_straight = SequenceMatcher(None, local_t1_norm, live_t1_norm).ratio()
+                    sim_t2_straight = SequenceMatcher(None, local_t2_norm, live_t2_norm).ratio()
+                    avg_sim_straight = (sim_t1_straight + sim_t2_straight) / 2
+                    
+                    sim_t1_swap = SequenceMatcher(None, local_t1_norm, live_t2_norm).ratio()
+                    sim_t2_swap = SequenceMatcher(None, local_t2_norm, live_t1_norm).ratio()
+                    avg_sim_swap = (sim_t1_swap + sim_t2_swap) / 2
+                    
+                    current_similarity = max(avg_sim_straight, avg_sim_swap)
+                        
+                    if current_similarity > best_similarity:
+                        best_similarity = current_similarity
+                        
+                        # Decide which order to use for score assignment
+                        if avg_sim_straight >= avg_sim_swap:
+                            # Use straight order (Team 1 -> live Team 1, Team 2 -> live Team 2)
+                            best_live_match = {
+                                "team1_score": live_match["team1_score"],
+                                "team2_score": live_match["team2_score"],
+                                "match_status": live_match["match_status"]
+                            }
+                        else:
+                            # Use swapped order (Team 1 -> live Team 2, Team 2 -> live Team 1)
+                            best_live_match = {
+                                "team1_score": live_match["team2_score"],
+                                "team2_score": live_match["team1_score"],
+                                "match_status": live_match["match_status"]
+                            }
+
+                if best_similarity >= SIMILARITY_THRESHOLD and best_live_match:
+                    # --- 1. ASSIGNMENT BLOCK (SUCCESS) ---
+                    if config.plugins.FootOnSat.livescore.value == "3":
+                        match[5] = compat_str(best_live_match["team1_score"]).strip()
+                        match[6] = compat_str(best_live_match["team2_score"]).strip()
+                        match[7] = compat_str(best_live_match["match_status"]).strip()  
+                    else:
+                        match[5] = ""
+                        match[6] = ""
+                        match[7] = ""
+                    found = True
+                    # NEW DEBUG LOG FOR SUCCESSFUL ASSIGNMENT (NOTIF OFF)
+                    #logdata("FootOnSat-Notify-SUCCESS", "Assigned Score to %s (Sim: %.3f): %s-%s, Status: %s" % (match_name_full, best_similarity, match[5], match[6], match[7]))
+                    
+                if match_date <= now + timedelta(hours=2): 
+                    # --- 2. RESET BLOCK (NOT FOUND, IN 2-HOUR WINDOW) ---
                     if not found:
                         match[5] = ""
                         match[6] = ""
-                        #logdata("fetch_live_results", "No match found for %s" % match[0])
+                        match[7] = ""
+                        # NEW DEBUG LOG FOR RESET (NOTIF ON)
+                        #logdata("FootOnSat-Notify-RESET", "Reset status for upcoming match %s. Eligible for notification." % match_name_full)
                 else:
-                    match[5] = ""
-                    match[6] = ""
-                    #logdata("fetch_live_results", "Skipped upcoming match %s at %s" % (match[0], match[1]))
-            except Exception as e:
-                #logdata("fetch_live_results_error", "Error processing match %s: %s" % (match[0], str(e)))
-                continue
-
+                    # --- 3. CLEANUP BLOCK (TOO OLD OR FAR FUTURE) ---
+                    if match_date < now_adjusted:
+                        # Match has passed the time/tracking window 
+                        match[5] = ""
+                        match[6] = ""
+                        match[7] = ""  
+                        # NEW DEBUG LOG FOR CLEANUP
+                        #logdata("FootOnSat-Notify-CLEANUP", "Clearing old match data for %s" % match_name_full)
+                    # else: Match is far in the FUTURE, scores remain empty.
+                    
+            else:
+                # Match has not started yet (far in the future)
+                match[5] = ""
+                match[6] = ""
+                match[7] = ""  
+                
         self.matches = matches_list
 
     def getData(self, data):
@@ -597,7 +913,23 @@ class FootOnSat(Screen):
             pass
 
         now = datetime.now()
-        LIVE_DURATION = timedelta(hours=2)  # Consider matches live for 2 hours
+        # 1. UPDATED: Consider matches live for 2 hours
+        try:
+            # Check the configuration value for the "finished" duration
+            if config.plugins.FootOnSat.finished.value == "2": 
+                HOUR = 2
+            else:
+                # Default to 3 hours if option is not '2'
+                HOUR = 5
+        except AttributeError:
+            # Fallback in case the config element is missing or not properly initialized
+            HOUR = 2
+
+        # Define the duration for how long a match is considered 'live' or recent
+        LIVE_DURATION = timedelta(hours=HOUR) 
+        #logdata("FootOnSat-Duration", "Set live duration to %d hours." % HOUR)
+        
+        # ... (rest of the fetching and parsing logic) ...
 
         if self.js['footonsat'] != []:
             for match in self.js['footonsat']:
@@ -614,23 +946,23 @@ class FootOnSat(Screen):
                         is_upcoming = match_date_adjusted > now
                         is_live = now >= match_date_adjusted and now <= match_date_adjusted + LIVE_DURATION
 
-                        team1_score = ""
-                        team2_score = ""
+                        # 2. UPDATED: Initialize scores/status from JSON for all live/past matches
+                        team1_score = str(match.get('score1', "")).strip()
+                        team2_score = str(match.get('score2', "")).strip()
+                        match_status = "" # This will be overwritten by fetch_live_results if needed
 
                         append_match = False
 
                         if is_upcoming:
                             append_match = True
-                            #logdata("getData-debug", f"Upcoming match appended: {match['match']} at {match['time']}")
+                            team1_score = "" # Clear initial scores for upcoming matches
+                            team2_score = ""
                         elif is_live:
                             if config.plugins.FootOnSat.livescore.value in ["2", "3"]:
                                 append_match = True
-                                if config.plugins.FootOnSat.livescore.value == "3":
-                                    team1_score = str(match.get('score1', "")).strip()
-                                    team2_score = str(match.get('score2', "")).strip()
-                                #logdata("getData-debug", f"Live match appended: {match['match']} at {match['time']} (scores: {team1_score}-{team2_score})")
+                            # If config.livescore.value is NOT "3", scores are cleared later if needed, but we keep them here for the upcoming live score fetch.
                         else:
-                            #logdata("getData-debug", f"Skipped past match: {match['match']} at {match['time']}")
+                            # Skip past matches outside the LIVE_DURATION window
                             pass
 
                         if append_match:
@@ -640,7 +972,8 @@ class FootOnSat(Screen):
                                          str(match['flags']['team1']),
                                          str(match['flags']['team2']),
                                          team1_score,
-                                         team2_score])
+                                         team2_score,
+                                         match_status])
                     else:
                         logdata("getData", "Ignored competition: " + str(match['match']) + ", Compet: " + compet)
                 except KeyError:
@@ -649,20 +982,20 @@ class FootOnSat(Screen):
 
             self.matches = list
 
-            # Only fetch live results for live matches if needed
+            # Only fetch live results for live/finished matches if livescore is set to "3"
             if config.plugins.FootOnSat.livescore.value == "3":
                 self.fetch_live_results()
 
             self.onWindowShow()
         else:
             self.session.openWithCallback(self.exit, MessageBox, _('No schedules in this section at this time'), MessageBox.TYPE_ERROR, timeout=10)
-
+        
     def getChannels(self):
         list = []
         res = []
         gList = []
         self["list2"].l.setItemHeight(50)
-        if reswidth == 2560:
+        if reswidth >= 2560:
             self["list2"].l.setFont(0, gFont('Regular', 32))
         else:
             self["list2"].l.setFont(0, gFont('Regular', 30))
@@ -957,6 +1290,8 @@ class FootOnSat(Screen):
                 # This addresses the original error which likely occurred here due to string conversion failure
                 self.session.open(MessageBox, _('Error accessing ignore list!'), MessageBox.TYPE_ERROR, timeout=5)
 
+# Note: All necessary imports and mocks (like DB_PATH, logdata, time, timedelta, connect, config, etc.) are assumed to be present above this class definition.
+
 class FootOnSatNotif:
     def __init__(self):
         self.dialog = None
@@ -971,7 +1306,7 @@ class FootOnsatNotifScreen(Screen):
         Screen.__init__(self, session)
         if reswidth == 1920:
             skin = "assets/skin/FHD/FootOnsatNotif.xml"
-        elif reswidth == 2560:
+        elif reswidth >= 2560:
             skin = "assets/skin/UHD/FootOnsatNotif.xml"
         else:
             skin = "assets/skin/FHD/FootOnsatNotif.xml"
@@ -991,42 +1326,18 @@ class FootOnsatNotifScreen(Screen):
         self.FootOnsatTimer.start(15000)
         self.onhideTimer = eTimer()
         try:
-            self.onhideTimer.timeout.get().append(self.hideNotif)
+            # CRITICAL CHANGE: Handler now points to the queue processor
+            self.onhideTimer.timeout.get().append(self._display_next_in_queue)
         except:
-            self.onhideTimer_conn = self.onhideTimer.timeout.connect(self.hideNotif)
+            self.onhideTimer_conn = self.onhideTimer.timeout.connect(self._display_next_in_queue)
+            
+        # --- ADDED STATE FOR SEQUENTIAL DISPLAY AND BUG FIX ---
+        self.matches_queue = []
+        self.is_displaying = False
+        self.is_checking = False # CRITICAL Re-entry Lock for checkforNotif
 
-    def checkforNotif(self):
-        if fileExists(DB_PATH):
-            self.deloldRecords()
-            with connect(DB_PATH) as conn:
-                cur = conn.cursor()
-                rows = cur.execute("select * from LIVE_NOTIF")
-                rows = rows.fetchall()
-                now = datetime.strptime(datetime.now().strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M")
-                if len(rows) > 0:
-                    for row in rows:
-                        first_notif = datetime.strptime(row[5], "%H:%M - %Y-%m-%d")
-                        live_notif = datetime.strptime(row[2], "%H:%M - %Y-%m-%d")
-                        if first_notif == now and row[6] == 'Waiting':
-                            cur.execute("UPDATE LIVE_NOTIF set FIRST_NOTIF_STATUS = ?  WHERE FIRST_NOTIF = ? and MATCH = ?", ("Done", row[5], row[0],))
-                            self.notify(row[0].strip(), row[1], row[3], row[4], row[8])
-                        if live_notif == now and row[7] == 'Waiting':
-                            cur.execute("DELETE FROM LIVE_NOTIF WHERE DATE = ? and MATCH = ?", (row[2], row[0],))
-                            self.notify(row[0].strip(), row[1], row[3], row[4])
-
-    def deloldRecords(self):
-        with connect(DB_PATH) as conn:
-            cur = conn.cursor()
-            rows = cur.execute("select DATE from LIVE_NOTIF")
-            rows = rows.fetchall()
-            today = datetime.strptime(datetime.now().strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M")
-            if len(rows) > 0:
-                for row in rows:
-                    record_date = datetime.strptime(row[0], "%H:%M - %Y-%m-%d")
-                    if today > record_date:
-                        cur.execute("DELETE FROM LIVE_NOTIF WHERE DATE = ?", (row[0],))
-
-    def notify(self, match, compet, team1, team2, message=None):
+    def _update_display_only(self, match, compet, team1, team2, message=None):
+        """Helper to update the screen elements only."""
         if self.instance:
             if FootOnSatNotifDialog.dialog is not None:
                 self['match'].setText(_(str(match)))
@@ -1046,12 +1357,205 @@ class FootOnsatNotifScreen(Screen):
                     flag2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/default.png")
                 self['flag1'].instance.setPixmapFromFile(flag1)
                 self['flag2'].instance.setPixmapFromFile(flag2)
-                self.container.execute('aplay /usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/sound/notif1.wav')
                 FootOnSatNotifDialog.dialog.show()
-                self.onhideTimer.start(8000)
+
+    def _display_next_in_queue(self):
+        """Pulls the next match from the queue, displays it, and schedules the next display or hides the dialog."""
+        
+        self.onhideTimer.stop() 
+        
+        if not self.matches_queue:
+            # Queue is empty: End of sequence, hide the dialog.
+            self.hideNotif() 
+            return
+
+        # Get the next match to display
+        match_data = self.matches_queue.pop(0)
+        
+        # Display the current match info 
+        self._update_display_only(
+            match_data['match'], 
+            match_data['compet'], 
+            match_data['team1'], 
+            match_data['team2'], 
+            match_data['message']
+        )
+        
+        # Schedule the next display or hide 
+        if self.matches_queue:
+            # CRITICAL CHANGE: 5-second delay between matches (5000ms)
+            self.onhideTimer.start(5000) 
+        else:
+            # 6 seconds before final hide (original time)
+            self.onhideTimer.start(6000) 
+            
+    def _start_sequential_display(self):
+        """Starts the sequential display process if not already running."""
+        if self.is_displaying:
+            return
+            
+        self.is_displaying = True
+        # Play sound once per batch (assuming first time notify is called is start of batch)
+        try:
+        	if os.path.exists("/usr/bin/aplay"):
+        		os.system('aplay /usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/sound/notif1.wav &')
+        	else:
+        		os.system('ffmpeg -hide_banner -loglevel quiet -i "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/sound/notif1.wav" -filter:a "volume=1.0" -f alsa default &')
+        except Exception as e:
+        	logdata("FootOnSatNotif", "Sound play error: %s" % e)
+        
+        # Start the sequential timer to immediately process the first item
+        self.onhideTimer.start(10)
+
+    def checkforNotif(self):
+        
+        # --- CRITICAL FIX: Re-entry Lock ---
+        if self.is_checking:
+            return
+        self.is_checking = True
+
+        try:
+            if fileExists(DB_PATH):
+                self.deloldRecords()
+                with connect(DB_PATH) as conn:
+                    cur = conn.cursor()
+                    rows = cur.execute("select * from LIVE_NOTIF")
+                    rows = rows.fetchall()
+                    now = datetime.strptime(datetime.now().strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M")
+                    
+                    # Get the user's notification choice ONCE per timer tick
+                    user_choice = config.plugins.FootOnSat.notify.value
+                    
+                    if len(rows) > 0:
+                        for row in rows:
+                            match_name = row[0]
+                            first_notif_str = row[5]
+                            first_notif_time = datetime.strptime(first_notif_str, "%H:%M - %Y-%m-%d")
+                            match_time_obj = datetime.strptime(row[2], "%H:%M - %Y-%m-%d")
+
+                            # --- Check if the current scheduled reminder time is NOW ---
+                            if now == first_notif_time:
+                                
+                                time_diff_minutes = int((match_time_obj - first_notif_time).total_seconds() / 60)
+                                
+                                if time_diff_minutes == 30:
+                                    # --- Stage 1: 30 Minute Reminder ---
+                                    
+                                    # 1a. Trigger Notification if option includes 30 min (1, 4, 6, 7)
+                                    if user_choice in ("1", "4", "6", "7"):
+                                        self.notify(match_name.strip(), row[1], row[3], row[4], row[8])
+                                    
+                                    # 1b. Determine Next Notification Time & Message
+                                    if user_choice in ("1", "3", "5", "7"):
+                                        # Next notification should be 15 min
+                                        message_next = "Kick-off in 15 minutes"
+                                        notif_next_time = (match_time_obj - timedelta(minutes=15)).strftime("%H:%M - %Y-%m-%d")
+                                    elif user_choice in ("2", "6"):
+                                        # Next notification should be start time
+                                        message_next = "Kick-off is NOW"
+                                        notif_next_time = match_time_obj.strftime("%H:%M - %Y-%m-%d")
+                                    else:
+                                        # No more notifications required for this choice (e.g., choice 4: 30 min only)
+                                        message_next = "Notifications Done"
+                                        # Set next time to 1 minute after match start for guaranteed cleanup
+                                        notif_next_time = (match_time_obj + timedelta(minutes=1)).strftime("%H:%M - %Y-%m-%d")
+                                    
+                                    # 1c. Update Database for next stage
+                                    cur.execute("UPDATE LIVE_NOTIF set FIRST_NOTIF = ?, MESSAGE = ? WHERE MATCH = ?", (notif_next_time, message_next, match_name,))
+                                    #logdata("FootOnSatNotif", "TRIGGER: 30-min Notif for %s. Next: %s" % (match_name, message_next))
+                                    continue
+
+                                elif time_diff_minutes == 15:
+                                    # --- Stage 2: 15 Minute Reminder ---
+                                    
+                                    # 2a. Trigger Notification if option includes 15 min (1, 3, 5, 7)
+                                    if user_choice in ("1", "3", "5", "7"):
+                                        self.notify(match_name.strip(), row[1], row[3], row[4], row[8])
+                                    
+                                    # 2b. Determine Next Notification Time & Message
+                                    if user_choice in ("1", "2", "5", "6"):
+                                        # Next notification should be start time
+                                        message_next = "Kick-off is NOW"
+                                        notif_next_time = match_time_obj.strftime("%H:%M - %Y-%m-%d")
+                                    else:
+                                        # No more notifications required for this choice (e.g., choice 3, 7)
+                                        message_next = "Notifications Done"
+                                        # Set next time to 1 minute after match start for guaranteed cleanup
+                                        notif_next_time = (match_time_obj + timedelta(minutes=1)).strftime("%H:%M - %Y-%m-%d")
+                                        
+                                    # 2c. Update Database for next stage
+                                    cur.execute("UPDATE LIVE_NOTIF set FIRST_NOTIF = ?, MESSAGE = ? WHERE MATCH = ?", (notif_next_time, message_next, match_name,))
+                                    #logdata("FootOnSatNotif", "TRIGGER: 15-min Notif for %s. Next: %s" % (match_name, message_next))
+                                    continue
+
+                                elif time_diff_minutes <= 1:
+                                    # --- Stage 3: Match Start Notification ---
+                                    
+                                    # 3a. Trigger Notification if option includes Start (1, 2, 5, 6)
+                                    if user_choice in ("1", "2", "5", "6"):
+                                        # Trigger the start notification (no message)
+                                        self.notify(match_name.strip(), row[1], row[3], row[4])
+                                        #logdata("FootOnSatNotif", "TRIGGER: Match Start Notif and DB delete for match: %s" % match_name)
+                                    else:
+                                        # Log deletion without triggering final notification
+                                        #logdata("FootOnSatNotif", "CLEANUP: Deleting record after final stage for match: %s (No Start Notif)" % match_name)
+                                        pass
+                                        
+                                    # 3b. Delete the record regardless of the notification choice
+                                    cur.execute("DELETE FROM LIVE_NOTIF WHERE MATCH = ?", (match_name,))
+                                    continue
+                    conn.commit()
+
+        except Exception as e:
+            logdata("FootOnSatNotif", "ERROR in checkforNotif: %s" % str(e))
+        
+        finally:
+            self.is_checking = False # Reset the lock ensures it can run again later
+
+    def deloldRecords(self):
+        with connect(DB_PATH) as conn:
+            cur = conn.cursor()
+            # Select all columns to get the match name (row[0]) and date (row[2]) for logging
+            rows = cur.execute("select * from LIVE_NOTIF")
+            rows = rows.fetchall()
+            # Note: today is only checked for Date comparison, not time.
+            today = datetime.strptime(datetime.now().strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M") 
+            if len(rows) > 0:
+                for row in rows:
+                    # row[2] is the DATE field
+                    record_date = datetime.strptime(row[2], "%H:%M - %Y-%m-%d")
+                    cleanup_time = record_date + timedelta(minutes=1) # Cleanup 1 minute after match time
+                    
+                    if today > cleanup_time:
+                         cur.execute("DELETE FROM LIVE_NOTIF WHERE DATE = ?", (row[2],))
+            conn.commit()
+
+    def notify(self, match, compet, team1, team2, message=None):
+        """
+        [USER REQUESTED CHANGE] Now queues the notification and starts a sequential display timer.
+        It respects the single-call nature of checkforNotif's loop but delivers the output sequentially.
+        """
+        if self.instance and FootOnSatNotifDialog.dialog is not None:
+            # 1. Package the match details
+            match_data = {
+                'match': match.strip(), 
+                'compet': compet, 
+                'team1': team1, 
+                'team2': team2, 
+                'message': message,
+            }
+            
+            # 2. Add to queue
+            self.matches_queue.append(match_data)
+
+            # 3. Start the sequential display process if it's not already running
+            self._start_sequential_display()
 
     def hideNotif(self):
+        """Standard hide function used by the queue processor."""
+        self.is_displaying = False
         FootOnSatNotifDialog.dialog.hide()
+
 
 
 class StandingsScreen(Screen):
@@ -1061,7 +1565,7 @@ class StandingsScreen(Screen):
         #logdata("StandingsScreen_init", "Initializing StandingsScreen for league: %s, url: %s" % (league, url))
         if reswidth == 1920:
             skin = "assets/skin/FHD/standings.xml"
-        elif reswidth == 2560:
+        elif reswidth >= 2560:
             skin = "assets/skin/UHD/standings.xml"
         else:
             skin = "assets/skin/FHD/standings.xml"
@@ -1088,44 +1592,60 @@ class StandingsScreen(Screen):
     def fetch_standings(self):
         #logdata("fetch_standings", "Fetching standings for league: %s" % self.league)
         url = self.url
+        # Using the aggressive headers provided by the user, but REMOVING Accept-Encoding 
+        # to ensure we get uncompressed data for easier debugging and parsing.
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            # "Accept-Encoding": "gzip, deflate, br", <-- Removed this line
+            "Connection": "keep-alive",
+            "Referer": "https://www.google.com/", 
+            "Upgrade-Insecure-Requests": "1",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "cross-site",
+            "Cache-Control": "max-age=0",
+            "Cookie": "fcfc_cookie=1; time_zone=Europe/London;", 
         }
-        #logdata("fetch_standings", "Trying URL: %s" % url)
-        request = compat_Request(url, headers=headers)
+        html = None
+        
+        # Use compat_Request and compat_urlopen (replacing requests.get)
         try:
+            request = compat_Request(url, headers=headers)
             response = compat_urlopen(request, timeout=20)
-            logdata("fetch_standings", "HTTP response status: %s" % response.getcode())
-            html = response.read()
+            
+            raw_html_content = response.read()
+            
             if PY3:
-                html = html.decode('utf-8', errors="ignore")
+                html = raw_html_content.decode('utf-8', errors="ignore")
             else:
-                html = str(html)
+                html = str(raw_html_content) 
+
             logdata("fetch_standings", "HTML fetched, length: %d" % len(html))
             # Save HTML for manual inspection
-            with open("/tmp/standings_%s.html" % self.league, "w") as f:
-                f.write(html)
-            logdata("fetch_standings", "HTML saved to /tmp/standings_%s.html for inspection" % self.league)
+            # with open("/tmp/standings_%s.html" % self.league, "w") as f:
+            #     f.write(html)
+            # logdata("fetch_standings", "HTML saved to /tmp/standings_%s.html for inspection" % self.league)
+
             soup = BeautifulSoup(html, "html.parser")
             standings = []
             tables = []
+
             if self.league == "seriea":
-                logdata("fetch_standings", "Processing Serie A standings from Sky Sports")
-                # Find the standings table (likely <table> with headers like Position, Team, etc.)
+                #logdata("fetch_standings", "Processing Serie A standings from Sky Sports")
                 table = soup.find("table")
                 if not table:
-                    logdata("fetch_standings", "No table found for Serie A")
+                    #logdata("fetch_standings", "No table found for Serie A")
                     self.standings_data = []
                     self.display_standings()
                     return
                 rows = table.find_all("tr")[1:]  # Skip header row
-                logdata("fetch_standings", "Found %d rows for Serie A" % len(rows))
+                #logdata("fetch_standings", "Found %d rows for Serie A" % len(rows))
                 for row_idx, row in enumerate(rows):
                     cells = row.find_all("td")
-                    if len(cells) < 9:  # Expect at least 9 columns: Position, Team, Played, Won, Drawn, Lost, GF, GA, GD, Points
-                        logdata("fetch_standings", "Skipping row %d with insufficient columns: %d" % (row_idx, len(cells)))
+                    if len(cells) < 9:
+                        #logdata("fetch_standings", "Skipping row %d with insufficient columns: %d" % (row_idx, len(cells)))
                         continue
                     position = cells[0].get_text(strip=True) if cells[0].get_text(strip=True).isdigit() else "0"
                     team = cells[1].get_text(strip=True)
@@ -1135,22 +1655,28 @@ class StandingsScreen(Screen):
                     losses = cells[5].get_text(strip=True) if cells[5].get_text(strip=True).isdigit() else "0"
                     goals_scored = cells[6].get_text(strip=True) if cells[6].get_text(strip=True).isdigit() else "0"
                     goals_conceded = cells[7].get_text(strip=True) if cells[7].get_text(strip=True).isdigit() else "0"
+
                     goal_diff_text = cells[8].get_text(strip=True) if len(cells) > 8 else "0"
-                    if goal_diff_text.lstrip('-+').isdigit():
+                    # Serie A: Skysports may include + and - in table, preserve them
+                    if goal_diff_text.startswith('+') or goal_diff_text.startswith('-'):
+                        goal_diff = goal_diff_text
+                    elif goal_diff_text.lstrip('-+').isdigit():
                         goal_diff_value = int(goal_diff_text.lstrip('-+'))
                         goal_diff = "+" + str(goal_diff_value) if goal_diff_value > 0 else str(goal_diff_value)
                     else:
                         goal_diff = "0"
+                    #logdata("fetch_standings_goal_diff", "SerieA Row %d: raw='%s', parsed='%s'" % (row_idx, goal_diff_text, goal_diff))
+
                     points = cells[9].get_text(strip=True) if len(cells) > 9 and cells[9].get_text(strip=True).isdigit() else "0"
                     logo_url = ""
                     img = cells[1].find("img")
                     if img and img.get("src"):
                         logo_url = img.get("src").split("?")[0]
                     if not team:
-                        logdata("fetch_standings", "Skipping row %d with empty team name" % row_idx)
+                        #logdata("fetch_standings", "Skipping row %d with empty team name" % row_idx)
                         continue
-                    logdata("fetch_standings_row", "Serie A Row %d Extracted: team=%s, position=%s, played=%s, points=%s, wins=%s, draws=%s, losses=%s, goals_scored=%s, goals_conceded=%s, goal_diff=%s, logo_url=%s" % (
-                        row_idx, team, position, played, points, wins, draws, losses, goals_scored, goals_conceded, goal_diff, logo_url))
+                    #logdata("fetch_standings_row", "Serie A Row %d Extracted: team=%s, position=%s, played=%s, points=%s, wins=%s, draws=%s, losses=%s, goals_scored=%s, goals_conceded=%s, goal_diff=%s, logo_url=%s" % (
+                    #    row_idx, team, position, played, points, wins, draws, losses, goals_scored, goals_conceded, goal_diff, logo_url))
                     standings.append([
                         str(team),
                         str(position),
@@ -1167,33 +1693,31 @@ class StandingsScreen(Screen):
             else:
                 for t in soup.find_all("table"):
                     rows = t.find_all("tr")
-                    # Accept tables with at least 2 rows and multiple non-empty cells
                     if len(rows) > 1 and any(len(row.find_all("td")) > 2 and any(cell.get_text(strip=True) not in ["", "#"] for cell in row.find_all("td")) for row in rows[1:]):
                         tables.append(t)
                 if not tables:
-                    logdata("fetch_standings", "No valid standings tables found for %s" % self.league)
+                    #logdata("fetch_standings", "No valid standings tables found for %s" % self.league)
                     self.standings_data = []
                     self.display_standings()
                     return
-                logdata("fetch_standings", "Found %d potential tables for %s" % (len(tables), self.league))
+                #logdata("fetch_standings", "Found %d potential tables for %s" % (len(tables), self.league))
                 table_limit = 2 if self.league == "afcchampions" else 1
                 tables_to_process = tables[:table_limit]
-                # FIX: If afcchampions, reverse order so that Table 2 (first table) appears before Table 1 (second table).
                 if self.league == "afcchampions" and table_limit == 2:
                     tables_to_process.reverse()
-                    t_display_idx = 2 # Start the display index at 2
+                    t_display_idx = 2
                 else:
-                    t_display_idx = 1 # Normal index starting at 1
-                for t_idx, table in enumerate(tables_to_process, 0): # Use 0-based enumerate here
-                    logdata("fetch_standings", "Processing Table %d for %s" % (t_display_idx, self.league))
+                    t_display_idx = 1
+                for t_idx, table in enumerate(tables_to_process, 0):
+                    #logdata("fetch_standings", "Processing Table %d for %s" % (t_display_idx, self.league))
                     if self.league == "afcchampions":
                         standings.append("Table %d" % t_display_idx)
-                        t_display_idx -= 1 # Decrement for the next table (2 -> 1)
+                        t_display_idx -= 1
                     rows = table.find_all("tr")[1:]
                     for row in rows:
                         cells = row.find_all("td")
-                        if len(cells) < 2:  # Minimal: team and points
-                            logdata("fetch_standings", "Skipping row with insufficient columns: %d" % len(cells))
+                        if len(cells) < 2:
+                            #logdata("fetch_standings", "Skipping row with insufficient columns: %d" % len(cells))
                             continue
                         team = ""
                         logo_url = ""
@@ -1209,7 +1733,7 @@ class StandingsScreen(Screen):
                         for idx, cell in enumerate(cells):
                             class_name = cell.get("class", []) or []
                             cell_text = cell.get_text(strip=True) or ""
-                            logdata("fetch_standings_cell", "Table %d, Cell %d class: %s, value: %s" % (t_idx, idx, class_name, cell_text))
+                            #logdata("fetch_standings_cell", "Table %d, Cell %d class: %s, value: %s" % (t_idx, idx, class_name, cell_text))
                             if idx == 0:
                                 position = cell_text if cell_text.isdigit() else "0"
                             elif "tl" in class_name or (idx == 1 and not team and cell_text):
@@ -1231,18 +1755,23 @@ class StandingsScreen(Screen):
                                 goals_scored = cell_text if cell_text.isdigit() else "0"
                             elif "goals_d" in class_name or (idx == 8 and cell_text.isdigit()):
                                 goals_conceded = cell_text if cell_text.isdigit() else "0"
-                            elif cell_text.lstrip('-+').isdigit():
-                                goal_diff_value = int(cell_text.lstrip('-+'))
-                                goal_diff = "+" + str(goal_diff_value) if goal_diff_value > 0 else str(goal_diff_value)
+                            elif cell_text.lstrip('-').isdigit():
+                                # fctables.com only has - for negative, no + for positive
+                                if cell_text.startswith('-'):
+                                    goal_diff = cell_text
+                                else:
+                                    goal_diff = "+" + cell_text if cell_text.isdigit() else "0"
+                                #logdata("fetch_standings_goal_diff", "Other leagues: raw='%s', parsed='%s'" % (cell_text, goal_diff))
                         if not team:
-                            logdata("fetch_standings", "Skipping row with empty team name: %s" % [cell.get_text(strip=True) for cell in cells])
+                            #logdata("fetch_standings", "Skipping row with empty team name: %s" % [cell.get_text(strip=True) for cell in cells])
                             continue
-                        logdata("fetch_standings_row", "Table %d, Extracted: team=%s, position=%s, played=%s, points=%s, wins=%s, draws=%s, losses=%s, goals_scored=%s, goals_conceded=%s, goal_diff=%s, logo_url=%s" % (
-                            t_idx, team, position, played, points, wins, draws, losses, goals_scored, goals_conceded, goal_diff, logo_url))
-                        # ADD THIS LINE FOR CORRECTION:
+                        #logdata("fetch_standings_row", "Table %d, Extracted: team=%s, position=%s, played=%s, points=%s, wins=%s, draws=%s, losses=%s, goals_scored=%s, goals_conceded=%s, goal_diff=%s, logo_url=%s" % (
+                        #    t_idx, team, position, played, points, wins, draws, losses, goals_scored, goals_conceded, goal_diff, logo_url))
                         if team == "Sintra Football": team = "Estrela Amadora"
                         if team == "Chengdu Qianbao FC": team = "Chengdu Rongcheng"
                         if team == "Artsakh": team = "RC Strasbourg"
+                        if team == "Al Suqoor": team = "NEOM SC"
+                        if team == "Al Hazm": team = "Al Hazem"
                         standings.append([
                             str(team),
                             str(position),
@@ -1257,211 +1786,347 @@ class StandingsScreen(Screen):
                             str(logo_url)
                         ])
             self.standings_data = standings
-            logdata("fetch_standings", "Total teams fetched: %d" % len([x for x in standings if not isinstance(x, str)]))
+            #logdata("fetch_standings", "Total teams fetched: %d" % len([x for x in standings if not isinstance(x, str)]))
             if standings:
                 try:
                     self.check_and_download_logos()
                 except Exception as e:
-                    logdata("fetch_standings_error", "Error in check_and_download_logos: %s" % str(e))
+                    #logdata("fetch_standings_error", "Error in check_and_download_logos: %s" % str(e))
                     pass
             self.display_standings()
         except (compat_HTTPError, compat_URLError, Exception) as e:
-            logdata("fetch_standings_error", "Failed to fetch standings for URL %s: %s" % (url, str(e)))
+            #logdata("fetch_standings_error", "Failed to fetch standings for URL %s: %s" % (url, str(e)))
             self.standings_data = []
             self.display_standings()
 
     def check_and_download_logos(self):
-        # --- WORKING CONVERSION FUNCTION RESTORED ---
-        def convert_gif_to_png(src_path, dest_path):
-            try:
-                # Open the GIF file
-                im = Image.open(src_path)
-                # Save it as a PNG file
-                im.save(dest_path, "PNG")
-                #logdata("Logos", "Converted GIF to PNG for %s -> %s" % (os.path.basename(src_path).replace(".gif", ""), dest_path))
-            except Exception as e:
-                #logdata("Logos", "Failed to convert GIF for %s: %s" % (os.path.basename(src_path).replace(".gif", ""), str(e)))
-                pass
+        # NEW SMART/GENERAL NORMALIZATION FUNCTION
+        def normalize_name(name):
+            """Aggressively cleans up team names for robust fuzzy matching."""
+            if not name:
+                return ""
+            name = name.lower()
+            # Remove common legal suffixes and punctuation that interfere with fuzzy matching
+            replacements = {
+                ' f.c.': '', ' fc': '', ' a.c.': '', ' ac': '', ' s.v.': '', ' sv': '',
+                ' association': '', ' club': '', ' sport': '', ' athletic': '',
+                ' united': '', ' city': '', ' real': '', ' atlético': '',
+                ' gmbh': '', ' & co. kg': '', 'gmbh & co. kg': '',
+                '.': '', ',': '', '-': ' '
+            }
+            for old, new in replacements.items():
+                name = name.replace(old, new)
+            # Clean up extra spaces
+            return ' '.join(name.split())
 
-        current_table = None
+    def check_and_download_logos(self):
+        # NOTE: This function assumes the 're' module is imported globally 
+        # or available in the environment scope for the regex-based name cleanup.
+
+        def normalize_name(name):
+            """Smart normalization: remove punctuation, numbers, generic words, and extra spaces."""
+            if not name:
+                return ""
+            name = name.lower()
+            # Remove anything in parentheses or brackets (e.g., "(2025)", "[B]") 
+            name = re.sub(r"[\(\[].*?[\)\]]", "", name)
+            # Remove digits
+            name = re.sub(r"\d+", "", name)
+            # Replace punctuation with space
+            name = re.sub(r"[.,\-'/]", " ", name)
+            # Remove common generic football words automatically
+            generic_words = r"\b(fc|ac|sc|club|sport|cf|f c|a c|s v|team|association|athletic|united|city|real|atl[eé]tico|gmbh)\b"
+            name = re.sub(generic_words, "", name)
+            # Remove extra spaces
+            name = ' '.join(name.split())
+            return name
+
+        def download_and_save_logo(team_name, logo_url, headers, league):
+            # Check for generic "no-logo" URLs and placeholders
+            if not logo_url or logo_url.endswith("/blank.gif") or 'placeholder' in logo_url or logo_url.endswith("/no-logo.gif"):
+                return False
+
+            team_filename = sanitize_team_name(team_name)
+
+            # The final target path is ALWAYS .png (what the E2 interface expects)
+            filename_png = resolveFilename(SCOPE_PLUGINS,
+                                         "Extensions/FootOnSat/assets/standings/{}.png".format(team_filename))
+
+            # Check if PNG version exists
+            if os.path.exists(filename_png):
+                return True 
+
+            #logdata("Logos", "Downloading logo for '%s' from: %s" % (team_name, logo_url))
+
+            # Determine file extension from URL (used for temp filename)
+            ext = ".gif" if logo_url.lower().endswith(".gif") else (".png" if logo_url.lower().endswith(".png") else ".jpg")
+            
+            # Temporary file path (using the actual downloaded extension)
+            temp_file = os.path.join("/tmp", "{}{}".format(team_filename, ext))
+
+            try:
+                # --- The network request uses the fixed 'headers' ---
+                req = compat_Request(logo_url, headers=headers)
+                resp = compat_urlopen(req, timeout=10)
+                
+                # Save the raw file content to the temporary location
+                with open(temp_file, "wb") as f:
+                    f.write(resp.read())
+                
+                
+                success = False
+                if ext == ".png":
+                    # If already PNG, just copy the file from /tmp to the final .png path
+                    shutil.copyfile(temp_file, filename_png)
+                    #logdata("Logos", "Successfully saved PNG logo for '%s'." % team_name)
+                    success = True
+                elif PIL_AVAILABLE:
+                    # --- PIL CONVERSION LOGIC ---
+                    try:
+                        img = Image.open(temp_file)
+                        
+                        # Handle potential transparent GIF/JPG by converting to RGBA
+                        if img.mode not in ('RGB', 'RGBA'):
+                            img = img.convert('RGBA')
+
+                        img.save(filename_png, 'PNG')
+                        #logdata("Logos", "Converted and saved %s logo for '%s' to PNG via PIL." % (ext[1:].upper(), team_name))
+                        success = True
+                    except Exception as e:
+                        #logdata("Logos", "PIL conversion FAILED for %s: %s" % (team_name, str(e)))
+                        trace_error() # Include trace for better debugging
+                        # Fallback to simple copy if PIL fails (e.g., corrupted file)
+                        shutil.copyfile(temp_file, filename_png)
+                        success = True # Still logged as found
+                else:
+                    # --- NO PIL FALLBACK (Will cause display error) ---
+                    #logdata("Logos", "WARNING: PIL not available, saving raw %s data as PNG file for '%s'." % (ext[1:].upper(), team_name))
+                    shutil.copyfile(temp_file, filename_png)
+                    success = True
+
+                # Clean up the temporary file
+                if os.path.exists(temp_file):
+                    os.remove(temp_file) 
+
+                return success
+                    
+            except Exception as e:
+                #logdata("Logos", "Failed to download/process logo for %s: %s" % (team_name, str(e)))
+                trace_error()
+                return False
+            finally:
+                # Ensure cleanup regardless of success/failure
+                if os.path.exists(temp_file):
+                    os.remove(temp_file) 
+        # ---------------------------------------------------
+        
+        # --- Robust Headers provided by user to fix 403 Forbidden error ---
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                          "AppleWebKit/537.36 (KHTML, like Gecko) "
-                          "Chrome/140.0.0.0 Safari/537.36",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
+            "Connection": "keep-alive",
+            "Referer": "https://www.google.com/", 
+            "Upgrade-Insecure-Requests": "1",
+            "Sec-Fetch-Dest": "document",
+            "Sec-Fetch-Mode": "navigate",
+            "Sec-Fetch-Site": "cross-site",
+            "Cache-Control": "max-age=0",
+            "Cookie": "fcfc_cookie=1; time_zone=Europe/London;", 
         }
+        # -------------------------------------------------------------------
 
         #logdata("Logos", "Starting check for league: %s" % self.league)
 
-        # First: backup site (fctables.com)
-        backup_url = json_urls.get(self.league)
-        all_teams = [item[0] for item in self.standings_data if isinstance(item, list)]
-        missing_teams = list(all_teams)
-        logos_found = 0
-
-        if backup_url:
-            #logdata("Logos", "Fetching from backup site...")
+        # Ensure standings folder exists
+        standings_dir = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/standings/")
+        if not os.path.exists(standings_dir):
             try:
-                request = compat_Request(backup_url, headers=headers)
-                response = compat_urlopen(request, timeout=20)
-                html = response.read()
-
-                if PY3:
-                    html = html.decode("utf-8", errors="ignore")
-                else:
-                    pass
-
-                soup = BeautifulSoup(html, "html.parser")
-                imgs = soup.find_all("img")
-
-                titles = [img.get("title") or img.get("alt") for img in imgs if img.get("title") or img.get("alt")]
-
-                for team in missing_teams[:]:
-                    match = difflib.get_close_matches(team, titles, n=1, cutoff=0.6)
-
-                    if match:
-                        img_tag = next(img for img in imgs if (img.get("title") == match[0] or img.get("alt") == match[0]))
-
-                        logo_src = img_tag.get("src")
-                        if not logo_src:
-                            continue
-
-                        logo_url_base = logo_src.split("?")[0]
-
-                        # Skip placeholder/blank images
-                        if logo_url_base.endswith("/blank.gif") or 'placeholder' in logo_url_base:
-                            #logdata("Logos", "Skipping placeholder logo for '%s'." % team)
-                            continue
-
-                        # Convert relative URL to absolute URL using urljoin
-                        if not logo_url_base.startswith(("http://", "https://")):
-                            logo_url = urljoin(backup_url, logo_url_base)
-                        else:
-                            logo_url = logo_url_base
-                        
-                        
-                        # --- CONVERSION LOGIC FOR BACKUP SITE ---
-                        ext = ".gif" if logo_url.endswith(".gif") else (".png" if logo_url.endswith(".png") else ".jpg")
-                        
-                        # Final destination filename (ALWAYS .png for plugin)
-                        filename_png = resolveFilename(SCOPE_PLUGINS,
-                                                   "Extensions/FootOnSat/assets/standings/{}{}".format(
-                                                       sanitize_team_name(team), ".png"))
-                        
-                        if not os.path.exists(filename_png):
-                            try:
-                                req = compat_Request(logo_url, headers=headers)
-                                resp = compat_urlopen(req)
-                                
-                                if ext == ".gif" or ext == ".jpg":
-                                    # Save temporarily if conversion is needed
-                                    temp_file = filename_png.replace(".png", ext)
-                                    with open(temp_file, "wb") as f:
-                                        f.write(resp.read())
-                                    
-                                    convert_gif_to_png(temp_file, filename_png)
-                                    os.remove(temp_file) # Delete temporary file
-                                else:
-                                    # Save directly if it's already a PNG
-                                    with open(filename_png, "wb") as f:
-                                        f.write(resp.read())
-                                        
-                                logos_found += 1
-                                #logdata("Logos", "Saved '%s' to %s" % (team, filename_png))
-                            except Exception as e:
-                                #logdata("Logos", "Failed to download/convert logo for %s: %s" % (team, logo_url, str(e)))
-                                pass
-                        missing_teams.remove(team)
-                        # --- END CONVERSION LOGIC ---
-                        
+                os.makedirs(standings_dir)
+                #logdata("Logos", "Created standings folder: %s" % standings_dir)
             except Exception as e:
-                #logdata("Logos", "Error fetching from %s -> %s" % (backup_url, str(e)))
-                pass
+                #logdata("Logos", "Failed to create standings folder %s: %s" % (standings_dir, str(e)))
+                return
 
-        # Second: primary site (worldfootball.net) - Using Raw String Matching
-        if missing_teams:
-            primary_url = log_urls.get(self.league)
-            if primary_url:
-                #logdata("Logos", "Fetching missing logos from primary site...")
+        # Get list of teams and their primary logo URLs from fetch_standings
+        teams_to_process = []
+        for item in self.standings_data:
+            if isinstance(item, list) and len(item) > 10:
+                original_name = item[0]
+                # Store both the original name (for display/saving) and the normalized name (for matching)
+                standardized_name = normalize_name(original_name)
+                teams_to_process.append({
+                    "name": standardized_name, 
+                    "original_name": original_name, 
+                    "url": item[10], 
+                    "found": False
+                })
+
+        logos_found = 0
+        total_teams = len(teams_to_process) 
+
+        # --- Phase 1: Use Logo URL scraped in fetch_standings (Primary Source) ---
+        #logdata("Logos", "Phase 1: Attempting download using scraped logo URLs...")
+        for team_info in teams_to_process:
+            team_filename = sanitize_team_name(team_info["original_name"])
+            filename_png = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/standings/{}.png".format(team_filename))
+            
+            # Check if a PNG already exists
+            if os.path.exists(filename_png):
+                team_info["found"] = True
+                logos_found += 1
+                continue
+                
+            if team_info["url"]:
+                # Ensure the logo URL is absolute for correct downloading
+                absolute_url = urljoin(self.url, team_info["url"])
+                
+                # Pass the original_name for correct logging/saving
+                if download_and_save_logo(team_info["original_name"], absolute_url, headers, self.league):
+                    team_info["found"] = True
+                    logos_found += 1
+        
+        # --- Check for early exit for speed improvement ---
+        if logos_found >= total_teams:
+        	pass
+            #logdata("Logos", "All logos found in Phase 1. Skipping Phase 2 and 3 for efficiency.")
+        else:
+            
+            # --- Phase 2 (Primary Backup): Use Worldfootball.net (log_urls) for Missing Logos ---
+            primary_backup_url = log_urls.get(self.league)
+            if primary_backup_url:
+                #logdata("Logos", "Phase 2 (Worldfootball): Scraping primary backup site (%s) for missing logos..." % primary_backup_url)
                 try:
-                    request = compat_Request(primary_url, headers=headers)
-                    response = compat_urlopen(request, timeout=20)
-                    html = response.read()
+                    missing_logos = any(not team["found"] for team in teams_to_process)
+                    if missing_logos:
+                        request = compat_Request(primary_backup_url, headers=headers)
+                        response = compat_urlopen(request, timeout=20)
+                        html = response.read()
 
-                    if PY3:
-                        html = html.decode("utf-8", errors="ignore")
-                    else:
-                        pass
+                        if PY3:
+                            html = html.decode("utf-8", errors="ignore")
+                        
+                        soup = BeautifulSoup(html, "html.parser")
+                        # Look for img tags 
+                        imgs = soup.find_all("img")
 
-                    soup = BeautifulSoup(html, "html.parser")
-                    imgs = soup.find_all("img")
+                        # Prepare a map from normalized scraped name to the original raw scraped name
+                        normalized_title_map = {}
+                        normalized_targets = []
+                        for img in imgs:
+                            raw_title = img.get("title") or img.get("alt")
+                            if raw_title:
+                                normalized = normalize_name(raw_title)
+                                # Store a unique map entry: normalized -> raw title
+                                if normalized not in normalized_title_map:
+                                    normalized_title_map[normalized] = raw_title
+                                    normalized_targets.append(normalized)
 
-                    # Use raw titles for matching
-                    titles = [img.get("title") or img.get("alt") for img in imgs if img.get("title") or img.get("alt")]
+                        for team_info in teams_to_process:
+                            if team_info["found"]:
+                                continue
 
-                    for team in missing_teams[:]:
+                            # Use the pre-normalized name for matching
+                            team_to_search = team_info["name"] 
 
-                        # Match raw input string against raw scraped titles
-                        match = difflib.get_close_matches(team, titles, n=1, cutoff=0.6) 
-
-                        match_found = False
-                        if match:
-                            original_title = match[0]
-                            # Find the image tag based on title/alt
-                            img_tag = next(img for img in imgs if (img.get("title") == original_title or img.get("alt") == original_title))
-                            match_found = True
-
-                        if not match_found:
-                            #logdata("Logos", "Primary Site: No close match found for team: '%s'" % team)
-                            continue # Skip to next team if no match was found
-
-                        if match_found:
-                            logo_url = img_tag.get("src").split("?")[0]
+                            # Fuzzy match against the normalized scraped titles (STRICT CUTOFF = 0.90)
+                            team_match = difflib.get_close_matches(team_to_search, normalized_targets, n=1, cutoff=0.90) 
                             
-                            # --- CONVERSION LOGIC FOR PRIMARY SITE ---
-                            ext = ".gif" if logo_url.endswith(".gif") else (".png" if logo_url.endswith(".png") else ".jpg")
-                            
-                            # Final destination filename (ALWAYS .png for plugin)
-                            filename_png = resolveFilename(SCOPE_PLUGINS,
-                                                         "Extensions/FootOnSat/assets/standings/{}{}".format(
-                                                             sanitize_team_name(team), ".png"))
+                            #logdata("Logos", "Phase 2 Fuzzy Search for: '%s' (Normalized: '%s'). Match: %s" % (team_info["original_name"], team_to_search, team_match))
 
-                            if not os.path.exists(filename_png):
-                                try:
-                                    req = compat_Request(logo_url, headers=headers)
-                                    resp = compat_urlopen(req)
+                            if team_match:
+                                normalized_matched_title = team_match[0]
+                                original_title = normalized_title_map.get(normalized_matched_title) # Get the raw title
+                                img_tag = next((img for img in imgs if (img.get("title") == original_title or img.get("alt") == original_title) and img.get("src")), None)
+                                
+                                if img_tag:
+                                    # Worldfootball uses relative paths, so join with the base URL
+                                    logo_src = img_tag.get("src").split("?")[0]
+                                    logo_url = urljoin(primary_backup_url, logo_src) 
                                     
-                                    if ext == ".gif" or ext == ".jpg":
-                                        # Save temporarily if conversion is needed
-                                        temp_file = filename_png.replace(".png", ext)
-                                        with open(temp_file, "wb") as f:
-                                            f.write(resp.read())
+                                    # Use the original name for logging and saving
+                                    if download_and_save_logo(team_info["original_name"], logo_url, headers, self.league):
+                                        team_info["found"] = True
+                                        logos_found += 1 # Critical counter update
+                                        #logdata("Logos", "Found logo for '%s' using match to '%s' (worldfootball)." % (team_info["original_name"], original_title))
+
+                    if logos_found >= total_teams:
+                    	pass
+                        #logdata("Logos", "All logos found after Phase 2. Skipping Phase 3 for efficiency.")
+                    else:
+
+                        # --- Phase 3 (Secondary Backup): Use fctables.com (json_urls) for Remaining Missing Logos ---
+                        secondary_backup_url = json_urls.get(self.league)
+                        if secondary_backup_url:
+                            #logdata("Logos", "Phase 3 (fctables): Scraping secondary backup site (%s) for remaining missing logos..." % secondary_backup_url)
+                            try:
+                                missing_logos = any(not team["found"] for team in teams_to_process)
+                                if missing_logos:
+                                    request = compat_Request(secondary_backup_url, headers=headers)
+                                    response = compat_urlopen(request, timeout=20)
+                                    html = response.read()
+
+                                    if PY3:
+                                        html = html.decode("utf-8", errors="ignore")
+                                    
+                                    soup = BeautifulSoup(html, "html.parser")
+                                    imgs = soup.find_all("img")
+
+                                    # Prepare map for Phase 3 matching
+                                    normalized_title_map = {}
+                                    normalized_targets = []
+                                    for img in imgs:
+                                        raw_title = img.get("title") or img.get("alt")
+                                        if raw_title:
+                                            normalized = normalize_name(raw_title)
+                                            # Store a unique map entry: normalized -> raw title
+                                            if normalized not in normalized_title_map:
+                                                normalized_title_map[normalized] = raw_title
+                                                normalized_targets.append(normalized)
+
+                                    for team_info in teams_to_process:
+                                        if team_info["found"]:
+                                            continue
+
+                                        team_to_search = team_info["name"]
                                         
-                                        convert_gif_to_png(temp_file, filename_png)
-                                        os.remove(temp_file) # Delete temporary file
-                                    else:
-                                        # Save directly if it's already a PNG
-                                        with open(filename_png, "wb") as f:
-                                            f.write(resp.read())
+                                        # Fuzzy match against the normalized scraped titles (STRICT CUTOFF = 0.90)
+                                        match = difflib.get_close_matches(team_to_search, normalized_targets, n=1, cutoff=0.90)
+                                        
+                                        #logdata("Logos", "Phase 3 Fuzzy Search for: '%s' (Normalized: '%s'). Match: %s" % (team_info["original_name"], team_to_search, match))
+
+                                        if match:
+                                            normalized_matched_title = match[0]
+                                            original_title = normalized_title_map.get(normalized_matched_title) # Get the raw title
+                                            img_tag = next((img for img in imgs if (img.get("title") == original_title or img.get("alt") == original_title) and img.get("src")), None)
                                             
-                                    logos_found += 1
-                                    #logdata("Logos", "Found logo for '%s' using match to '%s'." % (team, original_title))
-                                except Exception as e:
-                                    #logdata("Logos", "Failed to download/convert logo for %s: %s" % (team, logo_url, str(e)))
-                                    pass
-                            missing_teams.remove(team)
-                            # --- END CONVERSION LOGIC ---
-                            
+                                            if img_tag:
+                                                logo_src = img_tag.get("src").split("?")[0]
+                                                logo_url = urljoin(secondary_backup_url, logo_src) 
+
+                                                # Use the original name for logging and saving
+                                                if download_and_save_logo(team_info["original_name"], logo_url, headers, self.league):
+                                                    team_info["found"] = True
+                                                    logos_found += 1 # Critical counter update
+                                                    #logdata("Logos", "Found logo for '%s' using match to '%s' (fctables)." % (team_info["original_name"], original_title))
+                                                    
+                            except Exception as e:
+                                #logdata("Logos", "Error fetching from secondary backup site %s -> %s" % (secondary_backup_url, str(e)))
+                                pass
+
+
                 except Exception as e:
-                    #logdata("Logos", "Error fetching from %s -> %s" % (primary_url, str(e)))
+                    #logdata("Logos", "Error fetching from primary backup site %s -> %s" % (primary_backup_url, str(e)))
                     pass
+
 
         # Final log of any still missing teams
-        #for team in missing_teams:
-            #logdata("Logos", "Missing logo for team: '%s'" % team)
+        for team_info in teams_to_process:
+            if not team_info["found"]:
+                logdata("Logos", "MISSING FINAL logo for team: '%s'" % team_info["original_name"])
 
         #logdata("Logos", "Completed check_and_download_logos(), total logos found: %d" % logos_found)
+
 
     def display_standings(self):
         gList = []
@@ -1470,7 +2135,7 @@ class StandingsScreen(Screen):
         ITEM_HEIGHT = 65 if reswidth == 1920 else 85
 
         self["standings_list"].l.setItemHeight(ITEM_HEIGHT)
-        if reswidth == 2560:
+        if reswidth >= 2560:
             self["standings_list"].l.setFont(0, gFont('Regular', 32))
         else:
             self["standings_list"].l.setFont(0, gFont('Regular', 28))
@@ -1481,11 +2146,11 @@ class StandingsScreen(Screen):
             if isinstance(standing, str) and standing.startswith("Table "):
                 club_idx = 1  # reset numbering for new table
                 if reswidth == 1920:
-                        res = [ITEM_HEIGHT, MultiContentEntryText(pos=(450, 0), size=(960, ITEM_HEIGHT), font=0,
-                                                           flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(standing))]
+                    res = [ITEM_HEIGHT, MultiContentEntryText(pos=(450, 0), size=(960, ITEM_HEIGHT), font=0,
+                                                       flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(standing))]
                 else: # UHD skins
-                        res = [ITEM_HEIGHT, MultiContentEntryText(pos=(900, 0), size=(1920, ITEM_HEIGHT), font=0,
-                                                           flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(standing))]
+                    res = [ITEM_HEIGHT, MultiContentEntryText(pos=(900, 0), size=(1920, ITEM_HEIGHT), font=0,
+                                                       flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(standing))]
                 gList.append(res)
                 continue
 
@@ -1501,109 +2166,103 @@ class StandingsScreen(Screen):
             goal_diff = standing[9]
             logo_url = standing[10]
 
-            # --- MAXIMIZED LOGO SIZE CODE (Using variables again) ---
-            LOGO_SIZE_H = 50 if reswidth == 1920 else 60
-            LOGO_Y_POS = 8
-
-            # Adjust team name position to account for the larger logo space
-            TEAM_NAME_X_POS = 130 + LOGO_SIZE_H + 10
+            # --- LOGO SIZE AND POSITIONING ---
+            if reswidth == 1920:
+                LOGO_SIZE_H = 50
+                LOGO_Y_POS = 8
+                LOGO_X_POS = 95
+                TEAM_NAME_X_POS = 160
+                TEXT_Y_OFFSET = 0  # No offset needed for 1920
+            else:  # 2560
+                LOGO_SIZE_H = 45  # Reduced from 55 to 45
+                LOGO_Y_POS = int((ITEM_HEIGHT - LOGO_SIZE_H) / 2)  # Recalculate to center vertically
+                LOGO_X_POS = 130
+                TEAM_NAME_X_POS = 220
+                TEXT_Y_OFFSET = LOGO_Y_POS  # Align text with logo vertical position
 
             res = [ITEM_HEIGHT]
             # number
-            res.append(MultiContentEntryText(pos=(20, 0), size=(50, ITEM_HEIGHT), font=0,
-                                             flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, text=str(club_idx)))
+            # Number
+            if reswidth == 1920:
+                res.append(MultiContentEntryText(pos=(20, 0), size=(50, ITEM_HEIGHT), font=0,
+                                                 flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, text=str(club_idx)))
+            else:  # 2560
+                res.append(MultiContentEntryText(pos=(30, LOGO_Y_POS), size=(70, LOGO_SIZE_H), font=0,
+                                                 flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, text=str(club_idx)))
             club_idx += 1
 
             # logo using file path
             flagteam_png = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/standings/{}.png".format(sanitize_team_name(team)))
-            flagteam_jpg = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/standings/{}.jpg".format(sanitize_team_name(team)))
             if reswidth == 1920:
-              if os.path.exists(flagteam_png):
-              	if PY3:
-              		res.append(MultiContentEntryPixmapAlphaBlend(pos=(95, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
-                                                               png=loadPNG(flagteam_png), flags=BT_SCALE))
-              	else: # DreamOS
-              		res.append(MultiContentEntryPixmapAlphaBlend(pos=(95, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
-                                                               png=loadPNG(flagteam_png)))
-              # logo fallback to jpg
-              elif os.path.exists(flagteam_jpg):
-              	if PY3:
-              		res.append(MultiContentEntryPixmapAlphaBlend(pos=(95, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
-                                                               png=LoadPixmap(flagteam_jpg), flags=BT_SCALE))
-              	else: # DreamOS
-              		res.append(MultiContentEntryPixmapAlphaBlend(pos=(95, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
-                                                               png=LoadPixmap(flagteam_jpg)))
-              # team name
-              res.append(MultiContentEntryText(pos=(TEAM_NAME_X_POS, 0), size=(400, ITEM_HEIGHT), font=0,
-                                               flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team or "")))
-              # matches played
-              res.append(MultiContentEntryText(pos=(553, 0), size=(80, ITEM_HEIGHT), font=0,
-                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(played or "")))
-              # points
-              res.append(MultiContentEntryText(pos=(708, 0), size=(80, ITEM_HEIGHT), font=0,
-                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(points or "")))
-              # wins
-              res.append(MultiContentEntryText(pos=(852, 0), size=(80, ITEM_HEIGHT), font=0,
-                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(wins or "")))
-              # draws
-              res.append(MultiContentEntryText(pos=(997, 0), size=(80, ITEM_HEIGHT), font=0,
-                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(draws or "")))
-              # losses
-              res.append(MultiContentEntryText(pos=(1152, 0), size=(80, ITEM_HEIGHT), font=0,
-                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(losses or "")))
-              # goals scored
-              res.append(MultiContentEntryText(pos=(1342, 0), size=(80, ITEM_HEIGHT), font=0,
-                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_scored or "")))
-              # goals conceded
-              res.append(MultiContentEntryText(pos=(1520, 0), size=(80, ITEM_HEIGHT), font=0,
-                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_conceded or "")))
-              # goal diff
-              res.append(MultiContentEntryText(pos=(1680, 0), size=(80, ITEM_HEIGHT), font=0,
-                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goal_diff or "")))
-            else: # UHD skins
-              if os.path.exists(flagteam_png):
-              	if PY3:
-              		res.append(MultiContentEntryPixmapAlphaBlend(pos=(190, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
-                                                               png=LoadPixmap(flagteam_png), flags=BT_SCALE))
-              	else: # DreamOS
-              		res.append(MultiContentEntryPixmapAlphaBlend(pos=(190, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
-                                                               png=LoadPixmap(flagteam_png)))
-              # logo fallback to jpg
-              elif os.path.exists(flagteam_jpg):
-              	if PY3:
-              		res.append(MultiContentEntryPixmapAlphaBlend(pos=(190, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
-                                                               png=LoadPixmap(flagteam_jpg), flags=BT_SCALE))
-              	else: # DreamOS
-              		res.append(MultiContentEntryPixmapAlphaBlend(pos=(190, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
-                                                               png=LoadPixmap(flagteam_jpg)))
-              # team name
-              res.append(MultiContentEntryText(pos=(TEAM_NAME_X_POS, 0), size=(800, ITEM_HEIGHT), font=0,
-                                               flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team or "")))
-              # matches played
-              res.append(MultiContentEntryText(pos=(1106, 0), size=(160, ITEM_HEIGHT), font=0,
-                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(played or "")))
-              # points
-              res.append(MultiContentEntryText(pos=(1416, 0), size=(160, ITEM_HEIGHT), font=0,
-                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(points or "")))
-              # wins
-              res.append(MultiContentEntryText(pos=(1704, 0), size=(160, ITEM_HEIGHT), font=0,
-                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(wins or "")))
-              # draws
-              res.append(MultiContentEntryText(pos=(1994, 0), size=(160, ITEM_HEIGHT), font=0,
-                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(draws or "")))
-              # losses
-              res.append(MultiContentEntryText(pos=(2304, 0), size=(160, ITEM_HEIGHT), font=0,
-                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(losses or "")))
-              # goals scored
-              res.append(MultiContentEntryText(pos=(2684, 0), size=(160, ITEM_HEIGHT), font=0,
-                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_scored or "")))
-              # goals conceded
-              res.append(MultiContentEntryText(pos=(3040, 0), size=(160, ITEM_HEIGHT), font=0,
-                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_conceded or "")))
-              # goal diff
-              res.append(MultiContentEntryText(pos=(3360, 0), size=(160, ITEM_HEIGHT), font=0,
-                                               flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goal_diff or "")))
-
+                if os.path.exists(flagteam_png):
+                	if PY3:
+                		res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+                                                                   png=loadPNG(flagteam_png), flags=BT_SCALE))
+                	else: # DreamOS
+                		res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+                                                                   png=loadPNG(flagteam_png)))
+                # team name - increased width for better display
+                res.append(MultiContentEntryText(pos=(TEAM_NAME_X_POS, 0), size=(400, ITEM_HEIGHT), font=0,
+                                                 flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team or "")))
+                # matches played - aligned with "Played" header
+                res.append(MultiContentEntryText(pos=(553, 0), size=(80, ITEM_HEIGHT), font=0,
+                                                 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(played or "")))
+                # points - aligned with "Points" header
+                res.append(MultiContentEntryText(pos=(708, 0), size=(80, ITEM_HEIGHT), font=0,
+                                                 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(points or "")))
+                # wins - aligned with "Wins" header
+                res.append(MultiContentEntryText(pos=(852, 0), size=(80, ITEM_HEIGHT), font=0,
+                                                 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(wins or "")))
+                # draws - aligned with "Draws" header
+                res.append(MultiContentEntryText(pos=(997, 0), size=(80, ITEM_HEIGHT), font=0,
+                                                 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(draws or "")))
+                # losses - aligned with "Losses" header
+                res.append(MultiContentEntryText(pos=(1152, 0), size=(80, ITEM_HEIGHT), font=0,
+                                                 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(losses or "")))
+                # goals scored - aligned with "Goals Scored" header
+                res.append(MultiContentEntryText(pos=(1342, 0), size=(80, ITEM_HEIGHT), font=0,
+                                                 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_scored or "")))
+                # goals conceded - aligned with "Conceded" header
+                res.append(MultiContentEntryText(pos=(1520, 0), size=(80, ITEM_HEIGHT), font=0,
+                                                 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_conceded or "")))
+                # goal diff - aligned with "Difference" header
+                res.append(MultiContentEntryText(pos=(1680, 0), size=(80, ITEM_HEIGHT), font=0,
+                                                 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goal_diff or "")))
+            else: # UHD skins (2560)
+                if os.path.exists(flagteam_png):
+                    if PY3:
+                        res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+                                                                   png=loadPNG(flagteam_png), flags=BT_SCALE))
+                    else: # DreamOS
+                        res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+                                                                   png=loadPNG(flagteam_png)))
+                # team name - increased width for better display
+                res.append(MultiContentEntryText(pos=(230, LOGO_Y_POS), size=(550, LOGO_SIZE_H), font=0,
+                                                 flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team or "")))
+                # matches played - aligned with "Played" header
+                res.append(MultiContentEntryText(pos=(660, LOGO_Y_POS), size=(140, LOGO_SIZE_H), font=0,
+                                                 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(played or "")))
+                # points - aligned with "Points" header
+                res.append(MultiContentEntryText(pos=(905, LOGO_Y_POS), size=(140, LOGO_SIZE_H), font=0,
+                                                 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(points or "")))
+                # wins - aligned with "Wins" header
+                res.append(MultiContentEntryText(pos=(1150, LOGO_Y_POS), size=(140, LOGO_SIZE_H), font=0,
+                                                 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(wins or "")))
+                # draws - aligned with "Draws" header
+                res.append(MultiContentEntryText(pos=(1405, LOGO_Y_POS), size=(140, LOGO_SIZE_H), font=0,
+                                                 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(draws or "")))
+                # losses - aligned with "Losses" header
+                res.append(MultiContentEntryText(pos=(1640, LOGO_Y_POS), size=(140, LOGO_SIZE_H), font=0,
+                                                 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(losses or "")))
+                # goals scored - aligned with "Goals Scored" header
+                res.append(MultiContentEntryText(pos=(1870, LOGO_Y_POS), size=(140, LOGO_SIZE_H), font=0,
+                                                 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_scored or "")))
+                # goals conceded - aligned with "Conceded" header
+                res.append(MultiContentEntryText(pos=(2080, LOGO_Y_POS), size=(140, LOGO_SIZE_H), font=0,
+                                                 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_conceded or "")))
+                # goal diff - aligned with "Difference" header
+                res.append(MultiContentEntryText(pos=(2260, LOGO_Y_POS), size=(140, LOGO_SIZE_H), font=0,
+                                                 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goal_diff or "")))
             gList.append(res)
 
         self["standings_list"].setList(gList)
