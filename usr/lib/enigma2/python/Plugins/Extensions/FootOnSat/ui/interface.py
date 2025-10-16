@@ -92,6 +92,8 @@ json_urls = {
 	"belgianpro": "https://www.fctables.com/belgium/jupiler-league/",
 	# Turkey league
 	"superLig": "https://www.fctables.com/turkey/super-lig/",
+	# Netherlands league
+	"eredivisie": "https://www.fctables.com/netherlands/eredivisie/",
 
 	# Saudi Arabia league
 	"saudiarabia": "https://www.fctables.com/saudi-arabia/1-division/",
@@ -127,6 +129,8 @@ log_urls = {
 	"belgianpro": "https://www.worldfootball.net/competition/bel-pro-league/",
 	# Turkey league
 	"superLig": "https://www.worldfootball.net/competition/tur-sueperlig/",
+	# Netherlands league
+	"eredivisie": "https://www.worldfootball.net/competition/ned-eredivisie/",
 
 	# Saudi Arabia league
 	"saudiarabia": "https://www.worldfootball.net/competition/ksa-saudi-pro-league/",
@@ -324,12 +328,12 @@ class FootOnSat(Screen):
                     res.append(MultiContentEntryText(pos=(482, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
                  # Team 2 flag
                 if reswidth >= 2560:
-                    res.append(MultiContentEntryPixmapAlphaBlend(pos=(1550, 70), size=(40, 30), png=loadPNG(flagTeam2)))
+                    res.append(MultiContentEntryPixmapAlphaBlend(pos=(1450, 70), size=(40, 30), png=loadPNG(flagTeam2)))
                 else:
                     res.append(MultiContentEntryPixmapAlphaBlend(pos=(1142, 69), size=(40, 30), png=loadPNG(flagTeam2)))
                 # Score team 2
                 if reswidth >= 2560:
-                    res.append(MultiContentEntryText(pos=(1490, 69), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
+                    res.append(MultiContentEntryText(pos=(1390, 69), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
                 else:
                     res.append(MultiContentEntryText(pos=(1092, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
                 # Competition banner
@@ -341,7 +345,7 @@ class FootOnSat(Screen):
                 res.append(MultiContentEntryPixmapAlphaBlend(pos=(-20, 63), size=(70, 50), png=loadPNG(notif)))
                 # Match name
                 if reswidth >= 2560:
-                    res.append(MultiContentEntryText(pos=(550, 69), size=(900, 40), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
+                    res.append(MultiContentEntryText(pos=(575, 69), size=(750, 40), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
                 else:
                     res.append(MultiContentEntryText(pos=(500, 66), size=(570, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
                 # status_text + match_status
