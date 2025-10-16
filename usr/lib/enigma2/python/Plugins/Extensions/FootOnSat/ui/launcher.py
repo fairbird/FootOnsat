@@ -123,7 +123,7 @@ class FootOnsatLauncher(Screen):
 			self.error("JSON parsing failed: " + str(e))
 			return
 		ordering = ["today", "championsleague", "europaleague", "ConferenceLeague", "premierleague", "laliga", "seriea",
-		"bundesliga", "ligue1", "saudiarabia", "worldcup", "afcchampions","championship", "cafchampions", "superLig", "belgianpro", "laliga2", "liganos", "basketball", "nba", "formula1"]
+		"bundesliga", "ligue1", "saudiarabia", "worldcup", "afcchampions","championship", "cafchampions", "superLig", "belgianpro", "eredivisie", "laliga2", "liganos", "basketball", "nba", "formula1"]
 		# Keep only items in ordering, then sort according to ordering
 		# filtered_compet = [c for c in ordering if c in compet]
 		# self.menuList = self.custom_sort(ordering, filtered_compet)
@@ -388,17 +388,17 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 	if DreamOS():
 		if reswidth == 2560:
 	 		skin = """
-					<screen name="MenuFootOnSat" position="center,center" size="1522,920" title="Menu FootOnSat">
-						<widget source="global.CurrentTime" render="Label" position="5,17" size="1511,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
-							<convert type="ClockToText">Format:%d-%m-%Y    %H:%M:%S</convert>
+					<screen name="MenuFootOnSat" position="center,center" size="1274,680" title="Menu FootOnSat">
+						<widget source="global.CurrentTime" render="Label" position="5,5" size="1264,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
+							<convert type="ClockToText">Format:%d-%m-%Y&#160;%H:%M:%S</convert>
 						</widget>
-						<widget name="config" position="18,70" size="1495,430" scrollbarMode="showOnDemand" />
-						<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="448,890" zPosition="-10" />
-						<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="830,890" zPosition="-10" />
-						<widget render="Label" source="key_red" position="448,845" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" />
-						<widget render="Label" source="key_green" position="830,845" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1" />
-						<widget source="help" render="Label" position="22,460" size="1476,40" font="Regular;29" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5" />
-						<widget name="Picture" position="521,499" size="480,340" zPosition="5" alphatest="blend" />
+						<widget name="config" position="18,70" size="1238,344" scrollbarMode="showOnDemand" />
+						<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="373,650" zPosition="-10" />
+						<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="735,650" zPosition="-10" />
+						<widget render="Label" source="key_red" position="373,610" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" />
+						<widget render="Label" source="key_green" position="735,610" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1" />
+						<widget source="help" render="Label" position="18,305" size="1238,40" font="Regular;32" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5" />
+						<widget name="Picture" position="463,330" size="400,260" zPosition="5" alphatest="blend" />
 					</screen>"""
 		else:
 			skin = """
