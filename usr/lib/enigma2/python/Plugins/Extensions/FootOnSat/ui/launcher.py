@@ -32,6 +32,10 @@ config.plugins.FootOnSat.finished = ConfigSelection(default = "2", choices = [
 	("2", _("2 hours")),
 	("3", _("3 hours"))
 	])
+config.plugins.FootOnSat.livescoresections = ConfigSelection(default = "1", choices = [
+	("1", _("All Sections")),
+	("2", _("Match Today Only")),
+	])
 config.plugins.FootOnSat.livescore = ConfigSelection(default = "3", choices = [
 	("1", _("No Live match")),
 	("2", _("Live match + No live Score")),
@@ -392,41 +396,41 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 						<widget source="global.CurrentTime" render="Label" position="5,17" size="1511,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
 							<convert type="ClockToText">Format:%d-%m-%Y    %H:%M:%S</convert>
 						</widget>
-						<widget name="config" position="18,70" size="1495,430" scrollbarMode="showOnDemand" />
-						<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="448,890" zPosition="-10" />
-						<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="830,890" zPosition="-10" />
-						<widget render="Label" source="key_red" position="448,845" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" />
-						<widget render="Label" source="key_green" position="830,845" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1" />
-						<widget source="help" render="Label" position="22,460" size="1476,40" font="Regular;29" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5" />
-						<widget name="Picture" position="521,499" size="480,340" zPosition="5" alphatest="blend" />
+						<widget name="config" position="18,70" size="1238,344" scrollbarMode="showOnDemand" />
+						<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="373,650" zPosition="-10" />
+						<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="735,650" zPosition="-10" />
+						<widget render="Label" source="key_red" position="373,610" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" />
+						<widget render="Label" source="key_green" position="735,610" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1" />
+						<widget source="help" render="Label" position="18,305" size="1238,40" font="Regular;32" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5" />
+						<widget name="Picture" position="463,330" size="400,260" zPosition="5" alphatest="blend" />
 					</screen>"""
 		else:
 			skin = """
-					<screen name="MenuFootOnSat" position="center,center" size="1040,650" title="Menu FootOnSat">
+					<screen name="MenuFootOnSat" position="center,center" size="1040,700" title="Menu FootOnSat">
 						<widget source="global.CurrentTime" render="Label" position="5,5" size="1022,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
 							<convert type="ClockToText">Format:%d-%m-%Y&#160;%H:%M:%S</convert>
 						</widget>
-						<widget name="config" position="18,70" size="1005,345" scrollbarMode="showOnDemand"/>
-						<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,640" zPosition="-10"/>
-						<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,640" zPosition="-10"/>
-						<widget render="Label" source="key_red" position="223,605" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
-						<widget render="Label" source="key_green" position="585,605" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
-						<widget source="help" render="Label" position="18,320" size="1004,40" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
-						<widget name="Picture" position="313,375" size="400,225" zPosition="5" alphatest="blend"/>
+						<widget name="config" position="18,70" size="1005,355" scrollbarMode="showOnDemand"/>
+						<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,680" zPosition="-10"/>
+						<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,680" zPosition="-10"/>
+						<widget render="Label" source="key_red" position="223,645" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
+						<widget render="Label" source="key_green" position="585,645" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
+						<widget source="help" render="Label" position="18,360" size="1004,40" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
+						<widget name="Picture" position="313,420" size="400,225" zPosition="5" alphatest="blend"/>
 					</screen>"""
 	else:
 		skin = """
-				<screen name="MenuFootOnSat" position="center,center" size="1040,650" title="Menu FootOnSat">
+				<screen name="MenuFootOnSat" position="center,center" size="1040,700" title="Menu FootOnSat">
 					<widget source="global.CurrentTime" render="Label" position="5,5" size="1022,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
 						<convert type="ClockToText">Format:%d-%m-%Y	%H:%M:%S</convert>
 					</widget>
-					<widget name="config" font="Regular;28" secondfont="Regular;28" itemHeight="45" position="18,70" size="1005,345" scrollbarMode="showOnDemand"/>
-					<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,640" zPosition="-10"/>
-					<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,640" zPosition="-10"/>
-					<widget render="Label" source="key_red" position="223,605" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
-					<widget render="Label" source="key_green" position="585,605" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
-					<widget source="help" render="Label" position="18,320" size="1004,60" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
-					<widget name="Picture" position="313,375" size="400,225" zPosition="5" alphatest="blend"/>
+					<widget name="config" font="Regular;28" secondfont="Regular;28" itemHeight="45" position="18,70" size="1005,355" scrollbarMode="showOnDemand"/>
+					<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,680" zPosition="-10"/>
+					<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,680" zPosition="-10"/>
+					<widget render="Label" source="key_red" position="223,645" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
+					<widget render="Label" source="key_green" position="585,645" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
+					<widget source="help" render="Label" position="18,360" size="1004,60" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
+					<widget name="Picture" position="313,420" size="400,225" zPosition="5" alphatest="blend"/>
 				</screen>"""
 
 	def __init__(self, session):
@@ -456,6 +460,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.list = []
 		self.list.append(getConfigListEntry(_("Enable checking for Online Update"), config.plugins.FootOnSat.updateonline, _("This option to Enable or Disable checking for Online Update")))
 		self.list.append(getConfigListEntry(_("Enable live match + Live score"), config.plugins.FootOnSat.livescore, _("This feature allows you to show or hide the matches still live with or withou result")))
+		self.list.append(getConfigListEntry(_("Select appear live + score of match in"), config.plugins.FootOnSat.livescoresections, _("This feature allows you to show matches live with result in sections")))
 		self.list.append(getConfigListEntry(_("Hide matches that started before"), config.plugins.FootOnSat.finished, _("This option is to specify the time that matches that have finished remain before they disappear from the list")))
 		self.list.append(getConfigListEntry(_("Choose to display notifications"), config.plugins.FootOnSat.notify, _("This feature allows you to specify the times for notifications to appear when matches start")))
 		self.list.append(getConfigListEntry(_("Select Icons Style"), config.plugins.FootOnSat.icons, _("This option to enable to select Icons Style")))
