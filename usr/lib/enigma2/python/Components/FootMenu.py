@@ -111,49 +111,35 @@ class FlexibleMenu(GUIComponent):
 				attribs.append((attrib, value))
 		self.l.setFont(0, gFont("FootFont", 23))
 		self.l.setItemHeight(self.panelheight)
+		self.pager_left.resize(eSize(20, 20))
+		self.pager_right.resize(eSize(20, 20))
+		self.pager_left.setPixmap(self.ptr_pagerleft)
+		self.pager_right.setPixmap(self.ptr_pagerright)
+		self.pager_left.setScale(2)
+		self.pager_right.setScale(2)
+		self.pager_left.setAlphatest(2)
+		self.pager_right.setAlphatest(2)
+		self.pager_left.hide()
+		self.pager_right.hide()
+		self.pager_center.hide()
+		self.pagelabel.setTransparent(1)
+		self.pagelabel.setVAlign(eLabel.alignCenter)
+		self.pagelabel.setHAlign(eLabel.alignCenter)
+		self.pagelabel.setZPosition(100)
+		self.pager_center.setBackgroundColor(parseColor("#00272727"))
+		self.pager_center.resize(eSize(0, 0))
+		self.pager_center.setTransparent(1)
 
 		if reswidth == 1920:
-			self.pagelabel.setFont(gFont("FootIcons", 18))
-			self.pagelabel.setVAlign(eLabel.alignCenter)
-			self.pagelabel.setHAlign(eLabel.alignCenter)
-			self.pagelabel.setBackgroundColor(parseColor("#FF272727"))
-			self.pagelabel.setTransparent(1)
-			self.pagelabel.setZPosition(100)
-			self.pagelabel.move(ePoint(0, self.panelheight - 10))
-			self.pagelabel.resize(eSize(1660, 20))
-			self.pager_center.setBackgroundColor(parseColor("#00272727"))
-			self.pager_left.resize(eSize(20,20))
-			self.pager_right.resize(eSize(20, 20))
-			self.pager_left.setPixmap(self.ptr_pagerleft)
-			self.pager_right.setPixmap(self.ptr_pagerright)
-			self.pager_left.setScale(2)
-			self.pager_right.setScale(2)
-			self.pager_left.setAlphatest(2)
-			self.pager_right.setAlphatest(2)
-			self.pager_left.hide()
-			self.pager_right.hide()
-			self.pager_center.hide()
-		elif reswidth >= 2560:
-			self.pagelabel.setFont(gFont("FootIcons", 40))
-			self.pagelabel.setVAlign(eLabel.alignCenter)
-			self.pagelabel.setHAlign(eLabel.alignCenter)
-			self.pagelabel.setBackgroundColor(parseColor("#FF272727"))
-			self.pagelabel.setTransparent(1)
-			self.pagelabel.setZPosition(100)
-			self.pagelabel.move(ePoint(0, self.panelheight - 75))
-			self.pagelabel.resize(eSize(1985, 46))
-			self.pager_center.setBackgroundColor(parseColor("#00272727"))
-			self.pager_left.resize(eSize(20,20))
-			self.pager_right.resize(eSize(20, 20))
-			self.pager_left.setPixmap(self.ptr_pagerleft)
-			self.pager_right.setPixmap(self.ptr_pagerright)
-			self.pager_left.setScale(2)
-			self.pager_right.setScale(2)
-			self.pager_left.setAlphatest(2)
-			self.pager_right.setAlphatest(2)
-			self.pager_left.hide()
-			self.pager_right.hide()
-			self.pager_center.hide()
+		      self.pagelabel.setFont(gFont("FootIcons", 18))
+		      self.pagelabel.setBackgroundColor(parseColor("#FF272727"))
+		      self.pagelabel.move(ePoint(0, self.panelheight - 10))
+		      self.pagelabel.resize(eSize(1660, 20))
+		elif reswidth == 2560:
+		      self.pagelabel.setFont(gFont("FootIcons", 40))
+		      self.pagelabel.setBackgroundColor(parseColor("#00000000"))
+		      self.pagelabel.move(ePoint(0, self.panelheight - 75))
+		      self.pagelabel.resize(eSize(1985, 46))
 
 		self.skinAttributes = attribs
 		self.buildEntry()
@@ -170,7 +156,7 @@ class FlexibleMenu(GUIComponent):
 		self.pager_center = eLabel(self.instance)
 		self.pager_right = ePixmap(self.instance)
 		self.pagelabel = eLabel(self.instance)
-		
+
 	def preWidgetRemove(self, instance):
 		instance.setContent(None)
 		self.instance = None
@@ -185,7 +171,7 @@ class FlexibleMenu(GUIComponent):
 			self.setL(True)
 
 	def buildEntry(self):
-		if len(self.list)> 0:
+		if len(self.list) > 0:
 			width = self.boxwidth + self.margin
 			height = self.boxheight + self.margin
 			xoffset = ((self.activeboxwidth - self.boxwidth) // 2) if self.activeboxwidth > self.boxwidth else 0
@@ -195,9 +181,10 @@ class FlexibleMenu(GUIComponent):
 			count = 0
 			page = 1
 			list_dummy = []
-			self.total_pages = int(math.ceil(float(len(self.list))/self.itemPerPage))
+
+			self.total_pages = int(math.ceil(float(len(self.list)) / self.itemPerPage))
 			for elem in self.list:
-				if count > self.itemPerPage-1:
+				if count > self.itemPerPage - 1:
 					count = 0
 					page += 1
 					y = 0
@@ -208,14 +195,14 @@ class FlexibleMenu(GUIComponent):
 				self.entries.update({
 					elem[0]:{
 						"active":(
-							mcentry_pixmap(pos=(x, y), size=(self.activeboxwidth,self.activeboxheight), png=self.selPixmap, flags=BT_SCALE),
-							mcentry_pixmap_alpha(pos=(x, y), size=(self.activeboxwidth,self.activeboxheight), png=logo, flags=BT_SCALE|BT_ALIGN_CENTER|BT_KEEP_ASPECT_RATIO),
+							mcentry_pixmap(pos=(x, y), size=(self.activeboxwidth, self.activeboxheight), png=self.selPixmap, flags=BT_SCALE),
+							mcentry_pixmap_alpha(pos=(x, y), size=(self.activeboxwidth, self.activeboxheight), png=logo, flags=BT_SCALE | BT_ALIGN_CENTER | BT_KEEP_ASPECT_RATIO),
 							MultiContentEntryText(pos=(x+57, y+168), size=(self.activeboxwidth, 34), font=0, text="Match" if elem[0] == "today" else ""),
 							MultiContentEntryText(pos=(x+170, y+168), size=(self.activeboxwidth, 34), font=0, text="Today" if elem[0] == "today" else ""),
 						),
 						"u_active":(
-							mcentry_pixmap(pos=(x+xoffset, y+yoffset), size=(self.boxwidth,self.boxheight), png=self.itemPixmap, flags=BT_SCALE),
-							mcentry_pixmap_alpha(pos=(x+xoffset, y+yoffset), size=(self.boxwidth,self.boxheight), png=logo, flags=BT_SCALE|BT_ALIGN_CENTER|BT_KEEP_ASPECT_RATIO),
+							mcentry_pixmap(pos=(x+xoffset, y+yoffset), size=(self.boxwidth, self.boxheight), png=self.itemPixmap, flags=BT_SCALE),
+							mcentry_pixmap_alpha(pos=(x+xoffset, y+yoffset), size=(self.boxwidth, self.boxheight), png=logo, flags=BT_SCALE | BT_ALIGN_CENTER | BT_KEEP_ASPECT_RATIO),
 							MultiContentEntryText(pos=(x+60, y+160), size=(self.boxwidth, 34), font=0, text="Match" if elem[0] == "today" else ""),
 							MultiContentEntryText(pos=(x+170, y+160), size=(self.boxwidth, 34), font=0, text="Today" if elem[0] == "today" else ""),
 						),
@@ -268,7 +255,7 @@ class FlexibleMenu(GUIComponent):
 		if self.total_pages > 1:
 			self.pagetext = ""
 			if len(self.list) > 0:
-				for i in range(1, self.total_pages+1):
+				for i in range(1, self.total_pages + 1):
 					if self.getCurrentPage() > 0 and i == self.getCurrentPage():
 						self.pagetext += " " + self.selectedicon
 					else:
