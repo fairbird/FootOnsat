@@ -263,10 +263,14 @@ class FootOnSat(Screen):
                 compet = self.matches[i][2]
                 team1 = self.matches[i][3]
                 team2 = self.matches[i][4]
+                parts = re.split(r'\s+v[s]?\s+', match, 1, flags=re.IGNORECASE)
+                if len(parts) < 2:
+                    parts = [match, match]
+                log1 = parts[0].strip()
+                log2 = parts[1].strip()
                 team1_score = self.matches[i][5]  # Team1 score
                 team2_score = self.matches[i][6]  # Team2 score
                 match_status = self.matches[i][7]  # Match status (e.g., '70', 'HT', 'FT')
-                
                 # =======================================================
                 # *** NEW LOGIC START: Format the Status/Time ***
                 # =======================================================
@@ -304,50 +308,76 @@ class FootOnSat(Screen):
                 # =======================================================
                 # *** NEW LOGIC END ***
                 # =======================================================
-
                 flagTeam1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/{}.png".format(team1))
                 flagTeam2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/{}.png".format(team2))
+                teamlog1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/teamlog/{}.png".format(log1))
+                teamlog2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/teamlog/{}.png".format(log2))
                 banner = FootOnSat.setCompet(str(compet).lower())
                 match_date = self.getTime(match_date)
                 if not fileExists(flagTeam1):
                     flagTeam1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/default.png")
                 if not fileExists(flagTeam2):
                     flagTeam2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/default.png")
+                if not fileExists(teamlog1):
+                    teamlog1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/teamlog/default.png")
+                if not fileExists(teamlog2):
+                    teamlog2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/teamlog/default.png")
                 if self.checkIfexist(match):
                     notif = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/icon/notif_on.png")
                 else:
                     notif = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/icon/notif_off.png")
                 # Initialize list entry
                 res.append(MultiContentEntryText())
-                # Team 1 flag
-                res.append(MultiContentEntryPixmapAlphaBlend(pos=(420, 70), size=(40, 30), png=loadPNG(flagTeam1)))
+                # Team 1 flag/logteam
+                if self.link == "basketball":
+                    res.append(MultiContentEntryPixmapAlphaBlend(pos=(70, 5), size=(160, 160), png=loadPNG(teamlog1)))
+                    res.append(MultiContentEntryPixmapAlphaBlend(pos=(212, 70), size=(40, 30), png=loadPNG(flagTeam1)))
+                else:
+                    res.append(MultiContentEntryPixmapAlphaBlend(pos=(420, 70), size=(40, 30), png=loadPNG(flagTeam1)))
                 # Score team 1
+                if self.link != "basketball":
+                    if reswidth >= 2560:
+                    	res.append(MultiContentEntryText(pos=(500, 69), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
+                    else:
+                    	res.append(MultiContentEntryText(pos=(482, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
+                 # Team 2 flag/logteam
                 if reswidth >= 2560:
-                    res.append(MultiContentEntryText(pos=(500, 69), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
+                    if self.link == "basketball":
+                    	res.append(MultiContentEntryPixmapAlphaBlend(pos=(1440, 5), size=(160, 160), png=loadPNG(teamlog2)))
+                    	res.append(MultiContentEntryPixmapAlphaBlend(pos=(1550, 70), size=(40, 30), png=loadPNG(flagTeam2)))
+                    else:
+                    	res.append(MultiContentEntryPixmapAlphaBlend(pos=(1550, 70), size=(40, 30), png=loadPNG(flagTeam2)))
                 else:
-                    res.append(MultiContentEntryText(pos=(482, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
-                 # Team 2 flag
-                if reswidth >= 2560:
-                    res.append(MultiContentEntryPixmapAlphaBlend(pos=(1550, 70), size=(40, 30), png=loadPNG(flagTeam2)))
-                else:
-                    res.append(MultiContentEntryPixmapAlphaBlend(pos=(1142, 69), size=(40, 30), png=loadPNG(flagTeam2)))
+                    if self.link == "basketball":
+                    	res.append(MultiContentEntryPixmapAlphaBlend(pos=(1030, 10), size=(160, 160), png=loadPNG(teamlog2)))
+                    	res.append(MultiContentEntryPixmapAlphaBlend(pos=(1012, 70), size=(40, 30), png=loadPNG(flagTeam2)))
+                    else:
+                    	res.append(MultiContentEntryPixmapAlphaBlend(pos=(1142, 70), size=(40, 30), png=loadPNG(flagTeam2)))
                 # Score team 2
-                if reswidth >= 2560:
-                    res.append(MultiContentEntryText(pos=(1490, 69), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
-                else:
-                    res.append(MultiContentEntryText(pos=(1092, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
+                if self.link != "basketball":
+                    if reswidth >= 2560:
+                    	res.append(MultiContentEntryText(pos=(1490, 69), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
+                    else:
+                    	res.append(MultiContentEntryText(pos=(1092, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
                 # Competition banner
-                try:
-                    res.append(MultiContentEntryPixmapAlphaTest(pos=(65, 6), size=(320, 163), png=loadPNG(banner), flags=BT_SCALE))
-                except TypeError:
-                    res.append(MultiContentEntryPixmapAlphaTest(pos=(65, 6), size=(320, 163), png=loadPNG(banner)))
+                if not self.link == "basketball":
+                    try:
+                    	res.append(MultiContentEntryPixmapAlphaTest(pos=(65, 6), size=(320, 163), png=loadPNG(banner), flags=BT_SCALE))
+                    except TypeError:
+                    	res.append(MultiContentEntryPixmapAlphaTest(pos=(65, 6), size=(320, 163), png=loadPNG(banner)))
                 # Notification icon
                 res.append(MultiContentEntryPixmapAlphaBlend(pos=(-20, 63), size=(70, 50), png=loadPNG(notif)))
                 # Match name
                 if reswidth >= 2560:
-                    res.append(MultiContentEntryText(pos=(550, 69), size=(900, 40), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
+                    if self.link == "basketball":
+                    	res.append(MultiContentEntryText(pos=(390, 69), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_HALIGN_CENTER, text=str(match)))
+                    else:
+                    	res.append(MultiContentEntryText(pos=(550, 69), size=(900, 40), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
                 else:
-                    res.append(MultiContentEntryText(pos=(500, 66), size=(570, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
+                    if self.link == "basketball":
+                    	res.append(MultiContentEntryText(pos=(390, 66), size=(500, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(match)))
+                    else:
+                    	res.append(MultiContentEntryText(pos=(500, 66), size=(570, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
                 # status_text + match_status
                 if team1_score != "" or match_status != "":
                     # If score or status exists, display the dynamic status/time (e.g., "Live: 70 min" or "Status: FT")
@@ -358,18 +388,30 @@ class FootOnSat(Screen):
                 else:
                     # Otherwise, display the scheduled Kick-off time
                     if reswidth >= 2560:
-                    	res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
+                    	if self.link == "basketball":
+                    		res.append(MultiContentEntryText(pos=(430, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
+                    	else:
+                    		res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
                     else:
-                    	res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
+                    	if self.link == "basketball":
+                    		res.append(MultiContentEntryText(pos=(430, 120), size=(500, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
+                    	else:
+                    		res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
                 # Competition name
                 if reswidth >= 2560:
-                    res.append(MultiContentEntryText(pos=(420, 15), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
+                    if self.link == "basketball":
+                    	res.append(MultiContentEntryText(pos=(430, 15), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
+                    else:
+                    	res.append(MultiContentEntryText(pos=(420, 15), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
                 else:
-                    res.append(MultiContentEntryText(pos=(420, 15), size=(785, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
+                    if self.link == "basketball":
+                    	res.append(MultiContentEntryText(pos=(430, 15), size=(500, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
+                    else:
+                    	res.append(MultiContentEntryText(pos=(420, 15), size=(785, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
                 gList.append(res)
                 res = []
             self["list1"].setList(gList)
-            if self.link == "today":
+            if self.link in ["today", "basketball"]:
                 self['key_red'].show()
                 self['key_yellow'].show()
                 self['key_green'].hide()
@@ -988,7 +1030,11 @@ class FootOnSat(Screen):
 
             # Only fetch live results for live/finished matches if livescore is set to "3"
             if config.plugins.FootOnSat.livescore.value == "3":
-                self.fetch_live_results()
+                if config.plugins.FootOnSat.livescoresections.value == "1":
+                    self.fetch_live_results()
+                elif config.plugins.FootOnSat.livescoresections.value == "2":
+                    if self.link == "today":
+                    	self.fetch_live_results()
 
             self.onWindowShow()
         else:
