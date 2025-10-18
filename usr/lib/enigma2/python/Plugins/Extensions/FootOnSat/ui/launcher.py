@@ -486,6 +486,8 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			pic = None
 			if index == "default_icons":
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/default_icons.png')
+			elif index == "icons_buwalla":
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/icons_buwalla.png')
 			elif index == "icons_renkli":
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/icons_renkli.png')
 			elif index == "italia2012_icons":
@@ -518,6 +520,8 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		  extract_path = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
 		  if config.plugins.FootOnSat.icons.value == "default_icons":
 			  os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/default_icons.tar.gz | tar -xz -C %s" % extract_path)
+		  elif config.plugins.FootOnSat.icons.value == "icons_buwalla":
+			  os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/icons_buwalla.tar.gz | tar -xz -C %s" % extract_path)
 		  elif config.plugins.FootOnSat.icons.value == "icons_renkli":
 			  os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/icons_renkli.tar.gz | tar -xz -C %s" % extract_path)
 		  elif config.plugins.FootOnSat.icons.value == "italia2012_icons":
