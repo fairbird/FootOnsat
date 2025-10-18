@@ -344,7 +344,7 @@ class FootOnSat(Screen):
 				if reswidth >= 2560:
 					if self.link == "basketball":
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1440, 5), size=(160, 160), png=loadPNG(teamlog2)))
-						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1550, 70), size=(40, 30), png=loadPNG(flagTeam2)))
+						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1420, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 					else:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1550, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 				else:
@@ -370,7 +370,7 @@ class FootOnSat(Screen):
 				# Match name
 				if reswidth >= 2560:
 					if self.link == "basketball":
-						res.append(MultiContentEntryText(pos=(390, 69), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_HALIGN_CENTER, text=str(match)))
+						res.append(MultiContentEntryText(pos=(332, 69), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_HALIGN_CENTER, text=str(match)))
 					else:
 						res.append(MultiContentEntryText(pos=(550, 69), size=(900, 40), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
 				else:
@@ -411,7 +411,7 @@ class FootOnSat(Screen):
 				gList.append(res)
 				res = []
 			self["list1"].setList(gList)
-			if self.link in ["today", "basketball"]:
+			if self.link in ["today"]:
 				self['key_red'].show()
 				self['key_yellow'].show()
 				self['key_green'].hide()
@@ -966,7 +966,7 @@ class FootOnSat(Screen):
 				HOUR = 2
 			else:
 				# Default to 3 hours if option is not '2'
-				HOUR = 5
+				HOUR = 3
 		except AttributeError:
 			# Fallback in case the config element is missing or not properly initialized
 			HOUR = 2
