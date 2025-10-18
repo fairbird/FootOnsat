@@ -52,6 +52,7 @@ config.plugins.FootOnSat.notify = ConfigSelection(default = "1", choices = [
 	])
 config.plugins.FootOnSat.icons = ConfigSelection(default = "default_icons", choices = [
 	("default_icons", _("default icons")),
+	("icons_buwalla", _("buwalla icons")),
 	("icons_renkli", _("renkli icons")),
 	("italia2012_icons", _("italia2012 Full style color"))
 	])
@@ -392,17 +393,17 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 	if DreamOS():
 		if reswidth == 2560:
 			skin = """
-					<screen name="MenuFootOnSat" position="center,center" size="1522,920" title="Menu FootOnSat">
-						<widget source="global.CurrentTime" render="Label" position="5,17" size="1511,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
-							<convert type="ClockToText">Format:%d-%m-%Y    %H:%M:%S</convert>
-						</widget>
-						<widget name="config" position="18,70" size="1238,344" scrollbarMode="showOnDemand" />
-						<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="373,650" zPosition="-10" />
-						<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="735,650" zPosition="-10" />
-						<widget render="Label" source="key_red" position="373,610" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" />
-						<widget render="Label" source="key_green" position="735,610" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1" />
-						<widget source="help" render="Label" position="18,305" size="1238,40" font="Regular;32" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5" />
-						<widget name="Picture" position="463,330" size="400,260" zPosition="5" alphatest="blend" />
+					<screen name="MenuFootOnSat" position="center,center" size="1522,976" title="Menu FootOnSat">
+				            <widget source="global.CurrentTime" render="Label" position="5,17" size="1511,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
+				                <convert type="ClockToText">Format:%d-%m-%Y    %H:%M:%S</convert>
+				            </widget>
+				            <widget name="config" position="18,70" size="1495,430" scrollbarMode="showOnDemand" />
+				            <eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="448,950" zPosition="-10" />
+				            <eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="830,950" zPosition="-10" />
+				            <widget render="Label" source="key_red" position="448,905" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" />
+				            <widget render="Label" source="key_green" position="830,905" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1" />
+				            <widget source="help" render="Label" position="22,510" size="1476,40" font="Regular;29" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5" />
+				            <widget name="Picture" position="521,554" size="480,340" zPosition="5" alphatest="blend" />
 					</screen>"""
 		else:
 			skin = """
