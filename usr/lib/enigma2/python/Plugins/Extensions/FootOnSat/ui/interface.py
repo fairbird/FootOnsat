@@ -16,7 +16,7 @@ from sqlite3 import connect
 from bs4 import BeautifulSoup
 from unicodedata import normalize
 from difflib import SequenceMatcher
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from enigma import eTimer, gRGB, loadPNG, gPixmapPtr, RT_WRAP, ePoint, RT_HALIGN_CENTER, RT_HALIGN_LEFT, RT_VALIGN_CENTER, eListboxPythonMultiContent, gFont, getDesktop, eConsoleAppContainer
 from Components.MultiContent import MultiContentEntryText, MultiContentEntryPixmap, MultiContentEntryPixmapAlphaTest, MultiContentEntryPixmapAlphaBlend
 from Components.MenuList import MenuList
@@ -33,6 +33,7 @@ from Tools.Directories import resolveFilename, SCOPE_PLUGINS, fileExists
 from Tools.LoadPixmap import LoadPixmap
 from twisted.web.client import getPage, downloadPage
 from twisted.internet.ssl import ClientContextFactory
+from twisted.internet.threads import deferToThread
 from twisted.internet._sslverify import ClientTLSOptions
 from .compat import PY3, compat_urlopen, compat_HTTPError, compat_URLError, compat_Request, compat_str
 
@@ -640,308 +641,235 @@ class FootOnSat(Screen):
 			self.session.openWithCallback(self.exit, MessageBox, _('An Unexpected HTTP Error Occurred During The API Request !!'), MessageBox.TYPE_ERROR, timeout=10)
 
 	def fetch_live_results(self):
-		"""
-		Fetch and parse live results from Flashscore.com (mobile) using a resilient 
-		parsing strategy for the br-separated, non-table HTML structure provided.
-		"""
-		
-		# NOTE: This code assumes necessary imports (like re, datetime, BeautifulSoup, etc.) are available.
-		url = "https://m.flashscore.com/" 
-		#logdata("FootOnSat-LiveFetch", "Starting fetch: %s" % url)
-		
-		# Using the base URL as confirmed in your HTML sample
-		headers = {
-			"User-Agent": "Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.0.0 Mobile Safari/537.36",
-			"Accept-Language": "en-US,en;q=0.9",
-			"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9",
-		}
-		
-		html = None
-		# --- Network Fetch ---
+		# === Try to use requests ===
 		try:
-			request = compat_Request(url, headers=headers)
-			response = compat_urlopen(request, timeout=5)  
-			raw_html_content = response.read()
-			
-			if PY3:
-				html = raw_html_content.decode('utf-8', errors="ignore")
-			else:
-				html = compat_str(raw_html_content)
-			
-			#logdata("FootOnSat-LiveFetch", "Fetched HTML length: %d" % len(html))
-		except Exception as e:
-			#logdata("FootOnSat-LiveFetch-ERROR", "Failed to fetch %s: %s" % (url, str(e)))
-			return
-		
-		if not html:
+			import requests
+			HAS_REQUESTS = True
+		except ImportError:
+			HAS_REQUESTS = False
+			logdata("FootOnSat-Sofa-ERROR", "requests not available - plugin will not work")
 			return
 
-		# <<< CRITICAL SPEED OPTIMIZATION: Extract only the data block >>>
-		# Look for the block containing match results
-		match_block = re.search(r'<div id="score-data">(.*?)</div><p class="advert-bottom', html, re.DOTALL)
-		
-		if match_block:
-			html_to_parse = match_block.group(1)
-			#logdata("FootOnSat-LiveFetch-OPT", "Parsing small block (length: %d)" % len(html_to_parse))
-		else:
-			html_to_parse = html
-			#logdata("FootOnSat-LiveFetch-OPT", "WARNING: Data block not found, parsing full page (slow fallback).")
-			
-		soup = BeautifulSoup(html_to_parse, "html.parser")
-		matches_data = []
-		
-		# --- Data Extraction (Targeting the <a> tag with score and its siblings) ---
-		# The structure is: <span>Time/Status</span>Team1 - Team2 <a class="fin/sched/live">Score</a><br />
-		for score_link in soup.find_all("a", class_=re.compile(r'(fin|live|sched)')):
+		# === URL & rotating UA ===
+		today_iso = date.today().isoformat()
+		url = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}'.format(today_iso)
+
+		USER_AGENTS = [
+			'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36',
+			'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
+			'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Safari/605.1.15',
+		]
+		ua = random.choice(USER_AGENTS)
+
+		# === Minimal headers to bypass 403 ===
+		headers = {
+			'User-Agent': ua,
+			'Accept': 'application/json, text/plain, */*',
+			'Referer': 'https://www.sofascore.com/',
+			'Origin': 'https://www.sofascore.com',
+			'Cache-Control': 'no-cache',
+		}
+
+		# === Fetch in thread ===
+		def _fetch_with_requests():
 			try:
-				# 1. Extract Score and Base Status
-				score_text = score_link.get_text(strip=True)
-				score_class = score_link.get('class', [''])[0] 
-				
-				# Check for scheduled or unplayed scores
-				if score_text == "-:-":
-					continue
-				
-				# Extract the team string (e.g., "Equatorial Guinea - Liberia")
-				# This text node is a preceding sibling of the score_link <a>
-				team_string = score_link.previous_sibling
-				if team_string and isinstance(team_string, compat_str):
-					team_string = team_string.strip()
-				else:
-					# Fallback for complex structure with images/other elements
-					continue
-
-				# 2. Extract Status/Time
-				# The status is in a span tag or a text node before the team string.
-				status_span = score_link.find_previous_sibling("span")
-				scraped_status = ""
-				
-				if status_span and status_span.get('class', [''])[0] == 'live':
-					scraped_status = status_span.get_text(strip=True)
-				elif status_span: 
-					# Use the text of the span element that contains the scheduled time (for live matches it will be minute)
-					scraped_status = status_span.get_text(strip=True)
-
-				# 3. Status Normalization (The Fix)
-				match_status = scraped_status.strip().upper() if scraped_status else ''
-				
-				# A. FINISHED matches: Check the link class or known text status
-				if score_class == 'fin' or match_status in ('FT', 'AET', 'PEN'):
-					match_status = 'FINISHED'
-				# B. HALFTIME matches: Check for HT status
-				elif match_status == 'HALF TIME': # Based on the HTML: <span class="live">Half Time</span>
-					match_status = 'HALFTIME'
-				# C. LIVE minute matches: Preserve the minute number
-				elif re.match(r'^\d{1,3}[\'+]*\+?\d*$', match_status):
-					# This preserves minutes like '51', '77', '90+' etc.
-					pass 
-				# D. Any other non-recognized status, defaults to LIVE if score link is "live"
-				elif score_class == 'live':
-					match_status = 'LIVE'
-				else:
-					# For scheduled/unknown types that weren't captured by 'fin' class
-					continue 
-
-				# 4. Extract Teams and Scores
-				teams = re.split(r'\s*-\s*', team_string)
-				if len(teams) != 2:
-					# Try to strip out noise before splitting (e.g., the red card images)
-					team_string_clean = re.sub(r'<img[^>]*>', '', team_string)
-					teams = re.split(r'\s*-\s*', team_string_clean)
-					if len(teams) != 2:
-						#logdata("FootOnSat-Scrape-WARN", "Failed to parse teams from: '%s'" % team_string)
-						continue
-						
-				team1, team2 = [t.strip() for t in teams]
-				
-				# Strip score from noise like red card images or extra text near the score
-				score_text_clean = re.sub(r'[^0-9:]', '', score_text)
-				if ":" not in score_text_clean:
-					continue
-					
-				team1_score, team2_score = score_text_clean.split(":")
-				match_name = "%s vs %s" % (team1, team2)
-				
-				matches_data.append({
-					"match_name": match_name,
-					"team1_score": team1_score.strip(),
-					"team2_score": team2_score.strip(),
-					"team1": team1,  
-					"team2": team2,  
-					"match_status": match_status 
-				})
-				#logdata("FootOnSat-Scrape", "Scraped Live: %s (%s:%s) Status: %s" % (match_name, team1_score, team2_score, match_status))
+				r = requests.get(url, headers=headers, timeout=10)
+				r.raise_for_status()
+				return r.content
 			except Exception as e:
-				#logdata("FootOnSat-Scrape-ERROR", "Error processing scraped match: %s" % str(e))
-				continue
-		
-		# --- Match Assignment Logic ---
-		matches_list = [list(match) for match in self.matches]
-		
-		now = datetime.now()
-		TIME_OFFSET = timedelta(minutes=3) 
-		now_adjusted = now - TIME_OFFSET
-		#logdata("FootOnSat-Time-Adjust", "Local time adjusted by %s seconds for sync." % TIME_OFFSET.total_seconds())
-		
-		# --- Debugging Name Cleaning Helper (Acronym Focus) ---
-		def _clean_name(name, source=""):
-			# Log the raw input name
-			#logdata("FootOnSatNotif", "DEBUG CLEAN START: Source='%s', Raw Name='%s'" % (source, name))
-			
-			# Normalization and Python 2/3 handling (unchanged for safety)
-			if not PY3 and isinstance(name, str):
-				name = name.decode('ascii', 'ignore')
-			
+				raise Exception("SofaScore fetch failed: %s" % str(e))
+
+		d = deferToThread(_fetch_with_requests)
+
+		# === Process response (your original logic) ===
+		def _process_response(raw):
 			try:
 				if PY3:
-					name = normalize('NFKD', name).encode('ascii', 'ignore').decode('ascii')
+					data_str = raw.decode('utf-8', errors='ignore')
 				else:
-					name = normalize('NFKD', name.decode('utf-8')).encode('ascii', 'ignore')
-			except: 
-				pass 
-				
-			name = name.strip().lower()
+					data_str = compat_str(raw)
+			except Exception as e:
+				#logdata("FootOnSat-Sofa-ERROR", "Decode error: %s" % e)
+				return
 
-			# Handle dotted abbreviations (e.g., U.A.E. -> uae, U.S.A. -> usa)
-			name = re.sub(r'\b([a-z])\.([a-z])(?:\.([a-z]))*\.?\b', lambda m: ''.join(c for c in m.group(0) if c.isalpha()), name)
-			if 'uae' in name:
-				name = name.replace('uae', 'united arab emirates')
-			# CRITICAL ADDITION: Add the words from the full name that MUST be ignored
-			NOISE_PATTERN = r'\b(reserves?|club|team|squad|sport|athletic|calcio|foot|junior|senior|amateur|ii|b|of|the|and|a|utd|atl|fc|cf|as|ac|republic|federal|states|city|borough|county|national|squadra|selec|internacional)\b'
-			name = re.sub(NOISE_PATTERN, ' ', name, flags=re.IGNORECASE)
-
-			name = re.sub(r'\sw\s*$', ' ', name)
-			name = re.sub(r'\sw\s', ' ', name)
-			
-			# Aggressively remove all non-alphanumeric characters (dots/hyphens are now gone)
-			name = re.sub(r'[^a-z0-9]+', ' ', name)
-			
-			# Collapse multiple spaces into a single space
-			name = re.sub(r'\s+', ' ', name) 
-			
-			final_cleaned_name = name.strip()
-			
-			# Log the final cleaned output name
-			#logdata("FootOnSatNotif", "DEBUG CLEAN END: Cleaned Name='%s'" % final_cleaned_name)
-			
-			return final_cleaned_name
-		# -----------------------------------------------------------------------
-		SIMILARITY_THRESHOLD = 0.50  # Change from 0.60 to 0.50
-
-		for match in matches_list:
-			match_name_full = match[0]
 			try:
-				# Assuming match[1] is the time string "HH:MM - YYYY-MM-DD"
-				match_date = datetime.strptime(match[1], "%H:%M - %Y-%m-%d")
-			except ValueError:
-				match_date = now_adjusted 
-				
-			# CRITICAL CHECK: Check if match is finished based on scraped data 
-			is_finished = False
-			local_teams_temp = re.split(r'\s+vs\s+|\s+-\s+', match_name_full)
-			
-			if len(local_teams_temp) == 2:
-				local_t1_norm_simple = _clean_name(local_teams_temp[0])
-				local_t2_norm_simple = _clean_name(local_teams_temp[1])
-				
-				for live_match in matches_data:
-					if live_match["match_status"] == 'FINISHED':
-						live_t1_norm_simple = _clean_name(live_match["team1"])
-						live_t2_norm_simple = _clean_name(live_match["team2"])
-						
-						# Direct match OR swapped match
-						if ((local_t1_norm_simple == live_t1_norm_simple and local_t2_norm_simple == live_t2_norm_simple) or
-							(local_t1_norm_simple == live_t2_norm_simple and local_t2_norm_simple == live_t1_norm_simple)):
-							is_finished = True
-							break
-						
-			if match_date <= now_adjusted or is_finished:
-				# Proceed with score matching
-				local_teams = re.split(r'\s+vs\s+|\s+-\s+', match_name_full)
-				if len(local_teams) != 2:
-					continue
-					
-				local_t1_norm = _clean_name(local_teams[0])
-				local_t2_norm = _clean_name(local_teams[1])
-				
-				found = False
-				best_similarity = 0.0
-				best_live_match = None
-				
-				for live_match in matches_data:
-					live_t1_norm = _clean_name(live_match["team1"])
-					live_t2_norm = _clean_name(live_match["team2"])
-					
-					# Calculate similarity for both straight and swapped orders
-					sim_t1_straight = SequenceMatcher(None, local_t1_norm, live_t1_norm).ratio()
-					sim_t2_straight = SequenceMatcher(None, local_t2_norm, live_t2_norm).ratio()
-					avg_sim_straight = (sim_t1_straight + sim_t2_straight) / 2
-					
-					sim_t1_swap = SequenceMatcher(None, local_t1_norm, live_t2_norm).ratio()
-					sim_t2_swap = SequenceMatcher(None, local_t2_norm, live_t1_norm).ratio()
-					avg_sim_swap = (sim_t1_swap + sim_t2_swap) / 2
-					
-					current_similarity = max(avg_sim_straight, avg_sim_swap)
-						
-					if current_similarity > best_similarity:
-						best_similarity = current_similarity
-						
-						# Decide which order to use for score assignment
-						if avg_sim_straight >= avg_sim_swap:
-							# Use straight order (Team 1 -> live Team 1, Team 2 -> live Team 2)
-							best_live_match = {
-								"team1_score": live_match["team1_score"],
-								"team2_score": live_match["team2_score"],
-								"match_status": live_match["match_status"]
-							}
-						else:
-							# Use swapped order (Team 1 -> live Team 2, Team 2 -> live Team 1)
-							best_live_match = {
-								"team1_score": live_match["team2_score"],
-								"team2_score": live_match["team1_score"],
-								"match_status": live_match["match_status"]
-							}
+				data = json.loads(data_str)
+			except Exception as e:
+				#logdata("FootOnSat-Sofa-ERROR", "JSON parse error: %s" % e)
+				return
 
-				if best_similarity >= SIMILARITY_THRESHOLD and best_live_match:
-					# --- 1. ASSIGNMENT BLOCK (SUCCESS) ---
-					if config.plugins.FootOnSat.livescore.value == "3":
-						match[5] = compat_str(best_live_match["team1_score"]).strip()
-						match[6] = compat_str(best_live_match["team2_score"]).strip()
-						match[7] = compat_str(best_live_match["match_status"]).strip()  
+			events = data.get('events', [])
+			if not events:
+				return
+
+			# === BUILD live_matches ===
+			live_matches = []
+			now_adj = datetime.now() - timedelta(minutes=3)
+
+			for ev in events:
+				try:
+					home = compat_str(ev['homeTeam']['name'])
+					away = compat_str(ev['awayTeam']['name'])
+					match_name = "{0} vs {1}".format(home, away)
+
+					h_score = compat_str(ev.get('homeScore', {}).get('current', '')) or ''
+					a_score = compat_str(ev.get('awayScore', {}).get('current', '')) or ''
+
+					status_obj = ev.get('status', {})
+					stype = status_obj.get('type', '')
+					descr = status_obj.get('description', '')
+
+					ts = ev.get('startTimestamp')
+					match_dt = datetime.fromtimestamp(ts) if ts else now_adj
+
+					# --- Status logic ---
+					if stype == 'finished':
+						status = 'FINISHED'
+					elif stype == 'notstarted':
+						status = ''
+					elif stype == 'inprogress':
+						m = re.search(r'(\d{1,3}[\'+]*\+?\d*)\s*\'', descr)
+						if m:
+							status = '{0} min'.format(m.group(1))
+						elif 'extra time' in descr.lower():
+							status = 'AET'
+						elif 'penalties' in descr.lower():
+							status = 'PEN'
+						elif descr.lower() in ['half time', 'halftime']:
+							status = 'HALFTIME'
+						else:
+							try:
+								status_time_ts = ev.get('statusTime', {}).get('timestamp')
+								if status_time_ts:
+									minutes_diff = int((datetime.now() - datetime.fromtimestamp(status_time_ts)).total_seconds() // 60)
+									if descr.lower() == '2nd half':
+										minutes_diff += 45
+									status = '{0} min'.format(minutes_diff)
+								else:
+									status = ''
+							except:
+								status = ''
 					else:
-						match[5] = ""
-						match[6] = ""
-						match[7] = ""
-					found = True
-					# NEW DEBUG LOG FOR SUCCESSFUL ASSIGNMENT (NOTIF OFF)
-					#logdata("FootOnSat-Notify-SUCCESS", "Assigned Score to %s (Sim: %.3f): %s-%s, Status: %s" % (match_name_full, best_similarity, match[5], match[6], match[7]))
-					
-				if match_date <= now + timedelta(hours=2): 
-					# --- 2. RESET BLOCK (NOT FOUND, IN 2-HOUR WINDOW) ---
-					if not found:
-						match[5] = ""
-						match[6] = ""
-						match[7] = ""
-						# NEW DEBUG LOG FOR RESET (NOTIF ON)
-						#logdata("FootOnSat-Notify-RESET", "Reset status for upcoming match %s. Eligible for notification." % match_name_full)
-				else:
-					# --- 3. CLEANUP BLOCK (TOO OLD OR FAR FUTURE) ---
-					if match_date < now_adjusted:
-						# Match has passed the time/tracking window 
-						match[5] = ""
-						match[6] = ""
-						match[7] = ""  
-						# NEW DEBUG LOG FOR CLEANUP
-						#logdata("FootOnSat-Notify-CLEANUP", "Clearing old match data for %s" % match_name_full)
-					# else: Match is far in the FUTURE, scores remain empty.
-					
-			else:
-				# Match has not started yet (far in the future)
-				match[5] = ""
-				match[6] = ""
-				match[7] = ""  
-				
-		self.matches = matches_list
+						status = ''
+
+					if match_dt > now_adj + timedelta(hours=6):
+						h_score = a_score = ''
+						status = ''
+
+					live_matches.append({
+						"match_name": match_name,
+						"team1": home,
+						"team2": away,
+						"team1_score": h_score,
+						"team2_score": a_score,
+						"match_status": status,
+						"match_dt": match_dt,
+						"raw_descr": descr
+					})
+				except Exception as e:
+					continue
+
+			# === MATCHING (your original code) ===
+			matches_list = [list(m) for m in self.matches]
+
+			def _clean_name(name):
+				if not PY3 and isinstance(name, str):
+					name = name.decode('ascii', 'ignore')
+				try:
+					if PY3:
+						name = normalize('NFKD', name).encode('ascii', 'ignore').decode('ascii')
+					else:
+						name = normalize('NFKD', name.decode('utf-8')).encode('ascii', 'ignore')
+				except:
+					pass
+				name = compat_str(name).strip().lower()
+				NOISE = r'\b(fc|cf|as|ac|utd|united|city|town|county|national|club|team|squad|sport|athletic|calcio|ploieşti|ploiești|ploieshti|aif|ifk|goteborg|göteborg)\b'
+				name = re.sub(NOISE, ' ', name, flags=re.IGNORECASE)
+				name = re.sub(r'\s+', ' ', name).strip()
+				return name
+
+			THRESHOLD = 0.45
+			TIME_WINDOW = timedelta(hours=6)
+
+			for match in matches_list:
+				try:
+					time_str = compat_str(match[1])
+					try:
+						local_dt = datetime.strptime(time_str.split(' - ')[1] + ' ' + time_str.split(' - ')[0], "%Y-%m-%d %H:%M")
+					except:
+						local_dt = now_adj
+
+					local_name = compat_str(match[0])
+					teams = re.split(r'\s+vs\s+|\s+-\s+', local_name)
+					if len(teams) != 2:
+						continue
+
+					l_t1 = compat_str(teams[0]).strip()
+					l_t2 = compat_str(teams[1]).strip()
+					l_t1_clean = _clean_name(l_t1)
+					l_t2_clean = _clean_name(l_t2)
+
+					best_sim = 0.0
+					best_live = None
+
+					for live in live_matches:
+						s_t1 = compat_str(live["team1"]).strip()
+						s_t2 = compat_str(live["team2"]).strip()
+						s_t1_clean = _clean_name(s_t1)
+						s_t2_clean = _clean_name(s_t2)
+
+						sim1 = SequenceMatcher(None, l_t1_clean, s_t1_clean).ratio()
+						sim2 = SequenceMatcher(None, l_t2_clean, s_t2_clean).ratio()
+						avg_straight = (sim1 + sim2) / 2.0
+
+						sim1s = SequenceMatcher(None, l_t1_clean, s_t2_clean).ratio()
+						sim2s = SequenceMatcher(None, l_t2_clean, s_t1_clean).ratio()
+						avg_swap = (sim1s + sim2s) / 2.0
+
+						cur_sim = max(avg_straight, avg_swap)
+						cur_diff = abs(live["match_dt"] - local_dt)
+
+						if cur_sim > best_sim and cur_diff <= TIME_WINDOW:
+							best_sim = cur_sim
+							if avg_straight >= avg_swap:
+								best_live = {
+									"team1_score": live["team1_score"],
+									"team2_score": live["team2_score"],
+									"match_status": live["match_status"]
+								}
+							else:
+								best_live = {
+									"team1_score": live["team2_score"],
+									"team2_score": live["team1_score"],
+									"match_status": live["match_status"]
+								}
+
+					if best_sim >= THRESHOLD and best_live:
+						if config.plugins.FootOnSat.livescore.value == "3":
+							match[5] = compat_str(best_live["team1_score"]).strip()
+							match[6] = compat_str(best_live["team2_score"]).strip()
+							match[7] = compat_str(best_live["match_status"]).strip()
+						else:
+							match[5] = match[6] = match[7] = ""
+					else:
+						match[5] = match[6] = match[7] = ""
+				except Exception as e:
+					continue
+
+			# === UI UPDATE ===
+			self.matches = matches_list
+			try:
+				self.iniMenu()
+			except Exception as e:
+				pass
+
+		# === Error handling ===
+		def _error(failure):
+			logdata("FootOnSat-Sofa-ERROR", "Request failed: %s" % failure.getErrorMessage())
+
+		# === Wire callbacks ===
+		d.addCallback(_process_response)
+		d.addErrback(_error)
 
 	def getData(self, data):
 		list = []
