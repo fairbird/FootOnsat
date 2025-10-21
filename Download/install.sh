@@ -53,7 +53,7 @@ if [ -d $PLUGIN_PATH ]; then
 	cp -a "$ASSETS_PATH/icon" "$TMP_ASSETS" >/dev/null 2>&1
 	#cp -a "$ASSETS_PATH/skin" "$TMP_ASSETS" >/dev/null 2>&1
 #    echo "Remove old version."
-#    if [ $OS = "Opensource" ]; then
+#    if [ "$OS" = "Opensource" ]; then
 #        opkg remove enigma2-plugin-extensions-footonsat
 #    else
 #       apt-get purge --auto-remove enigma2-plugin-extensions-footonsat
@@ -83,44 +83,45 @@ else
    REQUESTES='python-requests'
 fi
 
-if grep -q $SQLITE3 $STATUS; then
+if grep -q "$SQLITE3" "$STATUS"; then
     sqlite='Installed'
 fi
 
-if grep -q $PYSIX $STATUS; then
+if grep -q "$PYSIX" "$STATUS"; then
     six='Installed'
 fi
 
-if grep -q 'alsa-utils-aplay' $STATUS; then
+if grep -q 'alsa-utils-aplay' "$STATUS"; then
     aplay='Installed'
 fi
 
-if grep -q $SOUP4 $STATUS; then
+if grep -q "$SOUP4" "$STATUS"; then
     beautifulsoup4='Installed'
 fi
 
-if grep -q $DIFFLIB $STATUS; then
+if grep -q "$DIFFLIB" "$STATUS"; then
     difflib='Installed'
 fi
 
-if grep -q $THREADING $STATUS; then
+if grep -q "$THREADING" "$STATUS"; then
     threading='Installed'
 fi
 
-if grep -q $PLILOW $STATUS; then
+if grep -q "$PLILOW" "$STATUS"; then
     pillow='Installed'
 fi
 
-if grep -q $REQUESTES $STATUS; then
+if grep -q "$REQUESTES" "$STATUS"; then
     requestes='Installed'
 fi
 
-if [ $sqlite = "Installed" -a $six = "Installed" -a $aplay = "Installed" -a $beautifulsoup4 = "Installed" -a \
-     $difflib = "Installed" -a $threading = "Installed" -a $pillow = "Installed" -a $requestes = "Installed" ]; then
+
+if [ "$sqlite" = "Installed" -a "$six" = "Installed" -a "$aplay" = "Installed" -a "$beautifulsoup4" = "Installed" -a \
+     "$difflib" = "Installed" -a "$threading" = "Installed" -a "$pillow" = "Installed" -a "$requestes" = "Installed" ]; then
      echo ""
 else
 
-    if [ $OS = "Opensource" ]; then
+    if [ "$OS" = "Opensource" ]; then
         echo "=========================================================================="
         echo "Some Depends Need to Be downloaded From Feeds ...."
         echo "=========================================================================="
@@ -133,7 +134,7 @@ else
         opkg install alsa-utils-aplay
         echo "========================================================================"
         echo "========================================================================"
-        echo " Downloading $SQLITE3 , $PYSIX , $SOUP4 , $DIFFLIB , $THREADING, $PLILOW, $REQUESTES  ......"
+        echo " Downloading $SQLITE3 , $PYSIX , $SOUP4 , $DIFFLIB , $THREADING , $PLILOW , $REQUESTES  ......"
         opkg install $SQLITE3
         opkg install $PYSIX
         opkg install $SOUP4
@@ -155,7 +156,7 @@ else
         apt-get install alsa-utils-aplay -y
         echo "========================================================================"
         echo "========================================================================"
-        echo " Downloading $SQLITE3 , $PYSIX , $SOUP4 , $DIFFLIB , $THREADING, $PLILOW, $REQUESTES ......"
+        echo " Downloading $SQLITE3 , $PYSIX , $SOUP4 , $DIFFLIB , $THREADING , $PLILOW , $REQUESTES ......"
         apt-get install $SQLITE3 -y
         apt-get install $PYSIX -y
         apt-get install $SOUP4 -y
@@ -165,8 +166,6 @@ else
 		apt-get install $REQUESTES -y
         echo "========================================================================"
     fi
-
-
 fi
 
 if ! grep -q 'ffmpeg' "$STATUS" || ! grep -q 'alsa-utils-aplay' "$STATUS"; then
@@ -176,67 +175,60 @@ if ! grep -q 'ffmpeg' "$STATUS" || ! grep -q 'alsa-utils-aplay' "$STATUS"; then
     echo "#########################################################"
 fi
 
-if grep -q $SQLITE3 $STATUS; then
+if grep -q "$SQLITE3" "$STATUS"; then
 	echo ""
 else
 	echo "#########################################################"
 	echo "#       $SQLITE3 Not found in feed                      #"
 	echo "#########################################################"
-    #exit 1
 fi
 
-if grep -q $PYSIX $STATUS; then
+if grep -q "$PYSIX" "$STATUS"; then
 	echo ""
 else
 	echo "#########################################################"
 	echo "#       $PYSIX Not found in feed                        #"
 	echo "#########################################################"
-    #exit 1
 fi
 
-if grep -q $SOUP4 $STATUS; then
+if grep -q "$SOUP4" "$STATUS"; then
 	echo ""
 else
 	echo "#########################################################"
 	echo "#       $SOUP4 Not found in feed                        #"
 	echo "#########################################################"
-    #exit 1
 fi
 
-if grep -q $DIFFLIB $STATUS; then
+if grep -q "$DIFFLIB" "$STATUS"; then
 	echo ""
 else
 	echo "#########################################################"
-	echo "#       $DIFFLIB Not found in feed                        #"
+	echo "#       $DIFFLIB Not found in feed                      #"
 	echo "#########################################################"
-    #exit 1
 fi
 
-if grep -q $THREADING $STATUS; then
+if grep -q "$THREADING" "$STATUS"; then
 	echo ""
 else
 	echo "#########################################################"
-	echo "#       $THREADING Not found in feed                        #"
+	echo "#       $THREADING Not found in feed                    #"
 	echo "#########################################################"
-    #exit 1
 fi
 
-if grep -q $PLILOW $STATUS; then
+if grep -q "$PLILOW" "$STATUS"; then
 	echo ""
 else
 	echo "#########################################################"
-	echo "#       $PLILOW Not found in feed                        #"
+	echo "#       $PLILOW Not found in feed                       #"
 	echo "#########################################################"
-    #exit 1
 fi
 
-if grep -q $$REQUESTES $STATUS; then
+if grep -q "$REQUESTES" "$STATUS"; then
 	echo ""
 else
 	echo "#########################################################"
-	echo "#       $REQUESTES Not found in feed                        #"
+	echo "#       $REQUESTES Not found in feed                    #"
 	echo "#########################################################"
-    #exit 1
 fi
 
 echo " ** Download and install FootOnsat ** "
