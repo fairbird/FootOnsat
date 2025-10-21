@@ -426,7 +426,7 @@ class FootOnSat(Screen):
 			self.updateCounter()
 			self.getChannels()  # Update channel for selected match
 		else:
-			self.session.openWithCallback(self.exit, MessageBox, _('No schedules in this section at this time'), MessageBox.TYPE_INFO, timeout=3)
+			self.session.openWithCallback(self.exit, MessageBox, _('No schedules in this section at this time'), MessageBox.TYPE_INFO, timeout=10)
 
 	def enablelist1(self):
 		instance = self["list1"].instance
@@ -637,7 +637,7 @@ class FootOnSat(Screen):
 
 	def error(self, error=None):
 		if error:
-			self.session.openWithCallback(self.exit, MessageBox, _('An Unexpected HTTP Error Occurred During The API Request !!'), MessageBox.TYPE_ERROR, timeout=3)
+			self.session.openWithCallback(self.exit, MessageBox, _('An Unexpected HTTP Error Occurred During The API Request !!'), MessageBox.TYPE_ERROR, timeout=10)
 
 	def fetch_live_results(self):
 		# === URL & rotating UA ===
@@ -866,7 +866,7 @@ class FootOnSat(Screen):
 		try:
 			self.js = json.loads(data)
 		except Exception as e:
-			self.session.openWithCallback(self.exit, MessageBox, _('Invalid API data! Check logs.'), MessageBox.TYPE_ERROR, timeout=3)
+			self.session.openWithCallback(self.exit, MessageBox, _('Invalid API data! Check logs.'), MessageBox.TYPE_ERROR, timeout=10)
 			return
 
 		ignored_competitions = []
@@ -956,7 +956,7 @@ class FootOnSat(Screen):
 
 			self.onWindowShow()
 		else:
-			self.session.openWithCallback(self.exit, MessageBox, _('No schedules in this section at this time'), MessageBox.TYPE_ERROR, timeout=3)
+			self.session.openWithCallback(self.exit, MessageBox, _('No schedules in this section at this time'), MessageBox.TYPE_ERROR, timeout=10)
 		
 	def getChannels(self):
 		list = []
@@ -1048,7 +1048,7 @@ class FootOnSat(Screen):
 			polarization = 'V' if 'V' in self.channelData[index][2] else 'H'
 
 			if len(nimList) == 0:
-				self.session.open(MessageBox, _('Satellite frontend Not found!'), MessageBox.TYPE_ERROR, timeout=3)
+				self.session.open(MessageBox, _('Satellite frontend Not found!'), MessageBox.TYPE_ERROR, timeout=10)
 			elif fileExists('/var/lib/dpkg/status'):
 				from Plugins.Extensions.FootOnSat.satfinder.dreamos import Satfinder
 				self.session.open(Satfinder, self.getfeid(), freq, symbolrate, sat, polarization, fec)
@@ -1059,7 +1059,7 @@ class FootOnSat(Screen):
 				from Plugins.Extensions.FootOnSat.satfinder.openpli import Satfinder
 				self.session.open(Satfinder, freq, symbolrate, sat, polarization, fec)
 			else:
-				self.session.open(MessageBox, 'Satfinder Is not compatible with this image', MessageBox.TYPE_ERROR, timeout=3)
+				self.session.open(MessageBox, 'Satfinder Is not compatible with this image', MessageBox.TYPE_ERROR, timeout=10)
 		else:
 			self['key_blue'].hide()
 
@@ -2160,7 +2160,7 @@ class StandingsScreen(Screen):
 		self["standings_list"].setList(gList)
 		if not self.standings_data:
 			#logdata("display_standings", "No standings data, showing MessageBox")
-			self.session.openWithCallback(self.close, MessageBox, _('No standings available for this league.'), MessageBox.TYPE_INFO, timeout=3)
+			self.session.openWithCallback(self.close, MessageBox, _('No standings available for this league.'), MessageBox.TYPE_INFO, timeout=10)
 		else:
 			#logdata("display_standings", "Displaying standings, total entries: %d" % len(gList))
 			pass
