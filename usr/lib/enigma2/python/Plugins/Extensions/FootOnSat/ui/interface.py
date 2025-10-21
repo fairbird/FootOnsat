@@ -11,6 +11,7 @@ import shutil
 import traceback
 import threading
 import difflib
+import requests
 from time import strftime
 from sqlite3 import connect
 from bs4 import BeautifulSoup
@@ -425,7 +426,7 @@ class FootOnSat(Screen):
 			self.updateCounter()
 			self.getChannels()  # Update channel for selected match
 		else:
-			self.session.openWithCallback(self.exit, MessageBox, _('No schedules in this section at this time'), MessageBox.TYPE_INFO, timeout=10)
+			self.session.openWithCallback(self.exit, MessageBox, _('No schedules in this section at this time'), MessageBox.TYPE_INFO, timeout=3)
 
 	def enablelist1(self):
 		instance = self["list1"].instance
@@ -636,18 +637,9 @@ class FootOnSat(Screen):
 
 	def error(self, error=None):
 		if error:
-			self.session.openWithCallback(self.exit, MessageBox, _('An Unexpected HTTP Error Occurred During The API Request !!'), MessageBox.TYPE_ERROR, timeout=10)
+			self.session.openWithCallback(self.exit, MessageBox, _('An Unexpected HTTP Error Occurred During The API Request !!'), MessageBox.TYPE_ERROR, timeout=3)
 
 	def fetch_live_results(self):
-		# === Try to use requests ===
-		try:
-			import requests
-			HAS_REQUESTS = True
-		except ImportError:
-			HAS_REQUESTS = False
-			logdata("FootOnSat-Sofa-ERROR", "requests not available - plugin will not work")
-			return
-
 		# === URL & rotating UA ===
 		today_iso = date.today().isoformat()
 		url = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}'.format(today_iso)
@@ -671,7 +663,7 @@ class FootOnSat(Screen):
 		# === Fetch in thread ===
 		def _fetch_with_requests():
 			try:
-				r = requests.get(url, headers=headers, timeout=10)
+				r = requests.get(url, headers=headers, timeout=3)
 				r.raise_for_status()
 				return r.content
 			except Exception as e:
@@ -874,7 +866,7 @@ class FootOnSat(Screen):
 		try:
 			self.js = json.loads(data)
 		except Exception as e:
-			self.session.openWithCallback(self.exit, MessageBox, _('Invalid API data! Check logs.'), MessageBox.TYPE_ERROR, timeout=10)
+			self.session.openWithCallback(self.exit, MessageBox, _('Invalid API data! Check logs.'), MessageBox.TYPE_ERROR, timeout=3)
 			return
 
 		ignored_competitions = []
@@ -964,7 +956,7 @@ class FootOnSat(Screen):
 
 			self.onWindowShow()
 		else:
-			self.session.openWithCallback(self.exit, MessageBox, _('No schedules in this section at this time'), MessageBox.TYPE_ERROR, timeout=10)
+			self.session.openWithCallback(self.exit, MessageBox, _('No schedules in this section at this time'), MessageBox.TYPE_ERROR, timeout=3)
 		
 	def getChannels(self):
 		list = []
@@ -1056,7 +1048,7 @@ class FootOnSat(Screen):
 			polarization = 'V' if 'V' in self.channelData[index][2] else 'H'
 
 			if len(nimList) == 0:
-				self.session.open(MessageBox, _('Satellite frontend Not found!'), MessageBox.TYPE_ERROR, timeout=10)
+				self.session.open(MessageBox, _('Satellite frontend Not found!'), MessageBox.TYPE_ERROR, timeout=3)
 			elif fileExists('/var/lib/dpkg/status'):
 				from Plugins.Extensions.FootOnSat.satfinder.dreamos import Satfinder
 				self.session.open(Satfinder, self.getfeid(), freq, symbolrate, sat, polarization, fec)
@@ -1067,7 +1059,7 @@ class FootOnSat(Screen):
 				from Plugins.Extensions.FootOnSat.satfinder.openpli import Satfinder
 				self.session.open(Satfinder, freq, symbolrate, sat, polarization, fec)
 			else:
-				self.session.open(MessageBox, 'Satfinder Is not compatible with this image', MessageBox.TYPE_ERROR, timeout=10)
+				self.session.open(MessageBox, 'Satfinder Is not compatible with this image', MessageBox.TYPE_ERROR, timeout=3)
 		else:
 			self['key_blue'].hide()
 
@@ -1652,15 +1644,14 @@ class StandingsScreen(Screen):
 			raw_json_content = None
 			try:
 				# --- Modern fetch using requests (works on Python 2 & 3) ---
-				import requests
-				r = requests.get(api_url, headers=json_headers, timeout=20)
+				r = requests.get(api_url, headers=json_headers, timeout=5)
 				r.raise_for_status()
 				raw_json_content = r.content
 			except Exception as e:
 				# --- Fallback to compat_urlopen if requests fails ---
 				try:
 					request = compat_Request(api_url, headers=json_headers)
-					response = compat_urlopen(request, timeout=20)
+					response = compat_urlopen(request, timeout=5)
 					raw_json_content = response.read()
 				except Exception as e2:
 					raise Exception("SofaScore fetch failed: %s / %s" % (str(e), str(e2)))
@@ -1823,49 +1814,23 @@ class StandingsScreen(Screen):
 				logo_headers["Accept"] = "image/avif,image/webp,image/apng,image/svg+xml,image/*;q=0.8"
 				if not PY3:
 					try:
-						import requests
 						logo_headers["Referer"] = "https://www.sofascore.com/"
-						r = requests.get(logo_url, headers=logo_headers, timeout=10, verify=False)
+						r = requests.get(logo_url, headers=logo_headers, timeout=3, verify=False)
 						r.raise_for_status()
 						data = r.content
-
-						# detect image type by magic bytes (keep Python2 bytes-style checks)
-						if not data or len(data) < 10:
-							logdata("Logos", "Empty or too-small data from %s" % logo_url)
+						# Ensure it’s actually image data
+						if not (data.startswith(b'\x89PNG') or data.startswith(b'\xff\xd8') or data.startswith(b'GIF')):
+							logdata("Logos", "Invalid PNG data from %s (probably 403 HTML)" % logo_url)
 							return False
-
-						# PNG
-						if data.startswith(b'\x89PNG'):
-							with open(temp_file, "wb") as f:
-								f.write(data)
-							# leave actual save/convert logic to the common code below (do not force rename)
-						# JPEG
-						elif data.startswith(b'\xff\xd8'):
-							with open(temp_file, "wb") as f:
-								f.write(data)
-							# keep for later conversion (PIL or fallback) — do not rename .webp -> .png
-						# GIF
-						elif data.startswith(b'GIF'):
-							with open(temp_file, "wb") as f:
-								f.write(data)
-						# RIFF/WEBP header: 'RIFF....WEBP'
-						elif data.startswith(b'RIFF') and data[8:12] == b'WEBP':
-							# SofaScore sometimes returns webp. E2 can't display webp — we don't rename it;
-							# return False so Phase 2 (worldfootball) can attempt alternative sources.
-							logdata("Logos", "Received WEBP from %s — skipping to fallback" % logo_url)
-							return False
-						else:
-							# Unknown/HTML or blocked content (e.g., 403 HTML served with 200)
-							logdata("Logos", "Invalid image data from %s (probably blocked or not supported)" % logo_url)
-							return False
-
+						with open(temp_file, "wb") as f:
+							f.write(data)
 					except Exception as e:
-						logdata("Logos", "Requests HTTPS fetch failed for '%s': %s" % (team_name, str(e)))
+						logdata("Logos", "Requests fetch failed for %s: %s" % (logo_url, str(e)))
 						trace_error()
 						return False
 				else:
 					req = compat_Request(logo_url, headers=logo_headers)
-					resp = compat_urlopen(req, timeout=10)
+					resp = compat_urlopen(req, timeout=3)
 					# Save the raw file content to the temporary location
 					with open(temp_file, "wb") as f:
 						f.write(resp.read())
@@ -1992,7 +1957,7 @@ class StandingsScreen(Screen):
 						html_headers["Upgrade-Insecure-Requests"] = "1"
 
 						request = compat_Request(primary_backup_url, headers=html_headers)
-						response = compat_urlopen(request, timeout=20)
+						response = compat_urlopen(request, timeout=5)
 						html = response.read()
 
 						if PY3:
@@ -2195,7 +2160,7 @@ class StandingsScreen(Screen):
 		self["standings_list"].setList(gList)
 		if not self.standings_data:
 			#logdata("display_standings", "No standings data, showing MessageBox")
-			self.session.openWithCallback(self.close, MessageBox, _('No standings available for this league.'), MessageBox.TYPE_INFO, timeout=10)
+			self.session.openWithCallback(self.close, MessageBox, _('No standings available for this league.'), MessageBox.TYPE_INFO, timeout=3)
 		else:
 			#logdata("display_standings", "Displaying standings, total entries: %d" % len(gList))
 			pass
