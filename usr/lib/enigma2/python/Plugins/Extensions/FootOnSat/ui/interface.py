@@ -67,41 +67,39 @@ DB_PATH = '/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/db/footonsat.db'
 ## url for Standings table
 json_urls = {
 	# Champions league
-	"championsleague": "https://www.fctables.com/championsleague/",
+	"championsleague": "https://www.sofascore.com/tournament/football/europe/uefa-champions-league/7#id:76953",
 	# Europa league
-	"europaleague": "https://www.fctables.com/europaleague/",
+	"europaleague": "https://www.sofascore.com/tournament/football/europe/uefa-europa-league/679#id:76984",
 	# Conference league
-	"ConferenceLeague": "https://www.fctables.com/europa-conference-league/",
+	"ConferenceLeague": "https://www.sofascore.com/tournament/football/europe/uefa-europa-conference-league/17015#id:76960",
 
 	# England league
-	"premierleague": "https://www.fctables.com/england/premier-league/",
+	"premierleague": "https://www.sofascore.com/tournament/football/england/premier-league/17#id:76986",
 	# champion ship league
-	"championship": "https://www.fctables.com/england/championship/",
+	"championship": "https://www.sofascore.com/tournament/football/england/championship/18#id:77347",
 	# Italy league
-	"seriea": "https://www.skysports.com/serie-a-table",
-	#"seriea": "https://www.fctables.com/italy/serie-a/",
+	"seriea": "https://www.sofascore.com/tournament/football/italy/serie-a/23#id:76457",
 	# France league
-	"ligue1": "https://www.fctables.com/france/ligue-1/",
+	"ligue1": "https://www.sofascore.com/tournament/football/france/ligue-1/34#id:77356",
 	# Spain league 1 + 2
-	"laliga": "https://www.fctables.com/spain/liga-bbva/",
-	"laliga2": "https://www.fctables.com/spain/liga-adelante/",
+	"laliga": "https://www.sofascore.com/tournament/football/spain/laliga/8#id:77559",
+	"laliga2": "https://www.sofascore.com/tournament/football/spain/laliga-2/54#id:77558",
 	# Germany league
-	"bundesliga": "https://www.fctables.com/germany/1-bundesliga/",
+	"bundesliga": "https://www.sofascore.com/tournament/football/germany/bundesliga/35#id:77333",
 	# Portugal league
-	"liganos": "https://www.fctables.com/portugal/liga-zon-sagres/",
+	"liganos": "https://www.sofascore.com/tournament/football/portugal/liga-portugal-betclic/238#id:77806",
 	# Belgium league
-	"belgianpro": "https://www.fctables.com/belgium/jupiler-league/",
+	"belgianpro": "https://www.sofascore.com/tournament/football/belgium/pro-league/38#id:77040",
 	# Turkey league
-	"superLig": "https://www.fctables.com/turkey/super-lig/",
+	"superLig": "https://www.sofascore.com/tournament/football/turkey/trendyol-super-lig/52#id:77805",
 	# Netherlands league
-	"eredivisie": "https://www.fctables.com/netherlands/eredivisie/",
+	"eredivisie": "https://www.sofascore.com/tournament/football/netherlands/eredivisie/37#id:77012",
 
 	# Saudi Arabia league
-	"saudiarabia": "https://www.fctables.com/saudi-arabia/1-division/",
+	"saudiarabia": "https://www.sofascore.com/tournament/football/saudi-arabia/saudi-pro-league/955#id:80443",
 	# Asia Champions league
-	"afcchampions": "https://www.fctables.com/afcchampionsleague/",
+	"afcchampions": "https://www.sofascore.com/tournament/football/asia/afc-champions-league/463#id:77010",
 }
-
 # Use thess url to download missing log of team (Extra code)
 log_urls = {
 	# Champions league
@@ -1565,248 +1563,201 @@ class StandingsScreen(Screen):
 		self.standings_data = []
 		self.logo_cache = {}
 		self.flags_dir = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/standings/")
+		
+		# Define standard headers for both fetching and logo downloading
+		self.headers = {
+			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0",
+			"Accept-Language": "en-US,en;q=0.5",
+			"Connection": "keep-alive",
+			"Referer": "https://www.sofascore.com/", # New referer for SofaScore
+			"Cache-Control": "max-age=0",
+		}
+		
+		# Use onShown to trigger the fetch process
 		self.onShown.append(self.fetch_standings)
 
 	def fetch_standings(self):
-		#logdata("fetch_standings", "Fetching standings for league: %s" % self.league)
-		url = self.url
-		# Using the aggressive headers provided by the user, but REMOVING Accept-Encoding 
-		# to ensure we get uncompressed data for easier debugging and parsing.
-		headers = {
-			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0",
-			"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-			"Accept-Language": "en-US,en;q=0.5",
-			# "Accept-Encoding": "gzip, deflate, br", <-- Removed this line
-			"Connection": "keep-alive",
-			"Referer": "https://www.google.com/", 
-			"Upgrade-Insecure-Requests": "1",
-			"Sec-Fetch-Dest": "document",
-			"Sec-Fetch-Mode": "navigate",
-			"Sec-Fetch-Site": "cross-site",
-			"Cache-Control": "max-age=0",
-			"Cookie": "fcfc_cookie=1; time_zone=Europe/London;", 
-		}
-		html = None
+		# Dictionary of correct SofaScore URLs (Hard-coded for stability and to bypass config errors)
+		# NOTE: Keys are all lowercase for robust lookup against self.league.
 		
-		# Use compat_Request and compat_urlopen (replacing requests.get)
+		url_to_parse = self.url
+		league_key = self.league.lower() # Normalize key for lookup
+
+		# 1. CRITICAL OVERRIDE: If the provided URL is not SofaScore, force the correct one.
+		if "sofascore.com" not in url_to_parse:
+			if league_key in json_urls:
+				url_to_parse = json_urls[league_key]
+				logdata("fetch_standings", "FORCED OVERRIDE: Switched from invalid URL to SofaScore URL for key: %s" % league_key)
+			else:
+				logdata("fetch_standings", "CRITICAL ERROR: Invalid URL domain used, and key '%s' not found in hardcoded list." % league_key)
+				self.standings_data = []
+				self.display_standings()
+				return
+
+		# Start parsing the (now guaranteed to be a SofaScore) URL
+		if not isinstance(url_to_parse, compat_str):
+			url_to_parse = str(url_to_parse)
+
+		parsed_url = urlparse(url_to_parse)
+		path_parts = [p for p in parsed_url.path.split('/') if p]
+
+		tournament_id = None
+		season_id = None
+		
 		try:
-			request = compat_Request(url, headers=headers)
+			# Tournament ID is the number at the end of the URL path (e.g., '7')
+			if path_parts and path_parts[-1].isdigit():
+				tournament_id = path_parts[-1]
+				
+			# Season ID is the number after '#id:' in the fragment (e.g., '76953')
+			if parsed_url.fragment and parsed_url.fragment.startswith('id:'):
+				season_id = parsed_url.fragment.split(':')[-1]
+			
+		except Exception as e:
+			logdata("fetch_standings", "ERROR during URL parsing: %s" % str(e))
+			trace_error()
+			
+		# Final check: must have a numeric tournament ID and season ID
+		if not tournament_id or not season_id or not tournament_id.isdigit() or not season_id.isdigit():
+			logdata("fetch_standings", "CRITICAL ERROR: Failed to extract numeric IDs. T-ID:'%s', S-ID:'%s'. Final URL: %s" % (tournament_id, season_id, url_to_parse))
+			self.standings_data = []
+			self.display_standings()
+			return
+
+		# 2. Construct the JSON API URL
+		api_url = "https://api.sofascore.com/api/v1/unique-tournament/{}/season/{}/standings/total".format(
+			tournament_id, season_id
+		)
+		
+		# CRITICAL OVERRIDE for Champions League URL
+		if league_key == 'championsleague':
+			api_url = 'https://api.sofascore.com/api/v1/unique-tournament/7/season/76953/standings/total'
+			
+		logdata("fetch_standings", "Using SofaScore API URL: %s" % api_url)
+
+		# 3. Define the headers for the API request
+		json_headers = self.headers.copy()
+		json_headers["Accept"] = "application/json"
+		json_headers["Sec-Fetch-Dest"] = "empty"
+		json_headers["Sec-Fetch-Mode"] = "cors"
+		json_headers["Sec-Fetch-Site"] = "same-site"
+		
+		standings = []
+		
+		try:
+			request = compat_Request(api_url, headers=json_headers)
 			response = compat_urlopen(request, timeout=20)
 			
-			raw_html_content = response.read()
+			raw_json_content = response.read()
 			
+			# Python 2/3 compatible JSON loading
 			if PY3:
-				html = raw_html_content.decode('utf-8', errors="ignore")
+				json_data = raw_json_content.decode('utf-8')
 			else:
-				html = str(raw_html_content) 
+				json_data = raw_json_content
+				
+			data = json.loads(json_data)
+			#logdata("fetch_standings", "JSON data fetched successfully.")
 
-			logdata("fetch_standings", "HTML fetched, length: %d" % len(html))
-			# Save HTML for manual inspection
-			# with open("/tmp/standings_%s.html" % self.league, "w") as f:
-			#     f.write(html)
-			# logdata("fetch_standings", "HTML saved to /tmp/standings_%s.html for inspection" % self.league)
+			if 'standings' not in data or not data['standings']:
+				logdata("fetch_standings", "No 'standings' data found in JSON response.")
+				self.standings_data = []
+				self.display_standings()
+				return
 
-			soup = BeautifulSoup(html, "html.parser")
-			standings = []
-			tables = []
-
-			if self.league == "seriea":
-				#logdata("fetch_standings", "Processing Serie A standings from Sky Sports")
-				table = soup.find("table")
-				if not table:
-					#logdata("fetch_standings", "No table found for Serie A")
-					self.standings_data = []
-					self.display_standings()
-					return
-				rows = table.find_all("tr")[1:]  # Skip header row
-				#logdata("fetch_standings", "Found %d rows for Serie A" % len(rows))
-				for row_idx, row in enumerate(rows):
-					cells = row.find_all("td")
-					if len(cells) < 9:
-						#logdata("fetch_standings", "Skipping row %d with insufficient columns: %d" % (row_idx, len(cells)))
-						continue
-					position = cells[0].get_text(strip=True) if cells[0].get_text(strip=True).isdigit() else "0"
-					team = cells[1].get_text(strip=True)
-					played = cells[2].get_text(strip=True) if cells[2].get_text(strip=True).isdigit() else "0"
-					wins = cells[3].get_text(strip=True) if cells[3].get_text(strip=True).isdigit() else "0"
-					draws = cells[4].get_text(strip=True) if cells[4].get_text(strip=True).isdigit() else "0"
-					losses = cells[5].get_text(strip=True) if cells[5].get_text(strip=True).isdigit() else "0"
-					goals_scored = cells[6].get_text(strip=True) if cells[6].get_text(strip=True).isdigit() else "0"
-					goals_conceded = cells[7].get_text(strip=True) if cells[7].get_text(strip=True).isdigit() else "0"
-
-					goal_diff_text = cells[8].get_text(strip=True) if len(cells) > 8 else "0"
-					# Serie A: Skysports may include + and - in table, preserve them
-					if goal_diff_text.startswith('+') or goal_diff_text.startswith('-'):
-						goal_diff = goal_diff_text
-					elif goal_diff_text.lstrip('-+').isdigit():
-						goal_diff_value = int(goal_diff_text.lstrip('-+'))
-						goal_diff = "+" + str(goal_diff_value) if goal_diff_value > 0 else str(goal_diff_value)
-					else:
-						goal_diff = "0"
-					#logdata("fetch_standings_goal_diff", "SerieA Row %d: raw='%s', parsed='%s'" % (row_idx, goal_diff_text, goal_diff))
-
-					points = cells[9].get_text(strip=True) if len(cells) > 9 and cells[9].get_text(strip=True).isdigit() else "0"
-					logo_url = ""
-					img = cells[1].find("img")
-					if img and img.get("src"):
-						logo_url = img.get("src").split("?")[0]
-					if not team:
-						#logdata("fetch_standings", "Skipping row %d with empty team name" % row_idx)
-						continue
-					#logdata("fetch_standings_row", "Serie A Row %d Extracted: team=%s, position=%s, played=%s, points=%s, wins=%s, draws=%s, losses=%s, goals_scored=%s, goals_conceded=%s, goal_diff=%s, logo_url=%s" % (
-					#    row_idx, team, position, played, points, wins, draws, losses, goals_scored, goals_conceded, goal_diff, logo_url))
+			# 4. Extract and process standings data from JSON
+			for table in data['standings']:
+				
+				# Handle Group/Table names (CRITICAL FIX for AFC East/West separation)
+				if 'name' in table and table['name']: # Catches 'East' / 'West' for AFC
+					standings.append("Table %s" % table['name'])
+				elif 'groupName' in table and table['groupName']: # Catches 'Group A', 'Group B', etc.
+					standings.append("Table %s" % table['groupName'])
+				
+				# The original 'groupName' logic (now replaced/improved by the above)
+				# if 'groupName' in table and table['groupName']:
+				# 	standings.append("Table %s" % table['groupName'])
+		
+				if 'rows' not in table:
+					continue
+					
+				for row in table['rows']:
+					
+					team_data = row.get('team', {})
+					
+					team_name = team_data.get('name', 'Unknown Team')
+					team_id = team_data.get('id')
+					logo_url = "https://api.sofascore.com/api/v1/team/{}/image".format(team_id) if team_id else ""
+					
+					# Extract all required stats directly from the 'row' dictionary
+					position = str(row.get('position', 0))
+					
+					# 🛑 USING THE CORRECT JSON KEYS FROM YOUR OUTPUT 🛑
+					played = str(row.get('matches', 0))
+					points = str(row.get('points', 0))
+					wins = str(row.get('wins', 0))
+					draws = str(row.get('draws', 0))
+					losses = str(row.get('losses', 0))
+					
+					# Goal scored
+					goals_scored = str(row.get('scoresFor', 0))
+					# Goal conceded
+					goals_conceded = str(row.get('scoresAgainst', 0))
+					# Goal Difference
+					goal_diff = str(row.get('scoreDiffFormatted', '0'))
+					
+					# Append 11 elements to the list to match your screen's columns
 					standings.append([
-						str(team),
-						str(position),
-						str(played),
-						str(points),
-						str(wins),
-						str(draws),
-						str(losses),
-						str(goals_scored),
-						str(goals_conceded),
-						str(goal_diff),
-						str(logo_url)
+						team_name,
+						position,
+						played,
+						points,
+						wins,
+						draws,
+						losses,
+						goals_scored,    # Now populates 'Goals Scored' column
+						goals_conceded,  # Now populates 'Goals Conceded' column
+						goal_diff,       # Now populates 'Difference' column
+						logo_url
 					])
-			else:
-				for t in soup.find_all("table"):
-					rows = t.find_all("tr")
-					if len(rows) > 1 and any(len(row.find_all("td")) > 2 and any(cell.get_text(strip=True) not in ["", "#"] for cell in row.find_all("td")) for row in rows[1:]):
-						tables.append(t)
-				if not tables:
-					#logdata("fetch_standings", "No valid standings tables found for %s" % self.league)
-					self.standings_data = []
-					self.display_standings()
-					return
-				#logdata("fetch_standings", "Found %d potential tables for %s" % (len(tables), self.league))
-				table_limit = 2 if self.league == "afcchampions" else 1
-				tables_to_process = tables[:table_limit]
-				if self.league == "afcchampions" and table_limit == 2:
-					tables_to_process.reverse()
-					t_display_idx = 2
-				else:
-					t_display_idx = 1
-				for t_idx, table in enumerate(tables_to_process, 0):
-					#logdata("fetch_standings", "Processing Table %d for %s" % (t_display_idx, self.league))
-					if self.league == "afcchampions":
-						standings.append("Table %d" % t_display_idx)
-						t_display_idx -= 1
-					rows = table.find_all("tr")[1:]
-					for row in rows:
-						cells = row.find_all("td")
-						if len(cells) < 2:
-							#logdata("fetch_standings", "Skipping row with insufficient columns: %d" % len(cells))
-							continue
-						team = ""
-						logo_url = ""
-						position = "0"
-						played = "0"
-						points = "0"
-						wins = "0"
-						draws = "0"
-						losses = "0"
-						goals_scored = "0"
-						goals_conceded = "0"
-						goal_diff = "0"
-						for idx, cell in enumerate(cells):
-							class_name = cell.get("class", []) or []
-							cell_text = cell.get_text(strip=True) or ""
-							#logdata("fetch_standings_cell", "Table %d, Cell %d class: %s, value: %s" % (t_idx, idx, class_name, cell_text))
-							if idx == 0:
-								position = cell_text if cell_text.isdigit() else "0"
-							elif "tl" in class_name or (idx == 1 and not team and cell_text):
-								team_link = cell.find("a")
-								team = team_link.get_text(strip=True) if team_link else cell_text
-								img = cell.find("img")
-								logo_url = img.get("src").split("?")[0] if img and img.get("src") else ""
-							elif "table_games" in class_name or (idx == 2 and cell_text.isdigit()):
-								played = cell_text if cell_text.isdigit() else "0"
-							elif "points" in class_name or (idx == 3 and cell_text.isdigit()):
-								points = cell_text if cell_text.isdigit() else "0"
-							elif "wins" in class_name or (idx == 4 and cell_text.isdigit()):
-								wins = cell_text if cell_text.isdigit() else "0"
-							elif "draws" in class_name or (idx == 5 and cell_text.isdigit()):
-								draws = cell_text if cell_text.isdigit() else "0"
-							elif "defeits" in class_name or (idx == 6 and cell_text.isdigit()):
-								losses = cell_text if cell_text.isdigit() else "0"
-							elif "goals" in class_name and "goals_d" not in class_name or (idx == 7 and cell_text.isdigit()):
-								goals_scored = cell_text if cell_text.isdigit() else "0"
-							elif "goals_d" in class_name or (idx == 8 and cell_text.isdigit()):
-								goals_conceded = cell_text if cell_text.isdigit() else "0"
-							elif cell_text.lstrip('-').isdigit():
-								# fctables.com only has - for negative, no + for positive
-								if cell_text.startswith('-'):
-									goal_diff = cell_text
-								else:
-									goal_diff = "+" + cell_text if cell_text.isdigit() else "0"
-								#logdata("fetch_standings_goal_diff", "Other leagues: raw='%s', parsed='%s'" % (cell_text, goal_diff))
-						if not team:
-							#logdata("fetch_standings", "Skipping row with empty team name: %s" % [cell.get_text(strip=True) for cell in cells])
-							continue
-						#logdata("fetch_standings_row", "Table %d, Extracted: team=%s, position=%s, played=%s, points=%s, wins=%s, draws=%s, losses=%s, goals_scored=%s, goals_conceded=%s, goal_diff=%s, logo_url=%s" % (
-						#    t_idx, team, position, played, points, wins, draws, losses, goals_scored, goals_conceded, goal_diff, logo_url))
-						if team == "Sintra Football": team = "Estrela Amadora"
-						if team == "Chengdu Qianbao FC": team = "Chengdu Rongcheng"
-						if team == "Artsakh": team = "RC Strasbourg"
-						if team == "Al Suqoor": team = "NEOM SC"
-						if team == "Al Hazm": team = "Al Hazem"
-						standings.append([
-							str(team),
-							str(position),
-							str(played),
-							str(points),
-							str(wins),
-							str(draws),
-							str(losses),
-							str(goals_scored),
-							str(goals_conceded),
-							str(goal_diff),
-							str(logo_url)
-						])
+
 			self.standings_data = standings
-			#logdata("fetch_standings", "Total teams fetched: %d" % len([x for x in standings if not isinstance(x, str)]))
+			
 			if standings:
-				try:
-					self.check_and_download_logos()
-				except Exception as e:
-					#logdata("fetch_standings_error", "Error in check_and_download_logos: %s" % str(e))
-					pass
+				# Call logo download asynchronously
+				deferToThread(self.check_and_download_logos).addCallback(lambda x: self.display_standings())
+				return
+
 			self.display_standings()
-		except (compat_HTTPError, compat_URLError, Exception) as e:
-			#logdata("fetch_standings_error", "Failed to fetch standings for URL %s: %s" % (url, str(e)))
+
+		except (compat_HTTPError, compat_URLError, json.JSONDecodeError, Exception) as e:
+			final_api_url = locals().get('api_url', 'N/A')
+			logdata("fetch_standings_error", "Failed to fetch/parse SofaScore JSON for API %s: %s" % (final_api_url, str(e)))
+			trace_error()
 			self.standings_data = []
 			self.display_standings()
 
-	def check_and_download_logos(self):
-		# NEW SMART/GENERAL NORMALIZATION FUNCTION
-		def normalize_name(name):
-			"""Aggressively cleans up team names for robust fuzzy matching."""
-			if not name:
-				return ""
-			name = name.lower()
-			# Remove common legal suffixes and punctuation that interfere with fuzzy matching
-			replacements = {
-				' f.c.': '', ' fc': '', ' a.c.': '', ' ac': '', ' s.v.': '', ' sv': '',
-				' association': '', ' club': '', ' sport': '', ' athletic': '',
-				' united': '', ' city': '', ' real': '', ' atlético': '',
-				' gmbh': '', ' & co. kg': '', 'gmbh & co. kg': '',
-				'.': '', ',': '', '-': ' '
-			}
-			for old, new in replacements.items():
-				name = name.replace(old, new)
-			# Clean up extra spaces
-			return ' '.join(name.split())
+	# NOTE: The check_and_download_logos and display_standings methods below 
+	# MUST be updated with the correct list indices (0-8) for goal_diff and logo_url.
 
 	def check_and_download_logos(self):
-		# NOTE: This function assumes the 're' module is imported globally 
-		# or available in the environment scope for the regex-based name cleanup.
+		# NOTE: This function assumes the 're', 'os', 'shutil', 'difflib', 'urljoin', 
+		# 'compat_Request', 'compat_urlopen', 'resolveFilename', 'sanitize_team_name', 
+		# 'BeautifulSoup', 'log_urls', and 'PIL_AVAILABLE' are imported/accessible globally or within the class scope.
 
+		# --- Robust Headers provided by user to fix 403 Forbidden error ---
+		headers = self.headers.copy() # Use headers from init
+		# -------------------------------------------------------------------
+
+		# ---------------------------------------------------
+		# --- HELPER FUNCTIONS (Defined BEFORE the main logic) ---
+		# ---------------------------------------------------
 		def normalize_name(name):
 			"""Smart normalization: remove punctuation, numbers, generic words, and extra spaces."""
 			if not name:
 				return ""
 			name = name.lower()
-			# Remove anything in parentheses or brackets (e.g., "(2025)", "[B]") 
+			# Remove anything in parentheses or brackets (e.g., "(2025)", "[B]")
 			name = re.sub(r"[\(\[].*?[\)\]]", "", name)
 			# Remove digits
 			name = re.sub(r"\d+", "", name)
@@ -1832,7 +1783,7 @@ class StandingsScreen(Screen):
 
 			# Check if PNG version exists
 			if os.path.exists(filename_png):
-				return True 
+				return True
 
 			#logdata("Logos", "Downloading logo for '%s' from: %s" % (team_name, logo_url))
 
@@ -1844,7 +1795,11 @@ class StandingsScreen(Screen):
 
 			try:
 				# --- The network request uses the fixed 'headers' ---
-				req = compat_Request(logo_url, headers=headers)
+				# SofaScore API requires standard desktop headers
+				logo_headers = headers.copy()
+				logo_headers["Accept"] = "image/avif,image/webp,image/apng,image/svg+xml,image/*;q=0.8"
+				
+				req = compat_Request(logo_url, headers=logo_headers)
 				resp = compat_urlopen(req, timeout=10)
 				
 				# Save the raw file content to the temporary location
@@ -1884,7 +1839,7 @@ class StandingsScreen(Screen):
 
 				# Clean up the temporary file
 				if os.path.exists(temp_file):
-					os.remove(temp_file) 
+					os.remove(temp_file)
 
 				return success
 					
@@ -1895,24 +1850,8 @@ class StandingsScreen(Screen):
 			finally:
 				# Ensure cleanup regardless of success/failure
 				if os.path.exists(temp_file):
-					os.remove(temp_file) 
+					os.remove(temp_file)
 		# ---------------------------------------------------
-		
-		# --- Robust Headers provided by user to fix 403 Forbidden error ---
-		headers = {
-			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0",
-			"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-			"Accept-Language": "en-US,en;q=0.5",
-			"Connection": "keep-alive",
-			"Referer": "https://www.google.com/", 
-			"Upgrade-Insecure-Requests": "1",
-			"Sec-Fetch-Dest": "document",
-			"Sec-Fetch-Mode": "navigate",
-			"Sec-Fetch-Site": "cross-site",
-			"Cache-Control": "max-age=0",
-			"Cookie": "fcfc_cookie=1; time_zone=Europe/London;", 
-		}
-		# -------------------------------------------------------------------
 
 		#logdata("Logos", "Starting check for league: %s" % self.league)
 
@@ -1929,22 +1868,31 @@ class StandingsScreen(Screen):
 		# Get list of teams and their primary logo URLs from fetch_standings
 		teams_to_process = []
 		for item in self.standings_data:
-			if isinstance(item, list) and len(item) > 10:
+			# CRITICAL FIX: The item must have 11 elements now (index 10 is the logo URL)
+			if isinstance(item, list) and len(item) >= 11: 
 				original_name = item[0]
+				# FIX: logo_url is at index 10 (the last element)
+				logo_url = item[10] 
+				
 				# Store both the original name (for display/saving) and the normalized name (for matching)
 				standardized_name = normalize_name(original_name)
 				teams_to_process.append({
-					"name": standardized_name, 
-					"original_name": original_name, 
-					"url": item[10], 
+					"name": standardized_name,
+					"original_name": original_name,
+					"url": logo_url,
 					"found": False
 				})
 
 		logos_found = 0
-		total_teams = len(teams_to_process) 
+		total_teams = len(teams_to_process)
 
-		# --- Phase 1: Use Logo URL scraped in fetch_standings (Primary Source) ---
-		#logdata("Logos", "Phase 1: Attempting download using scraped logo URLs...")
+		# -------------------------------------------------------------------
+		# --- PHASE 1: DIRECT DOWNLOAD FROM SOFASCORE (PRIMARY SOURCE) ---
+		# -------------------------------------------------------------------
+		
+		# We must perform the direct SofaScore download here to honor your request 
+		# for strict priority and to fix the logical error at the start of the function.
+		
 		for team_info in teams_to_process:
 			team_filename = sanitize_team_name(team_info["original_name"])
 			filename_png = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/standings/{}.png".format(team_filename))
@@ -1956,28 +1904,31 @@ class StandingsScreen(Screen):
 				continue
 				
 			if team_info["url"]:
-				# Ensure the logo URL is absolute for correct downloading
-				absolute_url = urljoin(self.url, team_info["url"])
+				absolute_url = team_info["url"]
 				
-				# Pass the original_name for correct logging/saving
+				# Use the actual download function we defined above
 				if download_and_save_logo(team_info["original_name"], absolute_url, headers, self.league):
 					team_info["found"] = True
 					logos_found += 1
 		
-		# --- Check for early exit for speed improvement ---
-		if logos_found >= total_teams:
-			pass
-			#logdata("Logos", "All logos found in Phase 1. Skipping Phase 2 and 3 for efficiency.")
-		else:
+		# -------------------------------------------------------------------
+		# --- PHASE 2: WORLDFOOTBALL FALLBACK (ONLY for missing logos) ---
+		# -------------------------------------------------------------------
+		if logos_found < total_teams:
 			
-			# --- Phase 2 (Primary Backup): Use Worldfootball.net (log_urls) for Missing Logos ---
 			primary_backup_url = log_urls.get(self.league)
 			if primary_backup_url:
 				#logdata("Logos", "Phase 2 (Worldfootball): Scraping primary backup site (%s) for missing logos..." % primary_backup_url)
 				try:
 					missing_logos = any(not team["found"] for team in teams_to_process)
 					if missing_logos:
-						request = compat_Request(primary_backup_url, headers=headers)
+						# Use general headers for HTML scrape
+						html_headers = self.headers.copy()
+						html_headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+						html_headers["Referer"] = "https://www.google.com/"
+						html_headers["Upgrade-Insecure-Requests"] = "1"
+
+						request = compat_Request(primary_backup_url, headers=html_headers)
 						response = compat_urlopen(request, timeout=20)
 						html = response.read()
 
@@ -1985,7 +1936,7 @@ class StandingsScreen(Screen):
 							html = html.decode("utf-8", errors="ignore")
 						
 						soup = BeautifulSoup(html, "html.parser")
-						# Look for img tags 
+						# Look for img tags
 						imgs = soup.find_all("img")
 
 						# Prepare a map from normalized scraped name to the original raw scraped name
@@ -2005,10 +1956,10 @@ class StandingsScreen(Screen):
 								continue
 
 							# Use the pre-normalized name for matching
-							team_to_search = team_info["name"] 
+							team_to_search = team_info["name"]
 
 							# Fuzzy match against the normalized scraped titles (STRICT CUTOFF = 0.90)
-							team_match = difflib.get_close_matches(team_to_search, normalized_targets, n=1, cutoff=0.90) 
+							team_match = difflib.get_close_matches(team_to_search, normalized_targets, n=1, cutoff=0.90)
 							
 							#logdata("Logos", "Phase 2 Fuzzy Search for: '%s' (Normalized: '%s'). Match: %s" % (team_info["original_name"], team_to_search, team_match))
 
@@ -2020,7 +1971,7 @@ class StandingsScreen(Screen):
 								if img_tag:
 									# Worldfootball uses relative paths, so join with the base URL
 									logo_src = img_tag.get("src").split("?")[0]
-									logo_url = urljoin(primary_backup_url, logo_src) 
+									logo_url = urljoin(primary_backup_url, logo_src)
 									
 									# Use the original name for logging and saving
 									if download_and_save_logo(team_info["original_name"], logo_url, headers, self.league):
@@ -2028,83 +1979,16 @@ class StandingsScreen(Screen):
 										logos_found += 1 # Critical counter update
 										#logdata("Logos", "Found logo for '%s' using match to '%s' (worldfootball)." % (team_info["original_name"], original_title))
 
-					if logos_found >= total_teams:
-						pass
-						#logdata("Logos", "All logos found after Phase 2. Skipping Phase 3 for efficiency.")
-					else:
-
-						# --- Phase 3 (Secondary Backup): Use fctables.com (json_urls) for Remaining Missing Logos ---
-						secondary_backup_url = json_urls.get(self.league)
-						if secondary_backup_url:
-							#logdata("Logos", "Phase 3 (fctables): Scraping secondary backup site (%s) for remaining missing logos..." % secondary_backup_url)
-							try:
-								missing_logos = any(not team["found"] for team in teams_to_process)
-								if missing_logos:
-									request = compat_Request(secondary_backup_url, headers=headers)
-									response = compat_urlopen(request, timeout=20)
-									html = response.read()
-
-									if PY3:
-										html = html.decode("utf-8", errors="ignore")
-									
-									soup = BeautifulSoup(html, "html.parser")
-									imgs = soup.find_all("img")
-
-									# Prepare map for Phase 3 matching
-									normalized_title_map = {}
-									normalized_targets = []
-									for img in imgs:
-										raw_title = img.get("title") or img.get("alt")
-										if raw_title:
-											normalized = normalize_name(raw_title)
-											# Store a unique map entry: normalized -> raw title
-											if normalized not in normalized_title_map:
-												normalized_title_map[normalized] = raw_title
-												normalized_targets.append(normalized)
-
-									for team_info in teams_to_process:
-										if team_info["found"]:
-											continue
-
-										team_to_search = team_info["name"]
-										
-										# Fuzzy match against the normalized scraped titles (STRICT CUTOFF = 0.90)
-										match = difflib.get_close_matches(team_to_search, normalized_targets, n=1, cutoff=0.90)
-										
-										#logdata("Logos", "Phase 3 Fuzzy Search for: '%s' (Normalized: '%s'). Match: %s" % (team_info["original_name"], team_to_search, match))
-
-										if match:
-											normalized_matched_title = match[0]
-											original_title = normalized_title_map.get(normalized_matched_title) # Get the raw title
-											img_tag = next((img for img in imgs if (img.get("title") == original_title or img.get("alt") == original_title) and img.get("src")), None)
-											
-											if img_tag:
-												logo_src = img_tag.get("src").split("?")[0]
-												logo_url = urljoin(secondary_backup_url, logo_src) 
-
-												# Use the original name for logging and saving
-												if download_and_save_logo(team_info["original_name"], logo_url, headers, self.league):
-													team_info["found"] = True
-													logos_found += 1 # Critical counter update
-													#logdata("Logos", "Found logo for '%s' using match to '%s' (fctables)." % (team_info["original_name"], original_title))
-													
-							except Exception as e:
-								#logdata("Logos", "Error fetching from secondary backup site %s -> %s" % (secondary_backup_url, str(e)))
-								pass
-
-
 				except Exception as e:
-					#logdata("Logos", "Error fetching from primary backup site %s -> %s" % (primary_backup_url, str(e)))
+					logdata("Logos", "Error fetching from primary backup site %s -> %s" % (primary_backup_url, str(e)))
 					pass
-
-
+		
 		# Final log of any still missing teams
 		for team_info in teams_to_process:
 			if not team_info["found"]:
 				logdata("Logos", "MISSING FINAL logo for team: '%s'" % team_info["original_name"])
 
 		#logdata("Logos", "Completed check_and_download_logos(), total logos found: %d" % logos_found)
-
 
 	def display_standings(self):
 		gList = []
