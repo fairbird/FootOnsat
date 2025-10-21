@@ -282,7 +282,10 @@ class FootOnSat(Screen):
 				# 2. Map known status abbreviations to full text and check for running time
 				# NOTE: Assuming clean_status is the uppercased status from the scraper (e.g., 'FINISHED', 'HALFTIME', '90')
 				# NOTE: Assuming display_status is the original status (e.g., 'Half Time', '90+', 'FINISHED')
-				if clean_status == 'FINISHED': # <-- NEW: Check for the status returned by the scraper
+				if clean_status == 'CANCELED': # Using the exact clean status 'HALFTIME' from the scraper logic
+					status_text = "Canceled"
+					display_prefix = "Status: "
+				elif clean_status == 'FINISHED':
 					status_text = "Finished"
 					display_prefix = "Status: "
 				elif clean_status == 'FT':
@@ -713,7 +716,10 @@ class FootOnSat(Screen):
 					match_dt = datetime.fromtimestamp(ts) if ts else now_adj
 
 					# --- Status logic ---
-					if stype == 'finished':
+					if stype == 'canceled':  # <--- NEW CANCELED CHECK
+						status = 'CANCELED'
+						h_score = a_score = '' # Clear scores for canceled matches
+					elif stype == 'finished':
 						status = 'FINISHED'
 					elif stype == 'notstarted':
 						status = ''
@@ -742,7 +748,12 @@ class FootOnSat(Screen):
 					else:
 						status = ''
 
-					if match_dt > now_adj + timedelta(hours=6):
+					if match_dt > now_adj + timedelta(hours=6) and stype != 'canceled': # <--- Adjusted time check
+						h_score = a_score = ''
+						status = ''
+                    
+					# Ensure status and scores are clear for 'notstarted' matches outside the window
+					if stype == 'notstarted' and match_dt > now_adj + timedelta(hours=6):
 						h_score = a_score = ''
 						status = ''
 
