@@ -1533,7 +1533,6 @@ class FootOnsatNotifScreen(Screen):
 		FootOnSatNotifDialog.dialog.hide()
 
 
-
 class StandingsScreen(Screen):
 	def __init__(self, session, league, url):
 		self.session = session
@@ -1566,10 +1565,11 @@ class StandingsScreen(Screen):
 		
 		# Define standard headers for both fetching and logo downloading
 		self.headers = {
-			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0",
+			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0", # <-- New User-Agent
 			"Accept-Language": "en-US,en;q=0.5",
 			"Connection": "keep-alive",
-			"Referer": "https://www.sofascore.com/", # New referer for SofaScore
+			# You should set this to 'https://api.sofascore.com' or remove it entirely
+			"Referer": "https://api.sofascore.com/", 
 			"Cache-Control": "max-age=0",
 		}
 		
@@ -1587,9 +1587,9 @@ class StandingsScreen(Screen):
 		if "sofascore.com" not in url_to_parse:
 			if league_key in json_urls:
 				url_to_parse = json_urls[league_key]
-				logdata("fetch_standings", "FORCED OVERRIDE: Switched from invalid URL to SofaScore URL for key: %s" % league_key)
+				#logdata("fetch_standings", "FORCED OVERRIDE: Switched from invalid URL to SofaScore URL for key: %s" % league_key)
 			else:
-				logdata("fetch_standings", "CRITICAL ERROR: Invalid URL domain used, and key '%s' not found in hardcoded list." % league_key)
+				#logdata("fetch_standings", "CRITICAL ERROR: Invalid URL domain used, and key '%s' not found in hardcoded list." % league_key)
 				self.standings_data = []
 				self.display_standings()
 				return
@@ -1614,12 +1614,12 @@ class StandingsScreen(Screen):
 				season_id = parsed_url.fragment.split(':')[-1]
 			
 		except Exception as e:
-			logdata("fetch_standings", "ERROR during URL parsing: %s" % str(e))
+			#logdata("fetch_standings", "ERROR during URL parsing: %s" % str(e))
 			trace_error()
 			
 		# Final check: must have a numeric tournament ID and season ID
 		if not tournament_id or not season_id or not tournament_id.isdigit() or not season_id.isdigit():
-			logdata("fetch_standings", "CRITICAL ERROR: Failed to extract numeric IDs. T-ID:'%s', S-ID:'%s'. Final URL: %s" % (tournament_id, season_id, url_to_parse))
+			#logdata("fetch_standings", "CRITICAL ERROR: Failed to extract numeric IDs. T-ID:'%s', S-ID:'%s'. Final URL: %s" % (tournament_id, season_id, url_to_parse))
 			self.standings_data = []
 			self.display_standings()
 			return
@@ -1633,11 +1633,15 @@ class StandingsScreen(Screen):
 		if league_key == 'championsleague':
 			api_url = 'https://api.sofascore.com/api/v1/unique-tournament/7/season/76953/standings/total'
 			
-		logdata("fetch_standings", "Using SofaScore API URL: %s" % api_url)
+		#logdata("fetch_standings", "Using SofaScore API URL: %s" % api_url)
 
 		# 3. Define the headers for the API request
 		json_headers = self.headers.copy()
 		json_headers["Accept"] = "application/json"
+		json_headers["Accept-Encoding"] = "gzip, deflate"
+		json_headers["X-Requested-With"] = "XMLHttpRequest"
+		json_headers["Host"] = "api.sofascore.com"
+		json_headers["Origin"] = "https://www.sofascore.com"
 		json_headers["Sec-Fetch-Dest"] = "empty"
 		json_headers["Sec-Fetch-Mode"] = "cors"
 		json_headers["Sec-Fetch-Site"] = "same-site"
@@ -1645,22 +1649,36 @@ class StandingsScreen(Screen):
 		standings = []
 		
 		try:
-			request = compat_Request(api_url, headers=json_headers)
-			response = compat_urlopen(request, timeout=20)
-			
-			raw_json_content = response.read()
-			
-			# Python 2/3 compatible JSON loading
+			raw_json_content = None
+			try:
+				# --- Modern fetch using requests (works on Python 2 & 3) ---
+				import requests
+				r = requests.get(api_url, headers=json_headers, timeout=20)
+				r.raise_for_status()
+				raw_json_content = r.content
+			except Exception as e:
+				# --- Fallback to compat_urlopen if requests fails ---
+				try:
+					request = compat_Request(api_url, headers=json_headers)
+					response = compat_urlopen(request, timeout=20)
+					raw_json_content = response.read()
+				except Exception as e2:
+					raise Exception("SofaScore fetch failed: %s / %s" % (str(e), str(e2)))
+
+			# Decode JSON (works in both Python 2/3)
 			if PY3:
 				json_data = raw_json_content.decode('utf-8')
 			else:
-				json_data = raw_json_content
+				try:
+					json_data = raw_json_content.decode('utf-8')
+				except:
+					json_data = raw_json_content
 				
 			data = json.loads(json_data)
 			#logdata("fetch_standings", "JSON data fetched successfully.")
 
 			if 'standings' not in data or not data['standings']:
-				logdata("fetch_standings", "No 'standings' data found in JSON response.")
+				#logdata("fetch_standings", "No 'standings' data found in JSON response.")
 				self.standings_data = []
 				self.display_standings()
 				return
@@ -1670,9 +1688,15 @@ class StandingsScreen(Screen):
 				
 				# Handle Group/Table names (CRITICAL FIX for AFC East/West separation)
 				if 'name' in table and table['name']: # Catches 'East' / 'West' for AFC
-					standings.append("Table %s" % table['name'])
+					title = "Table %s" % table['name']
+					if not PY3:
+						title = title.encode('utf-8')
+					standings.append(title)
 				elif 'groupName' in table and table['groupName']: # Catches 'Group A', 'Group B', etc.
-					standings.append("Table %s" % table['groupName'])
+					title = "Table %s" % table['groupName']
+					if not PY3:
+						title = title.encode('utf-8')
+					standings.append(title)
 				
 				# The original 'groupName' logic (now replaced/improved by the above)
 				# if 'groupName' in table and table['groupName']:
@@ -1691,8 +1715,7 @@ class StandingsScreen(Screen):
 					
 					# Extract all required stats directly from the 'row' dictionary
 					position = str(row.get('position', 0))
-					
-					# 🛑 USING THE CORRECT JSON KEYS FROM YOUR OUTPUT 🛑
+
 					played = str(row.get('matches', 0))
 					points = str(row.get('points', 0))
 					wins = str(row.get('wins', 0))
@@ -1730,9 +1753,9 @@ class StandingsScreen(Screen):
 
 			self.display_standings()
 
-		except (compat_HTTPError, compat_URLError, json.JSONDecodeError, Exception) as e:
+		except (compat_HTTPError, compat_URLError, ValueError, Exception) as e:
 			final_api_url = locals().get('api_url', 'N/A')
-			logdata("fetch_standings_error", "Failed to fetch/parse SofaScore JSON for API %s: %s" % (final_api_url, str(e)))
+			#logdata("fetch_standings_error", "Failed to fetch/parse SofaScore JSON for API %s: %s" % (final_api_url, str(e)))
 			trace_error()
 			self.standings_data = []
 			self.display_standings()
@@ -1798,15 +1821,55 @@ class StandingsScreen(Screen):
 				# SofaScore API requires standard desktop headers
 				logo_headers = headers.copy()
 				logo_headers["Accept"] = "image/avif,image/webp,image/apng,image/svg+xml,image/*;q=0.8"
-				
-				req = compat_Request(logo_url, headers=logo_headers)
-				resp = compat_urlopen(req, timeout=10)
-				
-				# Save the raw file content to the temporary location
-				with open(temp_file, "wb") as f:
-					f.write(resp.read())
-				
-				
+				if not PY3:
+					try:
+						import requests
+						logo_headers["Referer"] = "https://www.sofascore.com/"
+						r = requests.get(logo_url, headers=logo_headers, timeout=10, verify=False)
+						r.raise_for_status()
+						data = r.content
+
+						# detect image type by magic bytes (keep Python2 bytes-style checks)
+						if not data or len(data) < 10:
+							logdata("Logos", "Empty or too-small data from %s" % logo_url)
+							return False
+
+						# PNG
+						if data.startswith(b'\x89PNG'):
+							with open(temp_file, "wb") as f:
+								f.write(data)
+							# leave actual save/convert logic to the common code below (do not force rename)
+						# JPEG
+						elif data.startswith(b'\xff\xd8'):
+							with open(temp_file, "wb") as f:
+								f.write(data)
+							# keep for later conversion (PIL or fallback) — do not rename .webp -> .png
+						# GIF
+						elif data.startswith(b'GIF'):
+							with open(temp_file, "wb") as f:
+								f.write(data)
+						# RIFF/WEBP header: 'RIFF....WEBP'
+						elif data.startswith(b'RIFF') and data[8:12] == b'WEBP':
+							# SofaScore sometimes returns webp. E2 can't display webp — we don't rename it;
+							# return False so Phase 2 (worldfootball) can attempt alternative sources.
+							logdata("Logos", "Received WEBP from %s — skipping to fallback" % logo_url)
+							return False
+						else:
+							# Unknown/HTML or blocked content (e.g., 403 HTML served with 200)
+							logdata("Logos", "Invalid image data from %s (probably blocked or not supported)" % logo_url)
+							return False
+
+					except Exception as e:
+						logdata("Logos", "Requests HTTPS fetch failed for '%s': %s" % (team_name, str(e)))
+						trace_error()
+						return False
+				else:
+					req = compat_Request(logo_url, headers=logo_headers)
+					resp = compat_urlopen(req, timeout=10)
+					# Save the raw file content to the temporary location
+					with open(temp_file, "wb") as f:
+						f.write(resp.read())
+
 				success = False
 				if ext == ".png":
 					# If already PNG, just copy the file from /tmp to the final .png path
@@ -1989,6 +2052,8 @@ class StandingsScreen(Screen):
 				logdata("Logos", "MISSING FINAL logo for team: '%s'" % team_info["original_name"])
 
 		#logdata("Logos", "Completed check_and_download_logos(), total logos found: %d" % logos_found)
+
+
 
 	def display_standings(self):
 		gList = []
