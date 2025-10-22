@@ -410,17 +410,17 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 					</screen>"""
 		else:
 			skin = """
-					<screen name="MenuFootOnSat" position="center,center" size="1040,750" title="Menu FootOnSat">
+					<screen name="MenuFootOnSat" position="center,center" size="1040,900" title="Menu FootOnSat">
 						<widget source="global.CurrentTime" render="Label" position="5,5" size="1022,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
 							<convert type="ClockToText">Format:%d-%m-%Y&#160;%H:%M:%S</convert>
 						</widget>
-						<widget name="config" position="18,70" size="1005,365" scrollbarMode="showOnDemand"/>
-						<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,720" zPosition="-10"/>
-						<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,720" zPosition="-10"/>
-						<widget render="Label" source="key_red" position="223,685" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
-						<widget render="Label" source="key_green" position="585,685" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
-						<widget source="help" render="Label" position="18,400" size="1004,40" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
-						<widget name="Picture" position="313,460" size="400,225" zPosition="5" alphatest="blend"/>
+						<widget name="config" position="18,70" size="1005,420" scrollbarMode="showOnDemand"/>
+						<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,860" zPosition="-10"/>
+						<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,860" zPosition="-10"/>
+						<widget render="Label" source="key_red" position="223,825" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
+						<widget render="Label" source="key_green" position="585,825" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
+						<widget source="help" render="Label" position="18,495" size="1004,60" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
+						<widget name="Picture" position="313,590" size="400,225" zPosition="5" alphatest="blend"/>
 					</screen>"""
 	else:
 		skin = """
