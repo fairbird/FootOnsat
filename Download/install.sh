@@ -69,7 +69,7 @@ if python --version 2>&1 | grep -q '^Python 3\.'; then
    SOUP4='python3-beautifulsoup4'
    DIFFLIB='python3-difflib'
    THREADING='python3-threading'
-   PLILOW='python3-pillow'
+   PLI='python3-pillow'
    REQUESTES='python3-requests'
 else
    echo "You have Python2 image"
@@ -79,7 +79,7 @@ else
    SOUP4='python-beautifulsoup4'
    DIFFLIB='python-difflib'
    THREADING='python-threading'
-   PLILOW='python-pillow'
+   PLI='python-imaging'
    REQUESTES='python-requests'
 fi
 
@@ -107,21 +107,20 @@ if grep -q "$THREADING" "$STATUS"; then
     threading='Installed'
 fi
 
-if grep -q "$PLILOW" "$STATUS"; then
-    pillow='Installed'
+if grep -q "$PLI" "$STATUS"; then
+    pil='Installed'
 fi
 
 if grep -q "$REQUESTES" "$STATUS"; then
     requestes='Installed'
 fi
 
-
 if [ "$sqlite" = "Installed" -a "$six" = "Installed" -a "$aplay" = "Installed" -a "$beautifulsoup4" = "Installed" -a \
-     "$difflib" = "Installed" -a "$threading" = "Installed" -a "$pillow" = "Installed" -a "$requestes" = "Installed" ]; then
+      "$difflib" = "Installed" -a "$threading" = "Installed" -a "$pil" = "Installed" -a "$requestes" = "Installed" ]; then
      echo ""
 else
 
-    if [ "$OS" = "Opensource" ]; then
+    if [ "$OS" != "DreamOS" ]; then
         echo "=========================================================================="
         echo "Some Depends Need to Be downloaded From Feeds ...."
         echo "=========================================================================="
@@ -134,13 +133,13 @@ else
         opkg install alsa-utils-aplay
         echo "========================================================================"
         echo "========================================================================"
-        echo " Downloading $SQLITE3 , $PYSIX , $SOUP4 , $DIFFLIB , $THREADING , $PLILOW , $REQUESTES  ......"
+        echo " Downloading $SQLITE3 , $PYSIX , $SOUP4 , $DIFFLIB , $THREADING , $PLI , $REQUESTES  ......"
         opkg install $SQLITE3
         opkg install $PYSIX
         opkg install $SOUP4
         opkg install $DIFFLIB
         opkg install $THREADING
-        opkg install $PLILOW
+        opkg install $PLI
 		opkg install $REQUESTES
         echo "========================================================================"
     else
@@ -156,13 +155,13 @@ else
         apt-get install alsa-utils-aplay -y
         echo "========================================================================"
         echo "========================================================================"
-        echo " Downloading $SQLITE3 , $PYSIX , $SOUP4 , $DIFFLIB , $THREADING , $PLILOW , $REQUESTES ......"
+        echo " Downloading $SQLITE3 , $PYSIX , $SOUP4 , $DIFFLIB , $THREADING , $PLI , $REQUESTES ......"
         apt-get install $SQLITE3 -y
         apt-get install $PYSIX -y
         apt-get install $SOUP4 -y
         apt-get install $DIFFLIB -y
         apt-get install $THREADING -y
-        apt-get install $PLILOW -y
+        apt-get install $PLI -y
 		apt-get install $REQUESTES -y
         echo "========================================================================"
     fi
@@ -215,11 +214,11 @@ else
 	echo "#########################################################"
 fi
 
-if grep -q "$PLILOW" "$STATUS"; then
+if grep -q "$PLI" "$STATUS"; then
 	echo ""
 else
 	echo "#########################################################"
-	echo "#       $PLILOW Not found in feed                       #"
+	echo "#       $PLI Not found in feed                       #"
 	echo "#########################################################"
 fi
 
