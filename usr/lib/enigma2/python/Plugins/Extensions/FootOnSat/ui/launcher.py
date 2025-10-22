@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from enigma import getDesktop
 from Screens.Screen import Screen
+from Screens.Standby import TryQuitMainloop
 from Components.ActionMap import ActionMap
 from Screens.MessageBox import MessageBox
 from Tools.LoadPixmap import LoadPixmap
@@ -8,8 +9,9 @@ from Tools.Directories import resolveFilename, SCOPE_PLUGINS, SCOPE_LANGUAGE
 from Components.Pixmap import Pixmap
 from Components.Sources.StaticText import StaticText
 from Components.Label import Label
+from Components.Sources.List import List
 from Components.ConfigList import ConfigListScreen
-from Components.config import config, ConfigYesNo, ConfigSubsection, ConfigSelection, getConfigListEntry, NoSave, configfile
+from Components.config import config, ConfigYesNo, ConfigSubsection, ConfigSelection, getConfigListEntry, NoSave, configfile, ConfigText
 from Plugins.Extensions.FootOnSat.ui.Console import Console
 from Plugins.Extensions.FootOnSat.ui.interface import FootOnSat, WebClientContextFactory, readFromFile, logdata
 from Plugins.Extensions.FootOnSat.component.configs import ConfigDictionarySet
@@ -26,6 +28,7 @@ from . import compat
 PY3 = version_info[0] == 3
 
 config.plugins.FootOnSat = ConfigSubsection()
+config.plugins.FootOnSat.showplugin = ConfigText(default="")
 config.plugins.FootOnSat.sort = ConfigDictionarySet(default={"footmenu": {"footsubmenu": {}}})
 config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
 config.plugins.FootOnSat.finished = ConfigSelection(default = "2", choices = [
@@ -407,31 +410,31 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 					</screen>"""
 		else:
 			skin = """
-					<screen name="MenuFootOnSat" position="center,center" size="1040,800" title="Menu FootOnSat">
+					<screen name="MenuFootOnSat" position="center,center" size="1040,750" title="Menu FootOnSat">
 						<widget source="global.CurrentTime" render="Label" position="5,5" size="1022,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
 							<convert type="ClockToText">Format:%d-%m-%Y&#160;%H:%M:%S</convert>
 						</widget>
 						<widget name="config" position="18,70" size="1005,365" scrollbarMode="showOnDemand"/>
-						<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,745" zPosition="-10"/>
-						<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,745" zPosition="-10"/>
-						<widget render="Label" source="key_red" position="223,750" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
-						<widget render="Label" source="key_green" position="585,750" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
-						<widget source="help" render="Label" position="18,450" size="1004,60" font="Regular;26" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
-						<widget name="Picture" position="313,500" size="400,225" zPosition="5" alphatest="blend"/>
+						<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,720" zPosition="-10"/>
+						<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,720" zPosition="-10"/>
+						<widget render="Label" source="key_red" position="223,685" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
+						<widget render="Label" source="key_green" position="585,685" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
+						<widget source="help" render="Label" position="18,400" size="1004,40" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
+						<widget name="Picture" position="313,460" size="400,225" zPosition="5" alphatest="blend"/>
 					</screen>"""
 	else:
 		skin = """
-				<screen name="MenuFootOnSat" position="center,center" size="1040,700" title="Menu FootOnSat">
+				<screen name="MenuFootOnSat" position="center,center" size="1040,750" title="Menu FootOnSat">
 					<widget source="global.CurrentTime" render="Label" position="5,5" size="1022,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
 						<convert type="ClockToText">Format:%d-%m-%Y     %H:%M:%S</convert>
 					</widget>
-					<widget name="config" font="Regular;28" secondfont="Regular;28" itemHeight="45" position="18,70" size="1005,355" scrollbarMode="showOnDemand"/>
-					<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,680" zPosition="-10"/>
-					<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,680" zPosition="-10"/>
-					<widget render="Label" source="key_red" position="223,645" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
-					<widget render="Label" source="key_green" position="585,645" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
-					<widget source="help" render="Label" position="18,360" size="1004,60" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
-					<widget name="Picture" position="313,420" size="400,225" zPosition="5" alphatest="blend"/>
+					<widget name="config" font="Regular;28" secondfont="Regular;28" itemHeight="45" position="18,70" size="1005,365" scrollbarMode="showOnDemand"/>
+					<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,720" zPosition="-10"/>
+					<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,720" zPosition="-10"/>
+					<widget render="Label" source="key_red" position="223,685" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
+					<widget render="Label" source="key_green" position="585,685" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
+					<widget source="help" render="Label" position="18,400" size="1004,60" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
+					<widget name="Picture" position="313,460" size="400,225" zPosition="5" alphatest="blend"/>
 				</screen>"""
 
 	def __init__(self, session):
@@ -446,6 +449,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			"cancel": self.cancel,
 			"red": self.cancel,
 			"green": self.save,
+			"ok": self.keyOk,
 		}, -1)
 
 		self["key_red"] = StaticText(_("Exit"))
@@ -460,6 +464,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.configChanged = True
 		self.list = []
 		self.list.append(getConfigListEntry(_("Enable checking for Online Update"), config.plugins.FootOnSat.updateonline, _("This option to Enable or Disable checking for Online Update")))
+		self.list.append(getConfigListEntry(_("Show Plugin #press OK to change"), config.plugins.FootOnSat.showplugin, _("This option to show Plugin in any where you like")))
 		self.list.append(getConfigListEntry(_("Enable live match + Live score"), config.plugins.FootOnSat.livescore, _("This feature allows you to show or hide the matches still live with or withou result")))
 		if config.plugins.FootOnSat.livescore.value in ["2", "3"]:
 			self.list.append(getConfigListEntry(_("Select appear live + score of match in"), config.plugins.FootOnSat.livescoresections, _("This feature allows you to show matches live with result in sections")))
@@ -471,6 +476,11 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self["config"].onSelectionChanged.append(self.updateHelp)
 		self["config"].onSelectionChanged.append(self.Picture)
 		self.onShow.append(self.Picture)
+
+	def keyOk(self):
+		cur = self["config"].getCurrent()
+		if cur and len(cur) > 1 and cur[1] == config.plugins.FootOnSat.showplugin:
+			self.session.open(SelectionScreen)
 
 	def updateHelp(self):
 		cur = self["config"].getCurrent()
@@ -517,18 +527,154 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.close()
 
 	def save(self):
-		if self.icons_value != config.plugins.FootOnSat.icons.value:
-		  extract_path = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
-		  if config.plugins.FootOnSat.icons.value == "default_icons":
-			  os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/default_icons.tar.gz | tar -xz -C %s" % extract_path)
-		  elif config.plugins.FootOnSat.icons.value == "icons_buwalla":
-			  os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/icons_buwalla.tar.gz | tar -xz -C %s" % extract_path)
-		  elif config.plugins.FootOnSat.icons.value == "icons_renkli":
-			  os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/icons_renkli.tar.gz | tar -xz -C %s" % extract_path)
-		  elif config.plugins.FootOnSat.icons.value == "italia2012_icons":
-			  os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/italia2012_icons.tar.gz | tar -xz -C %s" % extract_path)
+		changed = False
 		for x in self["config"].list:
-		  if len(x)>1:
-			  x[1].save()
+			if len(x) > 1:
+				config_item = x[1]
+				if hasattr(config_item, 'isChanged') and config_item.isChanged():
+					changed = True
+					break
+		if self.icons_value != config.plugins.FootOnSat.icons.value:
+			changed = True
+			extract_path = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
+			if config.plugins.FootOnSat.icons.value == "default_icons":
+				os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/default_icons.tar.gz | tar -xz -C %s" % extract_path)
+			elif config.plugins.FootOnSat.icons.value == "icons_buwalla":
+				os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/icons_buwalla.tar.gz | tar -xz -C %s" % extract_path)
+			elif config.plugins.FootOnSat.icons.value == "icons_renkli":
+				os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/icons_renkli.tar.gz | tar -xz -C %s" % extract_path)
+			elif config.plugins.FootOnSat.icons.value == "italia2012_icons":
+				os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/italia2012_icons.tar.gz | tar -xz -C %s" % extract_path)
+		for x in self["config"].list:
+			if len(x)>1:
+				x[1].save()
 		configfile.save()
-		self.close("exit_launcher")
+		if changed:
+			self.close("exit_launcher")
+		else:
+			self.close()
+
+	def restart(self,answer=None):
+		if answer:
+			self.session.open(TryQuitMainloop, 3)
+		else:
+			self.close(True)
+
+
+class SelectionScreen(Screen, ConfigListScreen):
+        skin = """
+        	<screen name="SelectionScreen" position="center,center" size="738,524" title="Select Options">
+        		<widget source="list" render="Listbox" position="10,10" size="716,461" scrollbarMode="showOnDemand">
+				<convert type="TemplatedMultiContent">
+				    {
+				        "template": [
+				            MultiContentEntryText(pos=(85,10), size=(650,50), font=0, text=0),
+				            MultiContentEntryPixmapAlphaBlend(pos=(0,0), size=(50,50), png=1)
+				        ],
+				        "fonts": [gFont("Regular", 35)],
+				        "itemHeight": 60
+				    }
+				</convert>
+        		</widget>
+        		<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" position="105,517" size="165,2" zPosition="-10"/>
+        		<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" position="482,517" size="165,2" zPosition="-10"/>
+        		<widget name="key_red" position="70,480" size="246,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;35" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
+        		<widget name="key_green" position="445,480" size="246,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;35" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
+        	</screen>"""
+        def __init__(self, session):
+                Screen.__init__(self, session)
+                ConfigListScreen.__init__(self, [], session=session)
+                self.session = session
+                self.setup_title = _("Select your choose")
+                self.setTitle(self.setup_title)
+
+                # Load pixmaps for checkboxes
+                self.empty_box = LoadPixmap(resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/icon/checkbox_empty.png'))
+                self.checked_box = LoadPixmap(resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/icon/checkbox_checked.png'))
+
+                # Initialize selection states
+                self.selection_states = {
+                        "Menu": False,
+                        "Channellist": False,
+                        "Extensions": False
+                }
+
+                # Get current config value and update selection states
+                self.current_value = config.plugins.FootOnSat.showplugin.value
+                if self.current_value:
+                        selected_items = self.current_value.split(',')
+                        for item in selected_items:
+                                if item in self.selection_states:
+                                        self.selection_states[item] = True
+
+                # Create list of options with their checkbox states
+                self.list = []
+
+                # Set up the list component
+                self["list"] = List(self.list)
+
+                # Now update the list
+                self.updateList()
+
+                # Set up labels
+                self["key_green"] = Label(_("Save"))
+                self["key_red"] = Label(_("Cancel"))
+
+                # Set up actions
+                self["setupActions"] = ActionMap(["FootOnsatActions"], {
+                        "ok": self.select_option,
+                        "cancel": self.close,
+                        "back": self.close,
+                        "green": self.save
+                }, -2)  # Higher priority to ensure OK is captured (DreamOS images need it)
+
+                self.onLayoutFinish.append(self.layoutFinished)
+
+        def layoutFinished(self):
+                self.setTitle(self.setup_title)
+
+        def updateList(self):
+                # Store the current index before updating the list
+                current_index = self["list"].getIndex() or 0
+                self.list = []
+                choices = [
+                        ("Menu", _("Menu")),
+                        ("Channellist", _("Channellist")),
+                        ("Extensions", _("Extensions"))
+                ]
+
+                for key, text in choices:
+                        pixmap = self.checked_box if self.selection_states[key] else self.empty_box
+                        self.list.append((text, pixmap, key))
+
+                self["list"].setList(self.list)
+                # Restore the previous index, ensuring it's within bounds
+                if current_index < len(self.list):
+                        self["list"].setIndex(current_index)
+                else:
+                        self["list"].setIndex(0)  # Fallback to first item if index is out of range
+
+        def select_option(self):
+                current = self["list"].getCurrent()
+                if current:
+                        key = current[2]
+                        self.selection_states[key] = not self.selection_states[key]
+                        self.updateList()
+
+        def save(self):
+                # Save all selected options as comma-separated string
+                selected_options = [key for key, state in self.selection_states.items() if state]
+                new_value = ','.join(selected_options)
+                config.plugins.FootOnSat.showplugin.value = new_value
+                config.plugins.FootOnSat.showplugin.save()
+
+                if self.current_value != new_value:
+                        self.session.openWithCallback(self.restart, MessageBox, _("You need to restart GUI\nDo you want to do it now ?!"))
+                else:
+                        self.close(True)
+
+        def restart(self,answer=None):
+                if answer:
+                        self.session.open(TryQuitMainloop, 3)
+                else:
+                        self.close(True)
