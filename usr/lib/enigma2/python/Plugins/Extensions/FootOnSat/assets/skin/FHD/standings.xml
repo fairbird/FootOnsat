@@ -17,9 +17,9 @@
     <eLabel text="Losses" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1199,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
     <eLabel text="Goals Scored|Conceded|Difference" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1357,140" size="500,35" zPosition="5" transparent="1" halign="center"/>
     <!-- Standings list -->  
-    <widget name="standings_list" position="60,190" size="1800,758" scrollbarMode="showNever" 
+    <widget name="standings_list" position="60,190" size="1800,785" scrollbarMode="showNever" 
         foregroundColor="#00ffffff" backgroundColorSelected="#0000FF" enableWrapAround="1" transparent="1" zPosition="2"/>
     <!-- Red key label -->
-    <widget name="key_red" position="45,985" size="600,40" font="Regular;28" halign="center" 
+    <widget name="key_red" position="45,990" size="600,40" font="Regular;28" halign="center" 
         foregroundColor="#00ff2525" backgroundColor="#16000000" zPosition="5" transparent="1" />
 </screen>
