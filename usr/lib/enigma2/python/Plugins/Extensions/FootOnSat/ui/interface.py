@@ -666,7 +666,7 @@ class FootOnSat(Screen):
 		# === Fetch in thread ===
 		def _fetch_with_requests():
 			try:
-				r = requests.get(url, headers=headers, timeout=3)
+				r = requests.get(url, headers=headers, verify=False)
 				r.raise_for_status()
 				return r.content
 			except Exception as e:
@@ -1581,18 +1581,6 @@ class StandingsScreen(Screen):
 
 	def fetch_standings(self):		
 		url_to_parse = self.url
-		league_key = self.league.lower() # Normalize key for lookup
-
-		# 1. CRITICAL OVERRIDE: If the provided URL is not SofaScore, force the correct one.
-		if "sofascore.com" not in url_to_parse:
-			if league_key in json_urls:
-				url_to_parse = json_urls[league_key]
-				#logdata("fetch_standings", "FORCED OVERRIDE: Switched from invalid URL to SofaScore URL for key: %s" % league_key)
-			else:
-				#logdata("fetch_standings", "CRITICAL ERROR: Invalid URL domain used, and key '%s' not found in hardcoded list." % league_key)
-				self.standings_data = []
-				self.display_standings()
-				return
 
 		# Start parsing the (now guaranteed to be a SofaScore) URL
 		if not isinstance(url_to_parse, compat_str):
@@ -1628,10 +1616,6 @@ class StandingsScreen(Screen):
 		api_url = "https://api.sofascore.com/api/v1/unique-tournament/{}/season/{}/standings/total".format(
 			tournament_id, season_id
 		)
-		
-		# CRITICAL OVERRIDE for Champions League URL
-		if league_key == 'championsleague':
-			api_url = 'https://api.sofascore.com/api/v1/unique-tournament/7/season/76953/standings/total'
 			
 		#logdata("fetch_standings", "Using SofaScore API URL: %s" % api_url)
 
