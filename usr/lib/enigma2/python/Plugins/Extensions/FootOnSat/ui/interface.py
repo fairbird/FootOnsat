@@ -666,7 +666,7 @@ class FootOnSat(Screen):
 		# === Fetch in thread ===
 		def _fetch_with_requests():
 			try:
-				r = requests.get(url, headers=headers, verify=False)
+				r = requests.get(url, headers=headers, timeout=3)
 				r.raise_for_status()
 				return r.content
 			except Exception as e:
