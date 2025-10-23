@@ -751,7 +751,7 @@ class FootOnSat(Screen):
 					if match_dt > now_adj + timedelta(hours=6) and stype != 'canceled': # <--- Adjusted time check
 						h_score = a_score = ''
 						status = ''
-                    
+					
 					# Ensure status and scores are clear for 'notstarted' matches outside the window
 					if stype == 'notstarted' and match_dt > now_adj + timedelta(hours=6):
 						h_score = a_score = ''
