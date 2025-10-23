@@ -233,17 +233,17 @@ fi
 echo " ** Download and install FootOnsat ** "
 cd /tmp
 set -e
-rm -rf *main* >/dev/null 2>&1
+rm -rf *uhd* >/dev/null 2>&1
 rm -rf *FootOnsat* >/dev/null 2>&1
-wget "https://github.com/fairbird/FootOnsat/archive/refs/heads/main.tar.gz"
-if [ -f "/tmp/main.tar.gz" ]; then
+wget "https://github.com/fairbird/FootOnsat/archive/refs/heads/uhd.tar.gz"
+if [ -f "/tmp/uhd.tar.gz" ]; then
 	echo "remove old version"
 	echo ""
 	rm -rf $PLUGIN_PATH >/dev/null 2>&1
 	echo "Send new version"
 	echo ""
-	tar -xzf main.tar.gz
-	cp -r FootOnsat-main/usr / >/dev/null 2>&1
+	tar -xzf uhd.tar.gz
+	cp -r FootOnsat-uhd/usr / >/dev/null 2>&1
 fi
 if [ -d $PLUGIN_PATH ]; then
 	if [ -f "$TMP_DB" ]; then
@@ -261,7 +261,7 @@ fi
 echo "clean tmp ..."
 echo ""
 rm -rf *FootOnsat* >/dev/null 2>&1
-rm -rf *main* >/dev/null 2>&1
+rm -rf *uhd* >/dev/null 2>&1
 rm -rf *assets* >/dev/null 2>&1
 rm -rf *TMP_DB* >/dev/null 2>&1
 cd ..
