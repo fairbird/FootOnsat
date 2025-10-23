@@ -1579,10 +1579,7 @@ class StandingsScreen(Screen):
 		# Use onShown to trigger the fetch process
 		self.onShown.append(self.fetch_standings)
 
-	def fetch_standings(self):
-		# Dictionary of correct SofaScore URLs (Hard-coded for stability and to bypass config errors)
-		# NOTE: Keys are all lowercase for robust lookup against self.league.
-		
+	def fetch_standings(self):		
 		url_to_parse = self.url
 		league_key = self.league.lower() # Normalize key for lookup
 
@@ -1699,10 +1696,6 @@ class StandingsScreen(Screen):
 					if not PY3:
 						title = title.encode('utf-8')
 					standings.append(title)
-				
-				# The original 'groupName' logic (now replaced/improved by the above)
-				# if 'groupName' in table and table['groupName']:
-				# 	standings.append("Table %s" % table['groupName'])
 		
 				if 'rows' not in table:
 					continue
@@ -1717,20 +1710,15 @@ class StandingsScreen(Screen):
 					
 					# Extract all required stats directly from the 'row' dictionary
 					position = str(row.get('position', 0))
-
 					played = str(row.get('matches', 0))
 					points = str(row.get('points', 0))
 					wins = str(row.get('wins', 0))
 					draws = str(row.get('draws', 0))
 					losses = str(row.get('losses', 0))
-					
-					# Goal scored
 					goals_scored = str(row.get('scoresFor', 0))
-					# Goal conceded
 					goals_conceded = str(row.get('scoresAgainst', 0))
-					# Goal Difference
 					goal_diff = str(row.get('scoreDiffFormatted', '0'))
-					
+
 					# Append 11 elements to the list to match your screen's columns
 					standings.append([
 						team_name,
@@ -1740,9 +1728,9 @@ class StandingsScreen(Screen):
 						wins,
 						draws,
 						losses,
-						goals_scored,    # Now populates 'Goals Scored' column
-						goals_conceded,  # Now populates 'Goals Conceded' column
-						goal_diff,       # Now populates 'Difference' column
+						goals_scored,
+						goals_conceded,
+						goal_diff,
 						logo_url
 					])
 
@@ -1762,21 +1750,8 @@ class StandingsScreen(Screen):
 			self.standings_data = []
 			self.display_standings()
 
-	# NOTE: The check_and_download_logos and display_standings methods below 
-	# MUST be updated with the correct list indices (0-8) for goal_diff and logo_url.
-
 	def check_and_download_logos(self):
-		# NOTE: This function assumes the 're', 'os', 'shutil', 'difflib', 'urljoin', 
-		# 'compat_Request', 'compat_urlopen', 'resolveFilename', 'sanitize_team_name', 
-		# 'BeautifulSoup', 'log_urls', and 'PIL_AVAILABLE' are imported/accessible globally or within the class scope.
-
-		# --- Robust Headers provided by user to fix 403 Forbidden error ---
 		headers = self.headers.copy() # Use headers from init
-		# -------------------------------------------------------------------
-
-		# ---------------------------------------------------
-		# --- HELPER FUNCTIONS (Defined BEFORE the main logic) ---
-		# ---------------------------------------------------
 		def normalize_name(name):
 			"""Smart normalization: remove punctuation, numbers, generic words, and extra spaces."""
 			if not name:
@@ -1814,13 +1789,13 @@ class StandingsScreen(Screen):
 
 			# Determine file extension from URL (used for temp filename)
 			ext = ".gif" if logo_url.lower().endswith(".gif") else (".png" if logo_url.lower().endswith(".png") else ".jpg")
+			#logdata("ext", "Downloading logo for '%s'" % ext)
 			
 			# Temporary file path (using the actual downloaded extension)
 			temp_file = os.path.join("/tmp", "{}{}".format(team_filename, ext))
+			#logdata("temp_file", "Downloading logo for '%s' from: %s" % (team_filename, ext))
 
 			try:
-				# --- The network request uses the fixed 'headers' ---
-				# SofaScore API requires standard desktop headers
 				logo_headers = headers.copy()
 				logo_headers["Accept"] = "image/avif,image/webp,image/apng,image/svg+xml,image/*;q=0.8"
 				if not PY3:
@@ -1831,12 +1806,12 @@ class StandingsScreen(Screen):
 						data = r.content
 						# Ensure it’s actually image data
 						if not (data.startswith(b'\x89PNG') or data.startswith(b'\xff\xd8') or data.startswith(b'GIF')):
-							logdata("Logos", "Invalid PNG data from %s (probably 403 HTML)" % logo_url)
+							#logdata("Logos", "Invalid PNG data from %s (probably 403 HTML)" % logo_url)
 							return False
 						with open(temp_file, "wb") as f:
 							f.write(data)
 					except Exception as e:
-						logdata("Logos", "Requests fetch failed for %s: %s" % (logo_url, str(e)))
+						#logdata("Logos", "Requests fetch failed for %s: %s" % (logo_url, str(e)))
 						trace_error()
 						return False
 				else:
@@ -1856,7 +1831,7 @@ class StandingsScreen(Screen):
 					# --- PIL CONVERSION LOGIC ---
 					try:
 						img = Image.open(temp_file)
-						
+						#logdata("img", "Downloading logo for '%s'" % img)
 						# Handle potential transparent GIF/JPG by converting to RGBA
 						if img.mode not in ('RGB', 'RGBA'):
 							img = img.convert('RGBA')
@@ -1890,8 +1865,6 @@ class StandingsScreen(Screen):
 				# Ensure cleanup regardless of success/failure
 				if os.path.exists(temp_file):
 					os.remove(temp_file)
-		# ---------------------------------------------------
-
 		#logdata("Logos", "Starting check for league: %s" % self.league)
 
 		# Ensure standings folder exists
@@ -2028,7 +2001,6 @@ class StandingsScreen(Screen):
 				logdata("Logos", "MISSING FINAL logo for team: '%s'" % team_info["original_name"])
 
 		#logdata("Logos", "Completed check_and_download_logos(), total logos found: %d" % logos_found)
-
 
 
 	def display_standings(self):
