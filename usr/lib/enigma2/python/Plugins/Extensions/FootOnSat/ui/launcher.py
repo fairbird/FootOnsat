@@ -397,30 +397,30 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		if reswidth == 2560:
 			skin = """
 					<screen name="MenuFootOnSat" position="center,center" size="1522,976" title="Menu FootOnSat">
-							<widget source="global.CurrentTime" render="Label" position="5,17" size="1511,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
-								<convert type="ClockToText">Format:%d-%m-%Y    %H:%M:%S</convert>
-							</widget>
-							<widget name="config" position="18,70" size="1495,430" scrollbarMode="showOnDemand" />
-							<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="448,950" zPosition="-10" />
-							<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="830,950" zPosition="-10" />
-							<widget render="Label" source="key_red" position="448,905" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" />
-							<widget render="Label" source="key_green" position="830,905" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1" />
-							<widget source="help" render="Label" position="22,510" size="1476,40" font="Regular;29" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5" />
-							<widget name="Picture" position="521,554" size="480,340" zPosition="5" alphatest="blend" />
+				            <widget source="global.CurrentTime" render="Label" position="5,17" size="1511,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
+				                <convert type="ClockToText">Format:%d-%m-%Y    %H:%M:%S</convert>
+				            </widget>
+				            <widget name="config" position="18,70" size="1495,430" scrollbarMode="showOnDemand" />
+				            <eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="448,950" zPosition="-10" />
+				            <eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="830,950" zPosition="-10" />
+				            <widget render="Label" source="key_red" position="448,905" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" />
+				            <widget render="Label" source="key_green" position="830,905" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1" />
+				            <widget source="help" render="Label" position="22,510" size="1476,40" font="Regular;29" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5" />
+				            <widget name="Picture" position="521,554" size="480,340" zPosition="5" alphatest="blend" />
 					</screen>"""
 		else:
 			skin = """
-					<screen name="MenuFootOnSat" position="center,center" size="1040,750" title="Menu FootOnSat">
+					<screen name="MenuFootOnSat" position="center,center" size="1040,900" title="Menu FootOnSat">
 						<widget source="global.CurrentTime" render="Label" position="5,5" size="1022,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
 							<convert type="ClockToText">Format:%d-%m-%Y&#160;%H:%M:%S</convert>
 						</widget>
-						<widget name="config" position="18,70" size="1005,365" scrollbarMode="showOnDemand"/>
-						<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,720" zPosition="-10"/>
-						<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,720" zPosition="-10"/>
-						<widget render="Label" source="key_red" position="223,685" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
-						<widget render="Label" source="key_green" position="585,685" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
-						<widget source="help" render="Label" position="18,400" size="1004,40" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
-						<widget name="Picture" position="313,460" size="400,225" zPosition="5" alphatest="blend"/>
+						<widget name="config" position="18,70" size="1005,420" scrollbarMode="showOnDemand"/>
+						<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,860" zPosition="-10"/>
+						<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,860" zPosition="-10"/>
+						<widget render="Label" source="key_red" position="223,825" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
+						<widget render="Label" source="key_green" position="585,825" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
+						<widget source="help" render="Label" position="18,495" size="1004,60" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
+						<widget name="Picture" position="313,590" size="400,225" zPosition="5" alphatest="blend"/>
 					</screen>"""
 	else:
 		skin = """
@@ -562,119 +562,119 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 
 
 class SelectionScreen(Screen, ConfigListScreen):
-		skin = """
-			<screen name="SelectionScreen" position="center,center" size="738,524" title="Select Options">
-				<widget source="list" render="Listbox" position="10,10" size="716,461" scrollbarMode="showOnDemand">
+        skin = """
+        	<screen name="SelectionScreen" position="center,center" size="738,524" title="Select Options">
+        		<widget source="list" render="Listbox" position="10,10" size="716,461" scrollbarMode="showOnDemand">
 				<convert type="TemplatedMultiContent">
-					{
-						"template": [
-							MultiContentEntryText(pos=(85,10), size=(650,50), font=0, text=0),
-							MultiContentEntryPixmapAlphaBlend(pos=(0,0), size=(50,50), png=1)
-						],
-						"fonts": [gFont("Regular", 35)],
-						"itemHeight": 60
-					}
+				    {
+				        "template": [
+				            MultiContentEntryText(pos=(85,10), size=(650,50), font=0, text=0),
+				            MultiContentEntryPixmapAlphaBlend(pos=(0,0), size=(50,50), png=1)
+				        ],
+				        "fonts": [gFont("Regular", 35)],
+				        "itemHeight": 60
+				    }
 				</convert>
-				</widget>
-				<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" position="105,517" size="165,2" zPosition="-10"/>
-				<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" position="482,517" size="165,2" zPosition="-10"/>
-				<widget name="key_red" position="70,480" size="246,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;35" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
-				<widget name="key_green" position="445,480" size="246,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;35" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
-			</screen>"""
-		def __init__(self, session):
-				Screen.__init__(self, session)
-				ConfigListScreen.__init__(self, [], session=session)
-				self.session = session
-				self.setup_title = _("Select your choose")
-				self.setTitle(self.setup_title)
+        		</widget>
+        		<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" position="105,517" size="165,2" zPosition="-10"/>
+        		<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" position="482,517" size="165,2" zPosition="-10"/>
+        		<widget name="key_red" position="70,480" size="246,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;35" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
+        		<widget name="key_green" position="445,480" size="246,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;35" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
+        	</screen>"""
+        def __init__(self, session):
+                Screen.__init__(self, session)
+                ConfigListScreen.__init__(self, [], session=session)
+                self.session = session
+                self.setup_title = _("Select your choose")
+                self.setTitle(self.setup_title)
 
-				# Load pixmaps for checkboxes
-				self.empty_box = LoadPixmap(resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/icon/checkbox_empty.png'))
-				self.checked_box = LoadPixmap(resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/icon/checkbox_checked.png'))
+                # Load pixmaps for checkboxes
+                self.empty_box = LoadPixmap(resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/icon/checkbox_empty.png'))
+                self.checked_box = LoadPixmap(resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/icon/checkbox_checked.png'))
 
-				# Initialize selection states
-				self.selection_states = {
-						"Menu": False,
-						"Channellist": False,
-						"Extensions": False
-				}
+                # Initialize selection states
+                self.selection_states = {
+                        "Menu": False,
+                        "Channellist": False,
+                        "Extensions": False
+                }
 
-				# Get current config value and update selection states
-				self.current_value = config.plugins.FootOnSat.showplugin.value
-				if self.current_value:
-						selected_items = self.current_value.split(',')
-						for item in selected_items:
-								if item in self.selection_states:
-										self.selection_states[item] = True
+                # Get current config value and update selection states
+                self.current_value = config.plugins.FootOnSat.showplugin.value
+                if self.current_value:
+                        selected_items = self.current_value.split(',')
+                        for item in selected_items:
+                                if item in self.selection_states:
+                                        self.selection_states[item] = True
 
-				# Create list of options with their checkbox states
-				self.list = []
+                # Create list of options with their checkbox states
+                self.list = []
 
-				# Set up the list component
-				self["list"] = List(self.list)
+                # Set up the list component
+                self["list"] = List(self.list)
 
-				# Now update the list
-				self.updateList()
+                # Now update the list
+                self.updateList()
 
-				# Set up labels
-				self["key_green"] = Label(_("Save"))
-				self["key_red"] = Label(_("Cancel"))
+                # Set up labels
+                self["key_green"] = Label(_("Save"))
+                self["key_red"] = Label(_("Cancel"))
 
-				# Set up actions
-				self["setupActions"] = ActionMap(["FootOnsatActions"], {
-						"ok": self.select_option,
-						"cancel": self.close,
-						"back": self.close,
-						"green": self.save
-				}, -2)  # Higher priority to ensure OK is captured (DreamOS images need it)
+                # Set up actions
+                self["setupActions"] = ActionMap(["FootOnsatActions"], {
+                        "ok": self.select_option,
+                        "cancel": self.close,
+                        "back": self.close,
+                        "green": self.save
+                }, -2)  # Higher priority to ensure OK is captured (DreamOS images need it)
 
-				self.onLayoutFinish.append(self.layoutFinished)
+                self.onLayoutFinish.append(self.layoutFinished)
 
-		def layoutFinished(self):
-				self.setTitle(self.setup_title)
+        def layoutFinished(self):
+                self.setTitle(self.setup_title)
 
-		def updateList(self):
-				# Store the current index before updating the list
-				current_index = self["list"].getIndex() or 0
-				self.list = []
-				choices = [
-						("Menu", _("Menu")),
-						("Channellist", _("Channellist")),
-						("Extensions", _("Extensions"))
-				]
+        def updateList(self):
+                # Store the current index before updating the list
+                current_index = self["list"].getIndex() or 0
+                self.list = []
+                choices = [
+                        ("Menu", _("Menu")),
+                        ("Channellist", _("Channellist")),
+                        ("Extensions", _("Extensions"))
+                ]
 
-				for key, text in choices:
-						pixmap = self.checked_box if self.selection_states[key] else self.empty_box
-						self.list.append((text, pixmap, key))
+                for key, text in choices:
+                        pixmap = self.checked_box if self.selection_states[key] else self.empty_box
+                        self.list.append((text, pixmap, key))
 
-				self["list"].setList(self.list)
-				# Restore the previous index, ensuring it's within bounds
-				if current_index < len(self.list):
-						self["list"].setIndex(current_index)
-				else:
-						self["list"].setIndex(0)  # Fallback to first item if index is out of range
+                self["list"].setList(self.list)
+                # Restore the previous index, ensuring it's within bounds
+                if current_index < len(self.list):
+                        self["list"].setIndex(current_index)
+                else:
+                        self["list"].setIndex(0)  # Fallback to first item if index is out of range
 
-		def select_option(self):
-				current = self["list"].getCurrent()
-				if current:
-						key = current[2]
-						self.selection_states[key] = not self.selection_states[key]
-						self.updateList()
+        def select_option(self):
+                current = self["list"].getCurrent()
+                if current:
+                        key = current[2]
+                        self.selection_states[key] = not self.selection_states[key]
+                        self.updateList()
 
-		def save(self):
-				# Save all selected options as comma-separated string
-				selected_options = [key for key, state in self.selection_states.items() if state]
-				new_value = ','.join(selected_options)
-				config.plugins.FootOnSat.showplugin.value = new_value
-				config.plugins.FootOnSat.showplugin.save()
+        def save(self):
+                # Save all selected options as comma-separated string
+                selected_options = [key for key, state in self.selection_states.items() if state]
+                new_value = ','.join(selected_options)
+                config.plugins.FootOnSat.showplugin.value = new_value
+                config.plugins.FootOnSat.showplugin.save()
 
-				if self.current_value != new_value:
-						self.session.openWithCallback(self.restart, MessageBox, _("You need to restart GUI\nDo you want to do it now ?!"))
-				else:
-						self.close(True)
+                if self.current_value != new_value:
+                        self.session.openWithCallback(self.restart, MessageBox, _("You need to restart GUI\nDo you want to do it now ?!"))
+                else:
+                        self.close(True)
 
-		def restart(self,answer=None):
-				if answer:
-						self.session.open(TryQuitMainloop, 3)
-				else:
-						self.close(True)
+        def restart(self,answer=None):
+                if answer:
+                        self.session.open(TryQuitMainloop, 3)
+                else:
+                        self.close(True)
