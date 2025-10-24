@@ -32,11 +32,19 @@ from Screens.ChoiceBox import ChoiceBox
 from Screens.MessageBox import MessageBox
 from Tools.Directories import resolveFilename, SCOPE_PLUGINS, fileExists
 from Tools.LoadPixmap import LoadPixmap
-from twisted.web.client import getPage, downloadPage
+from twisted.internet import defer, reactor
+from twisted.internet.defer import DeferredList
 from twisted.internet.ssl import ClientContextFactory
 from twisted.internet.threads import deferToThread
 from twisted.internet._sslverify import ClientTLSOptions
+from twisted.internet.threads import blockingCallFromThread
+from twisted.web.client import getPage, downloadPage
 from .compat import PY3, compat_urlopen, compat_HTTPError, compat_URLError, compat_Request, compat_str
+
+try:
+	from urllib.parse import urlparse
+except ImportError:
+	from urlparse import urlparse
 
 # Check for PIL availability first, and import if found
 try:
@@ -178,15 +186,15 @@ def sanitize_team_name(team):
 	name = name.replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u") 
 	return name
 
-
+# The CRITICAL class for TLS SNI support
 class WebClientContextFactory(ClientContextFactory):
 	def __init__(self, url=None):
 		domain = urlparse(url).netloc
 		self.hostname = domain
-
+	
 	def getContext(self, hostname=None, port=None):
 		ctx = ClientContextFactory.getContext(self)
-		if self.hostname and ClientTLSOptions is not None: # workaround for TLS SNI
+		if self.hostname and ClientTLSOptions is not None:
 			ClientTLSOptions(self.hostname, ctx)
 		return ctx
 
@@ -513,9 +521,17 @@ class FootOnSat(Screen):
 			self.updateChannelData()
 
 	def create_table(self):
-		with connect(DB_PATH) as conn:
-			cur = conn.cursor()
-			cur.execute('CREATE TABLE IF NOT EXISTS LIVE_NOTIF (MATCH TEXT primary key , COMPET TEXT , DATE TEXT , TEAM1_FLAG TEXT , TEAM2_FLAG TEXT , FIRST_NOTIF TEXT , FIRST_NOTIF_STATUS TEXT , LIVE_NOTIF_STATUS TEXT,MESSAGE TEXT)')
+		try:
+			with connect(DB_PATH) as conn:
+				cur = conn.cursor()
+				cur.execute('CREATE TABLE IF NOT EXISTS LIVE_NOTIF (MATCH TEXT primary key , COMPET TEXT , DATE TEXT , TEAM1_FLAG TEXT , TEAM2_FLAG TEXT , FIRST_NOTIF TEXT , FIRST_NOTIF_STATUS TEXT , LIVE_NOTIF_STATUS TEXT,MESSAGE TEXT)')
+		except DatabaseError:
+			# If the file is corrupted, delete it and try again.
+			if os.path.exists(DB_PATH):
+				os.remove(DB_PATH)
+			with connect(DB_PATH) as conn:
+				cur = conn.cursor()
+				cur.execute('CREATE TABLE IF NOT EXISTS LIVE_NOTIF (MATCH TEXT primary key , COMPET TEXT , DATE TEXT , TEAM1_FLAG TEXT , TEAM2_FLAG TEXT , FIRST_NOTIF TEXT , FIRST_NOTIF_STATUS TEXT , LIVE_NOTIF_STATUS TEXT,MESSAGE TEXT)')
 
 	def ok(self):
 		if self.selectedList == self["list1"] and len(self.matches) > 0:
@@ -643,9 +659,13 @@ class FootOnSat(Screen):
 			self.session.openWithCallback(self.exit, MessageBox, _('An Unexpected HTTP Error Occurred During The API Request !!'), MessageBox.TYPE_ERROR, timeout=10)
 
 	def fetch_live_results(self):
-		# === URL & rotating UA ===
+		# === URL Setup ===
 		today_iso = date.today().isoformat()
 		url = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}'.format(today_iso)
+
+		# === Headers/Agent (Using the known working agent) ===
+		# This agent is proven to work with the Twisted/SNI method in the other plugin.
+		AGENT = b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
 
 		USER_AGENTS = [
 			'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36',
@@ -654,8 +674,13 @@ class FootOnSat(Screen):
 		]
 		ua = random.choice(USER_AGENTS)
 
-		# === Minimal headers to bypass 403 ===
 		headers = {
+			'Connection': ['close'],
+			'Accept': ['application/json, text/plain, */*']
+		}
+
+		# === Minimal headers to bypass 403 ===
+		headers2 = {
 			'User-Agent': ua,
 			'Accept': 'application/json, text/plain, */*',
 			'Referer': 'https://www.sofascore.com/',
@@ -663,24 +688,46 @@ class FootOnSat(Screen):
 			'Cache-Control': 'no-cache',
 		}
 
-		# === Fetch in thread ===
-		def _fetch_with_requests():
+		# DEBUG: Log the attempt
+		#logdata("FootOnSat-Sofa-DEBUG", "Attempting fetch (Twisted/SNI FIX) for URL: %s" % url)
+
+		if PY3:
 			try:
-				r = requests.get(url, headers=headers, timeout=3)
-				r.raise_for_status()
-				return r.content
+				# FIX: Remove the 'url' argument, as WebClientContextFactory() takes no arguments in modern Twisted
+				sniFactory = WebClientContextFactory()
 			except Exception as e:
-				raise Exception("SofaScore fetch failed: %s" % str(e))
+				#logdata("FootOnSat-Sofa-ERROR", "Failed to create WebClientContextFactory: %s" % str(e))
+				# Fallback to an error screen or graceful exit if context creation fails
+				self.matches = [list(m) for m in self.matches]
+				self.iniMenu()
+				return
+			# Define Twisted-compatible headers for getPage
+			twisted_live_headers = {
+				b'User-Agent': [AGENT],  # Use the AGENT bytes directly as a list
+				b'Connection': [b'close'],
+				b'Accept': [b'application/json, text/plain, */*']
+			}
+			# Use the 'headers' parameter and rely on SNIFactory for hostname
+			d = getPage(str.encode(url), contextFactory=sniFactory, timeout=10, headers=twisted_live_headers)
+		else:
+			def _fetch_with_requests():
+				try:
+					r = requests.get(url, headers=headers2, timeout=3)
+					r.raise_for_status()
+					return r.content
+				except Exception as e:
+					raise Exception("SofaScore fetch failed: %s" % str(e))
 
-		d = deferToThread(_fetch_with_requests)
-
-		# === Process response (your original logic) ===
+			d = deferToThread(_fetch_with_requests)
+		
+		# === Process response (your original logic, adapted as a callback) ===
 		def _process_response(raw):
 			try:
-				if PY3:
-					data_str = raw.decode('utf-8', errors='ignore')
-				else:
-					data_str = compat_str(raw)
+				# Log successful fetch before processing
+				#logdata("FootOnSat-Sofa-DEBUG", "Fetch successful (Twisted). Starting response processing.")
+				
+				# Decode and parse the JSON (raw is bytes from getPage)
+				data_str = raw.decode('utf-8', errors='ignore')
 			except Exception as e:
 				#logdata("FootOnSat-Sofa-ERROR", "Decode error: %s" % e)
 				return
@@ -716,9 +763,9 @@ class FootOnSat(Screen):
 					match_dt = datetime.fromtimestamp(ts) if ts else now_adj
 
 					# --- Status logic ---
-					if stype == 'canceled':  # <--- NEW CANCELED CHECK
+					if stype == 'canceled':
 						status = 'CANCELED'
-						h_score = a_score = '' # Clear scores for canceled matches
+						h_score = a_score = ''
 					elif stype == 'finished':
 						status = 'FINISHED'
 					elif stype == 'notstarted':
@@ -748,11 +795,10 @@ class FootOnSat(Screen):
 					else:
 						status = ''
 
-					if match_dt > now_adj + timedelta(hours=6) and stype != 'canceled': # <--- Adjusted time check
+					if match_dt > now_adj + timedelta(hours=6) and stype != 'canceled':
 						h_score = a_score = ''
 						status = ''
 					
-					# Ensure status and scores are clear for 'notstarted' matches outside the window
 					if stype == 'notstarted' and match_dt > now_adj + timedelta(hours=6):
 						h_score = a_score = ''
 						status = ''
@@ -772,6 +818,9 @@ class FootOnSat(Screen):
 
 			# === MATCHING (your original code) ===
 			matches_list = [list(m) for m in self.matches]
+
+			# NOTE: _clean_name and sequence matching logic is complex and relies on
+			# SequenceMatcher, normalize, etc. which are assumed to be imported.
 
 			def _clean_name(name):
 				if not PY3 and isinstance(name, str):
@@ -866,7 +915,7 @@ class FootOnSat(Screen):
 
 		# === Error handling ===
 		def _error(failure):
-			logdata("FootOnSat-Sofa-ERROR", "Request failed: %s" % failure.getErrorMessage())
+			logdata("FootOnSat-Sofa-ERROR", "Twisted Request failed: %s" % failure.getErrorMessage())
 
 		# === Wire callbacks ===
 		d.addCallback(_process_response)
@@ -1568,6 +1617,23 @@ class StandingsScreen(Screen):
 		
 		# Define standard headers for both fetching and logo downloading
 		self.headers = {
+			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+			"Accept": "application/json, text/plain, */*",
+			"Accept-Language": "en-US,en;q=0.9",
+			"Accept-Encoding": "gzip, deflate, br",
+			"Connection": "keep-alive",
+			"Referer": "https://www.sofascore.com/",
+			"Origin": "https://www.sofascore.com",
+			"X-Requested-With": "XMLHttpRequest",
+			"If-None-Match": 'W/"00000000000000000000000000000000-gn"',
+			"Sec-Fetch-Dest": "empty",
+			"Sec-Fetch-Mode": "cors",
+			"Sec-Fetch-Site": "same-site", # same-site for API calls to different subdomain
+			"Cache-Control": "max-age=0",
+			# Optional: Sec-Ch-Ua-* headers are typically not mandatory but can be added if issues persist
+			# "Sec-Ch-Ua-Mobile": "?0", 
+		}
+		self.headers2 = {
 			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0", # <-- New User-Agent
 			"Accept-Language": "en-US,en;q=0.5",
 			"Connection": "keep-alive",
@@ -1579,10 +1645,9 @@ class StandingsScreen(Screen):
 		# Use onShown to trigger the fetch process
 		self.onShown.append(self.fetch_standings)
 
-	def fetch_standings(self):		
+	def fetch_standings(self):
+		# 1. Start parsing the URL to get IDs
 		url_to_parse = self.url
-
-		# Start parsing the (now guaranteed to be a SofaScore) URL
 		if not isinstance(url_to_parse, compat_str):
 			url_to_parse = str(url_to_parse)
 
@@ -1602,12 +1667,11 @@ class StandingsScreen(Screen):
 				season_id = parsed_url.fragment.split(':')[-1]
 			
 		except Exception as e:
-			#logdata("fetch_standings", "ERROR during URL parsing: %s" % str(e))
+			#logdata("StandingsScreen", "ERROR during URL parsing: %s" % str(e))
 			trace_error()
 			
-		# Final check: must have a numeric tournament ID and season ID
 		if not tournament_id or not season_id or not tournament_id.isdigit() or not season_id.isdigit():
-			#logdata("fetch_standings", "CRITICAL ERROR: Failed to extract numeric IDs. T-ID:'%s', S-ID:'%s'. Final URL: %s" % (tournament_id, season_id, url_to_parse))
+			#logdata("StandingsScreen", "CRITICAL ERROR: Failed to extract numeric IDs. T-ID:'%s', S-ID:'%s'." % (tournament_id, season_id))
 			self.standings_data = []
 			self.display_standings()
 			return
@@ -1617,51 +1681,97 @@ class StandingsScreen(Screen):
 			tournament_id, season_id
 		)
 			
-		#logdata("fetch_standings", "Using SofaScore API URL: %s" % api_url)
+		#logdata("StandingsScreen", "Using SofaScore API URL: %s" % api_url)
+		AGENT = b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
 
-		# 3. Define the headers for the API request
-		json_headers = self.headers.copy()
-		json_headers["Accept"] = "application/json"
-		json_headers["Accept-Encoding"] = "gzip, deflate"
-		json_headers["X-Requested-With"] = "XMLHttpRequest"
-		json_headers["Host"] = "api.sofascore.com"
-		json_headers["Origin"] = "https://www.sofascore.com"
-		json_headers["Sec-Fetch-Dest"] = "empty"
-		json_headers["Sec-Fetch-Mode"] = "cors"
-		json_headers["Sec-Fetch-Site"] = "same-site"
+		# =================================================================
+		# === PY3/PY2 SPLIT: Only necessary structural change to fix Py2 ===
+		# =================================================================
 		
+		if PY3:
+			try:
+				sniFactory = WebClientContextFactory(api_url)
+			except Exception as e:
+				#logdata("StandingsScreen", "Failed to create WebClientContextFactory: %s" % str(e))
+				self.display_standings()
+				return
+
+			# DEBUG: Log the attempt
+			#logdata("StandingsScreen", "Attempting fetch (Twisted/SNI FIX) for API: %s" % api_url)
+
+			# Fetch using Twisted's getPage
+			# Add headers for robust 403 prevention on older Twisted versions
+			headers = {
+				'Connection': ['close'],
+				'Accept': ['application/json, text/plain, */*']
+			}
+
+			d = getPage(
+				str.encode(api_url), 
+				contextFactory=sniFactory, 
+				timeout=10, 
+				agent=AGENT 
+			)
+
+		else:
+			# === Python 2 (Requests/deferToThread Logic for 403 bypass) ===
+			try:
+				# Imports are placed here to ensure they only happen in Py2 environment
+				from twisted.internet.threads import deferToThread
+				import requests
+				import random
+			except ImportError as e:
+				#logdata("StandingsScreen", "CRITICAL ERROR: Python 2 requires 'requests' and 'deferToThread': %s" % str(e))
+				self.display_standings()
+				return None
+
+			#logdata("StandingsScreen", "Attempting fetch (Py2 Requests FIX) for API: %s" % api_url)
+			
+			# --- Headers/UA for Py2 consistency/403 bypass ---
+			USER_AGENTS = [
+				'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36',
+				'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
+				'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Safari/605.1.15',
+			]
+			ua = random.choice(USER_AGENTS)
+
+			headers2 = {
+				'User-Agent': ua,
+				'Accept': 'application/json, text/plain, */*',
+				'Referer': 'https://www.sofascore.com/',
+				'Origin': 'https://www.sofascore.com',
+				'Cache-Control': 'no-cache',
+			}
+
+			def _fetch_with_requests_py2():
+				try:
+					r = requests.get(api_url, headers=headers2, timeout=10)
+					r.raise_for_status()
+					# Twisted expects a deferred result, which is the raw content
+					return r.content 
+				except Exception as e:
+					#logdata("StandingsScreen", "Python 2 Requests fetch failed: %s" % str(e))
+					# Raise to trigger the deferred errback
+					raise Exception("SofaScore fetch failed: %s" % str(e))
+
+			d = deferToThread(_fetch_with_requests_py2)
+
+		# === Wire the callbacks (Shared for both PY3 and PY2 deferred 'd') ===
+		d.addCallback(self._parse_standings_data)
+		d.addErrback(self._standing_error_handler, api_url)
+		
+	def _parse_standings_data(self, raw_json_content):
 		standings = []
+		api_url = locals().get('api_url', 'N/A')
 		
 		try:
-			raw_json_content = None
-			try:
-				# --- Modern fetch using requests (works on Python 2 & 3) ---
-				r = requests.get(api_url, headers=json_headers, timeout=5)
-				r.raise_for_status()
-				raw_json_content = r.content
-			except Exception as e:
-				# --- Fallback to compat_urlopen if requests fails ---
-				try:
-					request = compat_Request(api_url, headers=json_headers)
-					response = compat_urlopen(request, timeout=5)
-					raw_json_content = response.read()
-				except Exception as e2:
-					raise Exception("SofaScore fetch failed: %s / %s" % (str(e), str(e2)))
-
-			# Decode JSON (works in both Python 2/3)
-			if PY3:
-				json_data = raw_json_content.decode('utf-8')
-			else:
-				try:
-					json_data = raw_json_content.decode('utf-8')
-				except:
-					json_data = raw_json_content
-				
+			# Decode and parse JSON (raw_json_content is bytes from getPage)
+			json_data = raw_json_content.decode('utf-8', errors='ignore')
 			data = json.loads(json_data)
-			#logdata("fetch_standings", "JSON data fetched successfully.")
+			#logdata("StandingsScreen", "JSON data fetched and parsed successfully.")
 
 			if 'standings' not in data or not data['standings']:
-				#logdata("fetch_standings", "No 'standings' data found in JSON response.")
+				#logdata("StandingsScreen", "No 'standings' data found in JSON response.")
 				self.standings_data = []
 				self.display_standings()
 				return
@@ -1669,13 +1779,13 @@ class StandingsScreen(Screen):
 			# 4. Extract and process standings data from JSON
 			for table in data['standings']:
 				
-				# Handle Group/Table names (CRITICAL FIX for AFC East/West separation)
-				if 'name' in table and table['name']: # Catches 'East' / 'West' for AFC
+				# Handle Group/Table names (CRITICAL FIX for separation)
+				if 'name' in table and table['name']:
 					title = "Table %s" % table['name']
 					if not PY3:
 						title = title.encode('utf-8')
 					standings.append(title)
-				elif 'groupName' in table and table['groupName']: # Catches 'Group A', 'Group B', etc.
+				elif 'groupName' in table and table['groupName']:
 					title = "Table %s" % table['groupName']
 					if not PY3:
 						title = title.encode('utf-8')
@@ -1715,24 +1825,30 @@ class StandingsScreen(Screen):
 						goals_scored,
 						goals_conceded,
 						goal_diff,
-						logo_url
+						logo_url # Index 10
 					])
 
 			self.standings_data = standings
 			
 			if standings:
-				# Call logo download asynchronously
+				# Call logo download asynchronously and display when done
 				deferToThread(self.check_and_download_logos).addCallback(lambda x: self.display_standings())
 				return
 
 			self.display_standings()
 
-		except (compat_HTTPError, compat_URLError, ValueError, Exception) as e:
-			final_api_url = locals().get('api_url', 'N/A')
-			#logdata("fetch_standings_error", "Failed to fetch/parse SofaScore JSON for API %s: %s" % (final_api_url, str(e)))
+		except Exception as e:
+			#logdata("StandingsScreen", "Failed to parse JSON for API %s: %s" % (api_url, str(e)))
 			trace_error()
 			self.standings_data = []
 			self.display_standings()
+
+	def _standing_error_handler(self, failure, url):
+		# This handles errors from getPage (e.g., Timeout, 403, DNS errors)
+		error_message = failure.getErrorMessage()
+		#logdata("StandingsScreen", "Twisted Fetch Error on %s: %s" % (url, error_message))
+		self.standings_data = []
+		self.display_standings() # Display empty standings
 
 	def check_and_download_logos(self):
 		headers = self.headers.copy() # Use headers from init
@@ -1769,41 +1885,70 @@ class StandingsScreen(Screen):
 			if os.path.exists(filename_png):
 				return True
 
-			#logdata("Logos", "Downloading logo for '%s' from: %s" % (team_name, logo_url))
-
 			# Determine file extension from URL (used for temp filename)
 			ext = ".gif" if logo_url.lower().endswith(".gif") else (".png" if logo_url.lower().endswith(".png") else ".jpg")
-			#logdata("ext", "Downloading logo for '%s'" % ext)
 			
-			# Temporary file path (using the actual downloaded extension)
-			temp_file = os.path.join("/tmp", "{}{}".format(team_filename, ext))
-			#logdata("temp_file", "Downloading logo for '%s' from: %s" % (team_filename, ext))
+			# Temporary file path for raw download (using .temp_raw for safety)
+			temp_file = os.path.join("/tmp", "{}.temp_raw".format(team_filename))
+			# Temporary path for PIL output
+			final_temp_png = os.path.join("/tmp", "{}.temp_png".format(team_filename))
+			
+			success = False
+			temp_files_to_clean = [temp_file, final_temp_png] # List all files to clean up
+
+			# Use the proven working User-Agent (Bytes for Twisted, must be string for Requests)
+			AGENT = b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
+			AGENT_STR = AGENT.decode('utf-8', 'ignore')
 
 			try:
-				logo_headers = headers.copy()
-				logo_headers["Accept"] = "image/avif,image/webp,image/apng,image/svg+xml,image/*;q=0.8"
-				if not PY3:
-					try:
-						logo_headers["Referer"] = "https://www.sofascore.com/"
-						r = requests.get(logo_url, headers=logo_headers, timeout=3, verify=False)
-						r.raise_for_status()
-						data = r.content
-						# Ensure it’s actually image data
-						if not (data.startswith(b'\x89PNG') or data.startswith(b'\xff\xd8') or data.startswith(b'GIF')):
-							#logdata("Logos", "Invalid PNG data from %s (probably 403 HTML)" % logo_url)
-							return False
-						with open(temp_file, "wb") as f:
-							f.write(data)
-					except Exception as e:
-						#logdata("Logos", "Requests fetch failed for %s: %s" % (logo_url, str(e)))
-						trace_error()
-						return False
+				if PY3:
+					sniFactory = WebClientContextFactory(logo_url)
+					d = downloadPage(
+						str.encode(logo_url), 
+						temp_file,
+						contextFactory=sniFactory, 
+						timeout=5,
+						agent=AGENT
+					)
+					blockingCallFromThread(reactor, lambda: d) 
 				else:
-					req = compat_Request(logo_url, headers=logo_headers)
-					resp = compat_urlopen(req, timeout=3)
+					logo_headers = {
+						# Headers common to both methods (must be list of strings for Twisted, single string for Requests)
+						'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*;q=0.8',
+						'Referer': 'https://www.sofascore.com/', # CRITICAL
+						'Origin': 'https://www.sofascore.com',   # CRITICAL
+					}
+					# === PYTHON 2 FIX: Use Requests/deferToThread to bypass 403 ===
+					#logdata("Logos", "Starting Requests download for logo: %s (PY2 FIX)" % team_name)
+					import requests # Should be available in the Enigma2 image
+					
+					# Use headers in Py2 format (single strings)
+					# === PYTHON 2 FIX: Use Requests with 403 content check ===
+					#logdata("Logos", "Starting Requests download for logo: %s (PY2 FIX)" % team_name)
+					import requests # Should be available in the Enigma2 image
+					
+					# Use headers in Py2 format (single strings)
+					py2_headers = {
+						'User-Agent': AGENT_STR,
+						'Accept': logo_headers['Accept'],
+						'Referer': logo_headers['Referer'],
+						'Origin': logo_headers['Origin'],
+						'Cache-Control': 'no-cache',
+					}
+					
+					r = requests.get(logo_url, headers=py2_headers, timeout=5, verify=False)
+					r.raise_for_status()
+					
+					data = r.content
+					
+					# === CRITICAL FIX: Ensure it’s actually image data (not HTML 403 page) ===
+					if not (data.startswith(b'\x89PNG') or data.startswith(b'\xff\xd8') or data.startswith(b'GIF')):
+						#logdata("Logos", "ERROR: Downloaded content for '%s' is not an image (probably 403 HTML page)." % team_name)
+						return False
+						
 					# Save the raw file content to the temporary location
 					with open(temp_file, "wb") as f:
-						f.write(resp.read())
+						f.write(data)
 
 				success = False
 				if ext == ".png":
@@ -1919,7 +2064,7 @@ class StandingsScreen(Screen):
 					missing_logos = any(not team["found"] for team in teams_to_process)
 					if missing_logos:
 						# Use general headers for HTML scrape
-						html_headers = self.headers.copy()
+						html_headers = self.headers2.copy()
 						html_headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
 						html_headers["Referer"] = "https://www.google.com/"
 						html_headers["Upgrade-Insecure-Requests"] = "1"
@@ -1976,7 +2121,7 @@ class StandingsScreen(Screen):
 										#logdata("Logos", "Found logo for '%s' using match to '%s' (worldfootball)." % (team_info["original_name"], original_title))
 
 				except Exception as e:
-					logdata("Logos", "Error fetching from primary backup site %s -> %s" % (primary_backup_url, str(e)))
+					#logdata("Logos", "Error fetching from primary backup site %s -> %s" % (primary_backup_url, str(e)))
 					pass
 		
 		# Final log of any still missing teams
