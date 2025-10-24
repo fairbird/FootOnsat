@@ -51,7 +51,7 @@ if [ -d $PLUGIN_PATH ]; then
 	mkdir -p "$TMP_ASSETS/compet" >/dev/null 2>&1
 	cp -a "$ASSETS_PATH/compet/icons" "$TMP_ASSETS/compet" >/dev/null 2>&1
 	cp -a "$ASSETS_PATH/icon" "$TMP_ASSETS" >/dev/null 2>&1
-	#cp -a "$ASSETS_PATH/skin" "$TMP_ASSETS" >/dev/null 2>&1
+	cp -a "$ASSETS_PATH/skin" "$TMP_ASSETS" >/dev/null 2>&1
 #    echo "Remove old version."
 #    if [ "$OS" = "Opensource" ]; then
 #        opkg remove enigma2-plugin-extensions-footonsat
