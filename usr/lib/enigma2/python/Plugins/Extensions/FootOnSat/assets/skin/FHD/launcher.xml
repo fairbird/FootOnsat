@@ -1,11 +1,11 @@
-<screen name="FootOnsatLauncher" position="0,0" size="1920,1080" backgroundColor="transparent" flags="wfNoBorder" title="MenuLauncher">
+<screen name="FootOnsatLauncher" position="0,0" size="1920,1080" backgroundColor="#ffffffff" flags="wfNoBorder" title="MenuLauncher">
     <widget name="menu" boxSize="240" activeSize="285" panelheight="570" itemPerPage="12" margin="30" itemPixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/Box_off.png" selPixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/Box_on.png" position="center,center" size="1660,585" transparent="1"/>
     <eLabel backgroundColor="#80000000" position="0,870" size="1920,130" />
     <eLabel backgroundColor="#494f4f" position="0,1000" size="1920,130" />
-    <widget backgroundColor="#80000000" font="FootFont;33" foregroundColor="white" halign="right" noWrap="1" position="403,944" render="Label" size="1180,40" source="session.Event_Now" transparent="1" valign="center" zPosition="5">
+    <widget backgroundColor="#80000000" font="FootFont;33" foregroundColor="#00ffffff" halign="right" noWrap="1" position="403,944" render="Label" size="1180,40" source="session.Event_Now" transparent="1" valign="center" zPosition="5">
         <convert type="FootNextEventTime">TitleStartAndEndTime</convert>
     </widget>
-    <widget backgroundColor="#80000000" font="FootFont;33" foregroundColor="white" halign="right" noWrap="1" position="1130,890" render="Label" size="450,35" source="session.CurrentService" transparent="1" valign="center" zPosition="110">
+    <widget backgroundColor="#80000000" font="FootFont;33" foregroundColor="#00ffffff" halign="right" noWrap="1" position="1130,890" render="Label" size="450,35" source="session.CurrentService" transparent="1" valign="center" zPosition="110">
         <convert type="ServiceName">Name</convert>
         <convert type="FootNextTextToUpper" />
     </widget>
@@ -16,24 +16,24 @@
         <convert type="ServiceName">Reference</convert>
     </widget>
     <ePixmap alphatest="off" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/play_topbg.png" position="0,0" size="1920,200" zPosition="-12" transparent="1" />
-    <widget backgroundColor="#ff2c2d2b" font="FootFont;110" foregroundColor="white" halign="right" position="1590,37" render="Label" size="150,150" source="global.CurrentTime" transparent="1" valign="top" zPosition="20">
+    <widget backgroundColor="#ff2c2d2b" font="FootFont;110" foregroundColor="#00ffffff" halign="right" position="1590,37" render="Label" size="150,150" source="global.CurrentTime" transparent="1" valign="top" zPosition="20">
         <convert type="ClockToText">Format: %H</convert>
     </widget>
-    <widget backgroundColor="#ff2c2d2b" font="FootFont;55" foregroundColor="white" halign="left" position="1750,50" render="Label" size="100,55" source="global.CurrentTime" transparent="1" valign="top" zPosition="20">
+    <widget backgroundColor="#ff2c2d2b" font="FootFont;55" foregroundColor="#00ffffff" halign="left" position="1750,50" render="Label" size="100,55" source="global.CurrentTime" transparent="1" valign="top" zPosition="20">
         <convert type="ClockToText">Format: %M</convert>
     </widget>
-    <widget backgroundColor="#ff2c2d2b" font="FootFont;30" foregroundColor="white" halign="left" position="1750,115" render="Label" size="100,50" source="global.CurrentTime" transparent="1" valign="top" zPosition="20">
+    <widget backgroundColor="#ff2c2d2b" font="FootFont;30" foregroundColor="#00ffffff" halign="left" position="1750,115" render="Label" size="100,50" source="global.CurrentTime" transparent="1" valign="top" zPosition="20">
         <convert type="ClockToText">Format: %b %d</convert>
     </widget>
-    <eLabel backgroundColor="white" position="1750,110" size="85,3" zPosition="20" />
-    <eLabel text="FootOnsat" position="59,58" size="177,48" zPosition="1" font="FootFont;48" halign="left" foregroundColor="white" backgroundColor="#ff2c2d2b" transparent="1" />
+    <eLabel backgroundColor="#00ffffff" position="1750,110" size="85,3" zPosition="20" />
+    <eLabel text="FootOnsat" position="59,58" size="177,48" zPosition="1" font="FootFont;48" halign="left" foregroundColor="#00ffffff" backgroundColor="#ff2c2d2b" transparent="1" />
     <ePixmap alphatest="blend" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/ball.png" position="15,65" size="40,40" zPosition="-12" transparent="1" />
-    <eLabel backgroundColor="red" position="0,1075" size="480,5" zPosition="2" />
-    <widget backgroundColor="#494f4f" font="FootFont;25" foregroundColor="foreground" halign="center" name="red" position="0,1000" size="480,75" transparent="0" valign="center" zPosition="2" />
-    <eLabel backgroundColor="green" position="480,1075" size="480,5" zPosition="2" />
-    <widget backgroundColor="#494f4f" font="FootFont;25" foregroundColor="foreground" halign="center" name="green" position="480,1000" size="480,75" transparent="0" valign="center" zPosition="2" />
-    <eLabel backgroundColor="yellow" position="960,1075" size="480,5" zPosition="2" />
-    <widget backgroundColor="#494f4f" font="FootFont;25" foregroundColor="foreground" halign="center" name="yellow" position="960,1000" size="480,75" transparent="0" valign="center" zPosition="2" />
-    <eLabel backgroundColor="blue" position="1440,1075" size="480,5" zPosition="2" />
-    <widget backgroundColor="#494f4f" font="FootFont;25" foregroundColor="foreground" halign="center" name="blue" position="1440,1000" size="480,75" transparent="0" valign="center" zPosition="2" />
+    <eLabel backgroundColor="#00ff2525" position="0,1075" size="480,5" zPosition="2" />
+    <widget backgroundColor="#494f4f" font="FootFont;25" foregroundColor="#00ffffff" halign="center" name="red" position="0,1000" size="480,75" transparent="0" valign="center" zPosition="2" />
+    <eLabel backgroundColor="#00389416" position="480,1075" size="480,5" zPosition="2" />
+    <widget backgroundColor="#494f4f" font="FootFont;25" foregroundColor="#00ffffff" halign="center" name="green" position="480,1000" size="480,75" transparent="0" valign="center" zPosition="2" />
+    <eLabel backgroundColor="#00bab329" position="960,1075" size="480,5" zPosition="2" />
+    <widget backgroundColor="#494f4f" font="FootFont;25" foregroundColor="#00ffffff" halign="center" name="yellow" position="960,1000" size="480,75" transparent="0" valign="center" zPosition="2" />
+    <eLabel backgroundColor="#000080ff" position="1440,1075" size="480,5" zPosition="2" />
+    <widget backgroundColor="#494f4f" font="FootFont;25" foregroundColor="#00ffffff" halign="center" name="blue" position="1440,1000" size="480,75" transparent="0" valign="center" zPosition="2" />
 </screen>
