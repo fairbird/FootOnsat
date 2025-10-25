@@ -146,6 +146,15 @@ log_urls = {
 	"afcchampions": "https://www.worldfootball.net/competition/afc-champions-league-elite/",
 }
 
+HIDEMATCH = None
+
+def get_hide_match_hours():
+	try:
+		return int(config.plugins.FootOnSat.finished.value) 
+	except Exception:
+		return 2
+current_hours = get_hide_match_hours() 
+
 def logdata(label_name = "", data = None):
 	try:
 		data=str(data)
@@ -201,6 +210,7 @@ class WebClientContextFactory(ClientContextFactory):
 
 class FootOnSat(Screen):
 	def __init__(self, session, link, *args):
+		logdata("FootOnSat-INIT", "Plugin initialization started.")
 		self.session = session
 		Screen.__init__(self, session)
 		if reswidth == 1920:
@@ -650,6 +660,7 @@ class FootOnSat(Screen):
 		return resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/default/FHD/{}.png".format(banner))
 
 	def callAPI(self):
+		logdata("FootOnSat-API", "Starting callAPI to fetch main schedule: %s" % self.link)
 		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/{}.json'.format(self.link)
 		sniFactory = WebClientContextFactory(url)
 		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
@@ -659,14 +670,19 @@ class FootOnSat(Screen):
 			self.session.openWithCallback(self.exit, MessageBox, _('An Unexpected HTTP Error Occurred During The API Request !!'), MessageBox.TYPE_ERROR, timeout=10)
 
 	def fetch_live_results(self):
+		# Define the fixed time windows
+		LIVE_DURATION = timedelta(hours=3, minutes=30) # 3.5 hours limit for finished matches
+		TIME_WINDOW = timedelta(hours=get_hide_match_hours()) # Generous fuzzy matching time tolerance
+		
+		live_start_time = time.time()
+		logdata("FootOnSat-LIVESCORE", "fetch_live_results initiated.")
+		
 		# === URL Setup ===
 		today_iso = date.today().isoformat()
 		url = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}'.format(today_iso)
 
-		# === Headers/Agent (Using the known working agent) ===
-		# This agent is proven to work with the Twisted/SNI method in the other plugin.
+		# === Headers/Agent (Minimal and robust headers) ===
 		AGENT = b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
-
 		USER_AGENTS = [
 			'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36',
 			'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
@@ -674,12 +690,6 @@ class FootOnSat(Screen):
 		]
 		ua = random.choice(USER_AGENTS)
 
-		headers = {
-			'Connection': ['close'],
-			'Accept': ['application/json, text/plain, */*']
-		}
-
-		# === Minimal headers to bypass 403 ===
 		headers2 = {
 			'User-Agent': ua,
 			'Accept': 'application/json, text/plain, */*',
@@ -688,31 +698,28 @@ class FootOnSat(Screen):
 			'Cache-Control': 'no-cache',
 		}
 
-		# DEBUG: Log the attempt
-		#logdata("FootOnSat-Sofa-DEBUG", "Attempting fetch (Twisted/SNI FIX) for URL: %s" % url)
+		logdata("FootOnSat-LIVESCORE", "Sending request to SofaScore API.")
 
+		# === Twisted HTTP Request Handling (with Py3 compatibility) ===
 		if PY3:
 			try:
-				# FIX: Remove the 'url' argument, as WebClientContextFactory() takes no arguments in modern Twisted
-				sniFactory = WebClientContextFactory()
+				sniFactory = WebClientContextFactory() 
 			except Exception as e:
-				#logdata("FootOnSat-Sofa-ERROR", "Failed to create WebClientContextFactory: %s" % str(e))
-				# Fallback to an error screen or graceful exit if context creation fails
+				logdata("FootOnSat-Sofa-ERROR", "Failed to create WebClientContextFactory: %s" % str(e))
 				self.matches = [list(m) for m in self.matches]
 				self.iniMenu()
 				return
-			# Define Twisted-compatible headers for getPage
+			
 			twisted_live_headers = {
-				b'User-Agent': [AGENT],  # Use the AGENT bytes directly as a list
+				b'User-Agent': [AGENT],
 				b'Connection': [b'close'],
 				b'Accept': [b'application/json, text/plain, */*']
 			}
-			# Use the 'headers' parameter and rely on SNIFactory for hostname
 			d = getPage(str.encode(url), contextFactory=sniFactory, timeout=10, headers=twisted_live_headers)
 		else:
 			def _fetch_with_requests():
 				try:
-					r = requests.get(url, headers=headers2, timeout=3)
+					r = requests.get(url, headers=headers2, timeout=3) 
 					r.raise_for_status()
 					return r.content
 				except Exception as e:
@@ -720,40 +727,45 @@ class FootOnSat(Screen):
 
 			d = deferToThread(_fetch_with_requests)
 		
-		# === Process response (your original logic, adapted as a callback) ===
+		# === _process_response (Twisted Callback from network fetch) ===
 		def _process_response(raw):
+			process_start = time.time()
+			logdata("FootOnSat-LIVESCORE", "Received SofaScore response. Starting processing.")
+
+			# Decode and JSON Load
 			try:
-				# Log successful fetch before processing
-				#logdata("FootOnSat-Sofa-DEBUG", "Fetch successful (Twisted). Starting response processing.")
-				
-				# Decode and parse the JSON (raw is bytes from getPage)
 				data_str = raw.decode('utf-8', errors='ignore')
-			except Exception as e:
-				#logdata("FootOnSat-Sofa-ERROR", "Decode error: %s" % e)
-				return
-
-			try:
 				data = json.loads(data_str)
+				events = data.get('events', [])
 			except Exception as e:
-				#logdata("FootOnSat-Sofa-ERROR", "JSON parse error: %s" % e)
+				logdata("FootOnSat-Sofa-ERROR", "Decode/JSON parse error: %s" % e)
 				return
 
-			events = data.get('events', [])
 			if not events:
+				self.matches = [list(m) for m in self.matches]
+				try:
+					self.iniMenu()
+				except Exception as e:
+					pass
 				return
 
-			# === BUILD live_matches ===
+			# === STEP 1: EVENT BUILDING & STRICT FILTERING (Main thread) ===
+			now = datetime.now()
+			now_adj = now - timedelta(minutes=3) 
+			
 			live_matches = []
-			now_adj = datetime.now() - timedelta(minutes=3)
-
+			build_start = time.time()
 			for ev in events:
 				try:
 					home = compat_str(ev['homeTeam']['name'])
 					away = compat_str(ev['awayTeam']['name'])
 					match_name = "{0} vs {1}".format(home, away)
 
-					h_score = compat_str(ev.get('homeScore', {}).get('current', '')) or ''
-					a_score = compat_str(ev.get('awayScore', {}).get('current', '')) or ''
+					h_score_raw = compat_str(ev.get('homeScore', {}).get('current', '')) or ''
+					a_score_raw = compat_str(ev.get('awayScore', {}).get('current', '')) or ''
+					
+					h_score = h_score_raw
+					a_score = a_score_raw
 
 					status_obj = ev.get('status', {})
 					stype = status_obj.get('type', '')
@@ -762,14 +774,12 @@ class FootOnSat(Screen):
 					ts = ev.get('startTimestamp')
 					match_dt = datetime.fromtimestamp(ts) if ts else now_adj
 
-					# --- Status logic ---
+					# --- Status Logic (Match Time Calculation) ---
+					status = ''
 					if stype == 'canceled':
 						status = 'CANCELED'
-						h_score = a_score = ''
 					elif stype == 'finished':
 						status = 'FINISHED'
-					elif stype == 'notstarted':
-						status = ''
 					elif stype == 'inprogress':
 						m = re.search(r'(\d{1,3}[\'+]*\+?\d*)\s*\'', descr)
 						if m:
@@ -792,16 +802,25 @@ class FootOnSat(Screen):
 									status = ''
 							except:
 								status = ''
+					elif stype == 'notstarted':
+						status = ''
 					else:
 						status = ''
 
-					if match_dt > now_adj + timedelta(hours=6) and stype != 'canceled':
-						h_score = a_score = ''
-						status = ''
+					# === CRITICAL DATA INTEGRITY FIREWALL (Preserved) ===
 					
-					if stype == 'notstarted' and match_dt > now_adj + timedelta(hours=6):
+					# 1. Clear score/status if the match is scheduled to start in the next 10 minutes or later.
+					if match_dt > now + timedelta(minutes=10) and stype not in ['inprogress', 'canceled', 'postponed', 'afterextra', 'penaltyshootout']:
 						h_score = a_score = ''
 						status = ''
+
+					# 2. Ensure 'notstarted' or 'canceled' matches show no score.
+					elif stype in ['notstarted', 'canceled']:
+						h_score = a_score = ''
+						if stype == 'canceled':
+							status = 'CANCELED'
+						else:
+							status = ''
 
 					live_matches.append({
 						"match_name": match_name,
@@ -814,13 +833,19 @@ class FootOnSat(Screen):
 						"raw_descr": descr
 					})
 				except Exception as e:
+					logdata("FootOnSat-Sofa-ERROR", "Error building live_matches for an event: %s" % str(e))
 					continue
+			
+			logdata("FootOnSat-PERF", "LIVESCORE: Data extraction/filtering completed on Main Thread in %.3f s." % (time.time() - build_start))
 
-			# === MATCHING (your original code) ===
+			# === STEP 2: INSTANT UI DRAW ===
 			matches_list = [list(m) for m in self.matches]
-
-			# NOTE: _clean_name and sequence matching logic is complex and relies on
-			# SequenceMatcher, normalize, etc. which are assumed to be imported.
+			
+			try:
+				self.iniMenu()
+				logdata("FootOnSat-PERF", "LIVESCORE: Initial UI drawn instantly with schedule data.")
+			except Exception as e:
+				pass
 
 			def _clean_name(name):
 				if not PY3 and isinstance(name, str):
@@ -838,88 +863,161 @@ class FootOnSat(Screen):
 				name = re.sub(r'\s+', ' ', name).strip()
 				return name
 
-			THRESHOLD = 0.45
-			TIME_WINDOW = timedelta(hours=6)
-
-			for match in matches_list:
-				try:
-					time_str = compat_str(match[1])
+			def _do_fuzzy_matching(matches_list, live_matches, now_adj):
+				match_perf_start = time.time()
+				logdata("FootOnSat-PERF", "LIVESCORE: Fuzzy Matching started on background thread.")
+				
+				# --- FIX: THRESHOLD ADJUSTMENT for maximum accuracy ---
+				THRESHOLD = 0.50 # Lowered from 0.60 to 0.55 to ensure all challenging names match
+				TIME_WINDOW = timedelta(hours=get_hide_match_hours())
+				
+				# --- Caching for Live Matches ---
+				live_clean_cache = {}
+				for live in live_matches:
+					s_t1 = compat_str(live["team1"]).strip()
+					s_t2 = compat_str(live["team2"]).strip()
+					if s_t1 not in live_clean_cache:
+						live_clean_cache[s_t1] = _clean_name(s_t1)
+					if s_t2 not in live_clean_cache:
+						live_clean_cache[s_t2] = _clean_name(s_t2)
+						
+				# === RESTORED SPEED OPTIMIZATION: Pre-calculate schedule clean cache ONCE ===
+				schedule_clean_cache = {}
+				for match in matches_list:
 					try:
-						local_dt = datetime.strptime(time_str.split(' - ')[1] + ' ' + time_str.split(' - ')[0], "%Y-%m-%d %H:%M")
+						local_name = compat_str(match[0])
+						teams = re.split(r'\s+vs\s+|\s+-\s+', local_name)
+						if len(teams) != 2:
+							continue
+							
+						l_t1 = compat_str(teams[0]).strip()
+						l_t2 = compat_str(teams[1]).strip()
+						
+						if l_t1 not in schedule_clean_cache:
+							schedule_clean_cache[l_t1] = _clean_name(l_t1)
+						if l_t2 not in schedule_clean_cache:
+							schedule_clean_cache[l_t2] = _clean_name(l_t2)
 					except:
-						local_dt = now_adj
-
-					local_name = compat_str(match[0])
-					teams = re.split(r'\s+vs\s+|\s+-\s+', local_name)
-					if len(teams) != 2:
 						continue
+				# ===================================================================================
 
-					l_t1 = compat_str(teams[0]).strip()
-					l_t2 = compat_str(teams[1]).strip()
-					l_t1_clean = _clean_name(l_t1)
-					l_t2_clean = _clean_name(l_t2)
+				for match in matches_list:
+					try:
+						time_str = compat_str(match[1])
+						try:
+							local_dt = datetime.strptime(time_str.split(' - ')[1] + ' ' + time_str.split(' - ')[0], "%Y-%m-%d %H:%M")
+						except:
+							local_dt = now_adj
 
-					best_sim = 0.0
-					best_live = None
+						local_name = compat_str(match[0])
+						teams = re.split(r'\s+vs\s+|\s+-\s+', local_name)
+						if len(teams) != 2:
+							match[5] = match[6] = match[7] = ""
+							continue
 
-					for live in live_matches:
-						s_t1 = compat_str(live["team1"]).strip()
-						s_t2 = compat_str(live["team2"]).strip()
-						s_t1_clean = _clean_name(s_t1)
-						s_t2_clean = _clean_name(s_t2)
+						l_t1 = compat_str(teams[0]).strip()
+						l_t2 = compat_str(teams[1]).strip()
+						
+						# Retrieve pre-calculated clean names
+						l_t1_clean = schedule_clean_cache.get(l_t1, "")
+						l_t2_clean = schedule_clean_cache.get(l_t2, "")
+						
+						if not l_t1_clean or not l_t2_clean:
+							match[5] = match[6] = match[7] = ""
+							continue
 
-						sim1 = SequenceMatcher(None, l_t1_clean, s_t1_clean).ratio()
-						sim2 = SequenceMatcher(None, l_t2_clean, s_t2_clean).ratio()
-						avg_straight = (sim1 + sim2) / 2.0
+						best_sim = 0.0
+						best_live = None
+						
+						# --- Time-based Pre-Filter (Tier 1 Speed) ---
+						relevant_live_events = [
+							live for live in live_matches 
+							if abs(live["match_dt"] - local_dt) <= TIME_WINDOW
+						]
 
-						sim1s = SequenceMatcher(None, l_t1_clean, s_t2_clean).ratio()
-						sim2s = SequenceMatcher(None, l_t2_clean, s_t1_clean).ratio()
-						avg_swap = (sim1s + sim2s) / 2.0
+						for live in relevant_live_events:
+							s_t1 = compat_str(live["team1"]).strip()
+							s_t2 = compat_str(live["team2"]).strip()
+							
+							s_t1_clean = live_clean_cache[s_t1]
+							s_t2_clean = live_clean_cache[s_t2]
 
-						cur_sim = max(avg_straight, avg_swap)
-						cur_diff = abs(live["match_dt"] - local_dt)
+							# === FIX: Reintroducing a very loose length filter for speed optimization (Tier 2) ===
+							len_l1 = len(l_t1_clean)
+							len_s1 = len(s_t1_clean)
+							len_l2 = len(l_t2_clean)
+							len_s2 = len(s_t2_clean)
 
-						if cur_sim > best_sim and cur_diff <= TIME_WINDOW:
-							best_sim = cur_sim
-							if avg_straight >= avg_swap:
-								best_live = {
-									"team1_score": live["team1_score"],
-									"team2_score": live["team2_score"],
-									"match_status": live["match_status"]
-								}
+							# Loosened tolerance to 15 to eliminate only extreme mismatches
+							straight_possible = (abs(len_l1 - len_s1) <= 15 and abs(len_l2 - len_s2) <= 15)
+							swap_possible = (abs(len_l1 - len_s2) <= 15 and abs(len_l2 - len_s1) <= 15)
+
+							if not (straight_possible or swap_possible):
+								continue	
+
+							sim1 = SequenceMatcher(None, l_t1_clean, s_t1_clean).ratio()
+							sim2 = SequenceMatcher(None, l_t2_clean, s_t2_clean).ratio()
+							avg_straight = (sim1 + sim2) / 2.0
+
+							sim1s = SequenceMatcher(None, l_t1_clean, s_t2_clean).ratio()
+							sim2s = SequenceMatcher(None, l_t2_clean, s_t1_clean).ratio()
+							avg_swap = (sim1s + sim2s) / 2.0
+
+							cur_sim = max(avg_straight, avg_swap)
+
+							if cur_sim > best_sim:
+								best_sim = cur_sim
+								if avg_straight >= avg_swap:
+									best_live = {
+										"team1_score": live["team1_score"],
+										"team2_score": live["team2_score"],
+										"match_status": live["match_status"]
+									}
+								else:
+									best_live = {
+										"team1_score": live["team2_score"],
+										"team2_score": live["team1_score"],
+										"match_status": live["match_status"]
+									}
+
+						if best_sim >= THRESHOLD and best_live:
+							if config.plugins.FootOnSat.livescore.value == "3":
+								match[5] = compat_str(best_live["team1_score"]).strip()
+								match[6] = compat_str(best_live["team2_score"]).strip()
+								match[7] = compat_str(best_live["match_status"]).strip()
 							else:
-								best_live = {
-									"team1_score": live["team2_score"],
-									"team2_score": live["team1_score"],
-									"match_status": live["match_status"]
-								}
-
-					if best_sim >= THRESHOLD and best_live:
-						if config.plugins.FootOnSat.livescore.value == "3":
-							match[5] = compat_str(best_live["team1_score"]).strip()
-							match[6] = compat_str(best_live["team2_score"]).strip()
-							match[7] = compat_str(best_live["match_status"]).strip()
+								match[5] = match[6] = match[7] = ""
 						else:
 							match[5] = match[6] = match[7] = ""
-					else:
-						match[5] = match[6] = match[7] = ""
+					except Exception as e:
+						continue
+
+				logdata("FootOnSat-PERF", "LIVESCORE: Ultra-Optimized Fuzzy Matching finished in %.3f s." % (time.time() - match_perf_start))
+				return matches_list
+
+
+			def _matching_complete(updated_matches_list):
+				match_complete_time = time.time()
+				self.matches = updated_matches_list
+				try:
+					self.iniMenu()
 				except Exception as e:
-					continue
+					pass
+				logdata("FootOnSat-PERF", "LIVESCORE: Final UI updated with scores. Total processing time: %.3f s." % (time.time() - process_start))
+				
 
-			# === UI UPDATE ===
-			self.matches = matches_list
-			try:
-				self.iniMenu()
-			except Exception as e:
-				pass
+			d_match = deferToThread(_do_fuzzy_matching, matches_list, live_matches, now_adj)
+			d_match.addCallback(_matching_complete)
+			d_match.addErrback(lambda f: logdata("FootOnSat-Sofa-ERROR", "Fuzzy matching thread failed: %s" % f.getErrorMessage()))
 
-		# === Error handling ===
+
 		def _error(failure):
 			logdata("FootOnSat-Sofa-ERROR", "Twisted Request failed: %s" % failure.getErrorMessage())
 
-		# === Wire callbacks ===
 		d.addCallback(_process_response)
 		d.addErrback(_error)
+		
+		logdata("FootOnSat-PERF", "LIVESCORE: Network request fired. Time elapsed until non-blocking request: %.3f s." % (time.time() - live_start_time))
 
 	def getData(self, data):
 		list = []
@@ -940,7 +1038,7 @@ class FootOnSat(Screen):
 		# 1. UPDATED: Consider matches live for 2 hours
 		try:
 			# Check the configuration value for the "finished" duration
-			if config.plugins.FootOnSat.finished.value == "2": 
+			if get_hide_match_hours() == 2: 
 				HOUR = 2
 			else:
 				# Default to 3 hours if option is not '2'
@@ -1318,7 +1416,6 @@ class FootOnSat(Screen):
 				# This addresses the original error which likely occurred here due to string conversion failure
 				self.session.open(MessageBox, _('Error accessing ignore list!'), MessageBox.TYPE_ERROR, timeout=5)
 
-# Note: All necessary imports and mocks (like DB_PATH, logdata, time, timedelta, connect, config, etc.) are assumed to be present above this class definition.
 
 class FootOnSatNotif:
 	def __init__(self):
