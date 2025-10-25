@@ -31,6 +31,7 @@ config.plugins.FootOnSat = ConfigSubsection()
 config.plugins.FootOnSat.showplugin = ConfigText(default="")
 config.plugins.FootOnSat.sort = ConfigDictionarySet(default={"footmenu": {"footsubmenu": {}}})
 config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
+config.plugins.FootOnSat.enableflag = ConfigYesNo(default=True)
 config.plugins.FootOnSat.finished = ConfigSelection(default = 2, choices = [
 	(2, _("2 hours")),
 	(3, _("3 hours"))
@@ -424,17 +425,17 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 					</screen>"""
 	else:
 		skin = """
-				<screen name="MenuFootOnSat" position="center,center" size="1040,750" title="Menu FootOnSat">
+				<screen name="MenuFootOnSat" position="center,center" size="1040,780" title="Menu FootOnSat">
 					<widget source="global.CurrentTime" render="Label" position="5,5" size="1022,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
 						<convert type="ClockToText">Format:%d-%m-%Y     %H:%M:%S</convert>
 					</widget>
-					<widget name="config" font="Regular;28" secondfont="Regular;28" itemHeight="45" position="18,70" size="1005,365" scrollbarMode="showOnDemand"/>
-					<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,720" zPosition="-10"/>
-					<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,720" zPosition="-10"/>
-					<widget render="Label" source="key_red" position="223,685" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
-					<widget render="Label" source="key_green" position="585,685" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
-					<widget source="help" render="Label" position="18,400" size="1004,60" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
-					<widget name="Picture" position="313,460" size="400,225" zPosition="5" alphatest="blend"/>
+					<widget name="config" font="Regular;28" secondfont="Regular;28" itemHeight="45" position="18,70" size="1005,375" scrollbarMode="showOnDemand"/>
+					<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,745" zPosition="-10"/>
+					<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,745" zPosition="-10"/>
+					<widget render="Label" source="key_red" position="223,710" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
+					<widget render="Label" source="key_green" position="585,710" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
+					<widget source="help" render="Label" position="18,425" size="1004,60" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
+					<widget name="Picture" position="313,485" size="400,225" zPosition="5" alphatest="blend"/>
 				</screen>"""
 
 	def __init__(self, session):
@@ -463,8 +464,9 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 	def createSetup(self):
 		self.configChanged = True
 		self.list = []
-		self.list.append(getConfigListEntry(_("Enable checking for Online Update"), config.plugins.FootOnSat.updateonline, _("This option to Enable or Disable checking for Online Update")))
 		self.list.append(getConfigListEntry(_("Show Plugin #press OK to change"), config.plugins.FootOnSat.showplugin, _("This option to show Plugin in any where you like")))
+		self.list.append(getConfigListEntry(_("Enable checking for Online Update"), config.plugins.FootOnSat.updateonline, _("This option to Enable or Disable checking for Online Update")))
+		self.list.append(getConfigListEntry(_("Enable flags for teams"), config.plugins.FootOnSat.enableflag, _("This option to Enable or Disable flags for teams in euroleague only")))
 		self.list.append(getConfigListEntry(_("Enable live match + Live score"), config.plugins.FootOnSat.livescore, _("This feature allows you to show or hide the matches still live with or withou result")))
 		if config.plugins.FootOnSat.livescore.value in ["2", "3"]:
 			self.list.append(getConfigListEntry(_("Select appear live + score of match in"), config.plugins.FootOnSat.livescoresections, _("This feature allows you to show matches live with result in sections")))
