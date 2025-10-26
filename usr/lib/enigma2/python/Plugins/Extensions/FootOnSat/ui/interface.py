@@ -32,11 +32,19 @@ from Screens.ChoiceBox import ChoiceBox
 from Screens.MessageBox import MessageBox
 from Tools.Directories import resolveFilename, SCOPE_PLUGINS, fileExists
 from Tools.LoadPixmap import LoadPixmap
-from twisted.web.client import getPage, downloadPage
+from twisted.internet import defer, reactor
+from twisted.internet.defer import DeferredList
 from twisted.internet.ssl import ClientContextFactory
 from twisted.internet.threads import deferToThread
 from twisted.internet._sslverify import ClientTLSOptions
+from twisted.internet.threads import blockingCallFromThread
+from twisted.web.client import getPage, downloadPage
 from .compat import PY3, compat_urlopen, compat_HTTPError, compat_URLError, compat_Request, compat_str
+
+try:
+	from urllib.parse import urlparse
+except ImportError:
+	from urlparse import urlparse
 
 # Check for PIL availability first, and import if found
 try:
@@ -178,21 +186,22 @@ def sanitize_team_name(team):
 	name = name.replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u") 
 	return name
 
-
+# The CRITICAL class for TLS SNI support
 class WebClientContextFactory(ClientContextFactory):
 	def __init__(self, url=None):
 		domain = urlparse(url).netloc
 		self.hostname = domain
-
+	
 	def getContext(self, hostname=None, port=None):
 		ctx = ClientContextFactory.getContext(self)
-		if self.hostname and ClientTLSOptions is not None: # workaround for TLS SNI
+		if self.hostname and ClientTLSOptions is not None:
 			ClientTLSOptions(self.hostname, ctx)
 		return ctx
 
 
 class FootOnSat(Screen):
 	def __init__(self, session, link, *args):
+		logdata("FootOnSat-INIT", "Plugin initialization started.")
 		self.session = session
 		Screen.__init__(self, session)
 		if reswidth == 1920:
@@ -334,7 +343,8 @@ class FootOnSat(Screen):
 				# Team 1 flag/logteam
 				if self.link == "basketball":
 					res.append(MultiContentEntryPixmapAlphaBlend(pos=(70, 5), size=(160, 160), png=loadPNG(teamlog1)))
-					res.append(MultiContentEntryPixmapAlphaBlend(pos=(212, 70), size=(40, 30), png=loadPNG(flagTeam1)))
+					if config.plugins.FootOnSat.enableflag.value:
+						res.append(MultiContentEntryPixmapAlphaBlend(pos=(212, 70), size=(40, 30), png=loadPNG(flagTeam1)))
 				else:
 					res.append(MultiContentEntryPixmapAlphaBlend(pos=(420, 70), size=(40, 30), png=loadPNG(flagTeam1)))
 				# Score team 1
@@ -347,13 +357,15 @@ class FootOnSat(Screen):
 				if reswidth >= 2560:
 					if self.link == "basketball":
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1440, 5), size=(160, 160), png=loadPNG(teamlog2)))
-						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1420, 70), size=(40, 30), png=loadPNG(flagTeam2)))
+						if config.plugins.FootOnSat.enableflag.value:
+							res.append(MultiContentEntryPixmapAlphaBlend(pos=(1420, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 					else:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1550, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 				else:
 					if self.link == "basketball":
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1030, 10), size=(160, 160), png=loadPNG(teamlog2)))
-						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1012, 70), size=(40, 30), png=loadPNG(flagTeam2)))
+						if config.plugins.FootOnSat.enableflag.value:
+							res.append(MultiContentEntryPixmapAlphaBlend(pos=(1012, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 					else:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1142, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 				# Score team 2
@@ -513,9 +525,17 @@ class FootOnSat(Screen):
 			self.updateChannelData()
 
 	def create_table(self):
-		with connect(DB_PATH) as conn:
-			cur = conn.cursor()
-			cur.execute('CREATE TABLE IF NOT EXISTS LIVE_NOTIF (MATCH TEXT primary key , COMPET TEXT , DATE TEXT , TEAM1_FLAG TEXT , TEAM2_FLAG TEXT , FIRST_NOTIF TEXT , FIRST_NOTIF_STATUS TEXT , LIVE_NOTIF_STATUS TEXT,MESSAGE TEXT)')
+		try:
+			with connect(DB_PATH) as conn:
+				cur = conn.cursor()
+				cur.execute('CREATE TABLE IF NOT EXISTS LIVE_NOTIF (MATCH TEXT primary key , COMPET TEXT , DATE TEXT , TEAM1_FLAG TEXT , TEAM2_FLAG TEXT , FIRST_NOTIF TEXT , FIRST_NOTIF_STATUS TEXT , LIVE_NOTIF_STATUS TEXT,MESSAGE TEXT)')
+		except DatabaseError:
+			# If the file is corrupted, delete it and try again.
+			if os.path.exists(DB_PATH):
+				os.remove(DB_PATH)
+			with connect(DB_PATH) as conn:
+				cur = conn.cursor()
+				cur.execute('CREATE TABLE IF NOT EXISTS LIVE_NOTIF (MATCH TEXT primary key , COMPET TEXT , DATE TEXT , TEAM1_FLAG TEXT , TEAM2_FLAG TEXT , FIRST_NOTIF TEXT , FIRST_NOTIF_STATUS TEXT , LIVE_NOTIF_STATUS TEXT,MESSAGE TEXT)')
 
 	def ok(self):
 		if self.selectedList == self["list1"] and len(self.matches) > 0:
@@ -634,6 +654,7 @@ class FootOnSat(Screen):
 		return resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/default/FHD/{}.png".format(banner))
 
 	def callAPI(self):
+		logdata("FootOnSat-API", "Starting callAPI to fetch main schedule: %s" % self.link)
 		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/{}.json'.format(self.link)
 		sniFactory = WebClientContextFactory(url)
 		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
@@ -643,10 +664,19 @@ class FootOnSat(Screen):
 			self.session.openWithCallback(self.exit, MessageBox, _('An Unexpected HTTP Error Occurred During The API Request !!'), MessageBox.TYPE_ERROR, timeout=10)
 
 	def fetch_live_results(self):
-		# === URL & rotating UA ===
+		# Define the fixed time windows
+		LIVE_DURATION = timedelta(hours=3, minutes=30) # 3.5 hours limit for finished matches
+		TIME_WINDOW = timedelta(hours=3, minutes=30) # Generous fuzzy matching time tolerance
+		
+		live_start_time = time.time()
+		logdata("FootOnSat-LIVESCORE", "fetch_live_results initiated.")
+		
+		# === URL Setup ===
 		today_iso = date.today().isoformat()
 		url = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}'.format(today_iso)
 
+		# === Headers/Agent (Minimal and robust headers) ===
+		AGENT = b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
 		USER_AGENTS = [
 			'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36',
 			'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
@@ -654,8 +684,7 @@ class FootOnSat(Screen):
 		]
 		ua = random.choice(USER_AGENTS)
 
-		# === Minimal headers to bypass 403 ===
-		headers = {
+		headers2 = {
 			'User-Agent': ua,
 			'Accept': 'application/json, text/plain, */*',
 			'Referer': 'https://www.sofascore.com/',
@@ -663,50 +692,74 @@ class FootOnSat(Screen):
 			'Cache-Control': 'no-cache',
 		}
 
-		# === Fetch in thread ===
-		def _fetch_with_requests():
+		logdata("FootOnSat-LIVESCORE", "Sending request to SofaScore API.")
+
+		# === Twisted HTTP Request Handling (with Py3 compatibility) ===
+		if PY3:
 			try:
-				r = requests.get(url, headers=headers, timeout=3)
-				r.raise_for_status()
-				return r.content
+				sniFactory = WebClientContextFactory() 
 			except Exception as e:
-				raise Exception("SofaScore fetch failed: %s" % str(e))
+				logdata("FootOnSat-Sofa-ERROR", "Failed to create WebClientContextFactory: %s" % str(e))
+				self.matches = [list(m) for m in self.matches]
+				self.iniMenu()
+				return
+			
+			twisted_live_headers = {
+				b'User-Agent': [AGENT],
+				b'Connection': [b'close'],
+				b'Accept': [b'application/json, text/plain, */*']
+			}
+			d = getPage(str.encode(url), contextFactory=sniFactory, timeout=10, headers=twisted_live_headers)
+		else:
+			def _fetch_with_requests():
+				try:
+					r = requests.get(url, headers=headers2, timeout=3) 
+					r.raise_for_status()
+					return r.content
+				except Exception as e:
+					raise Exception("SofaScore fetch failed: %s" % str(e))
 
-		d = deferToThread(_fetch_with_requests)
-
-		# === Process response (your original logic) ===
+			d = deferToThread(_fetch_with_requests)
+		
+		# === _process_response (Twisted Callback from network fetch) ===
 		def _process_response(raw):
-			try:
-				if PY3:
-					data_str = raw.decode('utf-8', errors='ignore')
-				else:
-					data_str = compat_str(raw)
-			except Exception as e:
-				#logdata("FootOnSat-Sofa-ERROR", "Decode error: %s" % e)
-				return
+			process_start = time.time()
+			logdata("FootOnSat-LIVESCORE", "Received SofaScore response. Starting processing.")
 
+			# Decode and JSON Load
 			try:
+				data_str = raw.decode('utf-8', errors='ignore')
 				data = json.loads(data_str)
+				events = data.get('events', [])
 			except Exception as e:
-				#logdata("FootOnSat-Sofa-ERROR", "JSON parse error: %s" % e)
+				logdata("FootOnSat-Sofa-ERROR", "Decode/JSON parse error: %s" % e)
 				return
 
-			events = data.get('events', [])
 			if not events:
+				self.matches = [list(m) for m in self.matches]
+				try:
+					self.iniMenu()
+				except Exception as e:
+					pass
 				return
 
-			# === BUILD live_matches ===
+			# === STEP 1: EVENT BUILDING & STRICT FILTERING (Main thread) ===
+			now = datetime.now()
+			now_adj = now - timedelta(minutes=3) 
+			
 			live_matches = []
-			now_adj = datetime.now() - timedelta(minutes=3)
-
+			build_start = time.time()
 			for ev in events:
 				try:
 					home = compat_str(ev['homeTeam']['name'])
 					away = compat_str(ev['awayTeam']['name'])
 					match_name = "{0} vs {1}".format(home, away)
 
-					h_score = compat_str(ev.get('homeScore', {}).get('current', '')) or ''
-					a_score = compat_str(ev.get('awayScore', {}).get('current', '')) or ''
+					h_score_raw = compat_str(ev.get('homeScore', {}).get('current', '')) or ''
+					a_score_raw = compat_str(ev.get('awayScore', {}).get('current', '')) or ''
+					
+					h_score = h_score_raw
+					a_score = a_score_raw
 
 					status_obj = ev.get('status', {})
 					stype = status_obj.get('type', '')
@@ -715,14 +768,12 @@ class FootOnSat(Screen):
 					ts = ev.get('startTimestamp')
 					match_dt = datetime.fromtimestamp(ts) if ts else now_adj
 
-					# --- Status logic ---
-					if stype == 'canceled':  # <--- NEW CANCELED CHECK
+					# --- Status Logic (Match Time Calculation) ---
+					status = ''
+					if stype == 'canceled':
 						status = 'CANCELED'
-						h_score = a_score = '' # Clear scores for canceled matches
 					elif stype == 'finished':
 						status = 'FINISHED'
-					elif stype == 'notstarted':
-						status = ''
 					elif stype == 'inprogress':
 						m = re.search(r'(\d{1,3}[\'+]*\+?\d*)\s*\'', descr)
 						if m:
@@ -745,17 +796,25 @@ class FootOnSat(Screen):
 									status = ''
 							except:
 								status = ''
+					elif stype == 'notstarted':
+						status = ''
 					else:
 						status = ''
 
-					if match_dt > now_adj + timedelta(hours=6) and stype != 'canceled': # <--- Adjusted time check
-						h_score = a_score = ''
-						status = ''
+					# === CRITICAL DATA INTEGRITY FIREWALL (Preserved) ===
 					
-					# Ensure status and scores are clear for 'notstarted' matches outside the window
-					if stype == 'notstarted' and match_dt > now_adj + timedelta(hours=6):
+					# 1. Clear score/status if the match is scheduled to start in the next 10 minutes or later.
+					if match_dt > now + timedelta(minutes=10) and stype not in ['inprogress', 'canceled', 'postponed', 'afterextra', 'penaltyshootout']:
 						h_score = a_score = ''
 						status = ''
+
+					# 2. Ensure 'notstarted' or 'canceled' matches show no score.
+					elif stype in ['notstarted', 'canceled']:
+						h_score = a_score = ''
+						if stype == 'canceled':
+							status = 'CANCELED'
+						else:
+							status = ''
 
 					live_matches.append({
 						"match_name": match_name,
@@ -768,10 +827,19 @@ class FootOnSat(Screen):
 						"raw_descr": descr
 					})
 				except Exception as e:
+					logdata("FootOnSat-Sofa-ERROR", "Error building live_matches for an event: %s" % str(e))
 					continue
+			
+			logdata("FootOnSat-PERF", "LIVESCORE: Data extraction/filtering completed on Main Thread in %.3f s." % (time.time() - build_start))
 
-			# === MATCHING (your original code) ===
+			# === STEP 2: INSTANT UI DRAW ===
 			matches_list = [list(m) for m in self.matches]
+			
+			try:
+				self.iniMenu()
+				logdata("FootOnSat-PERF", "LIVESCORE: Initial UI drawn instantly with schedule data.")
+			except Exception as e:
+				pass
 
 			def _clean_name(name):
 				if not PY3 and isinstance(name, str):
@@ -789,88 +857,161 @@ class FootOnSat(Screen):
 				name = re.sub(r'\s+', ' ', name).strip()
 				return name
 
-			THRESHOLD = 0.45
-			TIME_WINDOW = timedelta(hours=6)
-
-			for match in matches_list:
-				try:
-					time_str = compat_str(match[1])
+			def _do_fuzzy_matching(matches_list, live_matches, now_adj):
+				match_perf_start = time.time()
+				logdata("FootOnSat-PERF", "LIVESCORE: Fuzzy Matching started on background thread.")
+				
+				# --- FIX: THRESHOLD ADJUSTMENT for maximum accuracy ---
+				THRESHOLD = 0.50 # Lowered from 0.60 to 0.55 to ensure all challenging names match
+				TIME_WINDOW = timedelta(hours=hours=3, minutes=30)
+				
+				# --- Caching for Live Matches ---
+				live_clean_cache = {}
+				for live in live_matches:
+					s_t1 = compat_str(live["team1"]).strip()
+					s_t2 = compat_str(live["team2"]).strip()
+					if s_t1 not in live_clean_cache:
+						live_clean_cache[s_t1] = _clean_name(s_t1)
+					if s_t2 not in live_clean_cache:
+						live_clean_cache[s_t2] = _clean_name(s_t2)
+						
+				# === RESTORED SPEED OPTIMIZATION: Pre-calculate schedule clean cache ONCE ===
+				schedule_clean_cache = {}
+				for match in matches_list:
 					try:
-						local_dt = datetime.strptime(time_str.split(' - ')[1] + ' ' + time_str.split(' - ')[0], "%Y-%m-%d %H:%M")
+						local_name = compat_str(match[0])
+						teams = re.split(r'\s+vs\s+|\s+-\s+', local_name)
+						if len(teams) != 2:
+							continue
+							
+						l_t1 = compat_str(teams[0]).strip()
+						l_t2 = compat_str(teams[1]).strip()
+						
+						if l_t1 not in schedule_clean_cache:
+							schedule_clean_cache[l_t1] = _clean_name(l_t1)
+						if l_t2 not in schedule_clean_cache:
+							schedule_clean_cache[l_t2] = _clean_name(l_t2)
 					except:
-						local_dt = now_adj
-
-					local_name = compat_str(match[0])
-					teams = re.split(r'\s+vs\s+|\s+-\s+', local_name)
-					if len(teams) != 2:
 						continue
+				# ===================================================================================
 
-					l_t1 = compat_str(teams[0]).strip()
-					l_t2 = compat_str(teams[1]).strip()
-					l_t1_clean = _clean_name(l_t1)
-					l_t2_clean = _clean_name(l_t2)
+				for match in matches_list:
+					try:
+						time_str = compat_str(match[1])
+						try:
+							local_dt = datetime.strptime(time_str.split(' - ')[1] + ' ' + time_str.split(' - ')[0], "%Y-%m-%d %H:%M")
+						except:
+							local_dt = now_adj
 
-					best_sim = 0.0
-					best_live = None
+						local_name = compat_str(match[0])
+						teams = re.split(r'\s+vs\s+|\s+-\s+', local_name)
+						if len(teams) != 2:
+							match[5] = match[6] = match[7] = ""
+							continue
 
-					for live in live_matches:
-						s_t1 = compat_str(live["team1"]).strip()
-						s_t2 = compat_str(live["team2"]).strip()
-						s_t1_clean = _clean_name(s_t1)
-						s_t2_clean = _clean_name(s_t2)
+						l_t1 = compat_str(teams[0]).strip()
+						l_t2 = compat_str(teams[1]).strip()
+						
+						# Retrieve pre-calculated clean names
+						l_t1_clean = schedule_clean_cache.get(l_t1, "")
+						l_t2_clean = schedule_clean_cache.get(l_t2, "")
+						
+						if not l_t1_clean or not l_t2_clean:
+							match[5] = match[6] = match[7] = ""
+							continue
 
-						sim1 = SequenceMatcher(None, l_t1_clean, s_t1_clean).ratio()
-						sim2 = SequenceMatcher(None, l_t2_clean, s_t2_clean).ratio()
-						avg_straight = (sim1 + sim2) / 2.0
+						best_sim = 0.0
+						best_live = None
+						
+						# --- Time-based Pre-Filter (Tier 1 Speed) ---
+						relevant_live_events = [
+							live for live in live_matches 
+							if abs(live["match_dt"] - local_dt) <= TIME_WINDOW
+						]
 
-						sim1s = SequenceMatcher(None, l_t1_clean, s_t2_clean).ratio()
-						sim2s = SequenceMatcher(None, l_t2_clean, s_t1_clean).ratio()
-						avg_swap = (sim1s + sim2s) / 2.0
+						for live in relevant_live_events:
+							s_t1 = compat_str(live["team1"]).strip()
+							s_t2 = compat_str(live["team2"]).strip()
+							
+							s_t1_clean = live_clean_cache[s_t1]
+							s_t2_clean = live_clean_cache[s_t2]
 
-						cur_sim = max(avg_straight, avg_swap)
-						cur_diff = abs(live["match_dt"] - local_dt)
+							# === FIX: Reintroducing a very loose length filter for speed optimization (Tier 2) ===
+							len_l1 = len(l_t1_clean)
+							len_s1 = len(s_t1_clean)
+							len_l2 = len(l_t2_clean)
+							len_s2 = len(s_t2_clean)
 
-						if cur_sim > best_sim and cur_diff <= TIME_WINDOW:
-							best_sim = cur_sim
-							if avg_straight >= avg_swap:
-								best_live = {
-									"team1_score": live["team1_score"],
-									"team2_score": live["team2_score"],
-									"match_status": live["match_status"]
-								}
+							# Loosened tolerance to 15 to eliminate only extreme mismatches
+							straight_possible = (abs(len_l1 - len_s1) <= 15 and abs(len_l2 - len_s2) <= 15)
+							swap_possible = (abs(len_l1 - len_s2) <= 15 and abs(len_l2 - len_s1) <= 15)
+
+							if not (straight_possible or swap_possible):
+								continue	
+
+							sim1 = SequenceMatcher(None, l_t1_clean, s_t1_clean).ratio()
+							sim2 = SequenceMatcher(None, l_t2_clean, s_t2_clean).ratio()
+							avg_straight = (sim1 + sim2) / 2.0
+
+							sim1s = SequenceMatcher(None, l_t1_clean, s_t2_clean).ratio()
+							sim2s = SequenceMatcher(None, l_t2_clean, s_t1_clean).ratio()
+							avg_swap = (sim1s + sim2s) / 2.0
+
+							cur_sim = max(avg_straight, avg_swap)
+
+							if cur_sim > best_sim:
+								best_sim = cur_sim
+								if avg_straight >= avg_swap:
+									best_live = {
+										"team1_score": live["team1_score"],
+										"team2_score": live["team2_score"],
+										"match_status": live["match_status"]
+									}
+								else:
+									best_live = {
+										"team1_score": live["team2_score"],
+										"team2_score": live["team1_score"],
+										"match_status": live["match_status"]
+									}
+
+						if best_sim >= THRESHOLD and best_live:
+							if config.plugins.FootOnSat.livescore.value == "3":
+								match[5] = compat_str(best_live["team1_score"]).strip()
+								match[6] = compat_str(best_live["team2_score"]).strip()
+								match[7] = compat_str(best_live["match_status"]).strip()
 							else:
-								best_live = {
-									"team1_score": live["team2_score"],
-									"team2_score": live["team1_score"],
-									"match_status": live["match_status"]
-								}
-
-					if best_sim >= THRESHOLD and best_live:
-						if config.plugins.FootOnSat.livescore.value == "3":
-							match[5] = compat_str(best_live["team1_score"]).strip()
-							match[6] = compat_str(best_live["team2_score"]).strip()
-							match[7] = compat_str(best_live["match_status"]).strip()
+								match[5] = match[6] = match[7] = ""
 						else:
 							match[5] = match[6] = match[7] = ""
-					else:
-						match[5] = match[6] = match[7] = ""
+					except Exception as e:
+						continue
+
+				logdata("FootOnSat-PERF", "LIVESCORE: Ultra-Optimized Fuzzy Matching finished in %.3f s." % (time.time() - match_perf_start))
+				return matches_list
+
+
+			def _matching_complete(updated_matches_list):
+				match_complete_time = time.time()
+				self.matches = updated_matches_list
+				try:
+					self.iniMenu()
 				except Exception as e:
-					continue
+					pass
+				logdata("FootOnSat-PERF", "LIVESCORE: Final UI updated with scores. Total processing time: %.3f s." % (time.time() - process_start))
+				
 
-			# === UI UPDATE ===
-			self.matches = matches_list
-			try:
-				self.iniMenu()
-			except Exception as e:
-				pass
+			d_match = deferToThread(_do_fuzzy_matching, matches_list, live_matches, now_adj)
+			d_match.addCallback(_matching_complete)
+			d_match.addErrback(lambda f: logdata("FootOnSat-Sofa-ERROR", "Fuzzy matching thread failed: %s" % f.getErrorMessage()))
 
-		# === Error handling ===
+
 		def _error(failure):
-			logdata("FootOnSat-Sofa-ERROR", "Request failed: %s" % failure.getErrorMessage())
+			logdata("FootOnSat-Sofa-ERROR", "Twisted Request failed: %s" % failure.getErrorMessage())
 
-		# === Wire callbacks ===
 		d.addCallback(_process_response)
 		d.addErrback(_error)
+		
+		logdata("FootOnSat-PERF", "LIVESCORE: Network request fired. Time elapsed until non-blocking request: %.3f s." % (time.time() - live_start_time))
 
 	def getData(self, data):
 		list = []
@@ -891,7 +1032,7 @@ class FootOnSat(Screen):
 		# 1. UPDATED: Consider matches live for 2 hours
 		try:
 			# Check the configuration value for the "finished" duration
-			if config.plugins.FootOnSat.finished.value == "2": 
+			if config.plugins.FootOnSat.finished.value == "2":
 				HOUR = 2
 			else:
 				# Default to 3 hours if option is not '2'
@@ -1269,7 +1410,6 @@ class FootOnSat(Screen):
 				# This addresses the original error which likely occurred here due to string conversion failure
 				self.session.open(MessageBox, _('Error accessing ignore list!'), MessageBox.TYPE_ERROR, timeout=5)
 
-# Note: All necessary imports and mocks (like DB_PATH, logdata, time, timedelta, connect, config, etc.) are assumed to be present above this class definition.
 
 class FootOnSatNotif:
 	def __init__(self):
@@ -1568,6 +1708,23 @@ class StandingsScreen(Screen):
 		
 		# Define standard headers for both fetching and logo downloading
 		self.headers = {
+			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+			"Accept": "application/json, text/plain, */*",
+			"Accept-Language": "en-US,en;q=0.9",
+			"Accept-Encoding": "gzip, deflate, br",
+			"Connection": "keep-alive",
+			"Referer": "https://www.sofascore.com/",
+			"Origin": "https://www.sofascore.com",
+			"X-Requested-With": "XMLHttpRequest",
+			"If-None-Match": 'W/"00000000000000000000000000000000-gn"',
+			"Sec-Fetch-Dest": "empty",
+			"Sec-Fetch-Mode": "cors",
+			"Sec-Fetch-Site": "same-site", # same-site for API calls to different subdomain
+			"Cache-Control": "max-age=0",
+			# Optional: Sec-Ch-Ua-* headers are typically not mandatory but can be added if issues persist
+			# "Sec-Ch-Ua-Mobile": "?0", 
+		}
+		self.headers2 = {
 			"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0", # <-- New User-Agent
 			"Accept-Language": "en-US,en;q=0.5",
 			"Connection": "keep-alive",
@@ -1579,10 +1736,9 @@ class StandingsScreen(Screen):
 		# Use onShown to trigger the fetch process
 		self.onShown.append(self.fetch_standings)
 
-	def fetch_standings(self):		
+	def fetch_standings(self):
+		# 1. Start parsing the URL to get IDs
 		url_to_parse = self.url
-
-		# Start parsing the (now guaranteed to be a SofaScore) URL
 		if not isinstance(url_to_parse, compat_str):
 			url_to_parse = str(url_to_parse)
 
@@ -1602,12 +1758,11 @@ class StandingsScreen(Screen):
 				season_id = parsed_url.fragment.split(':')[-1]
 			
 		except Exception as e:
-			#logdata("fetch_standings", "ERROR during URL parsing: %s" % str(e))
+			#logdata("StandingsScreen", "ERROR during URL parsing: %s" % str(e))
 			trace_error()
 			
-		# Final check: must have a numeric tournament ID and season ID
 		if not tournament_id or not season_id or not tournament_id.isdigit() or not season_id.isdigit():
-			#logdata("fetch_standings", "CRITICAL ERROR: Failed to extract numeric IDs. T-ID:'%s', S-ID:'%s'. Final URL: %s" % (tournament_id, season_id, url_to_parse))
+			#logdata("StandingsScreen", "CRITICAL ERROR: Failed to extract numeric IDs. T-ID:'%s', S-ID:'%s'." % (tournament_id, season_id))
 			self.standings_data = []
 			self.display_standings()
 			return
@@ -1617,51 +1772,97 @@ class StandingsScreen(Screen):
 			tournament_id, season_id
 		)
 			
-		#logdata("fetch_standings", "Using SofaScore API URL: %s" % api_url)
+		#logdata("StandingsScreen", "Using SofaScore API URL: %s" % api_url)
+		AGENT = b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
 
-		# 3. Define the headers for the API request
-		json_headers = self.headers.copy()
-		json_headers["Accept"] = "application/json"
-		json_headers["Accept-Encoding"] = "gzip, deflate"
-		json_headers["X-Requested-With"] = "XMLHttpRequest"
-		json_headers["Host"] = "api.sofascore.com"
-		json_headers["Origin"] = "https://www.sofascore.com"
-		json_headers["Sec-Fetch-Dest"] = "empty"
-		json_headers["Sec-Fetch-Mode"] = "cors"
-		json_headers["Sec-Fetch-Site"] = "same-site"
+		# =================================================================
+		# === PY3/PY2 SPLIT: Only necessary structural change to fix Py2 ===
+		# =================================================================
 		
+		if PY3:
+			try:
+				sniFactory = WebClientContextFactory(api_url)
+			except Exception as e:
+				#logdata("StandingsScreen", "Failed to create WebClientContextFactory: %s" % str(e))
+				self.display_standings()
+				return
+
+			# DEBUG: Log the attempt
+			#logdata("StandingsScreen", "Attempting fetch (Twisted/SNI FIX) for API: %s" % api_url)
+
+			# Fetch using Twisted's getPage
+			# Add headers for robust 403 prevention on older Twisted versions
+			headers = {
+				'Connection': ['close'],
+				'Accept': ['application/json, text/plain, */*']
+			}
+
+			d = getPage(
+				str.encode(api_url), 
+				contextFactory=sniFactory, 
+				timeout=10, 
+				agent=AGENT 
+			)
+
+		else:
+			# === Python 2 (Requests/deferToThread Logic for 403 bypass) ===
+			try:
+				# Imports are placed here to ensure they only happen in Py2 environment
+				from twisted.internet.threads import deferToThread
+				import requests
+				import random
+			except ImportError as e:
+				#logdata("StandingsScreen", "CRITICAL ERROR: Python 2 requires 'requests' and 'deferToThread': %s" % str(e))
+				self.display_standings()
+				return None
+
+			#logdata("StandingsScreen", "Attempting fetch (Py2 Requests FIX) for API: %s" % api_url)
+			
+			# --- Headers/UA for Py2 consistency/403 bypass ---
+			USER_AGENTS = [
+				'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36',
+				'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
+				'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Safari/605.1.15',
+			]
+			ua = random.choice(USER_AGENTS)
+
+			headers2 = {
+				'User-Agent': ua,
+				'Accept': 'application/json, text/plain, */*',
+				'Referer': 'https://www.sofascore.com/',
+				'Origin': 'https://www.sofascore.com',
+				'Cache-Control': 'no-cache',
+			}
+
+			def _fetch_with_requests_py2():
+				try:
+					r = requests.get(api_url, headers=headers2, timeout=10)
+					r.raise_for_status()
+					# Twisted expects a deferred result, which is the raw content
+					return r.content 
+				except Exception as e:
+					#logdata("StandingsScreen", "Python 2 Requests fetch failed: %s" % str(e))
+					# Raise to trigger the deferred errback
+					raise Exception("SofaScore fetch failed: %s" % str(e))
+
+			d = deferToThread(_fetch_with_requests_py2)
+
+		# === Wire the callbacks (Shared for both PY3 and PY2 deferred 'd') ===
+		d.addCallback(self._parse_standings_data)
+		d.addErrback(self._standing_error_handler, api_url)
+		
+	def _parse_standings_data(self, raw_json_content):
 		standings = []
+		api_url = locals().get('api_url', 'N/A')
 		
 		try:
-			raw_json_content = None
-			try:
-				# --- Modern fetch using requests (works on Python 2 & 3) ---
-				r = requests.get(api_url, headers=json_headers, timeout=5)
-				r.raise_for_status()
-				raw_json_content = r.content
-			except Exception as e:
-				# --- Fallback to compat_urlopen if requests fails ---
-				try:
-					request = compat_Request(api_url, headers=json_headers)
-					response = compat_urlopen(request, timeout=5)
-					raw_json_content = response.read()
-				except Exception as e2:
-					raise Exception("SofaScore fetch failed: %s / %s" % (str(e), str(e2)))
-
-			# Decode JSON (works in both Python 2/3)
-			if PY3:
-				json_data = raw_json_content.decode('utf-8')
-			else:
-				try:
-					json_data = raw_json_content.decode('utf-8')
-				except:
-					json_data = raw_json_content
-				
+			# Decode and parse JSON (raw_json_content is bytes from getPage)
+			json_data = raw_json_content.decode('utf-8', errors='ignore')
 			data = json.loads(json_data)
-			#logdata("fetch_standings", "JSON data fetched successfully.")
+			#logdata("StandingsScreen", "JSON data fetched and parsed successfully.")
 
 			if 'standings' not in data or not data['standings']:
-				#logdata("fetch_standings", "No 'standings' data found in JSON response.")
+				#logdata("StandingsScreen", "No 'standings' data found in JSON response.")
 				self.standings_data = []
 				self.display_standings()
 				return
@@ -1669,13 +1870,13 @@ class StandingsScreen(Screen):
 			# 4. Extract and process standings data from JSON
 			for table in data['standings']:
 				
-				# Handle Group/Table names (CRITICAL FIX for AFC East/West separation)
-				if 'name' in table and table['name']: # Catches 'East' / 'West' for AFC
+				# Handle Group/Table names (CRITICAL FIX for separation)
+				if 'name' in table and table['name']:
 					title = "Table %s" % table['name']
 					if not PY3:
 						title = title.encode('utf-8')
 					standings.append(title)
-				elif 'groupName' in table and table['groupName']: # Catches 'Group A', 'Group B', etc.
+				elif 'groupName' in table and table['groupName']:
 					title = "Table %s" % table['groupName']
 					if not PY3:
 						title = title.encode('utf-8')
@@ -1715,24 +1916,30 @@ class StandingsScreen(Screen):
 						goals_scored,
 						goals_conceded,
 						goal_diff,
-						logo_url
+						logo_url # Index 10
 					])
 
 			self.standings_data = standings
 			
 			if standings:
-				# Call logo download asynchronously
+				# Call logo download asynchronously and display when done
 				deferToThread(self.check_and_download_logos).addCallback(lambda x: self.display_standings())
 				return
 
 			self.display_standings()
 
-		except (compat_HTTPError, compat_URLError, ValueError, Exception) as e:
-			final_api_url = locals().get('api_url', 'N/A')
-			#logdata("fetch_standings_error", "Failed to fetch/parse SofaScore JSON for API %s: %s" % (final_api_url, str(e)))
+		except Exception as e:
+			#logdata("StandingsScreen", "Failed to parse JSON for API %s: %s" % (api_url, str(e)))
 			trace_error()
 			self.standings_data = []
 			self.display_standings()
+
+	def _standing_error_handler(self, failure, url):
+		# This handles errors from getPage (e.g., Timeout, 403, DNS errors)
+		error_message = failure.getErrorMessage()
+		#logdata("StandingsScreen", "Twisted Fetch Error on %s: %s" % (url, error_message))
+		self.standings_data = []
+		self.display_standings() # Display empty standings
 
 	def check_and_download_logos(self):
 		headers = self.headers.copy() # Use headers from init
@@ -1769,41 +1976,70 @@ class StandingsScreen(Screen):
 			if os.path.exists(filename_png):
 				return True
 
-			#logdata("Logos", "Downloading logo for '%s' from: %s" % (team_name, logo_url))
-
 			# Determine file extension from URL (used for temp filename)
 			ext = ".gif" if logo_url.lower().endswith(".gif") else (".png" if logo_url.lower().endswith(".png") else ".jpg")
-			#logdata("ext", "Downloading logo for '%s'" % ext)
 			
-			# Temporary file path (using the actual downloaded extension)
-			temp_file = os.path.join("/tmp", "{}{}".format(team_filename, ext))
-			#logdata("temp_file", "Downloading logo for '%s' from: %s" % (team_filename, ext))
+			# Temporary file path for raw download (using .temp_raw for safety)
+			temp_file = os.path.join("/tmp", "{}.temp_raw".format(team_filename))
+			# Temporary path for PIL output
+			final_temp_png = os.path.join("/tmp", "{}.temp_png".format(team_filename))
+			
+			success = False
+			temp_files_to_clean = [temp_file, final_temp_png] # List all files to clean up
+
+			# Use the proven working User-Agent (Bytes for Twisted, must be string for Requests)
+			AGENT = b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
+			AGENT_STR = AGENT.decode('utf-8', 'ignore')
 
 			try:
-				logo_headers = headers.copy()
-				logo_headers["Accept"] = "image/avif,image/webp,image/apng,image/svg+xml,image/*;q=0.8"
-				if not PY3:
-					try:
-						logo_headers["Referer"] = "https://www.sofascore.com/"
-						r = requests.get(logo_url, headers=logo_headers, timeout=3, verify=False)
-						r.raise_for_status()
-						data = r.content
-						# Ensure it’s actually image data
-						if not (data.startswith(b'\x89PNG') or data.startswith(b'\xff\xd8') or data.startswith(b'GIF')):
-							#logdata("Logos", "Invalid PNG data from %s (probably 403 HTML)" % logo_url)
-							return False
-						with open(temp_file, "wb") as f:
-							f.write(data)
-					except Exception as e:
-						#logdata("Logos", "Requests fetch failed for %s: %s" % (logo_url, str(e)))
-						trace_error()
-						return False
+				if PY3:
+					sniFactory = WebClientContextFactory(logo_url)
+					d = downloadPage(
+						str.encode(logo_url), 
+						temp_file,
+						contextFactory=sniFactory, 
+						timeout=5,
+						agent=AGENT
+					)
+					blockingCallFromThread(reactor, lambda: d) 
 				else:
-					req = compat_Request(logo_url, headers=logo_headers)
-					resp = compat_urlopen(req, timeout=3)
+					logo_headers = {
+						# Headers common to both methods (must be list of strings for Twisted, single string for Requests)
+						'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*;q=0.8',
+						'Referer': 'https://www.sofascore.com/', # CRITICAL
+						'Origin': 'https://www.sofascore.com',   # CRITICAL
+					}
+					# === PYTHON 2 FIX: Use Requests/deferToThread to bypass 403 ===
+					#logdata("Logos", "Starting Requests download for logo: %s (PY2 FIX)" % team_name)
+					import requests # Should be available in the Enigma2 image
+					
+					# Use headers in Py2 format (single strings)
+					# === PYTHON 2 FIX: Use Requests with 403 content check ===
+					#logdata("Logos", "Starting Requests download for logo: %s (PY2 FIX)" % team_name)
+					import requests # Should be available in the Enigma2 image
+					
+					# Use headers in Py2 format (single strings)
+					py2_headers = {
+						'User-Agent': AGENT_STR,
+						'Accept': logo_headers['Accept'],
+						'Referer': logo_headers['Referer'],
+						'Origin': logo_headers['Origin'],
+						'Cache-Control': 'no-cache',
+					}
+					
+					r = requests.get(logo_url, headers=py2_headers, timeout=5, verify=False)
+					r.raise_for_status()
+					
+					data = r.content
+					
+					# === CRITICAL FIX: Ensure it’s actually image data (not HTML 403 page) ===
+					if not (data.startswith(b'\x89PNG') or data.startswith(b'\xff\xd8') or data.startswith(b'GIF')):
+						#logdata("Logos", "ERROR: Downloaded content for '%s' is not an image (probably 403 HTML page)." % team_name)
+						return False
+						
 					# Save the raw file content to the temporary location
 					with open(temp_file, "wb") as f:
-						f.write(resp.read())
+						f.write(data)
 
 				success = False
 				if ext == ".png":
@@ -1919,7 +2155,7 @@ class StandingsScreen(Screen):
 					missing_logos = any(not team["found"] for team in teams_to_process)
 					if missing_logos:
 						# Use general headers for HTML scrape
-						html_headers = self.headers.copy()
+						html_headers = self.headers2.copy()
 						html_headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
 						html_headers["Referer"] = "https://www.google.com/"
 						html_headers["Upgrade-Insecure-Requests"] = "1"
@@ -1976,7 +2212,7 @@ class StandingsScreen(Screen):
 										#logdata("Logos", "Found logo for '%s' using match to '%s' (worldfootball)." % (team_info["original_name"], original_title))
 
 				except Exception as e:
-					logdata("Logos", "Error fetching from primary backup site %s -> %s" % (primary_backup_url, str(e)))
+					#logdata("Logos", "Error fetching from primary backup site %s -> %s" % (primary_backup_url, str(e)))
 					pass
 		
 		# Final log of any still missing teams

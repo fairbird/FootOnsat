@@ -1857,8 +1857,8 @@
             "banner": "portuguese league cup"
         },
 	{
-            "label": "portuguese liga 2",
-            "banner": "portuguese liga 2"
+            "label": "portuguese liga portugal 2",
+            "banner": "portuguese liga portugal 2"
         },
 	{
             "label": "portuguese liga 3",
@@ -2678,3 +2678,4 @@
         }
     ]
 }
+
