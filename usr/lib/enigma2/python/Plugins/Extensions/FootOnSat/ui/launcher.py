@@ -32,9 +32,9 @@ config.plugins.FootOnSat.showplugin = ConfigText(default="")
 config.plugins.FootOnSat.sort = ConfigDictionarySet(default={"footmenu": {"footsubmenu": {}}})
 config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
 config.plugins.FootOnSat.enableflag = ConfigYesNo(default=True)
-config.plugins.FootOnSat.finished = ConfigSelection(default = 2, choices = [
-	(2, _("2 hours")),
-	(3, _("3 hours"))
+config.plugins.FootOnSat.finished = ConfigSelection(default = "2", choices = [
+	("2", _("2 hours")),
+	("3", _("3 hours"))
 	])
 config.plugins.FootOnSat.livescoresections = ConfigSelection(default = "1", choices = [
 	("1", _("All Sections")),
