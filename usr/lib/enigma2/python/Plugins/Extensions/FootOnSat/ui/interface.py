@@ -863,7 +863,7 @@ class FootOnSat(Screen):
 				
 				# --- FIX: THRESHOLD ADJUSTMENT for maximum accuracy ---
 				THRESHOLD = 0.50 # Lowered from 0.60 to 0.55 to ensure all challenging names match
-				TIME_WINDOW = timedelta(hours=hours=3, minutes=30)
+				TIME_WINDOW = timedelta(hours=3, minutes=30)
 				
 				# --- Caching for Live Matches ---
 				live_clean_cache = {}
