@@ -146,15 +146,6 @@ log_urls = {
 	"afcchampions": "https://www.worldfootball.net/competition/afc-champions-league-elite/",
 }
 
-HIDEMATCH = None
-
-def get_hide_match_hours():
-	try:
-		return int(config.plugins.FootOnSat.finished.value) 
-	except Exception:
-		return 2
-current_hours = get_hide_match_hours() 
-
 def logdata(label_name = "", data = None):
 	try:
 		data=str(data)
@@ -675,7 +666,7 @@ class FootOnSat(Screen):
 	def fetch_live_results(self):
 		# Define the fixed time windows
 		LIVE_DURATION = timedelta(hours=3, minutes=30) # 3.5 hours limit for finished matches
-		TIME_WINDOW = timedelta(hours=get_hide_match_hours()) # Generous fuzzy matching time tolerance
+		TIME_WINDOW = timedelta(hours=3, minutes=30) # Generous fuzzy matching time tolerance
 		
 		live_start_time = time.time()
 		logdata("FootOnSat-LIVESCORE", "fetch_live_results initiated.")
@@ -872,7 +863,7 @@ class FootOnSat(Screen):
 				
 				# --- FIX: THRESHOLD ADJUSTMENT for maximum accuracy ---
 				THRESHOLD = 0.50 # Lowered from 0.60 to 0.55 to ensure all challenging names match
-				TIME_WINDOW = timedelta(hours=get_hide_match_hours())
+				TIME_WINDOW = timedelta(hours=hours=3, minutes=30)
 				
 				# --- Caching for Live Matches ---
 				live_clean_cache = {}
@@ -1041,7 +1032,7 @@ class FootOnSat(Screen):
 		# 1. UPDATED: Consider matches live for 2 hours
 		try:
 			# Check the configuration value for the "finished" duration
-			if get_hide_match_hours() == 2: 
+			if config.plugins.FootOnSat.finished.value == "2":
 				HOUR = 2
 			else:
 				# Default to 3 hours if option is not '2'
