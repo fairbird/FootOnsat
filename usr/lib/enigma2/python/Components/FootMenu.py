@@ -1,3 +1,4 @@
+from Components.config import config
 from Components.GUIComponent import GUIComponent
 from Components.MultiContent import MultiContentEntryText , MultiContentEntryPixmap, MultiContentEntryPixmapAlphaTest
 from enigma import eListboxPythonMultiContent, eListbox, ePixmap, eLabel, eSize, ePoint, gFont, getDesktop
@@ -183,6 +184,11 @@ class FlexibleMenu(GUIComponent):
 			list_dummy = []
 
 			self.total_pages = int(math.ceil(float(len(self.list)) / self.itemPerPage))
+
+			excluded_icons = ["italia2012_icons"] # Add future exclusions here
+			is_icon_excluded = config.plugins.FootOnSat.icons.value in excluded_icons
+			show_match_today_text = not is_icon_excluded
+
 			for elem in self.list:
 				if count > self.itemPerPage - 1:
 					count = 0
@@ -192,19 +198,21 @@ class FlexibleMenu(GUIComponent):
 				logoPath = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/icons/{}.png".format(elem[0]))
 				if fileExists(logoPath):
 					logo = LoadPixmap(logoPath)
+				text_match = "Match" if (elem[0] == "today" and show_match_today_text) else ""
+				text_today = "Today" if (elem[0] == "today" and show_match_today_text) else ""
 				self.entries.update({
 					elem[0]:{
 						"active":(
 							mcentry_pixmap(pos=(x, y), size=(self.activeboxwidth,self.activeboxheight), png=self.selPixmap, flags=BT_SCALE),
 							mcentry_pixmap_alpha(pos=(x, y), size=(self.activeboxwidth,self.activeboxheight), png=logo, flags=BT_SCALE|BT_ALIGN_CENTER|BT_KEEP_ASPECT_RATIO),
-							MultiContentEntryText(pos=(x+70 if reswidth >= 2560 else x+57, y+168), size=(self.activeboxwidth, 34), font=0, text="Match" if elem[0] == "today" else ""),
-							MultiContentEntryText(pos=(x+220 if reswidth >= 2560 else x+170, y+168), size=(self.activeboxwidth, 34), font=0, text="Today" if elem[0] == "today" else ""),
+							MultiContentEntryText(pos=(x+70 if reswidth >= 2560 else x+57, y+168), size=(self.activeboxwidth, 34), font=0, text=text_match),
+							MultiContentEntryText(pos=(x+220 if reswidth >= 2560 else x+170, y+168), size=(self.activeboxwidth, 34), font=0, text=text_match),
 						),
 						"u_active":(
 							mcentry_pixmap(pos=(x+xoffset, y+yoffset), size=(self.boxwidth,self.boxheight), png=self.itemPixmap, flags=BT_SCALE),
 							mcentry_pixmap_alpha(pos=(x+xoffset, y+yoffset), size=(self.boxwidth,self.boxheight), png=logo, flags=BT_SCALE|BT_ALIGN_CENTER|BT_KEEP_ASPECT_RATIO),
-							MultiContentEntryText(pos=(x+70 if reswidth >= 2560 else x+60, y+160), size=(self.boxwidth, 34), font=0, text="Match" if elem[0] == "today" else ""),
-							MultiContentEntryText(pos=(x+220 if reswidth >= 2560 else x+170, y+160), size=(self.boxwidth, 34), font=0, text="Today" if elem[0] == "today" else ""),
+							MultiContentEntryText(pos=(x+70 if reswidth >= 2560 else x+60, y+160), size=(self.boxwidth, 34), font=0, text=text_match),
+							MultiContentEntryText(pos=(x+220 if reswidth >= 2560 else x+170, y+160), size=(self.boxwidth, 34), font=0, text=text_match),
 						),
 						"page":page
 					}
