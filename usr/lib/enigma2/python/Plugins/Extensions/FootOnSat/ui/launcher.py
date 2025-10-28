@@ -58,8 +58,8 @@ config.plugins.FootOnSat.notify = ConfigSelection(default = "1", choices = [
 	("6", _("Only Before 30 min + Start match")),
 	("7", _("Only Before 15 min + Before 30 min"))
 	])
-config.plugins.FootOnSat.icons = ConfigSelection(default = "default_icons", choices = [
-	("default_icons", _("default icons")),
+config.plugins.FootOnSat.icons = ConfigSelection(default = "icons_default", choices = [
+	("icons_default", _("default icons")),
 	("icons_buwalla", _("buwalla icons")),
 	("icons_renkli", _("renkli icons")),
 	("italia2012_icons", _("italia2012 Full style color"))
@@ -570,8 +570,8 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 				return
 			index = cur[1].value if hasattr(cur[1], "value") else None
 			pic = None
-			if index == "default_icons":
-				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/default_icons.png')
+			if index == "icons_default":
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/icons_default.png')
 			elif index == "icons_buwalla":
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/icons_buwalla.png')
 			elif index == "icons_renkli":
@@ -617,7 +617,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			changed = True
 			extract_path = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
 			urls = {
-				"default_icons": "default_icons.tar.gz",
+				"icons_default": "icons_default.tar.gz",
 				"icons_buwalla": "icons_buwalla.tar.gz",
 				"icons_renkli": "icons_renkli.tar.gz",
 				"italia2012_icons": "italia2012_icons.tar.gz",
