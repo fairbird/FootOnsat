@@ -106,8 +106,13 @@ json_urls = {
 
 	# Saudi Arabia league
 	"saudiarabia": "https://www.sofascore.com/tournament/football/saudi-arabia/saudi-pro-league/955#id:80443",
-	# Asia Champions league
+	# Asia Champions league Elite
 	"afcchampions": "https://www.sofascore.com/tournament/football/asia/afc-champions-league/463#id:77010",
+	# Asia Champions league two
+	"afcchampionstwo": "https://www.sofascore.com/tournament/football/asia/afc-cup/668#id:77009",
+
+	# euroleague basketball
+	"basketball": "https://www.sofascore.com/tournament/basketball/international/euroleague/138#id:78545",
 }
 # Use thess url to download missing log of team (Extra code)
 log_urls = {
@@ -142,8 +147,10 @@ log_urls = {
 
 	# Saudi Arabia league
 	"saudiarabia": "https://www.worldfootball.net/competition/ksa-saudi-pro-league/",
-	# Asia Champions league
+	# Asia Champions league Elite
 	"afcchampions": "https://www.worldfootball.net/competition/afc-champions-league-elite/",
+	# Asia Champions league two
+	"afcchampionstwo": "https://www.worldfootball.net/competition/afc-champions-league-two/",
 }
 
 def logdata(label_name = "", data = None):
@@ -201,7 +208,7 @@ class WebClientContextFactory(ClientContextFactory):
 
 class FootOnSat(Screen):
 	def __init__(self, session, link, *args):
-		logdata("FootOnSat-INIT", "Plugin initialization started.")
+		#logdata("FootOnSat-INIT", "Plugin initialization started.")
 		self.session = session
 		Screen.__init__(self, session)
 		if reswidth == 1920:
@@ -654,7 +661,7 @@ class FootOnSat(Screen):
 		return resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/default/FHD/{}.png".format(banner))
 
 	def callAPI(self):
-		logdata("FootOnSat-API", "Starting callAPI to fetch main schedule: %s" % self.link)
+		#logdata("FootOnSat-API", "Starting callAPI to fetch main schedule: %s" % self.link)
 		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/{}.json'.format(self.link)
 		sniFactory = WebClientContextFactory(url)
 		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
@@ -669,7 +676,7 @@ class FootOnSat(Screen):
 		TIME_WINDOW = timedelta(hours=3, minutes=30) # Generous fuzzy matching time tolerance
 		
 		live_start_time = time.time()
-		logdata("FootOnSat-LIVESCORE", "fetch_live_results initiated.")
+		#logdata("FootOnSat-LIVESCORE", "fetch_live_results initiated.")
 		
 		# === URL Setup ===
 		today_iso = date.today().isoformat()
@@ -692,7 +699,7 @@ class FootOnSat(Screen):
 			'Cache-Control': 'no-cache',
 		}
 
-		logdata("FootOnSat-LIVESCORE", "Sending request to SofaScore API.")
+		#logdata("FootOnSat-LIVESCORE", "Sending request to SofaScore API.")
 
 		# === Twisted HTTP Request Handling (with Py3 compatibility) ===
 		if PY3:
@@ -724,7 +731,7 @@ class FootOnSat(Screen):
 		# === _process_response (Twisted Callback from network fetch) ===
 		def _process_response(raw):
 			process_start = time.time()
-			logdata("FootOnSat-LIVESCORE", "Received SofaScore response. Starting processing.")
+			#logdata("FootOnSat-LIVESCORE", "Received SofaScore response. Starting processing.")
 
 			# Decode and JSON Load
 			try:
@@ -830,14 +837,14 @@ class FootOnSat(Screen):
 					logdata("FootOnSat-Sofa-ERROR", "Error building live_matches for an event: %s" % str(e))
 					continue
 			
-			logdata("FootOnSat-PERF", "LIVESCORE: Data extraction/filtering completed on Main Thread in %.3f s." % (time.time() - build_start))
+			#logdata("FootOnSat-PERF", "LIVESCORE: Data extraction/filtering completed on Main Thread in %.3f s." % (time.time() - build_start))
 
 			# === STEP 2: INSTANT UI DRAW ===
 			matches_list = [list(m) for m in self.matches]
 			
 			try:
 				self.iniMenu()
-				logdata("FootOnSat-PERF", "LIVESCORE: Initial UI drawn instantly with schedule data.")
+				#logdata("FootOnSat-PERF", "LIVESCORE: Initial UI drawn instantly with schedule data.")
 			except Exception as e:
 				pass
 
@@ -859,7 +866,7 @@ class FootOnSat(Screen):
 
 			def _do_fuzzy_matching(matches_list, live_matches, now_adj):
 				match_perf_start = time.time()
-				logdata("FootOnSat-PERF", "LIVESCORE: Fuzzy Matching started on background thread.")
+				#logdata("FootOnSat-PERF", "LIVESCORE: Fuzzy Matching started on background thread.")
 				
 				# --- FIX: THRESHOLD ADJUSTMENT for maximum accuracy ---
 				THRESHOLD = 0.50 # Lowered from 0.60 to 0.55 to ensure all challenging names match
@@ -986,7 +993,7 @@ class FootOnSat(Screen):
 					except Exception as e:
 						continue
 
-				logdata("FootOnSat-PERF", "LIVESCORE: Ultra-Optimized Fuzzy Matching finished in %.3f s." % (time.time() - match_perf_start))
+				#logdata("FootOnSat-PERF", "LIVESCORE: Ultra-Optimized Fuzzy Matching finished in %.3f s." % (time.time() - match_perf_start))
 				return matches_list
 
 
@@ -997,7 +1004,7 @@ class FootOnSat(Screen):
 					self.iniMenu()
 				except Exception as e:
 					pass
-				logdata("FootOnSat-PERF", "LIVESCORE: Final UI updated with scores. Total processing time: %.3f s." % (time.time() - process_start))
+				#logdata("FootOnSat-PERF", "LIVESCORE: Final UI updated with scores. Total processing time: %.3f s." % (time.time() - process_start))
 				
 
 			d_match = deferToThread(_do_fuzzy_matching, matches_list, live_matches, now_adj)
@@ -1011,7 +1018,7 @@ class FootOnSat(Screen):
 		d.addCallback(_process_response)
 		d.addErrback(_error)
 		
-		logdata("FootOnSat-PERF", "LIVESCORE: Network request fired. Time elapsed until non-blocking request: %.3f s." % (time.time() - live_start_time))
+		#logdata("FootOnSat-PERF", "LIVESCORE: Network request fired. Time elapsed until non-blocking request: %.3f s." % (time.time() - live_start_time))
 
 	def getData(self, data):
 		list = []
@@ -1507,24 +1514,22 @@ class FootOnsatNotifScreen(Screen):
 		else:
 			# 6 seconds before final hide (original time)
 			self.onhideTimer.start(6000) 
-			
+
 	def _start_sequential_display(self):
 		"""Starts the sequential display process if not already running."""
 		if self.is_displaying:
 			return
-			
 		self.is_displaying = True
 		# Play sound once per batch (assuming first time notify is called is start of batch)
-		try:
-			if os.path.exists("/usr/bin/aplay"):
-				os.system('aplay /usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/sound/notif1.wav &')
-			else:
-				os.system('ffmpeg -hide_banner -loglevel quiet -i "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/sound/notif1.wav" -filter:a "volume=1.0" -f alsa default &')
-		except Exception as e:
-			logdata("FootOnSatNotif", "Sound play error: %s" % e)
-		
-		# Start the sequential timer to immediately process the first item
-		self.onhideTimer.start(10)
+		from Plugins.Extensions.FootOnSat.launcher import FootOnsatLauncher
+		tone_file = FootOnsatLauncher.getToneFile()
+		if os.path.exists("/usr/bin/aplay"):
+			os.system('aplay "{}" &'.format(tone_file))
+		else:
+			os.system('ffmpeg -hide_banner -loglevel quiet -i "{}" -filter:a "volume=1.0" -f alsa default &'.format(tone_file))
+			
+			# Start the sequential timer to immediately process the first item
+			self.onhideTimer.start(10)
 
 	def checkforNotif(self):
 		
@@ -2242,10 +2247,10 @@ class StandingsScreen(Screen):
 				club_idx = 1  # reset numbering for new table
 				if reswidth == 1920:
 					res = [ITEM_HEIGHT, MultiContentEntryText(pos=(450, 0), size=(960, ITEM_HEIGHT), font=0,
-													   flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(standing))]
+												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(standing))]
 				else: # UHD skins
-					res = [ITEM_HEIGHT, MultiContentEntryText(pos=(900, 0), size=(1920, ITEM_HEIGHT), font=0,
-													   flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(standing))]
+					res = [ITEM_HEIGHT, MultiContentEntryText(pos=(0, 25), size=(2428, ITEM_HEIGHT), font=0,
+												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(standing))]
 				gList.append(res)
 				continue
 
@@ -2269,9 +2274,9 @@ class StandingsScreen(Screen):
 				TEAM_NAME_X_POS = 160
 				TEXT_Y_OFFSET = 0  # No offset needed for 1920
 			else:  # 2560
-				LOGO_SIZE_H = 45  # Reduced from 55 to 45
+				LOGO_SIZE_H = 60
 				LOGO_Y_POS = int((ITEM_HEIGHT - LOGO_SIZE_H) / 2)  # Recalculate to center vertically
-				LOGO_X_POS = 130
+				LOGO_X_POS = 95
 				TEAM_NAME_X_POS = 220
 				TEXT_Y_OFFSET = LOGO_Y_POS  # Align text with logo vertical position
 
@@ -2282,7 +2287,7 @@ class StandingsScreen(Screen):
 				res.append(MultiContentEntryText(pos=(20, 0), size=(50, ITEM_HEIGHT), font=0,
 												 flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, text=str(club_idx)))
 			else:  # 2560
-				res.append(MultiContentEntryText(pos=(30, LOGO_Y_POS), size=(70, LOGO_SIZE_H), font=0,
+				res.append(MultiContentEntryText(pos=(0, LOGO_Y_POS +12), size=(70, LOGO_SIZE_H), font=0,
 												 flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, text=str(club_idx)))
 			club_idx += 1
 
@@ -2327,36 +2332,36 @@ class StandingsScreen(Screen):
 				if os.path.exists(flagteam_png):
 					if PY3:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
-																   png=loadPNG(flagteam_png), flags=BT_SCALE))
+                                                                   png=loadPNG(flagteam_png), flags=BT_SCALE))
 					else: # DreamOS
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
-																   png=loadPNG(flagteam_png)))
+                                                                   png=loadPNG(flagteam_png)))
 				# team name - increased width for better display
-				res.append(MultiContentEntryText(pos=(230, LOGO_Y_POS), size=(550, LOGO_SIZE_H), font=0,
+				res.append(MultiContentEntryText(pos=(200, LOGO_Y_POS +13), size=(550, LOGO_SIZE_H), font=0,
 												 flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team or "")))
 				# matches played - aligned with "Played" header
-				res.append(MultiContentEntryText(pos=(660, LOGO_Y_POS), size=(140, LOGO_SIZE_H), font=0,
+				res.append(MultiContentEntryText(pos=(630, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
 												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(played or "")))
 				# points - aligned with "Points" header
-				res.append(MultiContentEntryText(pos=(905, LOGO_Y_POS), size=(140, LOGO_SIZE_H), font=0,
+				res.append(MultiContentEntryText(pos=(880, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
 												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(points or "")))
 				# wins - aligned with "Wins" header
-				res.append(MultiContentEntryText(pos=(1150, LOGO_Y_POS), size=(140, LOGO_SIZE_H), font=0,
+				res.append(MultiContentEntryText(pos=(1120, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
 												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(wins or "")))
 				# draws - aligned with "Draws" header
-				res.append(MultiContentEntryText(pos=(1405, LOGO_Y_POS), size=(140, LOGO_SIZE_H), font=0,
+				res.append(MultiContentEntryText(pos=(1375, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
 												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(draws or "")))
 				# losses - aligned with "Losses" header
-				res.append(MultiContentEntryText(pos=(1640, LOGO_Y_POS), size=(140, LOGO_SIZE_H), font=0,
+				res.append(MultiContentEntryText(pos=(1610, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
 												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(losses or "")))
 				# goals scored - aligned with "Goals Scored" header
-				res.append(MultiContentEntryText(pos=(1870, LOGO_Y_POS), size=(140, LOGO_SIZE_H), font=0,
+				res.append(MultiContentEntryText(pos=(1865, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
 												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_scored or "")))
 				# goals conceded - aligned with "Conceded" header
-				res.append(MultiContentEntryText(pos=(2080, LOGO_Y_POS), size=(140, LOGO_SIZE_H), font=0,
+				res.append(MultiContentEntryText(pos=(2075, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
 												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_conceded or "")))
 				# goal diff - aligned with "Difference" header
-				res.append(MultiContentEntryText(pos=(2260, LOGO_Y_POS), size=(140, LOGO_SIZE_H), font=0,
+				res.append(MultiContentEntryText(pos=(2265, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
 												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goal_diff or "")))
 			gList.append(res)
 
