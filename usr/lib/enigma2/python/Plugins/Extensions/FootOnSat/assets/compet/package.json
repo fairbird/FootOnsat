@@ -2172,6 +2172,10 @@
             "label": "south african nedbank cup",
             "banner": "south african nedbank cup"
         },
+        {
+            "label": "south african knockout cup",
+            "banner": "south african knockout cup"
+        },
 	{
             "label": "south african premiership",
             "banner": "south african premiership"
@@ -2678,4 +2682,3 @@
         }
     ]
 }
-
