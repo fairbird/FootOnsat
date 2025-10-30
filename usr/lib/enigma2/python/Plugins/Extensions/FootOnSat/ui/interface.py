@@ -673,7 +673,7 @@ class FootOnSat(Screen):
 	def fetch_live_results(self):
 		# Define the fixed time windows
 		LIVE_DURATION = timedelta(hours=3, minutes=30) # 3.5 hours limit for finished matches
-		TIME_WINDOW = timedelta(hours=3, minutes=30) # Generous fuzzy matching time tolerance
+		TIME_WINDOW = timedelta(hours=4) # Generous fuzzy matching time tolerance
 		
 		live_start_time = time.time()
 		#logdata("FootOnSat-LIVESCORE", "fetch_live_results initiated.")
@@ -859,6 +859,7 @@ class FootOnSat(Screen):
 				except:
 					pass
 				name = compat_str(name).strip().lower()
+				# Reverting to simpler noise list to avoid breaking anything else
 				NOISE = r'\b(fc|cf|as|ac|utd|united|city|town|county|national|club|team|squad|sport|athletic|calcio|ploieşti|ploiești|ploieshti|aif|ifk|goteborg|göteborg)\b'
 				name = re.sub(NOISE, ' ', name, flags=re.IGNORECASE)
 				name = re.sub(r'\s+', ' ', name).strip()
@@ -870,7 +871,7 @@ class FootOnSat(Screen):
 				
 				# --- FIX: THRESHOLD ADJUSTMENT for maximum accuracy ---
 				THRESHOLD = 0.50 # Lowered from 0.60 to 0.55 to ensure all challenging names match
-				TIME_WINDOW = timedelta(hours=3, minutes=30)
+				TIME_WINDOW = timedelta(hours=4)
 				
 				# --- Caching for Live Matches ---
 				live_clean_cache = {}
@@ -996,7 +997,6 @@ class FootOnSat(Screen):
 				#logdata("FootOnSat-PERF", "LIVESCORE: Ultra-Optimized Fuzzy Matching finished in %.3f s." % (time.time() - match_perf_start))
 				return matches_list
 
-
 			def _matching_complete(updated_matches_list):
 				match_complete_time = time.time()
 				self.matches = updated_matches_list
@@ -1005,12 +1005,10 @@ class FootOnSat(Screen):
 				except Exception as e:
 					pass
 				#logdata("FootOnSat-PERF", "LIVESCORE: Final UI updated with scores. Total processing time: %.3f s." % (time.time() - process_start))
-				
 
 			d_match = deferToThread(_do_fuzzy_matching, matches_list, live_matches, now_adj)
 			d_match.addCallback(_matching_complete)
 			d_match.addErrback(lambda f: logdata("FootOnSat-Sofa-ERROR", "Fuzzy matching thread failed: %s" % f.getErrorMessage()))
-
 
 		def _error(failure):
 			logdata("FootOnSat-Sofa-ERROR", "Twisted Request failed: %s" % failure.getErrorMessage())
@@ -1773,9 +1771,14 @@ class StandingsScreen(Screen):
 			return
 
 		# 2. Construct the JSON API URL
-		api_url = "https://api.sofascore.com/api/v1/unique-tournament/{}/season/{}/standings/total".format(
-			tournament_id, season_id
-		)
+		try:
+			api_url = "http://api.sofascore.com/api/v1/unique-tournament/{}/season/{}/standings/total".format(
+				tournament_id, season_id
+			)
+		except Exception as e:
+			api_url = "https://api.sofascore.com/api/v1/unique-tournament/{}/season/{}/standings/total".format(
+				tournament_id, season_id
+			)
 			
 		#logdata("StandingsScreen", "Using SofaScore API URL: %s" % api_url)
 		AGENT = b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
@@ -1896,7 +1899,10 @@ class StandingsScreen(Screen):
 					
 					team_name = team_data.get('name', 'Unknown Team')
 					team_id = team_data.get('id')
-					logo_url = "https://api.sofascore.com/api/v1/team/{}/image".format(team_id) if team_id else ""
+					try:
+						logo_url = "http://api.sofascore.com/api/v1/team/{}/image".format(team_id) if team_id else ""
+					except Exception as e:
+						logo_url = "https://api.sofascore.com/api/v1/team/{}/image".format(team_id) if team_id else ""
 					
 					# Extract all required stats directly from the 'row' dictionary
 					position = str(row.get('position', 0))
@@ -1974,8 +1980,7 @@ class StandingsScreen(Screen):
 			team_filename = sanitize_team_name(team_name)
 
 			# The final target path is ALWAYS .png (what the E2 interface expects)
-			filename_png = resolveFilename(SCOPE_PLUGINS,
-										 "Extensions/FootOnSat/assets/standings/{}.png".format(team_filename))
+			filename_png = resolveFilename(SCOPE_PLUGINS,"Extensions/FootOnSat/assets/standings/{}.png".format(team_filename))
 
 			# Check if PNG version exists
 			if os.path.exists(filename_png):
@@ -2152,7 +2157,6 @@ class StandingsScreen(Screen):
 		# --- PHASE 2: WORLDFOOTBALL FALLBACK (ONLY for missing logos) ---
 		# -------------------------------------------------------------------
 		if logos_found < total_teams:
-			
 			primary_backup_url = log_urls.get(self.league)
 			if primary_backup_url:
 				#logdata("Logos", "Phase 2 (Worldfootball): Scraping primary backup site (%s) for missing logos..." % primary_backup_url)
@@ -2162,7 +2166,10 @@ class StandingsScreen(Screen):
 						# Use general headers for HTML scrape
 						html_headers = self.headers2.copy()
 						html_headers["Accept"] = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
-						html_headers["Referer"] = "https://www.google.com/"
+						try:
+							html_headers["Referer"] = "http://www.google.com/"
+						except Exception as e:
+							html_headers["Referer"] = "https://www.google.com/"
 						html_headers["Upgrade-Insecure-Requests"] = "1"
 
 						request = compat_Request(primary_backup_url, headers=html_headers)
