@@ -206,13 +206,13 @@ class FlexibleMenu(GUIComponent):
 							mcentry_pixmap(pos=(x, y), size=(self.activeboxwidth,self.activeboxheight), png=self.selPixmap, flags=BT_SCALE),
 							mcentry_pixmap_alpha(pos=(x, y), size=(self.activeboxwidth,self.activeboxheight), png=logo, flags=BT_SCALE|BT_ALIGN_CENTER|BT_KEEP_ASPECT_RATIO),
 							MultiContentEntryText(pos=(x+70 if reswidth >= 2560 else x+57, y+168), size=(self.activeboxwidth, 34), font=0, text=text_match),
-							MultiContentEntryText(pos=(x+220 if reswidth >= 2560 else x+170, y+168), size=(self.activeboxwidth, 34), font=0, text=text_match),
+							MultiContentEntryText(pos=(x+220 if reswidth >= 2560 else x+170, y+168), size=(self.activeboxwidth, 34), font=0, text=text_today),
 						),
 						"u_active":(
 							mcentry_pixmap(pos=(x+xoffset, y+yoffset), size=(self.boxwidth,self.boxheight), png=self.itemPixmap, flags=BT_SCALE),
 							mcentry_pixmap_alpha(pos=(x+xoffset, y+yoffset), size=(self.boxwidth,self.boxheight), png=logo, flags=BT_SCALE|BT_ALIGN_CENTER|BT_KEEP_ASPECT_RATIO),
 							MultiContentEntryText(pos=(x+70 if reswidth >= 2560 else x+60, y+160), size=(self.boxwidth, 34), font=0, text=text_match),
-							MultiContentEntryText(pos=(x+220 if reswidth >= 2560 else x+170, y+160), size=(self.boxwidth, 34), font=0, text=text_match),
+							MultiContentEntryText(pos=(x+220 if reswidth >= 2560 else x+170, y+160), size=(self.boxwidth, 34), font=0, text=text_today),
 						),
 						"page":page
 					}
