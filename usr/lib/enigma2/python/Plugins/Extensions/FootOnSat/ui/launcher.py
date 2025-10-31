@@ -2,22 +2,25 @@
 from enigma import getDesktop
 from Screens.Screen import Screen
 from Screens.Standby import TryQuitMainloop
-from Components.ActionMap import ActionMap
 from Screens.MessageBox import MessageBox
-from Tools.LoadPixmap import LoadPixmap
-from Tools.Directories import resolveFilename, SCOPE_PLUGINS, SCOPE_LANGUAGE
+from Screens.ChoiceBox import ChoiceBox
+from Components.ActionMap import ActionMap
 from Components.Pixmap import Pixmap
 from Components.Sources.StaticText import StaticText
 from Components.Label import Label
 from Components.Sources.List import List
+from Components.Harddisk import harddiskmanager
 from Components.ConfigList import ConfigListScreen
 from Components.config import config, ConfigYesNo, ConfigSubsection, ConfigSelection, getConfigListEntry, NoSave, configfile, ConfigText
+from Tools.LoadPixmap import LoadPixmap
+from Tools.Directories import resolveFilename, SCOPE_PLUGINS, SCOPE_LANGUAGE
+from Components.FootMenu import FlexibleMenu
 from Plugins.Extensions.FootOnSat.ui.Console import Console
 from Plugins.Extensions.FootOnSat.ui.interface import FootOnSat, WebClientContextFactory, readFromFile, logdata
 from Plugins.Extensions.FootOnSat.component.configs import ConfigDictionarySet
-from Components.FootMenu import FlexibleMenu
 from Plugins.Extensions.FootOnSat.__init__ import __version__
 from twisted.web.client import getPage
+from os.path import join, exists, splitext, isfile
 import re
 import os
 import json
@@ -32,6 +35,7 @@ config.plugins.FootOnSat.showplugin = ConfigText(default="")
 config.plugins.FootOnSat.sort = ConfigDictionarySet(default={"footmenu": {"footsubmenu": {}}})
 config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
 config.plugins.FootOnSat.enableflag = ConfigYesNo(default=True)
+config.plugins.FootOnSat.notiffile = ConfigText(default="notif1", visible_width = 250, fixed_size = False)
 config.plugins.FootOnSat.finished = ConfigSelection(default = "2", choices = [
 	("2", _("2 hours")),
 	("3", _("3 hours"))
@@ -54,8 +58,8 @@ config.plugins.FootOnSat.notify = ConfigSelection(default = "1", choices = [
 	("6", _("Only Before 30 min + Start match")),
 	("7", _("Only Before 15 min + Before 30 min"))
 	])
-config.plugins.FootOnSat.icons = ConfigSelection(default = "default_icons", choices = [
-	("default_icons", _("default icons")),
+config.plugins.FootOnSat.icons = ConfigSelection(default = "icons_default", choices = [
+	("icons_default", _("default icons")),
 	("icons_buwalla", _("buwalla icons")),
 	("icons_renkli", _("renkli icons")),
 	("italia2012_icons", _("italia2012 Full style color"))
@@ -69,7 +73,6 @@ def DreamOS():
 	if os.path.exists('/var/lib/dpkg/status'):
 		return True
 	return False
-
 
 class FootOnsatLauncher(Screen):
 
@@ -132,7 +135,8 @@ class FootOnsatLauncher(Screen):
 			self.error("JSON parsing failed: " + str(e))
 			return
 		ordering = ["today", "championsleague", "europaleague", "ConferenceLeague", "premierleague", "laliga", "seriea",
-		"bundesliga", "ligue1", "saudiarabia", "worldcup", "afcchampions","championship", "cafchampions", "superLig", "belgianpro", "eredivisie", "laliga2", "liganos", "basketball", "nba", "formula1"]
+		"bundesliga", "ligue1", "saudiarabia", "worldcup", "afcchampions", "afcchampionstwo","championship", "cafchampions", "superLig",
+		"belgianpro", "eredivisie", "laliga2", "liganos", "basketball", "nba", "formula1"]
 		# Keep only items in ordering, then sort according to ordering
 		# filtered_compet = [c for c in ordering if c in compet]
 		# self.menuList = self.custom_sort(ordering, filtered_compet)
@@ -425,17 +429,17 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 					</screen>"""
 	else:
 		skin = """
-				<screen name="MenuFootOnSat" position="center,center" size="1040,780" title="Menu FootOnSat">
+				<screen name="MenuFootOnSat" position="center,center" size="1040,800" title="Menu FootOnSat">
 					<widget source="global.CurrentTime" render="Label" position="5,5" size="1022,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
 						<convert type="ClockToText">Format:%d-%m-%Y     %H:%M:%S</convert>
 					</widget>
-					<widget name="config" font="Regular;28" secondfont="Regular;28" itemHeight="45" position="18,70" size="1005,375" scrollbarMode="showOnDemand"/>
-					<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,745" zPosition="-10"/>
-					<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,745" zPosition="-10"/>
-					<widget render="Label" source="key_red" position="223,710" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
-					<widget render="Label" source="key_green" position="585,710" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
-					<widget source="help" render="Label" position="18,425" size="1004,60" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
-					<widget name="Picture" position="313,485" size="400,225" zPosition="5" alphatest="blend"/>
+					<widget name="config" font="Regular;28" secondfont="Regular;28" itemHeight="45" position="18,60" size="1005,410" scrollbarMode="showOnDemand"/>
+					<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,780" zPosition="-10"/>
+					<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,780" zPosition="-10"/>
+					<widget render="Label" source="key_red" position="223,745" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
+					<widget render="Label" source="key_green" position="585,745" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
+					<widget source="help" render="Label" position="18,460" size="1004,60" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
+					<widget name="Picture" position="313,525" size="400,225" zPosition="5" alphatest="blend"/>
 				</screen>"""
 
 	def __init__(self, session):
@@ -458,7 +462,9 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 
 		self["Picture"] = Pixmap()
 		self["help"] = StaticText()
+		self.old_notiffile = config.plugins.FootOnSat.notiffile.value
 		self.icons_value = config.plugins.FootOnSat.icons.value
+		self.getToneFile()
 		self.createSetup()
 
 	def createSetup(self):
@@ -472,6 +478,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			self.list.append(getConfigListEntry(_("Select appear live + score of match in"), config.plugins.FootOnSat.livescoresections, _("This feature allows you to show matches live with result in sections")))
 			self.list.append(getConfigListEntry(_("Hide matches that started before"), config.plugins.FootOnSat.finished, _("This option is to specify the time that matches that have finished remain before they disappear from the list")))
 		self.list.append(getConfigListEntry(_("Choose to display notifications"), config.plugins.FootOnSat.notify, _("This feature allows you to specify the times for notifications to appear when matches start")))
+		self.list.append(getConfigListEntry(_("Choose tone of notifications #press OK to change"), config.plugins.FootOnSat.notiffile, _("This feature allows you to select a notification tone when matches start")))
 		self.list.append(getConfigListEntry(_("Select Icons Style"), config.plugins.FootOnSat.icons, _("This option to enable to select Icons Style")))
 		self["config"].list = self.list
 		self["config"].l.setList(self.list)
@@ -483,6 +490,72 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		cur = self["config"].getCurrent()
 		if cur and len(cur) > 1 and cur[1] == config.plugins.FootOnSat.showplugin:
 			self.session.open(SelectionScreen)
+		if cur and len(cur) > 1 and cur[1] == config.plugins.FootOnSat.notiffile:
+			tone_list = self.getToneList()
+			if tone_list:
+				self.session.openWithCallback(self.saveToneSelection, ChoiceBox, title=_("Select tone file"), list=tone_list)
+			else:
+				self.session.open(MessageBox, _("No .wav files found in sound folder!"), MessageBox.TYPE_INFO)
+
+	def getToneFile(self):
+		tone_name = config.plugins.FootOnSat.notiffile.value
+		found_file = None
+		# 1. check plugin folder
+		plugin_path = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/sound/')
+		f = join(plugin_path, tone_name + ".wav")
+		if exists(f) and isfile(f):
+			found_file = f
+		# 2. check all mounted partitions /sound folders
+		if not found_file:
+			for part in harddiskmanager.getMountedPartitions():
+				mp = join(part.mountpoint, "sound")
+				f = join(mp, tone_name + ".wav")
+				if exists(f) and isfile(f):
+					found_file = f
+					break
+		# 3. fallback to default
+		if not found_file:
+			found_file = join(plugin_path, "notif1.wav")
+			config.plugins.FootOnSat.notiffile.value = "notif1"
+			config.plugins.FootOnSat.notiffile.save()
+			configfile.save()
+		return found_file
+
+	def getToneList(self):
+		# scan plugin + mounted folders for all .wav files
+		tone_files = set()
+		paths = [resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/sound/')]
+		for part in harddiskmanager.getMountedPartitions():
+			mp = join(part.mountpoint, "sound")
+			if exists(mp):
+				paths.append(mp)
+		for path in paths:
+			if exists(path):
+				for f in os.listdir(path):
+					if f.lower().endswith(".wav") and isfile(join(path, f)):
+						tone_files.add(os.path.splitext(f)[0])
+		# check if current config value exists, else fallback
+		if config.plugins.FootOnSat.notiffile.value not in tone_files:
+			config.plugins.FootOnSat.notiffile.value = "notif1"
+			config.plugins.FootOnSat.notiffile.save()
+			configfile.save()
+			tone_files.add("notif1")
+		# natural sort
+		def natural_key(s):
+			return [int(t) if t.isdigit() else t.lower() for t in re.split(r'(\d+)', s)]
+
+		return sorted([(name, name) for name in tone_files], key=lambda x: natural_key(x[0]))
+
+	def saveToneSelection(self, selection):
+		if selection:
+			selected_tone = selection[1]
+			config.plugins.FootOnSat.notiffile.value = selected_tone
+			config.plugins.FootOnSat.notiffile.save()
+			configfile.save()
+			try:
+				self["config"].invalidate(config.plugins.FootOnSat.notiffile)
+			except Exception:
+				pass
 
 	def updateHelp(self):
 		cur = self["config"].getCurrent()
@@ -497,8 +570,8 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 				return
 			index = cur[1].value if hasattr(cur[1], "value") else None
 			pic = None
-			if index == "default_icons":
-				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/default_icons.png')
+			if index == "icons_default":
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/icons_default.png')
 			elif index == "icons_buwalla":
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/icons_buwalla.png')
 			elif index == "icons_renkli":
@@ -536,19 +609,24 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 				if hasattr(config_item, 'isChanged') and config_item.isChanged():
 					changed = True
 					break
+		# Check if notiffile has actually changed
+		if self.old_notiffile != config.plugins.FootOnSat.notiffile.value:
+			changed = True
+		# Handle icons download
 		if self.icons_value != config.plugins.FootOnSat.icons.value:
 			changed = True
 			extract_path = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
-			if config.plugins.FootOnSat.icons.value == "default_icons":
-				os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/default_icons.tar.gz | tar -xz -C %s" % extract_path)
-			elif config.plugins.FootOnSat.icons.value == "icons_buwalla":
-				os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/icons_buwalla.tar.gz | tar -xz -C %s" % extract_path)
-			elif config.plugins.FootOnSat.icons.value == "icons_renkli":
-				os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/icons_renkli.tar.gz | tar -xz -C %s" % extract_path)
-			elif config.plugins.FootOnSat.icons.value == "italia2012_icons":
-				os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/italia2012_icons.tar.gz | tar -xz -C %s" % extract_path)
+			urls = {
+				"icons_default": "icons_default.tar.gz",
+				"icons_buwalla": "icons_buwalla.tar.gz",
+				"icons_renkli": "icons_renkli.tar.gz",
+				"italia2012_icons": "italia2012_icons.tar.gz",
+			}
+			if config.plugins.FootOnSat.icons.value in urls:
+				os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/%s | tar -xz -C %s" % (urls[config.plugins.FootOnSat.icons.value], extract_path))
+		# Save all other config items
 		for x in self["config"].list:
-			if len(x)>1:
+			if len(x) > 1:
 				x[1].save()
 		configfile.save()
 		if changed:

@@ -5,19 +5,19 @@
   <widget name="title" position="0,32" size="2564,122" font="Regular;70" halign="center" foregroundColor="#00ffffff" backgroundColor="#16000000" transparent="1" zPosition="5" />
 
     <!-- Top separator line -->
-    <eLabel backgroundColor="#00ffffff" position="120,360" size="2428,6" zPosition="5" />
+    <eLabel backgroundColor="#00ffffff" position="65,360" size="2428,6" zPosition="5" />
 
     <!-- Column headers -->
-    <eLabel text="No." font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="130,300" size="118,70" zPosition="5" transparent="1" halign="center" />
-    <eLabel text="Team" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="325,300" size="260,70" zPosition="5" transparent="1" halign="center" />
-    <eLabel text="Played" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="694,300" size="300,70" zPosition="5" transparent="1" halign="center" />
-    <eLabel text="Points" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="960,300" size="260,70" zPosition="5" transparent="1" halign="center" />
-    <eLabel text="Wins" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1203,300" size="260,70" zPosition="5" transparent="1" halign="center" />
-    <eLabel text="Draws" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1455,300" size="260,70" zPosition="5" transparent="1" halign="center" />
-    <eLabel text="Losses" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1690,300" size="260,70" zPosition="5" transparent="1" halign="center" />
-    <eLabel text="Goals Scored | Conceded | Difference" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1937,300" size="610,70" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="No." font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="50,300" size="118,70" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="Team" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="235,300" size="260,70" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="Played" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="614,300" size="300,70" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="Points" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="880,300" size="260,70" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="Wins" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1123,300" size="260,70" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="Draws" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1375,300" size="260,70" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="Losses" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1610,300" size="260,70" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="Goals Scored | Conceded | Difference" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1882,300" size="610,70" zPosition="5" transparent="1" halign="center" />
     <!-- Standings list -->  
-    <widget name="standings_list" position="120,380" size="2434,958" scrollbarMode="showNever" foregroundColor="#00ffffff" backgroundColorSelected="#0000FF" enableWrapAround="1" transparent="1" zPosition="2" />
+    <widget name="standings_list" position="65,380" size="2434,958" scrollbarMode="showNever" foregroundColor="#ffffff" foregroundColorSelected="#ffff00" enableWrapAround="1" transparent="1" zPosition="2" />
     <!-- Red key label -->
-    <widget name="key_red" position="121,1378" size="1179,60" font="Regular;38" halign="left" foregroundColor="red" backgroundColor="#0000FF" zPosition="5" transparent="1" />
+    <widget name="key_red" position="61,1376" size="1179,60" font="Regular;38" halign="left" foregroundColor="red" backgroundColor="#0000FF" zPosition="5" transparent="1" />
 </screen>

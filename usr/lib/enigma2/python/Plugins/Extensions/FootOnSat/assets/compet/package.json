@@ -1861,8 +1861,8 @@
             "banner": "portuguese liga portugal 2"
         },
 	{
-            "label": "portuguese liga 3",
-            "banner": "portuguese liga 3"
+            "label": "portuguese liga portugal 3",
+            "banner": "portuguese liga portugal 3"
         },
         {
             "label": "portuguese liga portugal",
@@ -2171,6 +2171,10 @@
         {
             "label": "south african nedbank cup",
             "banner": "south african nedbank cup"
+        },
+        {
+            "label": "south african knockout cup",
+            "banner": "south african knockout cup"
         },
 	{
             "label": "south african premiership",
@@ -2678,4 +2682,3 @@
         }
     ]
 }
-
