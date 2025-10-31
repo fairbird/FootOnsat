@@ -1,12 +1,14 @@
 #!/bin/sh
 
 #wget -q "--no-check-certificate" https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh
-VERSION=3.6
+VERSION=3.7
 PLUGIN_PATH="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
 DB_FILE="$PLUGIN_PATH/db/footonsat.db"
 ASSETS_PATH="$PLUGIN_PATH/assets"
+IGNORE_PATH="$PLUGIN_PATH/ignore"
 TMP_DB="/tmp/footonsat.db"
 TMP_ASSETS="/tmp/assets"
+TMP_IGNORE="/tmp/ignore"
 
 if [ -f /etc/apt/apt.conf ] ; then
 	STATUS='/var/lib/dpkg/status'
@@ -52,6 +54,7 @@ if [ -d $PLUGIN_PATH ]; then
 	cp -a "$ASSETS_PATH/compet/icons" "$TMP_ASSETS/compet" >/dev/null 2>&1
 	cp -a "$ASSETS_PATH/icon" "$TMP_ASSETS" >/dev/null 2>&1
 	cp -a "$ASSETS_PATH/skin" "$TMP_ASSETS" >/dev/null 2>&1
+	cp -a "$IGNORE_PATH" "/tmp" >/dev/null 2>&1
 #    echo "Remove old version."
 #    if [ "$OS" = "Opensource" ]; then
 #        opkg remove enigma2-plugin-extensions-footonsat
@@ -262,6 +265,11 @@ if [ -d $PLUGIN_PATH ]; then
 	if [ -d "$TMP_ASSETS" ]; then
 			echo "Restore current style ..."
 			cp -a "$TMP_ASSETS" "$PLUGIN_PATH" >/dev/null 2>&1
+	fi
+	echo ""
+	if [ -d "$TMP_IGNORE" ]; then
+			echo "Restore ignore file ..."
+			cp -a "$TMP_IGNORE" "$PLUGIN_PATH" >/dev/null 2>&1
 	fi
 	echo ""
 fi
