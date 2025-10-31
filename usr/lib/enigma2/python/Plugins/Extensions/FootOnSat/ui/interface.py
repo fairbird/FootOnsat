@@ -720,7 +720,7 @@ class FootOnSat(Screen):
 		else:
 			def _fetch_with_requests():
 				try:
-					r = requests.get(url, headers=headers2, timeout=10) 
+					r = requests.get(url, headers=headers2, timeout=3)
 					r.raise_for_status()
 					return r.content
 				except Exception as e:
@@ -752,13 +752,13 @@ class FootOnSat(Screen):
 				events = data.get('events', [])
 			except ValueError as e:
 				# Log the actual JSON parsing error
-				# logdata("FootOnSat-Sofa-ERROR", "JSON parse error (ValueError): %s" % str(e))
+				logdata("FootOnSat-Sofa-ERROR", "JSON parse error (ValueError): %s" % str(e))
 				# Log the beginning of the raw data that caused the crash (first 256 characters)
-				# logdata("FootOnSat-Sofa-ERROR", "Corrupt Data Snippet: %s..." % data_str[:256].replace('\n', ' '))
+				logdata("FootOnSat-Sofa-ERROR", "Corrupt Data Snippet: %s..." % data_str[:256].replace('\n', ' '))
 				return
 			except Exception as e:
 				# Log any other unexpected decode/general error
-				# logdata("FootOnSat-Sofa-ERROR", "Decode/General error: %s" % str(e))
+				logdata("FootOnSat-Sofa-ERROR", "Decode/General error: %s" % str(e))
 				return
 
 			if not events:
@@ -885,11 +885,6 @@ class FootOnSat(Screen):
 				NOISE = r'\b(nk|afc|fc|cf|as|ac|sk|fk|tsv|utd|united|national|club|team|squad|sport|athletic|calcio|ploieşti|ploiești|ploieshti|aif|ifk|goteborg|göteborg)\b'
 				name = re.sub(NOISE, ' ', name, flags=re.IGNORECASE)
 				name = re.sub(r'\s+', ' ', name).strip()
-				# === CRITICAL FIX: Limit the name to the first 3 words to remove trailing noise ===
-				name_parts = name.split()
-				if len(name_parts) > 3:
-					name = ' '.join(name_parts[:3])
-				# === END CRITICAL FIX ===
 				return name
 
 			def _do_fuzzy_matching(matches_list, live_matches, now_adj):
@@ -1048,8 +1043,9 @@ class FootOnSat(Screen):
 	def getData(self, data):
 		list = []
 		try:
-			data_str = data.decode('utf-8', 'ignore')
-			self.js = json.loads(data_str) # Use the decoded string
+			self.js = json.loads(data)
+#			data_str = data.decode('utf-8', 'ignore')
+#			self.js = json.loads(data_str) # Use the decoded string
 		except Exception as e:
 			self.session.openWithCallback(self.exit, MessageBox, _('Invalid API data! Check logs.'), MessageBox.TYPE_ERROR, timeout=10)
 			return
