@@ -720,7 +720,7 @@ class FootOnSat(Screen):
 		else:
 			def _fetch_with_requests():
 				try:
-					r = requests.get(url, headers=headers2, timeout=3) 
+					r = requests.get(url, headers=headers2, timeout=10) 
 					r.raise_for_status()
 					return r.content
 				except Exception as e:
@@ -737,9 +737,28 @@ class FootOnSat(Screen):
 			try:
 				data_str = raw.decode('utf-8', errors='ignore')
 				data = json.loads(data_str)
+				# === DEBUG: Save SofaScore JSON to /tmp (Pretty Print) ===
+#				try:
+#					sofa_debug_path = "/tmp/sofascore_data.json"
+#					events = data.get('events', [])
+#					# Dump the parsed JSON object back to a pretty-printed string
+#					formatted_data_str = json.dumps(events, indent=4, ensure_ascii=False)
+#					with codecs.open(sofa_debug_path, "w", encoding="utf-8") as f:
+#						f.write(formatted_data_str)
+#					logdata("FootOnSat-DEBUG", "Saved PRETTY-PRINTED SofaScore EVENTS to %s" % sofa_debug_path)
+#				except Exception as e:
+#					logdata("FootOnSat-DEBUG-ERROR", "Failed to save SofaScore JSON: %s" % str(e))
+				# === END DEBUG ===
 				events = data.get('events', [])
+			except ValueError as e:
+				# Log the actual JSON parsing error
+				# logdata("FootOnSat-Sofa-ERROR", "JSON parse error (ValueError): %s" % str(e))
+				# Log the beginning of the raw data that caused the crash (first 256 characters)
+				# logdata("FootOnSat-Sofa-ERROR", "Corrupt Data Snippet: %s..." % data_str[:256].replace('\n', ' '))
+				return
 			except Exception as e:
-				logdata("FootOnSat-Sofa-ERROR", "Decode/JSON parse error: %s" % e)
+				# Log any other unexpected decode/general error
+				# logdata("FootOnSat-Sofa-ERROR", "Decode/General error: %s" % str(e))
 				return
 
 			if not events:
@@ -859,10 +878,18 @@ class FootOnSat(Screen):
 				except:
 					pass
 				name = compat_str(name).strip().lower()
-				# Reverting to simpler noise list to avoid breaking anything else
-				NOISE = r'\b(fc|cf|as|ac|utd|united|city|town|county|national|club|team|squad|sport|athletic|calcio|ploieşti|ploiești|ploieshti|aif|ifk|goteborg|göteborg)\b'
+				# Strip all non-letter characters (like '()' or numbers)
+				name = re.sub(r'[^a-z\s]', ' ', name, flags=re.IGNORECASE) 
+				# Keep city/town/county, but remove other common noise.
+				# Added: afc, sk, fk, tsv (common club prefixes that break matches)
+				NOISE = r'\b(nk|afc|fc|cf|as|ac|sk|fk|tsv|utd|united|national|club|team|squad|sport|athletic|calcio|ploieşti|ploiești|ploieshti|aif|ifk|goteborg|göteborg)\b'
 				name = re.sub(NOISE, ' ', name, flags=re.IGNORECASE)
 				name = re.sub(r'\s+', ' ', name).strip()
+				# === CRITICAL FIX: Limit the name to the first 3 words to remove trailing noise ===
+				name_parts = name.split()
+				if len(name_parts) > 3:
+					name = ' '.join(name_parts[:3])
+				# === END CRITICAL FIX ===
 				return name
 
 			def _do_fuzzy_matching(matches_list, live_matches, now_adj):
@@ -1021,10 +1048,23 @@ class FootOnSat(Screen):
 	def getData(self, data):
 		list = []
 		try:
-			self.js = json.loads(data)
+			data_str = data.decode('utf-8', 'ignore')
+			self.js = json.loads(data_str) # Use the decoded string
 		except Exception as e:
 			self.session.openWithCallback(self.exit, MessageBox, _('Invalid API data! Check logs.'), MessageBox.TYPE_ERROR, timeout=10)
 			return
+
+		# === DEBUG: Save LiveOnSat/GitHub JSON to /tmp (Pretty Print) ===
+#		try:
+#			liveonsat_debug_path = "/tmp/liveonsat_data.json"
+#			# Dump the parsed JSON object back to a pretty-printed string
+#			formatted_data_str = json.dumps(self.js, indent=4, ensure_ascii=False)
+#			with codecs.open(liveonsat_debug_path, "w", encoding="utf-8") as f:
+#				f.write(formatted_data_str)
+#			logdata("FootOnSat-DEBUG", "Saved PRETTY-PRINTED LiveOnSat (GitHub) JSON to %s" % liveonsat_debug_path)
+#		except Exception as e:
+#			logdata("FootOnSat-DEBUG-ERROR", "Failed to save LiveOnSat JSON: %s" % str(e))
+		# === END DEBUG ===
 
 		ignored_competitions = []
 		try:
@@ -1517,17 +1557,18 @@ class FootOnsatNotifScreen(Screen):
 		"""Starts the sequential display process if not already running."""
 		if self.is_displaying:
 			return
+
 		self.is_displaying = True
 		# Play sound once per batch (assuming first time notify is called is start of batch)
-		from Plugins.Extensions.FootOnSat.launcher import FootOnsatLauncher
-		tone_file = FootOnsatLauncher.getToneFile()
+		from .launcher import MenuFootOnSat
+		tone_file = MenuFootOnSat.getToneFile()
 		if os.path.exists("/usr/bin/aplay"):
 			os.system('aplay "{}" &'.format(tone_file))
 		else:
 			os.system('ffmpeg -hide_banner -loglevel quiet -i "{}" -filter:a "volume=1.0" -f alsa default &'.format(tone_file))
 			
-			# Start the sequential timer to immediately process the first item
-			self.onhideTimer.start(10)
+		# Start the sequential timer to immediately process the first item
+		self.onhideTimer.start(10)
 
 	def checkforNotif(self):
 		

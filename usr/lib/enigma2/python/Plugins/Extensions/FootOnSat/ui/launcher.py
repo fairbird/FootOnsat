@@ -497,7 +497,8 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			else:
 				self.session.open(MessageBox, _("No .wav files found in sound folder!"), MessageBox.TYPE_INFO)
 
-	def getToneFile(self):
+	@staticmethod
+	def getToneFile():
 		tone_name = config.plugins.FootOnSat.notiffile.value
 		found_file = None
 		# 1. check plugin folder
