@@ -18,6 +18,7 @@ from bs4 import BeautifulSoup
 from unicodedata import normalize
 from difflib import SequenceMatcher
 from datetime import date, datetime, timedelta
+from os.path import join, exists, isfile, dirname
 from enigma import eTimer, gRGB, loadPNG, gPixmapPtr, RT_WRAP, ePoint, RT_HALIGN_CENTER, RT_HALIGN_LEFT, RT_VALIGN_CENTER, eListboxPythonMultiContent, gFont, getDesktop, eConsoleAppContainer
 from Components.MultiContent import MultiContentEntryText, MultiContentEntryPixmap, MultiContentEntryPixmapAlphaTest, MultiContentEntryPixmapAlphaBlend
 from Components.MenuList import MenuList
@@ -27,6 +28,7 @@ from Components.Pixmap import Pixmap
 from Components.ActionMap import ActionMap
 from Components.NimManager import nimmanager, getConfigSatlist
 from Components.config import config
+from Components.Harddisk import harddiskmanager
 from Screens.Screen import Screen
 from Screens.ChoiceBox import ChoiceBox
 from Screens.MessageBox import MessageBox
@@ -69,9 +71,22 @@ except ImportError:
 
 reswidth = getDesktop(0).size().width()
 
-ignore_dir = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/ignore")
-ignore_file = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/ignore/ignore-match.json")
 DB_PATH = '/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/db/footonsat.db'
+
+## ignore list codes
+default_ignore_dir = "/etc/enigma2/ignore"
+default_ignore_file = join(default_ignore_dir, "ignore-match.json")
+ignore_file = default_ignore_file  # Start with the default file path
+ignore_dir = default_ignore_dir    # Start with the default directory path
+# 2. Check for mounted devices and prioritize the first one
+mounted_partitions = harddiskmanager.getMountedPartitions()
+if mounted_partitions:
+	# Get the mountpoint of the first mounted device
+	first_mountpoint = mounted_partitions[0].mountpoint
+	# Set the ignore_dir to the path on the first mounted device
+	# This path is where the folder will be created if it doesn't exist.
+	ignore_dir = join(first_mountpoint, "ignore")
+	ignore_file = join(ignore_dir, "ignore-match.json")
 
 ## url for Standings table
 json_urls = {
@@ -113,6 +128,9 @@ json_urls = {
 
 	# euroleague basketball
 	"basketball": "https://www.sofascore.com/tournament/basketball/international/euroleague/138#id:78545",
+	
+	# nba basketball
+	"nba": "https://www.sofascore.com/tournament/basketball/usa/nba/132#id:80229",
 }
 # Use thess url to download missing log of team (Extra code)
 log_urls = {
@@ -348,41 +366,41 @@ class FootOnSat(Screen):
 				# Initialize list entry
 				res.append(MultiContentEntryText())
 				# Team 1 flag/logteam
-				if self.link == "basketball":
+				if self.link in ("basketball", "nba"):
 					res.append(MultiContentEntryPixmapAlphaBlend(pos=(70, 5), size=(160, 160), png=loadPNG(teamlog1)))
 					if config.plugins.FootOnSat.enableflag.value:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(212, 70), size=(40, 30), png=loadPNG(flagTeam1)))
 				else:
 					res.append(MultiContentEntryPixmapAlphaBlend(pos=(420, 70), size=(40, 30), png=loadPNG(flagTeam1)))
 				# Score team 1
-				if self.link != "basketball":
+				if self.link not in ("basketball", "nba"):
 					if reswidth >= 2560:
 						res.append(MultiContentEntryText(pos=(500, 69), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
 					else:
 						res.append(MultiContentEntryText(pos=(482, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
 				 # Team 2 flag/logteam
 				if reswidth >= 2560:
-					if self.link == "basketball":
+					if self.link in ("basketball", "nba"):
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1440, 5), size=(160, 160), png=loadPNG(teamlog2)))
 						if config.plugins.FootOnSat.enableflag.value:
 							res.append(MultiContentEntryPixmapAlphaBlend(pos=(1420, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 					else:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1550, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 				else:
-					if self.link == "basketball":
+					if self.link in ("basketball", "nba"):
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1030, 10), size=(160, 160), png=loadPNG(teamlog2)))
 						if config.plugins.FootOnSat.enableflag.value:
 							res.append(MultiContentEntryPixmapAlphaBlend(pos=(1012, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 					else:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1142, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 				# Score team 2
-				if self.link != "basketball":
+				if self.link not in ("basketball", "nba"):
 					if reswidth >= 2560:
 						res.append(MultiContentEntryText(pos=(1490, 69), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
 					else:
 						res.append(MultiContentEntryText(pos=(1092, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
 				# Competition banner
-				if not self.link == "basketball":
+				if self.link not in ("basketball", "nba"):
 					try:
 						res.append(MultiContentEntryPixmapAlphaTest(pos=(65, 6), size=(320, 163), png=loadPNG(banner), flags=BT_SCALE))
 					except TypeError:
@@ -391,17 +409,17 @@ class FootOnSat(Screen):
 				res.append(MultiContentEntryPixmapAlphaBlend(pos=(-20, 63), size=(70, 50), png=loadPNG(notif)))
 				# Match name
 				if reswidth >= 2560:
-					if self.link == "basketball":
+					if self.link in ("basketball", "nba"):
 						res.append(MultiContentEntryText(pos=(332, 69), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_HALIGN_CENTER, text=str(match)))
 					else:
 						res.append(MultiContentEntryText(pos=(550, 69), size=(900, 40), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
 				else:
-					if self.link == "basketball":
+					if self.link in ("basketball", "nba"):
 						res.append(MultiContentEntryText(pos=(370, 66), size=(600, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(match)))
 					else:
 						res.append(MultiContentEntryText(pos=(500, 66), size=(570, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
 				# status_text + match_status
-				if (team1_score != "" or match_status != "") and self.link != "basketball":
+				if (team1_score != "" or match_status != "") and (self.link != "basketball" or self.link != "nba"):
 					# If score or status exists, display the dynamic status/time (e.g., "Live: 70 min" or "Status: FT")
 					if reswidth >= 2560:
 						res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=0xFF0000))
@@ -410,23 +428,23 @@ class FootOnSat(Screen):
 				else:
 					# Otherwise, display the scheduled Kick-off time
 					if reswidth >= 2560:
-						if self.link == "basketball":
+						if self.link in ("basketball", "nba"):
 							res.append(MultiContentEntryText(pos=(430, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 						else:
 							res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 					else:
-						if self.link == "basketball":
+						if self.link in ("basketball", "nba"):
 							res.append(MultiContentEntryText(pos=(410, 120), size=(500, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 						else:
 							res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 				# Competition name
 				if reswidth >= 2560:
-					if self.link == "basketball":
+					if self.link in ("basketball", "nba"):
 						res.append(MultiContentEntryText(pos=(430, 15), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 					else:
 						res.append(MultiContentEntryText(pos=(420, 15), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 				else:
-					if self.link == "basketball":
+					if self.link in ("basketball", "nba"):
 						res.append(MultiContentEntryText(pos=(410, 15), size=(500, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 					else:
 						res.append(MultiContentEntryText(pos=(420, 15), size=(785, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
@@ -672,7 +690,7 @@ class FootOnSat(Screen):
 
 	def fetch_live_results(self):
 		# Define the fixed time windows
-		LIVE_DURATION = timedelta(hours=3, minutes=30) # 3.5 hours limit for finished matches
+		LIVE_DURATION = timedelta(hours=4) # 4 hours limit for finished matches
 		TIME_WINDOW = timedelta(hours=4) # Generous fuzzy matching time tolerance
 		
 		live_start_time = time.time()
@@ -910,7 +928,8 @@ class FootOnSat(Screen):
 				for match in matches_list:
 					try:
 						local_name = compat_str(match[0])
-						teams = re.split(r'\s+vs\s+|\s+-\s+', local_name)
+						#teams = re.split(r'\s+vs\s+|\s+-\s+', local_name)
+						teams = re.split(r'\s+(?:vs|v|VS|Vs|VS.)\s+|\s+-\s+', local_name, flags=re.IGNORECASE)
 						if len(teams) != 2:
 							continue
 							
@@ -934,7 +953,8 @@ class FootOnSat(Screen):
 							local_dt = now_adj
 
 						local_name = compat_str(match[0])
-						teams = re.split(r'\s+vs\s+|\s+-\s+', local_name)
+						#teams = re.split(r'\s+vs\s+|\s+-\s+', local_name)
+						teams = re.split(r'\s+(?:vs|v|VS|Vs|VS.)\s+|\s+-\s+', local_name, flags=re.IGNORECASE)
 						if len(teams) != 2:
 							match[5] = match[6] = match[7] = ""
 							continue
@@ -1407,7 +1427,10 @@ class FootOnSat(Screen):
 				self.manageIgnoreFile(compet=compet)
 				ignored_after = self.manageIgnoreFile()
 				if compet in ignored_after and compet not in ignored_before:
-					self.session.open(MessageBox, _('Competition "%s" added to ignore list') % compet, MessageBox.TYPE_INFO, timeout=5)
+					#self.session.open(MessageBox, _('Competition "%s" added to ignore list') % compet, MessageBox.TYPE_INFO, timeout=5)
+					path_info = ignore_file 
+					msg = _('Competition "%s" added to ignore list.\n\nSave file on "%s"') % (compet, path_info)
+					self.session.open(MessageBox, msg, MessageBox.TYPE_INFO, timeout=5)
 				else:
 					logdata("keyRed", "Competition " + compet + " not added (already ignored or failed)")
 				# Refresh the match list to exclude ignored competitions
