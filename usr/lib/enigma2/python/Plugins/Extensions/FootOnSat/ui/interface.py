@@ -43,6 +43,7 @@ from twisted.internet.threads import blockingCallFromThread
 from twisted.web.client import getPage, downloadPage
 from .compat import PY3, compat_urlopen, compat_HTTPError, compat_URLError, compat_Request, compat_str
 
+
 try:
 	from urllib.parse import urlparse
 except ImportError:
