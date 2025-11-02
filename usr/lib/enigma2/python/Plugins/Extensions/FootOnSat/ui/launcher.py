@@ -472,7 +472,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.list = []
 		self.list.append(getConfigListEntry(_("Show Plugin #press OK to change"), config.plugins.FootOnSat.showplugin, _("This option to show Plugin in any where you like")))
 		self.list.append(getConfigListEntry(_("Enable checking for Online Update"), config.plugins.FootOnSat.updateonline, _("This option to Enable or Disable checking for Online Update")))
-		self.list.append(getConfigListEntry(_("Enable flags for teams in euroleague"), config.plugins.FootOnSat.enableflag, _("This option to Enable or Disable flags for teams in euroleague (Basketball) only")))
+		self.list.append(getConfigListEntry(_("Enable flags for teams in Basketball"), config.plugins.FootOnSat.enableflag, _("This option to Enable or Disable flags for teams in (Basketball) only")))
 		self.list.append(getConfigListEntry(_("Enable live match + Live score"), config.plugins.FootOnSat.livescore, _("This feature allows you to show or hide the matches still live with or withou result")))
 		if config.plugins.FootOnSat.livescore.value in ["2", "3"]:
 			self.list.append(getConfigListEntry(_("Select appear live + score of match in"), config.plugins.FootOnSat.livescoresections, _("This feature allows you to show matches live with result in sections")))
