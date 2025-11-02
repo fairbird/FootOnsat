@@ -4,6 +4,6 @@
     <widget name="flag2" zPosition="5" position="1134,94" size="54,40" alphatest="blend" />
     <widget name="match" font="Regular;32" position="507,54" zPosition="2" valign="center" halign="center" size="614,120" backgroundColor="#31000000" transparent="1" />
     <widget name="message" font="Regular;35" position="520,114" zPosition="2" valign="center" halign="center" size="560,120" backgroundColor="#31000000" transparent="1" />
-    <widget name="live" zPosition="5" position="1074,4" size="134,67" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/live_notif.png" alphatest="blend" />
+    <widget name="live" zPosition="5" position="735,4" size="134,67" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/live_notif.png" alphatest="blend" />
     <ePixmap position="0,0" zPosition="1" size="1200,234" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/notif_bar.png" alphatest="blend" />
 </screen>
