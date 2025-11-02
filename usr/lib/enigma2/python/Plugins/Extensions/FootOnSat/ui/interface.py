@@ -43,7 +43,6 @@ from twisted.internet.threads import blockingCallFromThread
 from twisted.web.client import getPage, downloadPage
 from .compat import PY3, compat_urlopen, compat_HTTPError, compat_URLError, compat_Request, compat_str
 
-
 try:
 	from urllib.parse import urlparse
 except ImportError:
@@ -725,7 +724,7 @@ class FootOnSat(Screen):
 			try:
 				sniFactory = WebClientContextFactory() 
 			except Exception as e:
-				logdata("FootOnSat-Sofa-ERROR", "Failed to create WebClientContextFactory: %s" % str(e))
+				logdata("fetch_live_results", "Failed to create WebClientContextFactory: %s" % str(e))
 				self.matches = [list(m) for m in self.matches]
 				self.iniMenu()
 				return
@@ -739,7 +738,7 @@ class FootOnSat(Screen):
 		else:
 			def _fetch_with_requests():
 				try:
-					r = requests.get(url, headers=headers2, timeout=3)
+					r = requests.get(url, headers=headers2, timeout=10)
 					r.raise_for_status()
 					return r.content
 				except Exception as e:
@@ -769,15 +768,28 @@ class FootOnSat(Screen):
 #					logdata("FootOnSat-DEBUG-ERROR", "Failed to save SofaScore JSON: %s" % str(e))
 				# === END DEBUG ===
 				events = data.get('events', [])
+				now = datetime.now()
+				# Keep only matches that started within the last 3 hours and up to now
+				recent_window_start = now - timedelta(hours=4)
+				filtered_events = []
+				for ev in events:
+				    ts = ev.get('startTimestamp')
+				    if not ts:
+				    		continue
+				    match_dt = datetime.fromtimestamp(ts)
+				    # Include if started in the past 3 hours and not later than current time
+				    if recent_window_start <= match_dt <= now:
+				    		filtered_events.append(ev)
+				events = filtered_events
 			except ValueError as e:
 				# Log the actual JSON parsing error
-				logdata("FootOnSat-Sofa-ERROR", "JSON parse error (ValueError): %s" % str(e))
+				logdata("fetch_live_results", "JSON parse error (ValueError): %s" % str(e))
 				# Log the beginning of the raw data that caused the crash (first 256 characters)
-				logdata("FootOnSat-Sofa-ERROR", "Corrupt Data Snippet: %s..." % data_str[:256].replace('\n', ' '))
+				logdata("fetch_live_results", "Corrupt Data Snippet: %s..." % data_str[:256].replace('\n', ' '))
 				return
 			except Exception as e:
 				# Log any other unexpected decode/general error
-				logdata("FootOnSat-Sofa-ERROR", "Decode/General error: %s" % str(e))
+				logdata("fetch_live_results", "Decode/General error: %s" % str(e))
 				return
 
 			if not events:
