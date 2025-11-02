@@ -94,6 +94,7 @@ class FootOnsatLauncher(Screen):
 			'down': self.down,
 			'ok': self.ok,
 			'blue': self.keyBlue,
+			'green': self.ok,
 			'red': self.exit,
 			"yellow": self.keyYellow,
 			"cancel": self.exit,
