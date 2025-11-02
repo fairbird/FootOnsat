@@ -768,19 +768,6 @@ class FootOnSat(Screen):
 #					logdata("FootOnSat-DEBUG-ERROR", "Failed to save SofaScore JSON: %s" % str(e))
 				# === END DEBUG ===
 				events = data.get('events', [])
-				now = datetime.now()
-				# Keep only matches that started within the last 3 hours and up to now
-				recent_window_start = now - timedelta(hours=4)
-				filtered_events = []
-				for ev in events:
-				    ts = ev.get('startTimestamp')
-				    if not ts:
-				    		continue
-				    match_dt = datetime.fromtimestamp(ts)
-				    # Include if started in the past 3 hours and not later than current time
-				    if recent_window_start <= match_dt <= now:
-				    		filtered_events.append(ev)
-				events = filtered_events
 			except ValueError as e:
 				# Log the actual JSON parsing error
 				logdata("fetch_live_results", "JSON parse error (ValueError): %s" % str(e))
