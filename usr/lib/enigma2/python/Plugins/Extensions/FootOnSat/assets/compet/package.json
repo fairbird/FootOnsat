@@ -1009,8 +1009,8 @@
             "banner": "fifa ofc wc 2026 qualifiers"
         },
 	{            
-            "label": "fifa u-17 world cup 2025",
-            "banner": "fifa u-17 world cup 2025"
+            "label": "fifa u-17 world cup",
+            "banner": "fifa u-17 world cup"
         },
 	{            
             "label": "fifa u-20 world cup",
@@ -2682,4 +2682,5 @@
         }
     ]
 }
+
 
