@@ -30,8 +30,22 @@ from . import compat
 
 PY3 = version_info[0] == 3
 
+mounted_partitions = harddiskmanager.getMountedPartitions()
+mounted_devices = []
+default_ignore_dir = "/etc/enigma2/ignore"
+ignore_paths = ["/media/net", "/"]
+mounted_devices = [(default_ignore_dir, default_ignore_dir)]
+for part in mounted_partitions:
+	try:
+		mountpoint = part.mountpoint
+		if mountpoint and mountpoint not in ignore_paths and mountpoint != default_ignore_dir:
+			mounted_devices.append((mountpoint, mountpoint))
+	except Exception:
+		pass
+
 config.plugins.FootOnSat = ConfigSubsection()
 config.plugins.FootOnSat.showplugin = ConfigText(default="")
+config.plugins.FootOnSat.devicepath = ConfigSelection(default=default_ignore_dir,choices=mounted_devices)
 config.plugins.FootOnSat.sort = ConfigDictionarySet(default={"footmenu": {"footsubmenu": {}}})
 config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
 config.plugins.FootOnSat.enableflag = ConfigYesNo(default=True)
@@ -68,6 +82,24 @@ config.plugins.FootOnSat.icons = ConfigSelection(default = "icons_default", choi
 VER = float(__version__)
 
 reswidth = getDesktop(0).size().width()
+
+DEFAULT_IGNORE_DIR = "/etc/enigma2/ignore"
+def get_ignore_paths():
+	try:
+		selected_path = config.plugins.FootOnSat.devicepath.value
+	except Exception:
+		selected_path = DEFAULT_IGNORE_DIR
+	if selected_path == DEFAULT_IGNORE_DIR:
+		ignore_dir = selected_path
+	else:
+		ignore_dir = join(selected_path, "ignore")
+	ignore_file = join(ignore_dir, "ignore-match.json")
+	if not os.path.exists(ignore_dir):
+		try:
+			os.makedirs(ignore_dir)
+		except Exception:
+			pass
+	return ignore_dir, ignore_file
 
 def DreamOS():
 	if os.path.exists('/var/lib/dpkg/status'):
@@ -478,6 +510,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		if config.plugins.FootOnSat.livescore.value in ["2", "3"]:
 			self.list.append(getConfigListEntry(_("Select appear live + score of match in"), config.plugins.FootOnSat.livescoresections, _("This feature allows you to show matches live with result in sections")))
 			self.list.append(getConfigListEntry(_("Hide matches that started before"), config.plugins.FootOnSat.finished, _("This option is to specify the time that matches that have finished remain before they disappear from the list")))
+		self.list.append(getConfigListEntry(_("Path to store ignore file"), config.plugins.FootOnSat.devicepath, _("This option to set the path of save file for ignore matches")))
 		self.list.append(getConfigListEntry(_("Choose to display notifications"), config.plugins.FootOnSat.notify, _("This feature allows you to specify the times for notifications to appear when matches start")))
 		self.list.append(getConfigListEntry(_("Choose tone of notifications #press OK to change"), config.plugins.FootOnSat.notiffile, _("This feature allows you to select a notification tone when matches start")))
 		self.list.append(getConfigListEntry(_("Select Icons Style"), config.plugins.FootOnSat.icons, _("This option to enable to select Icons Style")))
