@@ -73,21 +73,6 @@ reswidth = getDesktop(0).size().width()
 
 DB_PATH = '/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/db/footonsat.db'
 
-## ignore list codes
-default_ignore_dir = "/etc/enigma2/ignore"
-default_ignore_file = join(default_ignore_dir, "ignore-match.json")
-ignore_file = default_ignore_file  # Start with the default file path
-ignore_dir = default_ignore_dir    # Start with the default directory path
-# 2. Check for mounted devices and prioritize the first one
-mounted_partitions = harddiskmanager.getMountedPartitions()
-if mounted_partitions:
-	# Get the mountpoint of the first mounted device
-	first_mountpoint = mounted_partitions[0].mountpoint
-	# Set the ignore_dir to the path on the first mounted device
-	# This path is where the folder will be created if it doesn't exist.
-	ignore_dir = join(first_mountpoint, "ignore")
-	ignore_file = join(ignore_dir, "ignore-match.json")
-
 ## url for Standings table
 json_urls = {
 	# Champions league
@@ -1299,6 +1284,8 @@ class FootOnSat(Screen):
 	def manageIgnoreFile(self, compet=None, reset=False, remove=None):
 		# logdata("manageIgnoreFile", "Called with compet={}, reset={}, remove={}".format(compet, reset, remove))
 		# Create ignore directory if it doesn't exist
+		from .launcher import get_ignore_paths
+		ignore_dir, ignore_file = get_ignore_paths()
 		if not os.path.exists(ignore_dir):
 			try:
 				os.makedirs(ignore_dir, 0o755)
@@ -1407,32 +1394,36 @@ class FootOnSat(Screen):
 		self.callAPI()
 
 	def keyRed(self):
+		from .launcher import get_ignore_paths
+		ignore_dir_path, ignore_file_path = get_ignore_paths()
+		
 		if self.link == "today" and self.selectedList == self["list1"] and len(self.matches) > 0:
 			try:
 				index = self['list1'].getSelectionIndex()
-				# logdata("keyRed", "Selected match tuple: " + str(self.matches[index]))
 				compet = str(self.matches[index][2]).strip()
 				# Remove week/round/matchday suffixes
 				for suffix in [' - Week ', ' - Matchday ', ' - Round ']:
 					if suffix in compet:
 						compet = compet.split(suffix)[0].strip()
-				# logdata("keyRed", "Attempting to ignore competition: " + (compet if compet else "None"))
+				
 				if not compet:
-					# logdata("keyRed", "Competition is empty or invalid")
 					self.session.open(MessageBox, _('No valid competition selected!'), MessageBox.TYPE_ERROR, timeout=5)
 					return
+				
 				# Load current ignored competitions
 				ignored_before = self.manageIgnoreFile()
 				# Add selected competition to ignore list
 				self.manageIgnoreFile(compet=compet)
 				ignored_after = self.manageIgnoreFile()
+				
 				if compet in ignored_after and compet not in ignored_before:
-					#self.session.open(MessageBox, _('Competition "%s" added to ignore list') % compet, MessageBox.TYPE_INFO, timeout=5)
-					path_info = ignore_file 
+					# Use the variable containing only the file path string
+					path_info = ignore_file_path
 					msg = _('Competition "%s" added to ignore list.\n\nSave file on "%s"') % (compet, path_info)
 					self.session.open(MessageBox, msg, MessageBox.TYPE_INFO, timeout=5)
 				else:
 					logdata("keyRed", "Competition " + compet + " not added (already ignored or failed)")
+				
 				# Refresh the match list to exclude ignored competitions
 				self.matches = []
 				self["list1"].setList([])
