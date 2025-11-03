@@ -39,7 +39,8 @@ for part in mounted_partitions:
 	try:
 		mountpoint = part.mountpoint
 		if mountpoint and mountpoint not in ignore_paths and mountpoint != default_ignore_dir:
-			mounted_devices.append((mountpoint, mountpoint))
+			final_path = join(mountpoint, "ignore")
+			mounted_devices.append((final_path, final_path))
 	except Exception:
 		pass
 
@@ -89,10 +90,11 @@ def get_ignore_paths():
 		selected_path = config.plugins.FootOnSat.devicepath.value
 	except Exception:
 		selected_path = DEFAULT_IGNORE_DIR
-	if selected_path == DEFAULT_IGNORE_DIR:
-		ignore_dir = selected_path
+	normalized_path = os.path.normpath(selected_path)
+	if normalized_path == DEFAULT_IGNORE_DIR or normalized_path.endswith("/ignore"):
+		ignore_dir = normalized_path
 	else:
-		ignore_dir = join(selected_path, "ignore")
+		ignore_dir = join(normalized_path, "ignore")
 	ignore_file = join(ignore_dir, "ignore-match.json")
 	if not os.path.exists(ignore_dir):
 		try:
