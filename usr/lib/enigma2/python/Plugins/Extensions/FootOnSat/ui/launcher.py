@@ -30,8 +30,23 @@ from . import compat
 
 PY3 = version_info[0] == 3
 
+mounted_partitions = harddiskmanager.getMountedPartitions()
+mounted_devices = []
+default_ignore_dir = "/etc/enigma2/ignore"
+ignore_paths = ["/media/net", "/"]
+mounted_devices = [(default_ignore_dir, default_ignore_dir)]
+for part in mounted_partitions:
+	try:
+		mountpoint = part.mountpoint
+		if mountpoint and mountpoint not in ignore_paths and mountpoint != default_ignore_dir:
+			final_path = join(mountpoint, "ignore")
+			mounted_devices.append((final_path, final_path))
+	except Exception:
+		pass
+
 config.plugins.FootOnSat = ConfigSubsection()
 config.plugins.FootOnSat.showplugin = ConfigText(default="")
+config.plugins.FootOnSat.devicepath = ConfigSelection(default=default_ignore_dir,choices=mounted_devices)
 config.plugins.FootOnSat.sort = ConfigDictionarySet(default={"footmenu": {"footsubmenu": {}}})
 config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
 config.plugins.FootOnSat.enableflag = ConfigYesNo(default=True)
@@ -69,6 +84,25 @@ VER = float(__version__)
 
 reswidth = getDesktop(0).size().width()
 
+DEFAULT_IGNORE_DIR = "/etc/enigma2/ignore"
+def get_ignore_paths():
+	try:
+		selected_path = config.plugins.FootOnSat.devicepath.value
+	except Exception:
+		selected_path = DEFAULT_IGNORE_DIR
+	normalized_path = os.path.normpath(selected_path)
+	if normalized_path == DEFAULT_IGNORE_DIR or normalized_path.endswith("/ignore"):
+		ignore_dir = normalized_path
+	else:
+		ignore_dir = join(normalized_path, "ignore")
+	ignore_file = join(ignore_dir, "ignore-match.json")
+	if not os.path.exists(ignore_dir):
+		try:
+			os.makedirs(ignore_dir)
+		except Exception:
+			pass
+	return ignore_dir, ignore_file
+
 def DreamOS():
 	if os.path.exists('/var/lib/dpkg/status'):
 		return True
@@ -94,6 +128,7 @@ class FootOnsatLauncher(Screen):
 			'down': self.down,
 			'ok': self.ok,
 			'blue': self.keyBlue,
+			'green': self.ok,
 			'red': self.exit,
 			"yellow": self.keyYellow,
 			"cancel": self.exit,
@@ -429,17 +464,17 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 					</screen>"""
 	else:
 		skin = """
-				<screen name="MenuFootOnSat" position="center,center" size="1040,800" title="Menu FootOnSat">
+				<screen name="MenuFootOnSat" position="center,center" size="1040,840" title="Menu FootOnSat">
 					<widget source="global.CurrentTime" render="Label" position="5,5" size="1022,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
 						<convert type="ClockToText">Format:%d-%m-%Y     %H:%M:%S</convert>
 					</widget>
-					<widget name="config" font="Regular;28" secondfont="Regular;28" itemHeight="45" position="18,60" size="1005,410" scrollbarMode="showOnDemand"/>
-					<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,780" zPosition="-10"/>
-					<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,780" zPosition="-10"/>
-					<widget render="Label" source="key_red" position="223,745" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
-					<widget render="Label" source="key_green" position="585,745" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
-					<widget source="help" render="Label" position="18,460" size="1004,60" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
-					<widget name="Picture" position="313,525" size="400,225" zPosition="5" alphatest="blend"/>
+					<widget name="config" font="Regular;28" secondfont="Regular;28" itemHeight="45" position="18,60" size="1005,455" scrollbarMode="showOnDemand"/>
+					<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,820" zPosition="-10"/>
+					<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,820" zPosition="-10"/>
+					<widget render="Label" source="key_red" position="223,785" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
+					<widget render="Label" source="key_green" position="585,785" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
+					<widget source="help" render="Label" position="18,500" size="1004,60" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
+					<widget name="Picture" position="313,560" size="400,225" zPosition="5" alphatest="blend"/>
 				</screen>"""
 
 	def __init__(self, session):
@@ -477,6 +512,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		if config.plugins.FootOnSat.livescore.value in ["2", "3"]:
 			self.list.append(getConfigListEntry(_("Select appear live + score of match in"), config.plugins.FootOnSat.livescoresections, _("This feature allows you to show matches live with result in sections")))
 			self.list.append(getConfigListEntry(_("Hide matches that started before"), config.plugins.FootOnSat.finished, _("This option is to specify the time that matches that have finished remain before they disappear from the list")))
+		self.list.append(getConfigListEntry(_("Path to store ignore file"), config.plugins.FootOnSat.devicepath, _("This option to set the path of save file for ignore matches")))
 		self.list.append(getConfigListEntry(_("Choose to display notifications"), config.plugins.FootOnSat.notify, _("This feature allows you to specify the times for notifications to appear when matches start")))
 		self.list.append(getConfigListEntry(_("Choose tone of notifications #press OK to change"), config.plugins.FootOnSat.notiffile, _("This feature allows you to select a notification tone when matches start")))
 		self.list.append(getConfigListEntry(_("Select Icons Style"), config.plugins.FootOnSat.icons, _("This option to enable to select Icons Style")))
