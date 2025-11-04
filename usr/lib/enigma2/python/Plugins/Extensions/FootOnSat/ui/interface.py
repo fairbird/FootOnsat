@@ -400,7 +400,7 @@ class FootOnSat(Screen):
 						res.append(MultiContentEntryText(pos=(550, 69), size=(900, 40), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
 				else:
 					if self.link in ("basketball", "nba"):
-						res.append(MultiContentEntryText(pos=(370, 66), size=(600, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(match)))
+						res.append(MultiContentEntryText(pos=(310, 66), size=(660, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(match)))
 					else:
 						res.append(MultiContentEntryText(pos=(500, 66), size=(570, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
 				# status_text + match_status
@@ -419,7 +419,7 @@ class FootOnSat(Screen):
 							res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 					else:
 						if self.link in ("basketball", "nba"):
-							res.append(MultiContentEntryText(pos=(410, 120), size=(500, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
+							res.append(MultiContentEntryText(pos=(350, 120), size=(500, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 						else:
 							res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 				# Competition name
@@ -430,7 +430,7 @@ class FootOnSat(Screen):
 						res.append(MultiContentEntryText(pos=(420, 15), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 				else:
 					if self.link in ("basketball", "nba"):
-						res.append(MultiContentEntryText(pos=(410, 15), size=(500, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
+						res.append(MultiContentEntryText(pos=(350, 15), size=(500, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 					else:
 						res.append(MultiContentEntryText(pos=(420, 15), size=(785, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 				gList.append(res)
@@ -683,7 +683,7 @@ class FootOnSat(Screen):
 		
 		# === URL Setup ===
 		today_iso = date.today().isoformat()
-		url = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}'.format(today_iso)
+		url = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}/inverse'.format(today_iso)
 
 		# === Headers/Agent (Minimal and robust headers) ===
 		AGENT = b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
@@ -881,11 +881,8 @@ class FootOnSat(Screen):
 				except:
 					pass
 				name = compat_str(name).strip().lower()
-				# Strip all non-letter characters (like '()' or numbers)
 				name = re.sub(r'[^a-z\s]', ' ', name, flags=re.IGNORECASE) 
-				# Keep city/town/county, but remove other common noise.
-				# Added: afc, sk, fk, tsv (common club prefixes that break matches)
-				NOISE = r'\b(nk|afc|fc|cf|as|ac|sk|fk|tsv|utd|united|national|club|team|squad|sport|athletic|calcio|ploieşti|ploiești|ploieshti|aif|ifk|goteborg|göteborg)\b'
+				NOISE = r'\b(nk|afc|fc|cf|as|ac|sk|fk|tsv|utd|united|national|club|team|squad|sport|athletic|calcio|ploie[șs]ti|ploiești|ploieshti|aif|ifk|goteborg|göteborg|kf|ks|af|seinajoki|peshkopi)\b'
 				name = re.sub(NOISE, ' ', name, flags=re.IGNORECASE)
 				name = re.sub(r'\s+', ' ', name).strip()
 				return name
@@ -993,6 +990,7 @@ class FootOnSat(Screen):
 							avg_swap = (sim1s + sim2s) / 2.0
 
 							cur_sim = max(avg_straight, avg_swap)
+							logdata("FuzzyDebug", "Match '%s': sim=%.2f (straight=%.2f, swap=%.2f)" % (local_name, cur_sim, avg_straight, avg_swap))
 
 							if cur_sim > best_sim:
 								best_sim = cur_sim
@@ -1136,8 +1134,8 @@ class FootOnSat(Screen):
 										 team1_score,
 										 team2_score,
 										 match_status])
-					else:
-						logdata("getData", "Ignored competition: " + str(match['match']) + ", Compet: " + compet)
+					#else:
+						#logdata("getData", "Ignored competition: " + str(match['match']) + ", Compet: " + compet)
 				except KeyError:
 					#logdata("getData-error", "KeyError on match: " + str(match))
 					pass
@@ -1356,8 +1354,8 @@ class FootOnSat(Screen):
 				except Exception as e:
 					logdata("manageIgnoreFile", "Failed to update ignore file after removing " + compet_str + ": " + str(e))
 					return ignored
-			else:
-				logdata("manageIgnoreFile", "Competition not removed: " + (compet_str if compet_str else "None") + " (not in ignore list)")
+			#else:
+				#logdata("manageIgnoreFile", "Competition not removed: " + (compet_str if compet_str else "None") + " (not in ignore list)")
 			return ignored
 		# Add competition if provided
 		if compet:
@@ -1376,8 +1374,8 @@ class FootOnSat(Screen):
 				except Exception as e:
 					logdata("manageIgnoreFile", "Failed to update ignore file with " + compet_str + ": " + str(e))
 					return ignored
-			else:
-				logdata("manageIgnoreFile", "Competition not added: " + (compet_str if compet_str else "None") + " (already ignored or empty)")
+			#else:
+			#	logdata("manageIgnoreFile", "Competition not added: " + (compet_str if compet_str else "None") + " (already ignored or empty)")
 		return ignored
 
 	def selectCompetitionToRemove(self, selected):
@@ -1421,8 +1419,8 @@ class FootOnSat(Screen):
 					path_info = ignore_file_path
 					msg = _('Competition "%s" added to ignore list.\n\nSave file on "%s"') % (compet, path_info)
 					self.session.open(MessageBox, msg, MessageBox.TYPE_INFO, timeout=5)
-				else:
-					logdata("keyRed", "Competition " + compet + " not added (already ignored or failed)")
+				#else:
+				#	logdata("keyRed", "Competition " + compet + " not added (already ignored or failed)")
 				
 				# Refresh the match list to exclude ignored competitions
 				self.matches = []
