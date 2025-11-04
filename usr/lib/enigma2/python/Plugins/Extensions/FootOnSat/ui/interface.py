@@ -683,7 +683,8 @@ class FootOnSat(Screen):
 		
 		# === URL Setup ===
 		today_iso = date.today().isoformat()
-		url = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}/inverse'.format(today_iso)
+		url1 = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}/'.format(today_iso)
+		url2 = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}/inverse'.format(today_iso)
 
 		# === Headers/Agent (Minimal and robust headers) ===
 		AGENT = b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
@@ -705,9 +706,10 @@ class FootOnSat(Screen):
 		#logdata("FootOnSat-LIVESCORE", "Sending request to SofaScore API.")
 
 		# === Twisted HTTP Request Handling (with Py3 compatibility) ===
+		deferred_list = []
 		if PY3:
 			try:
-				sniFactory = WebClientContextFactory() 
+				sniFactory = WebClientContextFactory()
 			except Exception as e:
 				logdata("fetch_live_results", "Failed to create WebClientContextFactory: %s" % str(e))
 				self.matches = [list(m) for m in self.matches]
@@ -719,52 +721,74 @@ class FootOnSat(Screen):
 				b'Connection': [b'close'],
 				b'Accept': [b'application/json, text/plain, */*']
 			}
-			d = getPage(str.encode(url), contextFactory=sniFactory, timeout=10, headers=twisted_live_headers)
+			# Fire both requests
+			d1 = getPage(str.encode(url1), contextFactory=sniFactory, timeout=10, headers=twisted_live_headers)
+			d2 = getPage(str.encode(url2), contextFactory=sniFactory, timeout=10, headers=twisted_live_headers)
+
+			deferred_list.append(d1)
+			deferred_list.append(d2)
+
+			# Use defer.gatherResults to wait for both to complete
+			d = defer.gatherResults(deferred_list, consumeErrors=True) # d now holds a list of raw responses
 		else:
 			def _fetch_with_requests():
-				try:
-					r = requests.get(url, headers=headers2, timeout=10)
-					r.raise_for_status()
-					return r.content
-				except Exception as e:
-					raise Exception("SofaScore fetch failed: %s" % str(e))
+				results = []
+				for url in [url1, url2]:
+					try:
+						r = requests.get(url, headers=headers2, timeout=10)
+						r.raise_for_status()
+						results.append(r.content)
+					except Exception as e:
+						# Log the error but continue to fetch the other URL
+						logdata("fetch_live_results", "SofaScore fetch failed for a URL: %s" % str(e))
+						results.append(None) # Append None for the failed request
 
-			d = deferToThread(_fetch_with_requests)
+				# If both failed, raise an exception to propagate the error
+				if all(r is None for r in results):
+					raise Exception("SofaScore fetch failed for all URLs.")
+					
+				return results
+
+			d = deferToThread(_fetch_with_requests) # d now holds a list of contents
 		
 		# === _process_response (Twisted Callback from network fetch) ===
-		def _process_response(raw):
+		def _process_response(raw_list): # <--- Argument changed from 'raw' to 'raw_list'
 			process_start = time.time()
 			#logdata("FootOnSat-LIVESCORE", "Received SofaScore response. Starting processing.")
-
+			all_events = []
 			# Decode and JSON Load
-			try:
-				data_str = raw.decode('utf-8', errors='ignore')
-				data = json.loads(data_str)
-				# === DEBUG: Save SofaScore JSON to /tmp (Pretty Print) ===
-#				try:
-#					sofa_debug_path = "/tmp/sofascore_data.json"
-#					events = data.get('events', [])
-#					# Dump the parsed JSON object back to a pretty-printed string
-#					formatted_data_str = json.dumps(events, indent=4, ensure_ascii=False)
-#					with codecs.open(sofa_debug_path, "w", encoding="utf-8") as f:
-#						f.write(formatted_data_str)
-#					logdata("FootOnSat-DEBUG", "Saved PRETTY-PRINTED SofaScore EVENTS to %s" % sofa_debug_path)
-#				except Exception as e:
-#					logdata("FootOnSat-DEBUG-ERROR", "Failed to save SofaScore JSON: %s" % str(e))
-				# === END DEBUG ===
-				events = data.get('events', [])
-			except ValueError as e:
-				# Log the actual JSON parsing error
-				logdata("fetch_live_results", "JSON parse error (ValueError): %s" % str(e))
-				# Log the beginning of the raw data that caused the crash (first 256 characters)
-				logdata("fetch_live_results", "Corrupt Data Snippet: %s..." % data_str[:256].replace('\n', ' '))
-				return
-			except Exception as e:
-				# Log any other unexpected decode/general error
-				logdata("fetch_live_results", "Decode/General error: %s" % str(e))
-				return
+			for idx, raw in enumerate(raw_list):
+				if raw is None: # Skip if fetch failed (non-PY3 path)
+					continue
+				# Decode and JSON Load
+				try:
+					data_str = raw.decode('utf-8', errors='ignore')
+					data = json.loads(data_str)
+					# === DEBUG: Save SofaScore JSON to /tmp (Pretty Print) ===
+#					try:
+#						sofa_debug_path = "/tmp/sofascore_data_%d.json" % idx
+#						events = data.get('events', [])
+#						formatted_data_str = json.dumps(events, indent=4, ensure_ascii=False)
+#						with codecs.open(sofa_debug_path, "w", encoding="utf-8") as f:
+#							f.write(formatted_data_str)
+#						logdata("FootOnSat-DEBUG", "Saved PRETTY-PRINTED SofaScore EVENTS to %s" % sofa_debug_path)
+#					except Exception as e:
+#						logdata("FootOnSat-DEBUG-ERROR", "Failed to save SofaScore JSON: %s" % str(e))
+					# === END DEBUG ===
+					events = data.get('events', [])
+					all_events.extend(events)
+				except ValueError as e:
+					# Log the actual JSON parsing error
+					logdata("fetch_live_results", "JSON parse error (ValueError): %s" % str(e))
+					# Log the beginning of the raw data that caused the crash (first 256 characters)
+					logdata("fetch_live_results", "Corrupt Data Snippet: %s..." % data_str[:256].replace('\n', ' '))
+					continue # Continue to the next response in the list
+				except Exception as e:
+					# Log any other unexpected decode/general error
+					logdata("fetch_live_results", "Decode/General error: %s" % str(e))
+					continue # Continue to the next response in the list
 
-			if not events:
+			if not all_events:
 				self.matches = [list(m) for m in self.matches]
 				try:
 					self.iniMenu()
@@ -772,9 +796,11 @@ class FootOnSat(Screen):
 					pass
 				return
 
+			events = all_events
+
 			# === STEP 1: EVENT BUILDING & STRICT FILTERING (Main thread) ===
 			now = datetime.now()
-			now_adj = now - timedelta(minutes=3) 
+			now_adj = now - timedelta(minutes=3)
 			
 			live_matches = []
 			build_start = time.time()
@@ -990,7 +1016,7 @@ class FootOnSat(Screen):
 							avg_swap = (sim1s + sim2s) / 2.0
 
 							cur_sim = max(avg_straight, avg_swap)
-							logdata("FuzzyDebug", "Match '%s': sim=%.2f (straight=%.2f, swap=%.2f)" % (local_name, cur_sim, avg_straight, avg_swap))
+							#logdata("FuzzyDebug", "Match '%s': sim=%.2f (straight=%.2f, swap=%.2f)" % (local_name, cur_sim, avg_straight, avg_swap))
 
 							if cur_sim > best_sim:
 								best_sim = cur_sim
