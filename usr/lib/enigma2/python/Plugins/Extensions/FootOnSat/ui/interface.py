@@ -668,6 +668,12 @@ class FootOnSat(Screen):
 		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/{}.json'.format(self.link)
 		sniFactory = WebClientContextFactory(url)
 		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
+            # This code only for test locale json files
+#		from twisted.internet import reactor
+#		json_file_path = '/tmp/today.json'
+#		with open(json_file_path, 'r') as f:
+#			json_data = f.read()
+#		reactor.callLater(0.1, self.getData, json_data)
 
 	def error(self, error=None):
 		if error:
@@ -1521,7 +1527,9 @@ class FootOnsatNotifScreen(Screen):
 			self.FootOnsatTimer.timeout.get().append(self.checkforNotif)
 		except:
 			self.FootOnsatTimer_conn = self.FootOnsatTimer.timeout.connect(self.checkforNotif)
-		self.FootOnsatTimer.start(15000)
+		#self.FootOnsatTimer.start(15000)
+		# CRITICAL FIX: Reduce check interval to 1 second for near-exact timing
+		self.FootOnsatTimer.start(1000)
 		self.onhideTimer = eTimer()
 		try:
 			# CRITICAL CHANGE: Handler now points to the queue processor
@@ -1579,13 +1587,18 @@ class FootOnsatNotifScreen(Screen):
 			match_data['message']
 		)
 		
-		# Schedule the next display or hide 
+		COMPENSATION_MS = 3000
+		notification_seconds = config.plugins.FootOnSat.notiftime.value
+		notification_milliseconds = notification_seconds * 1000
+		compensated_milliseconds = notification_milliseconds + COMPENSATION_MS
+		if compensated_milliseconds < 1000:
+			compensated_milliseconds = 1000
 		if self.matches_queue:
-			# CRITICAL CHANGE: 5-second delay between matches (5000ms)
-			self.onhideTimer.start(5000) 
+			# Start timer with compensated value
+			self.onhideTimer.start(compensated_milliseconds)
 		else:
-			# 6 seconds before final hide (original time)
-			self.onhideTimer.start(6000) 
+			# Start final timer with compensated value
+			self.onhideTimer.start(compensated_milliseconds)
 
 	def _start_sequential_display(self):
 		"""Starts the sequential display process if not already running."""
@@ -2369,8 +2382,8 @@ class StandingsScreen(Screen):
 				res.append(MultiContentEntryText(pos=(20, 0), size=(50, ITEM_HEIGHT), font=0,
 												 flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, text=str(club_idx)))
 			else:  # 2560
-				res.append(MultiContentEntryText(pos=(0, LOGO_Y_POS +13), size=(70, LOGO_SIZE_H), font=0,
-                                                 flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, text=str(club_idx)))
+				res.append(MultiContentEntryText(pos=(0, LOGO_Y_POS +12), size=(70, LOGO_SIZE_H), font=0,
+												 flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, text=str(club_idx)))
 			club_idx += 1
 
 			# logo using file path
