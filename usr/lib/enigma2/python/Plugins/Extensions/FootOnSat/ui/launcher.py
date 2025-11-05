@@ -11,7 +11,7 @@ from Components.Label import Label
 from Components.Sources.List import List
 from Components.Harddisk import harddiskmanager
 from Components.ConfigList import ConfigListScreen
-from Components.config import config, ConfigYesNo, ConfigSubsection, ConfigSelection, getConfigListEntry, NoSave, configfile, ConfigText
+from Components.config import config, ConfigYesNo, ConfigInteger, ConfigSubsection, ConfigSelection, getConfigListEntry, NoSave, configfile, ConfigText
 from Tools.LoadPixmap import LoadPixmap
 from Tools.Directories import resolveFilename, SCOPE_PLUGINS, SCOPE_LANGUAGE
 from Components.FootMenu import FlexibleMenu
@@ -50,6 +50,7 @@ config.plugins.FootOnSat.devicepath = ConfigSelection(default=default_ignore_dir
 config.plugins.FootOnSat.sort = ConfigDictionarySet(default={"footmenu": {"footsubmenu": {}}})
 config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
 config.plugins.FootOnSat.enableflag = ConfigYesNo(default=True)
+config.plugins.FootOnSat.notiftime = ConfigInteger(default=6, limits=(6, 20))
 config.plugins.FootOnSat.notiffile = ConfigText(default="notif1", visible_width = 250, fixed_size = False)
 config.plugins.FootOnSat.finished = ConfigSelection(default = "2", choices = [
 	("2", _("2 hours")),
@@ -436,45 +437,45 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 	if DreamOS():
 		if reswidth == 2560:
 			skin = """
-					<screen name="MenuFootOnSat" position="center,center" size="1522,976" title="Menu FootOnSat">
+					<screen name="MenuFootOnSat" position="center,center" size="1522,976" title="Menu FootOnSat" backgroundColor="#60000000">
 				            <widget source="global.CurrentTime" render="Label" position="5,17" size="1511,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
 				                <convert type="ClockToText">Format:%d-%m-%Y    %H:%M:%S</convert>
 				            </widget>
-				            <widget name="config" position="18,70" size="1495,430" scrollbarMode="showOnDemand" />
+				            <widget name="config" position="18,70" size="1495,430" backgroundColor="#20000000" scrollbarMode="showOnDemand" />
 				            <eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="448,950" zPosition="-10" />
 				            <eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="830,950" zPosition="-10" />
 				            <widget render="Label" source="key_red" position="448,905" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" />
 				            <widget render="Label" source="key_green" position="830,905" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1" />
-				            <widget source="help" render="Label" position="22,510" size="1476,40" font="Regular;29" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5" />
+				            <widget source="help" render="Label" position="22,560" size="1476,40" font="Regular;29" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5" />
 				            <widget name="Picture" position="521,554" size="480,340" zPosition="5" alphatest="blend" />
 					</screen>"""
 		else:
 			skin = """
-					<screen name="MenuFootOnSat" position="center,center" size="1040,900" title="Menu FootOnSat">
+					<screen name="MenuFootOnSat" position="center,center" size="1040,900" title="Menu FootOnSat" backgroundColor="#60000000">
 						<widget source="global.CurrentTime" render="Label" position="5,5" size="1022,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
 							<convert type="ClockToText">Format:%d-%m-%Y&#160;%H:%M:%S</convert>
 						</widget>
-						<widget name="config" position="18,70" size="1005,420" scrollbarMode="showOnDemand"/>
+						<widget name="config" position="18,70" size="1005,420" backgroundColor="#20000000" scrollbarMode="showOnDemand"/>
 						<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,860" zPosition="-10"/>
 						<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,860" zPosition="-10"/>
 						<widget render="Label" source="key_red" position="223,825" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
 						<widget render="Label" source="key_green" position="585,825" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
-						<widget source="help" render="Label" position="18,495" size="1004,60" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
-						<widget name="Picture" position="313,590" size="400,225" zPosition="5" alphatest="blend"/>
+						<widget source="help" render="Label" position="18,580" size="1004,150" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
+						<widget name="Picture" position="313,570" size="400,225" zPosition="5" alphatest="blend"/>
 					</screen>"""
 	else:
 		skin = """
-				<screen name="MenuFootOnSat" position="center,center" size="1040,840" title="Menu FootOnSat">
+				<screen name="MenuFootOnSat" position="center,center" size="1080,860" title="Menu FootOnSat" backgroundColor="#20000000">
 					<widget source="global.CurrentTime" render="Label" position="5,5" size="1022,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
 						<convert type="ClockToText">Format:%d-%m-%Y     %H:%M:%S</convert>
 					</widget>
-					<widget name="config" font="Regular;28" secondfont="Regular;28" itemHeight="45" position="18,60" size="1005,455" scrollbarMode="showOnDemand"/>
-					<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,820" zPosition="-10"/>
-					<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,820" zPosition="-10"/>
-					<widget render="Label" source="key_red" position="223,785" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
-					<widget render="Label" source="key_green" position="585,785" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
-					<widget source="help" render="Label" position="18,500" size="1004,60" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
-					<widget name="Picture" position="313,560" size="400,225" zPosition="5" alphatest="blend"/>
+					<widget name="config" font="Regular;28" secondfont="Regular;28" itemHeight="45" position="18,50" size="1030,500" backgroundColor="#20000000" scrollbarMode="showOnDemand"/>
+					<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,850" zPosition="-10"/>
+					<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,850" zPosition="-10"/>
+					<widget render="Label" source="key_red" position="223,805" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
+					<widget render="Label" source="key_green" position="585,805" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
+					<widget source="help" render="Label" position="18,580" size="1004,150" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="bottom" halign="center" transparent="1" zPosition="5"/>
+					<widget name="Picture" position="313,568" size="400,225" zPosition="5" alphatest="blend"/>
 				</screen>"""
 
 	def __init__(self, session):
@@ -513,6 +514,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			self.list.append(getConfigListEntry(_("Select appear live + score of match in"), config.plugins.FootOnSat.livescoresections, _("This feature allows you to show matches live with result in sections")))
 			self.list.append(getConfigListEntry(_("Hide matches that started before"), config.plugins.FootOnSat.finished, _("This option is to specify the time that matches that have finished remain before they disappear from the list")))
 		self.list.append(getConfigListEntry(_("Path to store ignore file"), config.plugins.FootOnSat.devicepath, _("This option to set the path of save file for ignore matches")))
+		self.list.append(getConfigListEntry(_("Choose time for notifications"), config.plugins.FootOnSat.notiftime, _("This feature allows you to choose the number of seconds for notifications to appear.\nMove <Left | Right> to change seconds from (6 - 20)")))
 		self.list.append(getConfigListEntry(_("Choose to display notifications"), config.plugins.FootOnSat.notify, _("This feature allows you to specify the times for notifications to appear when matches start")))
 		self.list.append(getConfigListEntry(_("Choose tone of notifications #press OK to change"), config.plugins.FootOnSat.notiffile, _("This feature allows you to select a notification tone when matches start")))
 		self.list.append(getConfigListEntry(_("Select Icons Style"), config.plugins.FootOnSat.icons, _("This option to enable to select Icons Style")))
@@ -597,7 +599,10 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 	def updateHelp(self):
 		cur = self["config"].getCurrent()
 		if cur:
-			self["help"].text = cur[2]
+			if cur[1] is config.plugins.FootOnSat.icons:
+				self["help"].text = ""
+			else:
+				self["help"].text = cur[2]
 
 	def Picture(self):
 		try:
@@ -624,11 +629,43 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			logdata("Picture preview:", error)
 
 	def keyLeft(self):
+		cur = self["config"].getCurrent()
+		if cur and cur[1] == config.plugins.FootOnSat.notiftime:
+			val = config.plugins.FootOnSat.notiftime.value
+			limits = config.plugins.FootOnSat.notiftime.limits
+			if isinstance(limits[0], int):
+				low, high = limits
+			else:
+				low, high = limits[0]
+			if val > low:
+				config.plugins.FootOnSat.notiftime.value = val - 1
+				try:
+					self["config"].invalidate(config.plugins.FootOnSat.notiftime)
+				except Exception:
+					self["config"].invalidate()
+				self["config"].l.setList(self["config"].list)
+			return
 		ConfigListScreen.keyLeft(self)
 		self.Picture()
 		self.createSetup()
 
 	def keyRight(self):
+		cur = self["config"].getCurrent()
+		if cur and cur[1] == config.plugins.FootOnSat.notiftime:
+			val = config.plugins.FootOnSat.notiftime.value
+			limits = config.plugins.FootOnSat.notiftime.limits
+			if isinstance(limits[0], int):
+				low, high = limits
+			else:
+				low, high = limits[0]
+			if val < high:
+				config.plugins.FootOnSat.notiftime.value = val + 1
+				try:
+					self["config"].invalidate(config.plugins.FootOnSat.notiftime)
+				except Exception:
+					self["config"].invalidate()
+				self["config"].l.setList(self["config"].list)
+			return
 		ConfigListScreen.keyRight(self)
 		self.Picture()
 		self.createSetup()
