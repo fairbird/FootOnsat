@@ -2369,8 +2369,8 @@ class StandingsScreen(Screen):
 				res.append(MultiContentEntryText(pos=(20, 0), size=(50, ITEM_HEIGHT), font=0,
 												 flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, text=str(club_idx)))
 			else:  # 2560
-				res.append(MultiContentEntryText(pos=(0, LOGO_Y_POS +12), size=(70, LOGO_SIZE_H), font=0,
-												 flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, text=str(club_idx)))
+				res.append(MultiContentEntryText(pos=(0, LOGO_Y_POS +13), size=(70, LOGO_SIZE_H), font=0,
+                                                 flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, text=str(club_idx)))
 			club_idx += 1
 
 			# logo using file path
