@@ -73,7 +73,7 @@ reswidth = getDesktop(0).size().width()
 
 DB_PATH = '/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/db/footonsat.db'
 
-## url for Standings table
+# url for Standings table
 json_urls = {
 	# Champions league
 	"championsleague": "https://www.sofascore.com/tournament/football/europe/uefa-champions-league/7#id:76953",
@@ -117,6 +117,7 @@ json_urls = {
 	# nba basketball
 	"nba": "https://www.sofascore.com/tournament/basketball/usa/nba/132#id:80229",
 }
+
 # Use thess url to download missing log of team (Extra code)
 log_urls = {
 	# Champions league
