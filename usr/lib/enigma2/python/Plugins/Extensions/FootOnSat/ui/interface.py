@@ -214,6 +214,7 @@ class FootOnSat(Screen):
 		#logdata("FootOnSat-INIT", "Plugin initialization started.")
 		self.session = session
 		Screen.__init__(self, session)
+		self.execing = False # FIX: Prevents AttributeError in base class's close() method
 		if reswidth == 1920:
 			skin = "assets/skin/FHD/interface.xml"
 		elif reswidth >= 2560:
@@ -482,7 +483,41 @@ class FootOnSat(Screen):
 			self.updateCounter()
 			self.getChannels()  # Update channel for selected match
 		else:
-			self.session.openWithCallback(self.exit, MessageBox, _('No schedules in this section at this time'), MessageBox.TYPE_INFO, timeout=10)
+			# If no data is found, display message in the list instead of a MessageBox
+			gList = []
+			no_schedules_text = _('No schedules in this section at this time')
+			# Set font and height (mirroring the 'if' block setup)
+			self["list1"].l.setItemHeight(175)
+			if reswidth >= 2560:
+				self["list1"].l.setFont(0, gFont('Regular', 36))
+			else:
+				self["list1"].l.setFont(0, gFont('Regular', 28))
+			# Create the single list entry with centered text
+			res = []
+			res.append(MultiContentEntryText()) # Starts the list item
+			# Text centered vertically (y=70 is roughly the center of 175 height item) and horizontally
+			res.append(MultiContentEntryText(
+				pos=(0, 70), 
+				size=(850 if reswidth >= 2560 else 660, 36),
+				font=0, 
+				flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, 
+				text=no_schedules_text
+			))
+			gList.append(res)
+			# Set the list
+			self["list1"].setList(gList)
+			# Clear all auxiliary information and hide buttons
+			self['key_red'].hide()
+			self['key_yellow'].hide()
+			self['key_blue'].hide()
+			self['key_green'].show()
+			self["counter"].setText("0/0")
+			self["channel"].setText("")
+			self["sat"].setText("")
+			self["freq"].setText("")
+			self["enc"].setText("")
+			self.getChannels() # This will ensure list2 is also cleared
+			#self.session.openWithCallback(self.exit, MessageBox, _('No schedules in this section at this time'), MessageBox.TYPE_INFO, timeout=10)
 
 	def enablelist1(self):
 		instance = self["list1"].instance
@@ -1221,7 +1256,9 @@ class FootOnSat(Screen):
 
 			self.onWindowShow()
 		else:
-			self.session.openWithCallback(self.exit, MessageBox, _('No schedules in this section at this time'), MessageBox.TYPE_ERROR, timeout=10)
+			self.matches = []  # dummy entry to force iniMenu to show "no schedules"
+			self.onWindowShow()
+			#self.session.openWithCallback(self.exit, MessageBox, _('No schedules in this section at this time'), MessageBox.TYPE_ERROR, timeout=10)
 		
 	def getChannels(self):
 		list = []
