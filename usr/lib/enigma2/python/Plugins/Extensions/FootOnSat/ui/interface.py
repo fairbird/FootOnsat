@@ -35,6 +35,7 @@ from Screens.MessageBox import MessageBox
 from Tools.Directories import resolveFilename, SCOPE_PLUGINS, fileExists
 from Tools.LoadPixmap import LoadPixmap
 from twisted.internet import defer, reactor
+from twisted.python.failure import Failure
 from twisted.internet.defer import DeferredList
 from twisted.internet.ssl import ClientContextFactory
 from twisted.internet.threads import deferToThread
@@ -214,6 +215,7 @@ class FootOnSat(Screen):
 		#logdata("FootOnSat-INIT", "Plugin initialization started.")
 		self.session = session
 		Screen.__init__(self, session)
+		self.execing = False # FIX: Prevents AttributeError in base class's close() method
 		if reswidth == 1920:
 			skin = "assets/skin/FHD/interface.xml"
 		elif reswidth >= 2560:
@@ -269,6 +271,10 @@ class FootOnSat(Screen):
 
 	def iniMenu(self):
 		if len(self.matches) > 0:
+			# This code only for test 
+			#self.matches[0][5] = "6"
+			#self.matches[0][6] = "8"
+			#self.matches[0][7] = "70 min"
 			res = []
 			gList = []
 			self["list1"].l.setItemHeight(175)
@@ -290,6 +296,7 @@ class FootOnSat(Screen):
 				team1_score = self.matches[i][5]  # Team1 score
 				team2_score = self.matches[i][6]  # Team2 score
 				match_status = self.matches[i][7]  # Match status (e.g., '70', 'HT', 'FT')
+
 				# =======================================================
 				# *** NEW LOGIC START: Format the Status/Time ***
 				# =======================================================
@@ -334,6 +341,8 @@ class FootOnSat(Screen):
 				flagTeam2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/{}.png".format(team2))
 				teamlog1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/teamlog/{}.png".format(log1))
 				teamlog2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/teamlog/{}.png".format(log2))
+				basketdefault = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/teamlog/baskedefault.png")
+				footdefault = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/teamlog/footdefault.png")
 				banner = FootOnSat.setCompet(str(compet).lower())
 				match_date = self.getTime(match_date)
 				if not fileExists(flagTeam1):
@@ -341,9 +350,9 @@ class FootOnSat(Screen):
 				if not fileExists(flagTeam2):
 					flagTeam2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/default.png")
 				if not fileExists(teamlog1):
-					teamlog1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/teamlog/default.png")
+					teamlog1 = basketdefault if self.link in ("basketball", "nba") else footdefault
 				if not fileExists(teamlog2):
-					teamlog2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/teamlog/default.png")
+					teamlog2 = basketdefault if self.link in ("basketball", "nba") else footdefault
 				if self.checkIfexist(match):
 					notif = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/icon/notif_on.png")
 				else:
@@ -351,7 +360,7 @@ class FootOnSat(Screen):
 				# Initialize list entry
 				res.append(MultiContentEntryText())
 				# Team 1 flag/logteam
-				if self.link in ("basketball", "nba"):
+				if self.link in ("basketball", "nba", "championsleague"):
 					res.append(MultiContentEntryPixmapAlphaBlend(pos=(70, 5), size=(160, 160), png=loadPNG(teamlog1)))
 					if config.plugins.FootOnSat.enableflag.value:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(212, 70), size=(40, 30), png=loadPNG(flagTeam1)))
@@ -360,19 +369,31 @@ class FootOnSat(Screen):
 				# Score team 1
 				if self.link not in ("basketball", "nba"):
 					if reswidth >= 2560:
-						res.append(MultiContentEntryText(pos=(500, 69), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
+						if self.link in ("championsleague"):
+							res.append(MultiContentEntryText(pos=(950, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
+						else:
+							res.append(MultiContentEntryText(pos=(500, 69), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
 					else:
-						res.append(MultiContentEntryText(pos=(482, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
-				 # Team 2 flag/logteam
+						if self.link in ("championsleague"):
+							res.append(MultiContentEntryText(pos=(700, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
+						else:
+							res.append(MultiContentEntryText(pos=(482, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
+				# Place a checkmark (-) between the results in the section championsleague only
+				if (team1_score != "" or match_status != "") and self.link in ("championsleague"):
+					if reswidth >= 2560:
+						res.append(MultiContentEntryText(pos=(990, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str("-"), color=0xFF0000))
+					else:
+						res.append(MultiContentEntryText(pos=(750, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str("-"), color=0xFF0000))
+				# Team 2 flag/logteam
 				if reswidth >= 2560:
-					if self.link in ("basketball", "nba"):
+					if self.link in ("basketball", "nba", "championsleague"):
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1440, 5), size=(160, 160), png=loadPNG(teamlog2)))
 						if config.plugins.FootOnSat.enableflag.value:
 							res.append(MultiContentEntryPixmapAlphaBlend(pos=(1420, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 					else:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1550, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 				else:
-					if self.link in ("basketball", "nba"):
+					if self.link in ("basketball", "nba", "championsleague"):
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1030, 10), size=(160, 160), png=loadPNG(teamlog2)))
 						if config.plugins.FootOnSat.enableflag.value:
 							res.append(MultiContentEntryPixmapAlphaBlend(pos=(1012, 70), size=(40, 30), png=loadPNG(flagTeam2)))
@@ -381,11 +402,17 @@ class FootOnSat(Screen):
 				# Score team 2
 				if self.link not in ("basketball", "nba"):
 					if reswidth >= 2560:
-						res.append(MultiContentEntryText(pos=(1490, 69), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
+						if self.link in ("championsleague"):
+							res.append(MultiContentEntryText(pos=(1090, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
+						else:
+							res.append(MultiContentEntryText(pos=(1490, 69), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
 					else:
-						res.append(MultiContentEntryText(pos=(1092, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
+						if self.link in ("championsleague"):
+							res.append(MultiContentEntryText(pos=(792, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
+						else:
+							res.append(MultiContentEntryText(pos=(1092, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
 				# Competition banner
-				if self.link not in ("basketball", "nba"):
+				if self.link not in ("basketball", "nba", "championsleague"):
 					try:
 						res.append(MultiContentEntryPixmapAlphaTest(pos=(65, 6), size=(320, 163), png=loadPNG(banner), flags=BT_SCALE))
 					except TypeError:
@@ -394,42 +421,48 @@ class FootOnSat(Screen):
 				res.append(MultiContentEntryPixmapAlphaBlend(pos=(-20, 63), size=(70, 50), png=loadPNG(notif)))
 				# Match name
 				if reswidth >= 2560:
-					if self.link in ("basketball", "nba"):
+					if self.link in ("basketball", "nba", "championsleague"):
 						res.append(MultiContentEntryText(pos=(332, 69), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_HALIGN_CENTER, text=str(match)))
 					else:
 						res.append(MultiContentEntryText(pos=(550, 69), size=(900, 40), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
 				else:
-					if self.link in ("basketball", "nba"):
+					if self.link in ("basketball", "nba", "championsleague"):
 						res.append(MultiContentEntryText(pos=(310, 66), size=(660, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(match)))
 					else:
 						res.append(MultiContentEntryText(pos=(500, 66), size=(570, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
 				# status_text + match_status
-				if (team1_score != "" or match_status != "") and (self.link != "basketball" or self.link != "nba"):
+				if (team1_score != "" or match_status != "") and self.link not in ("basketball", "nba"):
 					# If score or status exists, display the dynamic status/time (e.g., "Live: 70 min" or "Status: FT")
 					if reswidth >= 2560:
-						res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=0xFF0000))
+						if self.link in ("championsleague"):
+							res.append(MultiContentEntryText(pos=(430, 120), size=(400, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=0xFF0000))
+						else:
+							res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=0xFF0000))
 					else:
-						res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=0xFF0000))
+						if self.link in ("championsleague"):
+							res.append(MultiContentEntryText(pos=(350, 120), size=(200, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=0xFF0000))
+						else:
+							res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=0xFF0000))
 				else:
 					# Otherwise, display the scheduled Kick-off time
 					if reswidth >= 2560:
-						if self.link in ("basketball", "nba"):
+						if self.link in ("basketball", "nba", "championsleague"):
 							res.append(MultiContentEntryText(pos=(430, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 						else:
 							res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 					else:
-						if self.link in ("basketball", "nba"):
+						if self.link in ("basketball", "nba", "championsleague"):
 							res.append(MultiContentEntryText(pos=(350, 120), size=(500, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 						else:
 							res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 				# Competition name
 				if reswidth >= 2560:
-					if self.link in ("basketball", "nba"):
+					if self.link in ("basketball", "nba", "championsleague"):
 						res.append(MultiContentEntryText(pos=(430, 15), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 					else:
 						res.append(MultiContentEntryText(pos=(420, 15), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 				else:
-					if self.link in ("basketball", "nba"):
+					if self.link in ("basketball", "nba", "championsleague"):
 						res.append(MultiContentEntryText(pos=(350, 15), size=(500, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 					else:
 						res.append(MultiContentEntryText(pos=(420, 15), size=(785, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
@@ -451,7 +484,41 @@ class FootOnSat(Screen):
 			self.updateCounter()
 			self.getChannels()  # Update channel for selected match
 		else:
-			self.session.openWithCallback(self.exit, MessageBox, _('No schedules in this section at this time'), MessageBox.TYPE_INFO, timeout=10)
+			# If no data is found, display message in the list instead of a MessageBox
+			gList = []
+			no_schedules_text = _('No schedules in this section at this time')
+			# Set font and height (mirroring the 'if' block setup)
+			self["list1"].l.setItemHeight(175)
+			if reswidth >= 2560:
+				self["list1"].l.setFont(0, gFont('Regular', 36))
+			else:
+				self["list1"].l.setFont(0, gFont('Regular', 28))
+			# Create the single list entry with centered text
+			res = []
+			res.append(MultiContentEntryText()) # Starts the list item
+			# Text centered vertically (y=70 is roughly the center of 175 height item) and horizontally
+			res.append(MultiContentEntryText(
+				pos=(0, 70), 
+				size=(850 if reswidth >= 2560 else 660, 36),
+				font=0, 
+				flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, 
+				text=no_schedules_text
+			))
+			gList.append(res)
+			# Set the list
+			self["list1"].setList(gList)
+			# Clear all auxiliary information and hide buttons
+			self['key_red'].hide()
+			self['key_yellow'].hide()
+			self['key_blue'].hide()
+			self['key_green'].show()
+			self["counter"].setText("0/0")
+			self["channel"].setText("")
+			self["sat"].setText("")
+			self["freq"].setText("")
+			self["enc"].setText("")
+			self.getChannels() # This will ensure list2 is also cleared
+			#self.session.openWithCallback(self.exit, MessageBox, _('No schedules in this section at this time'), MessageBox.TYPE_INFO, timeout=10)
 
 	def enablelist1(self):
 		instance = self["list1"].instance
@@ -668,6 +735,12 @@ class FootOnSat(Screen):
 		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/{}.json'.format(self.link)
 		sniFactory = WebClientContextFactory(url)
 		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
+            # This code only for test locale json files
+#		from twisted.internet import reactor
+#		json_file_path = '/tmp/today.json'
+#		with open(json_file_path, 'r') as f:
+#			json_data = f.read()
+#		reactor.callLater(0.1, self.getData, json_data)
 
 	def error(self, error=None):
 		if error:
@@ -715,41 +788,124 @@ class FootOnSat(Screen):
 				self.matches = [list(m) for m in self.matches]
 				self.iniMenu()
 				return
-			
+
 			twisted_live_headers = {
 				b'User-Agent': [AGENT],
 				b'Connection': [b'close'],
-				b'Accept': [b'application/json, text/plain, */*']
+				b'Accept': [b'application/json, text/plain, */*'],
+				b'Referer': [b'https://www.sofascore.com/'],
+				b'Origin': [b'https://www.sofascore.com'],
+				b'Cache-Control': [b'no-cache'],
 			}
-			# Fire both requests
-			d1 = getPage(str.encode(url1), contextFactory=sniFactory, timeout=10, headers=twisted_live_headers)
-			d2 = getPage(str.encode(url2), contextFactory=sniFactory, timeout=10, headers=twisted_live_headers)
 
+			# === SMART DYNAMIC FETCH ===
+			# On Saturday/Sunday → url2 = 30 MB = DEATH
+			# So we check day: if weekend → SKIP url2 completely
+			weekday = date.today().weekday()  # 5 = Saturday, 6 = Sunday
+			is_weekend = weekday >= 5
+			fetch_url2 = not is_weekend  # ONLY try url2 on Mon–Fri
+
+			#logdata("fetch_live_results", "Today is %s → fetch_url2 = %s" % (
+			#	"SAT/SUN (BUSY)" if is_weekend else "Mon–Fri (quiet)", 
+			#	"NO (safe)" if not fetch_url2 else "YES (trying)"
+			#))
+
+			# Always fetch url1 (main clean data)
+			d1 = getPage(str.encode(url1), contextFactory=sniFactory, timeout=25, headers=twisted_live_headers)
 			deferred_list.append(d1)
-			deferred_list.append(d2)
 
-			# Use defer.gatherResults to wait for both to complete
-			d = defer.gatherResults(deferred_list, consumeErrors=True) # d now holds a list of raw responses
-		else:
-			def _fetch_with_requests():
-				results = []
-				for url in [url1, url2]:
+			# Conditionally fetch url2 (only on safe days)
+			d2 = None
+			if fetch_url2:
+				def safe_url2():
 					try:
-						r = requests.get(url, headers=headers2, timeout=10)
-						r.raise_for_status()
-						results.append(r.content)
+						# Aggressive anti-block headers
+						headers2 = twisted_live_headers.copy()
+						headers2[b'User-Agent'] = [b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/129.0 Safari/537.36']
+						headers2[b'Accept-Encoding'] = [b'identity']
+						return getPage(str.encode(url2), contextFactory=sniFactory, timeout=15, headers=headers2)
+					except:
+						return defer.succeed(None)
+				d2 = safe_url2()
+				deferred_list.append(d2)
+			else:
+				# Weekend: inject None so gatherResults keeps order
+				deferred_list.append(defer.succeed(None))
+
+			d = defer.gatherResults(deferred_list, consumeErrors=True)
+
+			def process_results(results):
+				raw1, raw2 = results
+
+				# Log url1
+				#if isinstance(raw1, Failure):
+				#	logdata("fetch_live_results", "DEBUG URL1 FAILED: %s" % raw1.getErrorMessage())
+				#else:
+				#	logdata("fetch_live_results", "DEBUG URL1 OK (Bytes: %d)" % len(raw1))
+
+				# Log url2
+				#if not fetch_url2:
+				#	logdata("fetch_live_results", "DEBUG URL2 SKIPPED (weekend protection active)")
+				#elif raw2 is None:
+				#	logdata("fetch_live_results", "DEBUG URL2 SKIPPED (setup failed)")
+				#elif isinstance(raw2, Failure):
+				#	logdata("fetch_live_results", "DEBUG URL2 FAILED → SKIPPED SAFELY")
+				#else:
+				#	logdata("fetch_live_results", "DEBUG URL2 OK (Bytes: %d) → using extra data" % len(raw2))
+
+				# Return only valid data
+				valid = []
+				if raw1 and not isinstance(raw1, Failure):
+					valid.append(raw1)
+				if raw2 and not isinstance(raw2, Failure) and fetch_url2:
+					valid.append(raw2)
+
+				# Fallback if both fail
+				if not valid:
+					valid = [b'{"events":[]}']
+
+				return valid
+
+			d.addCallback(process_results)
+
+		else:
+			# PY2 version — same logic
+			def _fetch_smart():
+				results = []
+				weekday = date.today().weekday()
+				is_weekend = weekday >= 5
+				fetch_url2 = not is_weekend
+
+				# url1 always
+				try:
+					r = requests.get(url1, headers=headers2, timeout=20)
+					r.raise_for_status()
+					results.append(r.content)
+					#logdata("fetch_live_results", "DEBUG URL1 (Py2) OK (%d KB)" % (len(r.content)//1024))
+				except Exception as e:
+					logdata("fetch_live_results", "DEBUG URL1 (Py2) FAILED: %s" % str(e))
+					results.append(None)
+
+				# url2 only if safe
+				if fetch_url2:
+					try:
+						h2 = headers2.copy()
+						h2['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/129.0 Safari/537.36'
+						r2 = requests.get(url2, headers=h2, timeout=12)
+						r2.raise_for_status()
+						results.append(r2.content)
+						#logdata("fetch_live_results", "DEBUG URL2 (Py2) OK (%d MB) → extra data" % (len(r2.content)//1024//1024))
 					except Exception as e:
-						# Log the error but continue to fetch the other URL
-						logdata("fetch_live_results", "SofaScore fetch failed for a URL: %s" % str(e))
-						results.append(None) # Append None for the failed request
+						logdata("fetch_live_results", "DEBUG URL2 (Py2) FAILED → SKIPPED")
+						results.append(None)
+				else:
+					#logdata("fetch_live_results", "DEBUG URL2 (Py2) SKIPPED (weekend mode)")
+					results.append(None)
 
-				# If both failed, raise an exception to propagate the error
-				if all(r is None for r in results):
-					raise Exception("SofaScore fetch failed for all URLs.")
-					
-				return results
+				valid = [r for r in results if r is not None]
+				return valid or [b'{"events":[]}']
 
-			d = deferToThread(_fetch_with_requests) # d now holds a list of contents
+			d = deferToThread(_fetch_smart)
 		
 		# === _process_response (Twisted Callback from network fetch) ===
 		def _process_response(raw_list): # <--- Argument changed from 'raw' to 'raw_list'
@@ -806,8 +962,16 @@ class FootOnSat(Screen):
 			build_start = time.time()
 			for ev in events:
 				try:
-					home = compat_str(ev['homeTeam']['name'])
-					away = compat_str(ev['awayTeam']['name'])
+					try:
+						home_team = ev.get('homeTeam') or {}
+						away_team = ev.get('awayTeam') or {}
+						home = compat_str(home_team.get('name', 'Unknown Home'))
+						away = compat_str(away_team.get('name', 'Unknown Away'))
+						if home == 'Unknown Home' or away == 'Unknown Away':
+							continue
+					except Exception as e:
+						logdata("FootOnSat-Sofa-ERROR", "Team name parse error: %s" % str(e))
+						continue
 					match_name = "{0} vs {1}".format(home, away)
 
 					h_score_raw = compat_str(ev.get('homeScore', {}).get('current', '')) or ''
@@ -1151,15 +1315,21 @@ class FootOnSat(Screen):
 							# Skip past matches outside the LIVE_DURATION window
 							pass
 
+						if "Bodø/Glimt" in match['match']:
+							match_name = match['match'].replace("Bodø/Glimt", "Bodø Glimt")
+						else:
+							match_name = match['match']
+
 						if append_match:
-							list.append([str(match['match']),
-										 str(match['time']) + ' - ' + str(match['date']),
-										 str(match['compet']),
-										 str(match['flags']['team1']),
-										 str(match['flags']['team2']),
-										 team1_score,
-										 team2_score,
-										 match_status])
+							list.append([
+									str(match_name),
+									str(match['time']) + ' - ' + str(match['date']),
+									str(match['compet']),
+									str(match['flags']['team1']),
+									str(match['flags']['team2']),
+									team1_score,
+									team2_score,
+									match_status])
 					#else:
 						#logdata("getData", "Ignored competition: " + str(match['match']) + ", Compet: " + compet)
 				except KeyError:
@@ -1178,7 +1348,9 @@ class FootOnSat(Screen):
 
 			self.onWindowShow()
 		else:
-			self.session.openWithCallback(self.exit, MessageBox, _('No schedules in this section at this time'), MessageBox.TYPE_ERROR, timeout=10)
+			self.matches = []  # dummy entry to force iniMenu to show "no schedules"
+			self.onWindowShow()
+			#self.session.openWithCallback(self.exit, MessageBox, _('No schedules in this section at this time'), MessageBox.TYPE_ERROR, timeout=10)
 		
 	def getChannels(self):
 		list = []
@@ -1521,7 +1693,9 @@ class FootOnsatNotifScreen(Screen):
 			self.FootOnsatTimer.timeout.get().append(self.checkforNotif)
 		except:
 			self.FootOnsatTimer_conn = self.FootOnsatTimer.timeout.connect(self.checkforNotif)
-		self.FootOnsatTimer.start(15000)
+		#self.FootOnsatTimer.start(15000)
+		# CRITICAL FIX: Reduce check interval to 1 second for near-exact timing
+		self.FootOnsatTimer.start(1000)
 		self.onhideTimer = eTimer()
 		try:
 			# CRITICAL CHANGE: Handler now points to the queue processor
@@ -1579,13 +1753,18 @@ class FootOnsatNotifScreen(Screen):
 			match_data['message']
 		)
 		
-		# Schedule the next display or hide 
+		COMPENSATION_MS = 3000
+		notification_seconds = config.plugins.FootOnSat.notiftime.value
+		notification_milliseconds = notification_seconds * 1000
+		compensated_milliseconds = notification_milliseconds + COMPENSATION_MS
+		if compensated_milliseconds < 1000:
+			compensated_milliseconds = 1000
 		if self.matches_queue:
-			# CRITICAL CHANGE: 5-second delay between matches (5000ms)
-			self.onhideTimer.start(5000) 
+			# Start timer with compensated value
+			self.onhideTimer.start(compensated_milliseconds)
 		else:
-			# 6 seconds before final hide (original time)
-			self.onhideTimer.start(6000) 
+			# Start final timer with compensated value
+			self.onhideTimer.start(compensated_milliseconds)
 
 	def _start_sequential_display(self):
 		"""Starts the sequential display process if not already running."""
@@ -1598,8 +1777,10 @@ class FootOnsatNotifScreen(Screen):
 		tone_file = MenuFootOnSat.getToneFile()
 		if os.path.exists("/usr/bin/aplay"):
 			os.system('aplay "{}" &'.format(tone_file))
+		elif os.path.exists("/usr/bin/gst-launch-1.0"):
+			os.system('(gst-launch-1.0 -q --no-fault filesrc location="{}" ! wavparse ! audioconvert ! audioresample ! alsasink > /dev/null 2>&1 &) &'.format(tone_file))
 		else:
-			os.system('ffmpeg -hide_banner -loglevel quiet -i "{}" -filter:a "volume=1.0" -f alsa default &'.format(tone_file))
+			logdata("FootOnSatNotif", "No supported sound player found (aplay/gst-launch).")
 			
 		# Start the sequential timer to immediately process the first item
 		self.onhideTimer.start(10)
@@ -2370,7 +2551,7 @@ class StandingsScreen(Screen):
 												 flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, text=str(club_idx)))
 			else:  # 2560
 				res.append(MultiContentEntryText(pos=(0, LOGO_Y_POS +13), size=(70, LOGO_SIZE_H), font=0,
-                                                 flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, text=str(club_idx)))
+												 flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, text=str(club_idx)))
 			club_idx += 1
 
 			# logo using file path
