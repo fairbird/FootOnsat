@@ -511,7 +511,10 @@ class FootOnSat(Screen):
 			self['key_red'].hide()
 			self['key_yellow'].hide()
 			self['key_blue'].hide()
-			self['key_green'].show()
+			if self.link == "today":
+				self['key_green'].hide()
+			else:
+				self['key_green'].show()
 			self["counter"].setText("0/0")
 			self["channel"].setText("")
 			self["sat"].setText("")
