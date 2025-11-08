@@ -35,6 +35,7 @@ from Screens.MessageBox import MessageBox
 from Tools.Directories import resolveFilename, SCOPE_PLUGINS, fileExists
 from Tools.LoadPixmap import LoadPixmap
 from twisted.internet import defer, reactor
+from twisted.python.failure import Failure
 from twisted.internet.defer import DeferredList
 from twisted.internet.ssl import ClientContextFactory
 from twisted.internet.threads import deferToThread
@@ -787,41 +788,124 @@ class FootOnSat(Screen):
 				self.matches = [list(m) for m in self.matches]
 				self.iniMenu()
 				return
-			
+
 			twisted_live_headers = {
 				b'User-Agent': [AGENT],
 				b'Connection': [b'close'],
-				b'Accept': [b'application/json, text/plain, */*']
+				b'Accept': [b'application/json, text/plain, */*'],
+				b'Referer': [b'https://www.sofascore.com/'],
+				b'Origin': [b'https://www.sofascore.com'],
+				b'Cache-Control': [b'no-cache'],
 			}
-			# Fire both requests
-			d1 = getPage(str.encode(url1), contextFactory=sniFactory, timeout=10, headers=twisted_live_headers)
-			d2 = getPage(str.encode(url2), contextFactory=sniFactory, timeout=10, headers=twisted_live_headers)
 
+			# === SMART DYNAMIC FETCH ===
+			# On Saturday/Sunday → url2 = 30 MB = DEATH
+			# So we check day: if weekend → SKIP url2 completely
+			weekday = date.today().weekday()  # 5 = Saturday, 6 = Sunday
+			is_weekend = weekday >= 5
+			fetch_url2 = not is_weekend  # ONLY try url2 on Mon–Fri
+
+			#logdata("fetch_live_results", "Today is %s → fetch_url2 = %s" % (
+			#	"SAT/SUN (BUSY)" if is_weekend else "Mon–Fri (quiet)", 
+			#	"NO (safe)" if not fetch_url2 else "YES (trying)"
+			#))
+
+			# Always fetch url1 (main clean data)
+			d1 = getPage(str.encode(url1), contextFactory=sniFactory, timeout=25, headers=twisted_live_headers)
 			deferred_list.append(d1)
-			deferred_list.append(d2)
 
-			# Use defer.gatherResults to wait for both to complete
-			d = defer.gatherResults(deferred_list, consumeErrors=True) # d now holds a list of raw responses
-		else:
-			def _fetch_with_requests():
-				results = []
-				for url in [url1, url2]:
+			# Conditionally fetch url2 (only on safe days)
+			d2 = None
+			if fetch_url2:
+				def safe_url2():
 					try:
-						r = requests.get(url, headers=headers2, timeout=10)
-						r.raise_for_status()
-						results.append(r.content)
+						# Aggressive anti-block headers
+						headers2 = twisted_live_headers.copy()
+						headers2[b'User-Agent'] = [b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/129.0 Safari/537.36']
+						headers2[b'Accept-Encoding'] = [b'identity']
+						return getPage(str.encode(url2), contextFactory=sniFactory, timeout=15, headers=headers2)
+					except:
+						return defer.succeed(None)
+				d2 = safe_url2()
+				deferred_list.append(d2)
+			else:
+				# Weekend: inject None so gatherResults keeps order
+				deferred_list.append(defer.succeed(None))
+
+			d = defer.gatherResults(deferred_list, consumeErrors=True)
+
+			def process_results(results):
+				raw1, raw2 = results
+
+				# Log url1
+				#if isinstance(raw1, Failure):
+				#	logdata("fetch_live_results", "DEBUG URL1 FAILED: %s" % raw1.getErrorMessage())
+				#else:
+				#	logdata("fetch_live_results", "DEBUG URL1 OK (Bytes: %d)" % len(raw1))
+
+				# Log url2
+				#if not fetch_url2:
+				#	logdata("fetch_live_results", "DEBUG URL2 SKIPPED (weekend protection active)")
+				#elif raw2 is None:
+				#	logdata("fetch_live_results", "DEBUG URL2 SKIPPED (setup failed)")
+				#elif isinstance(raw2, Failure):
+				#	logdata("fetch_live_results", "DEBUG URL2 FAILED → SKIPPED SAFELY")
+				#else:
+				#	logdata("fetch_live_results", "DEBUG URL2 OK (Bytes: %d) → using extra data" % len(raw2))
+
+				# Return only valid data
+				valid = []
+				if raw1 and not isinstance(raw1, Failure):
+					valid.append(raw1)
+				if raw2 and not isinstance(raw2, Failure) and fetch_url2:
+					valid.append(raw2)
+
+				# Fallback if both fail
+				if not valid:
+					valid = [b'{"events":[]}']
+
+				return valid
+
+			d.addCallback(process_results)
+
+		else:
+			# PY2 version — same logic
+			def _fetch_smart():
+				results = []
+				weekday = date.today().weekday()
+				is_weekend = weekday >= 5
+				fetch_url2 = not is_weekend
+
+				# url1 always
+				try:
+					r = requests.get(url1, headers=headers2, timeout=20)
+					r.raise_for_status()
+					results.append(r.content)
+					#logdata("fetch_live_results", "DEBUG URL1 (Py2) OK (%d KB)" % (len(r.content)//1024))
+				except Exception as e:
+					logdata("fetch_live_results", "DEBUG URL1 (Py2) FAILED: %s" % str(e))
+					results.append(None)
+
+				# url2 only if safe
+				if fetch_url2:
+					try:
+						h2 = headers2.copy()
+						h2['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/129.0 Safari/537.36'
+						r2 = requests.get(url2, headers=h2, timeout=12)
+						r2.raise_for_status()
+						results.append(r2.content)
+						#logdata("fetch_live_results", "DEBUG URL2 (Py2) OK (%d MB) → extra data" % (len(r2.content)//1024//1024))
 					except Exception as e:
-						# Log the error but continue to fetch the other URL
-						logdata("fetch_live_results", "SofaScore fetch failed for a URL: %s" % str(e))
-						results.append(None) # Append None for the failed request
+						logdata("fetch_live_results", "DEBUG URL2 (Py2) FAILED → SKIPPED")
+						results.append(None)
+				else:
+					#logdata("fetch_live_results", "DEBUG URL2 (Py2) SKIPPED (weekend mode)")
+					results.append(None)
 
-				# If both failed, raise an exception to propagate the error
-				if all(r is None for r in results):
-					raise Exception("SofaScore fetch failed for all URLs.")
-					
-				return results
+				valid = [r for r in results if r is not None]
+				return valid or [b'{"events":[]}']
 
-			d = deferToThread(_fetch_with_requests) # d now holds a list of contents
+			d = deferToThread(_fetch_smart)
 		
 		# === _process_response (Twisted Callback from network fetch) ===
 		def _process_response(raw_list): # <--- Argument changed from 'raw' to 'raw_list'
@@ -878,8 +962,16 @@ class FootOnSat(Screen):
 			build_start = time.time()
 			for ev in events:
 				try:
-					home = compat_str(ev['homeTeam']['name'])
-					away = compat_str(ev['awayTeam']['name'])
+					try:
+						home_team = ev.get('homeTeam') or {}
+						away_team = ev.get('awayTeam') or {}
+						home = compat_str(home_team.get('name', 'Unknown Home'))
+						away = compat_str(away_team.get('name', 'Unknown Away'))
+						if home == 'Unknown Home' or away == 'Unknown Away':
+							continue
+					except Exception as e:
+						logdata("FootOnSat-Sofa-ERROR", "Team name parse error: %s" % str(e))
+						continue
 					match_name = "{0} vs {1}".format(home, away)
 
 					h_score_raw = compat_str(ev.get('homeScore', {}).get('current', '')) or ''
