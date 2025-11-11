@@ -437,7 +437,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 	if DreamOS():
 		if reswidth == 2560:
 			skin = """
-					<screen name="MenuFootOnSat" position="center,center" size="1522,976" title="Menu FootOnSat" backgroundColor="#60000000">
+					<screen name="MenuFootOnSat" position="center,center" size="1522,976" title="Menu FootOnSat" backgroundColor="#20000000">
 				            <widget source="global.CurrentTime" render="Label" position="5,17" size="1511,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
 				                <convert type="ClockToText">Format:%d-%m-%Y    %H:%M:%S</convert>
 				            </widget>
@@ -451,7 +451,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 					</screen>"""
 		else:
 			skin = """
-					<screen name="MenuFootOnSat" position="center,center" size="1040,900" title="Menu FootOnSat" backgroundColor="#60000000">
+					<screen name="MenuFootOnSat" position="center,center" size="1040,900" title="Menu FootOnSat" backgroundColor="#20000000">
 						<widget source="global.CurrentTime" render="Label" position="5,5" size="1022,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
 							<convert type="ClockToText">Format:%d-%m-%Y&#160;%H:%M:%S</convert>
 						</widget>
