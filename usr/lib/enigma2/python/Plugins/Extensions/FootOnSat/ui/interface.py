@@ -117,6 +117,9 @@ json_urls = {
 	
 	# nba basketball
 	"nba": "https://www.sofascore.com/tournament/basketball/usa/nba/132#id:80229",
+
+	# hockey
+	"hockey": "https://www.sofascore.com/tournament/ice-hockey/usa/nhl/234#id:78476",
 }
 # Use thess url to download missing log of team (Extra code)
 log_urls = {
@@ -343,6 +346,7 @@ class FootOnSat(Screen):
 				teamlog2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/teamlog/{}.png".format(log2))
 				basketdefault = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/teamlog/baskedefault.png")
 				footdefault = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/teamlog/footdefault.png")
+				hockeydefault = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/teamlog/hockeydefault.png")
 				banner = FootOnSat.setCompet(str(compet).lower())
 				match_date = self.getTime(match_date)
 				if not fileExists(flagTeam1):
@@ -350,9 +354,19 @@ class FootOnSat(Screen):
 				if not fileExists(flagTeam2):
 					flagTeam2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/default.png")
 				if not fileExists(teamlog1):
-					teamlog1 = basketdefault if self.link in ("basketball", "nba") else footdefault
+					if self.link in ("basketball", "nba"):
+						teamlog1 = basketdefault
+					elif self.link in ("hockey"):
+						teamlog1 = hockeydefault
+					else:
+						teamlog1 = footdefault
 				if not fileExists(teamlog2):
-					teamlog2 = basketdefault if self.link in ("basketball", "nba") else footdefault
+					if self.link in ("basketball", "nba"):
+						teamlog1 = basketdefault
+					elif self.link in ("hockey"):
+						teamlog1 = hockeydefault
+					else:
+						teamlog1 = footdefault
 				if self.checkIfexist(match):
 					notif = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/icon/notif_on.png")
 				else:
@@ -360,14 +374,14 @@ class FootOnSat(Screen):
 				# Initialize list entry
 				res.append(MultiContentEntryText())
 				# Team 1 flag/logteam
-				if self.link in ("basketball", "nba", "championsleague"):
+				if self.link in ("basketball", "nba", "hockey", "championsleague"):
 					res.append(MultiContentEntryPixmapAlphaBlend(pos=(70, 5), size=(160, 160), png=loadPNG(teamlog1)))
 					if config.plugins.FootOnSat.enableflag.value:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(212, 70), size=(40, 30), png=loadPNG(flagTeam1)))
 				else:
 					res.append(MultiContentEntryPixmapAlphaBlend(pos=(420, 70), size=(40, 30), png=loadPNG(flagTeam1)))
 				# Score team 1
-				if self.link not in ("basketball", "nba"):
+				if self.link not in ("basketball", "nba", "hockey"):
 					if reswidth >= 2560:
 						if self.link in ("championsleague"):
 							res.append(MultiContentEntryText(pos=(950, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
@@ -386,21 +400,21 @@ class FootOnSat(Screen):
 						res.append(MultiContentEntryText(pos=(750, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str("-"), color=0xFF0000))
 				# Team 2 flag/logteam
 				if reswidth >= 2560:
-					if self.link in ("basketball", "nba", "championsleague"):
+					if self.link in ("basketball", "nba", "hockey", "championsleague"):
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1440, 5), size=(160, 160), png=loadPNG(teamlog2)))
 						if config.plugins.FootOnSat.enableflag.value:
 							res.append(MultiContentEntryPixmapAlphaBlend(pos=(1420, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 					else:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1550, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 				else:
-					if self.link in ("basketball", "nba", "championsleague"):
+					if self.link in ("basketball", "nba", "hockey", "championsleague"):
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1030, 10), size=(160, 160), png=loadPNG(teamlog2)))
 						if config.plugins.FootOnSat.enableflag.value:
 							res.append(MultiContentEntryPixmapAlphaBlend(pos=(1012, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 					else:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1142, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 				# Score team 2
-				if self.link not in ("basketball", "nba"):
+				if self.link not in ("basketball", "nba", "hockey"):
 					if reswidth >= 2560:
 						if self.link in ("championsleague"):
 							res.append(MultiContentEntryText(pos=(1090, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
@@ -412,7 +426,7 @@ class FootOnSat(Screen):
 						else:
 							res.append(MultiContentEntryText(pos=(1092, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
 				# Competition banner
-				if self.link not in ("basketball", "nba", "championsleague"):
+				if self.link not in ("basketball", "nba", "hockey", "championsleague"):
 					try:
 						res.append(MultiContentEntryPixmapAlphaTest(pos=(65, 6), size=(320, 163), png=loadPNG(banner), flags=BT_SCALE))
 					except TypeError:
@@ -421,17 +435,17 @@ class FootOnSat(Screen):
 				res.append(MultiContentEntryPixmapAlphaBlend(pos=(-20, 63), size=(70, 50), png=loadPNG(notif)))
 				# Match name
 				if reswidth >= 2560:
-					if self.link in ("basketball", "nba", "championsleague"):
+					if self.link in ("basketball", "nba", "hockey", "championsleague"):
 						res.append(MultiContentEntryText(pos=(332, 69), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_HALIGN_CENTER, text=str(match)))
 					else:
 						res.append(MultiContentEntryText(pos=(550, 69), size=(900, 40), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
 				else:
-					if self.link in ("basketball", "nba", "championsleague"):
+					if self.link in ("basketball", "nba", "hockey", "championsleague"):
 						res.append(MultiContentEntryText(pos=(310, 66), size=(660, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(match)))
 					else:
 						res.append(MultiContentEntryText(pos=(500, 66), size=(570, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
 				# status_text + match_status
-				if (team1_score != "" or match_status != "") and self.link not in ("basketball", "nba"):
+				if (team1_score != "" or match_status != "") and self.link not in ("basketball", "hockey", "nba"):
 					# If score or status exists, display the dynamic status/time (e.g., "Live: 70 min" or "Status: FT")
 					if reswidth >= 2560:
 						if self.link in ("championsleague"):
@@ -446,23 +460,23 @@ class FootOnSat(Screen):
 				else:
 					# Otherwise, display the scheduled Kick-off time
 					if reswidth >= 2560:
-						if self.link in ("basketball", "nba", "championsleague"):
+						if self.link in ("basketball", "nba", "hockey", "championsleague"):
 							res.append(MultiContentEntryText(pos=(430, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 						else:
 							res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 					else:
-						if self.link in ("basketball", "nba", "championsleague"):
+						if self.link in ("basketball", "nba", "hockey", "championsleague"):
 							res.append(MultiContentEntryText(pos=(350, 120), size=(500, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 						else:
 							res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 				# Competition name
 				if reswidth >= 2560:
-					if self.link in ("basketball", "nba", "championsleague"):
+					if self.link in ("basketball", "nba", "hockey", "championsleague"):
 						res.append(MultiContentEntryText(pos=(430, 15), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 					else:
 						res.append(MultiContentEntryText(pos=(420, 15), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 				else:
-					if self.link in ("basketball", "nba", "championsleague"):
+					if self.link in ("basketball", "nba", "hockey", "championsleague"):
 						res.append(MultiContentEntryText(pos=(350, 15), size=(500, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 					else:
 						res.append(MultiContentEntryText(pos=(420, 15), size=(785, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
