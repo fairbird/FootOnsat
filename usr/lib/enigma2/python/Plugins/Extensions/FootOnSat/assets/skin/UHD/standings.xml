@@ -8,7 +8,7 @@
     <eLabel backgroundColor="#00ffffff" position="65,360" size="2428,6" zPosition="5" />
 
     <!-- Column headers -->
-    <eLabel text="No." font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="50,300" size="118,70" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="Pos." font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="50,300" size="118,70" zPosition="5" transparent="1" halign="center" />
     <eLabel text="Team" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="235,300" size="260,70" zPosition="5" transparent="1" halign="center" />
     <eLabel text="Played" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="614,300" size="300,70" zPosition="5" transparent="1" halign="center" />
     <eLabel text="Points" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="880,300" size="260,70" zPosition="5" transparent="1" halign="center" />
