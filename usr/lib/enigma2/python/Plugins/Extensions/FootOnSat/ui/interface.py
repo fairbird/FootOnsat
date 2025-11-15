@@ -382,7 +382,7 @@ class FootOnSat(Screen):
 				# Initialize list entry
 				res.append(MultiContentEntryText())
 				SPORTS = {
-					"basketball", "nba", "hockey", "nfl"
+				    	"basketball", "nba", "hockey", "nfl"
 				}
 				FOOTBALL = {
 				    	"championsleague", "superLig", "liganos", "ConferenceLeague",
