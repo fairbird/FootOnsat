@@ -1957,15 +1957,22 @@ class StandingsScreen(Screen):
 		self.session = session
 		Screen.__init__(self, session)
 		#logdata("StandingsScreen_init", "Initializing StandingsScreen for league: %s, url: %s" % (league, url))
+		self.league = str(league)
+		print(f"self.league: %s" % self.league)
+		self.url = str(url)
 		if reswidth == 1920:
-			skin = "assets/skin/FHD/standings.xml"
+			if self.league in ("basketball", "nba"):
+				skin = "assets/skin/FHD/standingsbasketball.xml"
+			else:
+				skin = "assets/skin/FHD/standings.xml"
 		elif reswidth >= 2560:
-			skin = "assets/skin/UHD/standings.xml"
+			if self.league in ("basketball", "nba"):
+				skin = "assets/skin/UHD/standingsbasketball.xml"
+			else:
+				skin = "assets/skin/UHD/standings.xml"
 		else:
 			skin = "assets/skin/FHD/standings.xml"
 		self.skin = readFromFile(skin)
-		self.league = str(league)
-		self.url = str(url)
 		self["standings_list"] = MenuList([], enableWrapAround=True, content=eListboxPythonMultiContent)
 		# FIX for Python 2 eLabel: encode to UTF-8 if not Python 3
 		title_text = "%s Standings" % self.league
@@ -2180,28 +2187,62 @@ class StandingsScreen(Screen):
 					# Extract all required stats directly from the 'row' dictionary
 					position = str(row.get('position', 0))
 					played = str(row.get('matches', 0))
-					points = str(row.get('points', 0))
 					wins = str(row.get('wins', 0))
-					draws = str(row.get('draws', 0))
 					losses = str(row.get('losses', 0))
-					goals_scored = str(row.get('scoresFor', 0))
-					goals_conceded = str(row.get('scoresAgainst', 0))
-					goal_diff = str(row.get('scoreDiffFormatted', '0'))
+					if self.league not in ("basketball", "nba"):
+						draws = str(row.get('draws', 0))
+						points = str(row.get('points', 0))
+						goals_scored = str(row.get('scoresFor', 0))
+						goals_conceded = str(row.get('scoresAgainst', 0))
+						goal_diff = str(row.get('scoreDiffFormatted', '0'))
+					if self.league in ("basketball", "nba"):
+						# Calculate streak
+						streak_val = row.get('streak', 0)
+						if isinstance(streak_val, int):
+							if streak_val > 0:
+								streak = "W%d" % streak_val
+							elif streak_val < 0:
+								streak = "L%d" % abs(streak_val)
+							else:
+								streak = "-"
+						else:
+							streak = str(streak_val) if streak_val else "-"
+						points_for = row.get('scoresFor', 0)
+						points_against = row.get('scoresAgainst', 0)
+						diff = str(points_for - points_against)
 
-					# Append 11 elements to the list to match your screen's columns
-					standings.append([
-						team_name,
-						position,
-						played,
-						points,
-						wins,
-						draws,
-						losses,
-						goals_scored,
-						goals_conceded,
-						goal_diff,
-						logo_url # Index 10
-					])
+						if played and int(played) > 0:
+							pct = "%.3f" % (float(wins) / float(played))
+						else:
+							pct = ".000"
+
+						standings.append([
+							team_name,
+							position,
+							played,
+							wins,
+							losses,
+							streak,
+							diff,
+							pct,
+							"",
+							"",
+							logo_url
+							])
+					else:
+						standings.append([
+							team_name,
+							position,
+							played,
+							points,
+							wins,
+							draws,
+							losses,
+							goals_scored,
+							goals_conceded,
+							goal_diff,
+							logo_url # Index 10
+							])
 
 			self.standings_data = standings
 			
@@ -2534,13 +2575,23 @@ class StandingsScreen(Screen):
 				gList.append(res)
 				continue
 
+
+			if self.league in ("basketball", "nba"):
+				wins = standing[3]
+				losses = standing[4]
+				raw_diff = standing[6]
+				pct = standing[7]
+				streak = standing[5]
+				diff_int = int(raw_diff) if raw_diff not in (None, "", "-") else 0
+				diff = "+{}".format(diff_int) if diff_int > 0 else str(diff_int)
+			else:
+				wins = standing[4]
+				losses = standing[6]
 			team = standing[0]
 			position = standing[1]
 			played = standing[2]
 			points = standing[3]
-			wins = standing[4]
 			draws = standing[5]
-			losses = standing[6]
 			goals_scored = standing[7]
 			goals_conceded = standing[8]
 			goal_diff = standing[9]
@@ -2550,7 +2601,7 @@ class StandingsScreen(Screen):
 			if reswidth == 1920:
 				LOGO_SIZE_H = 50
 				LOGO_Y_POS = 8
-				LOGO_X_POS = 95
+				LOGO_X_POS = 85
 				TEAM_NAME_X_POS = 160
 				TEXT_Y_OFFSET = 0  # No offset needed for 1920
 			else:  # 2560
@@ -2561,7 +2612,6 @@ class StandingsScreen(Screen):
 				TEXT_Y_OFFSET = LOGO_Y_POS  # Align text with logo vertical position
 
 			res = [ITEM_HEIGHT]
-			# number
 			# Number
 			if reswidth == 1920:
 				res.append(MultiContentEntryText(pos=(20, 0), size=(50, ITEM_HEIGHT), font=0,
@@ -2573,76 +2623,136 @@ class StandingsScreen(Screen):
 
 			# logo using file path
 			flagteam_png = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/standings/{}.png".format(sanitize_team_name(team)))
-			if reswidth == 1920:
-				if os.path.exists(flagteam_png):
-					if PY3:
-						res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
-																   png=loadPNG(flagteam_png), flags=BT_SCALE))
-					else: # DreamOS
-						res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
-																   png=loadPNG(flagteam_png)))
-				# team name - increased width for better display
-				res.append(MultiContentEntryText(pos=(TEAM_NAME_X_POS, 0), size=(400, ITEM_HEIGHT), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team or "")))
-				# matches played - aligned with "Played" header
-				res.append(MultiContentEntryText(pos=(553, 0), size=(80, ITEM_HEIGHT), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(played or "")))
-				# points - aligned with "Points" header
-				res.append(MultiContentEntryText(pos=(708, 0), size=(80, ITEM_HEIGHT), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(points or "")))
-				# wins - aligned with "Wins" header
-				res.append(MultiContentEntryText(pos=(852, 0), size=(80, ITEM_HEIGHT), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(wins or "")))
-				# draws - aligned with "Draws" header
-				res.append(MultiContentEntryText(pos=(997, 0), size=(80, ITEM_HEIGHT), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(draws or "")))
-				# losses - aligned with "Losses" header
-				res.append(MultiContentEntryText(pos=(1152, 0), size=(80, ITEM_HEIGHT), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(losses or "")))
-				# goals scored - aligned with "Goals Scored" header
-				res.append(MultiContentEntryText(pos=(1342, 0), size=(80, ITEM_HEIGHT), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_scored or "")))
-				# goals conceded - aligned with "Conceded" header
-				res.append(MultiContentEntryText(pos=(1520, 0), size=(80, ITEM_HEIGHT), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_conceded or "")))
-				# goal diff - aligned with "Difference" header
-				res.append(MultiContentEntryText(pos=(1680, 0), size=(80, ITEM_HEIGHT), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goal_diff or "")))
-			else: # UHD skins (2560)
-				if os.path.exists(flagteam_png):
-					if PY3:
-						res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
-                                                                   png=loadPNG(flagteam_png), flags=BT_SCALE))
-					else: # DreamOS
-						res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
-                                                                   png=loadPNG(flagteam_png)))
-				# team name - increased width for better display
-				res.append(MultiContentEntryText(pos=(200, LOGO_Y_POS +13), size=(550, LOGO_SIZE_H), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team or "")))
-				# matches played - aligned with "Played" header
-				res.append(MultiContentEntryText(pos=(630, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(played or "")))
-				# points - aligned with "Points" header
-				res.append(MultiContentEntryText(pos=(880, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(points or "")))
-				# wins - aligned with "Wins" header
-				res.append(MultiContentEntryText(pos=(1120, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(wins or "")))
-				# draws - aligned with "Draws" header
-				res.append(MultiContentEntryText(pos=(1375, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(draws or "")))
-				# losses - aligned with "Losses" header
-				res.append(MultiContentEntryText(pos=(1610, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(losses or "")))
-				# goals scored - aligned with "Goals Scored" header
-				res.append(MultiContentEntryText(pos=(1865, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_scored or "")))
-				# goals conceded - aligned with "Conceded" header
-				res.append(MultiContentEntryText(pos=(2075, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_conceded or "")))
-				# goal diff - aligned with "Difference" header
-				res.append(MultiContentEntryText(pos=(2265, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goal_diff or "")))
+			if self.league in ("basketball", "nba"): # This for basketball and nba option codes only
+				if reswidth == 1920:
+					if os.path.exists(flagteam_png):
+						if PY3:
+							res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+													png=loadPNG(flagteam_png), flags=BT_SCALE))
+						else: # DreamOS
+							res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+													png=loadPNG(flagteam_png)))
+					# team name - increased width for better display
+					res.append(MultiContentEntryText(pos=(TEAM_NAME_X_POS, 0), size=(400, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team or "")))
+					# matches played - aligned with "Played" header
+					res.append(MultiContentEntryText(pos=(553, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(played or "")))
+					# wins - aligned with "Wins" header
+					res.append(MultiContentEntryText(pos=(745, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(wins or "")))
+					# losses - aligned with "Losses" header
+					res.append(MultiContentEntryText(pos=(957, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(losses or "")))
+					# Streak - aligned with "Streak" header
+					res.append(MultiContentEntryText(pos=(1138, 0), size=(80, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(streak or "")))
+					# Difference (DIFF) - CORRETO: +24, -6
+					res.append(MultiContentEntryText(pos=(1340, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(diff or "")))
+					# Win Percentage (PCT)
+					res.append(MultiContentEntryText(pos=(1570, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(pct or "")))
+				else: # UHD skins (2560)
+					if os.path.exists(flagteam_png):
+						if PY3:
+							res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+												png=loadPNG(flagteam_png), flags=BT_SCALE))
+						else: # DreamOS
+							res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+												png=loadPNG(flagteam_png)))
+					# team name - increased width for better display
+					res.append(MultiContentEntryText(pos=(200, LOGO_Y_POS +13), size=(600, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team or "")))
+					# matches played - aligned with "Played" header
+					res.append(MultiContentEntryText(pos=(670, LOGO_Y_POS +13), size=(300, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(played or "")))
+					# wins - aligned with "Wins" header
+					res.append(MultiContentEntryText(pos=(970, LOGO_Y_POS +13), size=(260, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(wins or "")))
+					# losses - aligned with "Losses" header
+					res.append(MultiContentEntryText(pos=(1270, LOGO_Y_POS +13), size=(260, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(losses or "")))
+					# Streak - aligned with "Streak" header
+					res.append(MultiContentEntryText(pos=(1570, LOGO_Y_POS +13), size=(260, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(streak or "")))
+					# Difference (DIFF) - CORRETO: +24, -6
+					res.append(MultiContentEntryText(pos=(1870, LOGO_Y_POS +13), size=(260, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(diff or "")))
+					# Win Percentage (PCT)
+					res.append(MultiContentEntryText(pos=(2170, LOGO_Y_POS +13), size=(260, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(pct or "")))
+			else:
+				if reswidth == 1920:
+					if os.path.exists(flagteam_png):
+						if PY3:
+							res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+													png=loadPNG(flagteam_png), flags=BT_SCALE))
+						else: # DreamOS
+							res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+													png=loadPNG(flagteam_png)))
+					# team name - increased width for better display
+					res.append(MultiContentEntryText(pos=(TEAM_NAME_X_POS, 0), size=(400, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team or "")))
+					# matches played - aligned with "Played" header
+					res.append(MultiContentEntryText(pos=(553, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(played or "")))
+					# points - aligned with "Points" header
+					res.append(MultiContentEntryText(pos=(708, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(points or "")))
+					# wins - aligned with "Wins" header
+					res.append(MultiContentEntryText(pos=(852, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(wins or "")))
+					# draws - aligned with "Draws" header
+					res.append(MultiContentEntryText(pos=(997, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(draws or "")))
+					# losses - aligned with "Losses" header
+					res.append(MultiContentEntryText(pos=(1152, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(losses or "")))
+					# goals scored - aligned with "Goals Scored" header
+					res.append(MultiContentEntryText(pos=(1342, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_scored or "")))
+					# goals conceded - aligned with "Conceded" header
+					res.append(MultiContentEntryText(pos=(1520, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_conceded or "")))
+					# goal diff - aligned with "Difference" header
+					res.append(MultiContentEntryText(pos=(1680, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goal_diff or "")))
+				else: # UHD skins (2560)
+					if os.path.exists(flagteam_png):
+						if PY3:
+							res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+				                                                       png=loadPNG(flagteam_png), flags=BT_SCALE))
+						else: # DreamOS
+							res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+				                                                       png=loadPNG(flagteam_png)))
+					# team name - increased width for better display
+					res.append(MultiContentEntryText(pos=(200, LOGO_Y_POS +13), size=(550, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team or "")))
+					# matches played - aligned with "Played" header
+					res.append(MultiContentEntryText(pos=(630, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(played or "")))
+					# points - aligned with "Points" header
+					res.append(MultiContentEntryText(pos=(880, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(points or "")))
+					# wins - aligned with "Wins" header
+					res.append(MultiContentEntryText(pos=(1120, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(wins or "")))
+					# draws - aligned with "Draws" header
+					res.append(MultiContentEntryText(pos=(1375, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(draws or "")))
+					# losses - aligned with "Losses" header
+					res.append(MultiContentEntryText(pos=(1610, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(losses or "")))
+					# goals scored - aligned with "Goals Scored" header
+					res.append(MultiContentEntryText(pos=(1865, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_scored or "")))
+					# goals conceded - aligned with "Conceded" header
+					res.append(MultiContentEntryText(pos=(2075, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_conceded or "")))
+					# goal diff - aligned with "Difference" header
+					res.append(MultiContentEntryText(pos=(2265, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goal_diff or "")))
 			gList.append(res)
 
 		self["standings_list"].setList(gList)
