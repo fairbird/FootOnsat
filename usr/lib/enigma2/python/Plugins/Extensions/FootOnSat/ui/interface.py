@@ -381,69 +381,67 @@ class FootOnSat(Screen):
 					notif = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/icon/notif_off.png")
 				# Initialize list entry
 				res.append(MultiContentEntryText())
+				SPORTS = {
+					"basketball", "nba", "hockey", "nfl"
+				}
+				FOOTBALL = {
+				    	"championsleague", "superLig", "liganos", "ConferenceLeague",
+				    	"eredivisie", "saudiarabia", "belgianpro"
+				}
 				# Team 1 flag/logteam
-				if self.link in ("basketball", "nba", "hockey", "nfl", "championsleague", "superLig", "liganos", 
-										"ConferenceLeague", "eredivisie", "saudiarabia", "belgianpro"):
+				if self.link in (SPORTS | FOOTBALL):
 					res.append(MultiContentEntryPixmapAlphaBlend(pos=(70, 5), size=(160, 160), png=loadPNG(teamlog1)))
 					if config.plugins.FootOnSat.enableflag.value:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(212, 70), size=(40, 30), png=loadPNG(flagTeam1)))
 				else:
 					res.append(MultiContentEntryPixmapAlphaBlend(pos=(420, 70), size=(40, 30), png=loadPNG(flagTeam1)))
 				# Score team 1
-				if self.link not in ("basketball", "nba", "hockey", "nfl"):
+				if self.link not in SPORTS:
 					if reswidth >= 2560:
-						if self.link in ("championsleague", "superLig", "liganos", "ConferenceLeague", "eredivisie",
-											"saudiarabia", "belgianpro"):
+						if self.link in FOOTBALL:
 							res.append(MultiContentEntryText(pos=(950, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
 						else:
 							res.append(MultiContentEntryText(pos=(500, 69), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
 					else:
-						if self.link in ("championsleague", "superLig", "liganos", "ConferenceLeague", "eredivisie",
-											"saudiarabia", "belgianpro"):
+						if self.link in FOOTBALL:
 							res.append(MultiContentEntryText(pos=(700, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
 						else:
 							res.append(MultiContentEntryText(pos=(482, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
 				# Place a checkmark (-) between the results in the section championsleague
-				if (team1_score != "" or match_status != "") and self.link in ("championsleague", "superLig", "liganos", "ConferenceLeague", "eredivisie",
-																"saudiarabia", "belgianpro"):
+				if (team1_score != "" or match_status != "") and self.link in FOOTBALL:
 					if reswidth >= 2560:
 						res.append(MultiContentEntryText(pos=(990, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str("-"), color=0xFF0000))
 					else:
 						res.append(MultiContentEntryText(pos=(750, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str("-"), color=0xFF0000))
 				# Team 2 flag/logteam
 				if reswidth >= 2560:
-					if self.link in ("basketball", "nba", "hockey", "nfl", "championsleague", "superLig", "liganos", 
-										"ConferenceLeague", "eredivisie", "saudiarabia", "belgianpro"):
+					if self.link in FOOTBALL:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1440, 5), size=(160, 160), png=loadPNG(teamlog2)))
 						if config.plugins.FootOnSat.enableflag.value:
 							res.append(MultiContentEntryPixmapAlphaBlend(pos=(1420, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 					else:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1550, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 				else:
-					if self.link in ("basketball", "nba", "hockey", "nfl", "championsleague", "superLig", "liganos", 
-										"ConferenceLeague", "eredivisie", "saudiarabia", "belgianpro"):
+					if self.link in FOOTBALL:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1030, 10), size=(160, 160), png=loadPNG(teamlog2)))
 						if config.plugins.FootOnSat.enableflag.value:
 							res.append(MultiContentEntryPixmapAlphaBlend(pos=(1012, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 					else:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1142, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 				# Score team 2
-				if self.link not in ("basketball", "nba", "hockey", "nfl"):
+				if self.link not in SPORTS:
 					if reswidth >= 2560:
-						if self.link in ("championsleague", "superLig", "liganos", "ConferenceLeague",
-											"eredivisie", "saudiarabia", "belgianpro"):
+						if self.link in FOOTBALL:
 							res.append(MultiContentEntryText(pos=(1090, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
 						else:
 							res.append(MultiContentEntryText(pos=(1490, 69), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
 					else:
-						if self.link in ("championsleague", "superLig", "liganos", "ConferenceLeague",
-											"eredivisie", "saudiarabia", "belgianpro"):
+						if self.link in FOOTBALL:
 							res.append(MultiContentEntryText(pos=(792, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
 						else:
 							res.append(MultiContentEntryText(pos=(1092, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
 				# Competition banner
-				if self.link not in ("basketball", "nba", "hockey", "nfl", "championsleague", "superLig", "liganos", 
-										"ConferenceLeague", "eredivisie", "saudiarabia", "belgianpro"):
+				if self.link not in (SPORTS | FOOTBALL):
 					try:
 						res.append(MultiContentEntryPixmapAlphaTest(pos=(65, 6), size=(320, 163), png=loadPNG(banner), flags=BT_SCALE))
 					except TypeError:
@@ -452,56 +450,48 @@ class FootOnSat(Screen):
 				res.append(MultiContentEntryPixmapAlphaBlend(pos=(-20, 63), size=(70, 50), png=loadPNG(notif)))
 				# Match name
 				if reswidth >= 2560:
-					if self.link in ("basketball", "nba", "hockey", "nfl", "championsleague", "superLig", "liganos", 
-										"ConferenceLeague", "eredivisie", "saudiarabia", "belgianpro"):
+					if self.link in (SPORTS | FOOTBALL):
 						res.append(MultiContentEntryText(pos=(332, 69), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_HALIGN_CENTER, text=str(match)))
 					else:
 						res.append(MultiContentEntryText(pos=(550, 69), size=(900, 40), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
 				else:
-					if self.link in ("basketball", "nba", "hockey", "nfl", "championsleague", "superLig", "liganos", 
-										"ConferenceLeague", "eredivisie", "saudiarabia", "belgianpro"):
+					if self.link in (SPORTS | FOOTBALL):
 						res.append(MultiContentEntryText(pos=(310, 66), size=(660, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(match)))
 					else:
 						res.append(MultiContentEntryText(pos=(500, 66), size=(570, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
 				# status_text + match_status
-				if (team1_score != "" or match_status != "") and self.link not in ("basketball", "hockey", "nfl", "nba"):
+				if (team1_score != "" or match_status != "") and self.link not in SPORTS:
 					# If score or status exists, display the dynamic status/time (e.g., "Live: 70 min" or "Status: FT")
 					if reswidth >= 2560:
-						if self.link in ("championsleague", "superLig", "liganos", "ConferenceLeague",
-											"eredivisie", "saudiarabia", "belgianpro"):
+						if self.link in FOOTBALL:
 							res.append(MultiContentEntryText(pos=(430, 120), size=(400, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=0xFF0000))
 						else:
 							res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=0xFF0000))
 					else:
-						if self.link in ("championsleague", "superLig", "liganos", "ConferenceLeague",
-											"eredivisie", "saudiarabia", "belgianpro"):
+						if self.link in FOOTBALL:
 							res.append(MultiContentEntryText(pos=(350, 120), size=(200, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=0xFF0000))
 						else:
 							res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=0xFF0000))
 				else:
 					# Otherwise, display the scheduled Kick-off time
 					if reswidth >= 2560:
-						if self.link in ("basketball", "nba", "hockey", "nfl", "championsleague", "superLig", "liganos", 
-										"ConferenceLeague", "eredivisie", "saudiarabia", "belgianpro"):
+						if self.link in (SPORTS | FOOTBALL):
 							res.append(MultiContentEntryText(pos=(430, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 						else:
 							res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 					else:
-						if self.link in ("basketball", "nba", "hockey", "nfl", "championsleague", "superLig", "liganos", 
-										"ConferenceLeague", "eredivisie", "saudiarabia", "belgianpro"):
+						if self.link in (SPORTS | FOOTBALL):
 							res.append(MultiContentEntryText(pos=(350, 120), size=(500, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 						else:
 							res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 				# Competition name
 				if reswidth >= 2560:
-					if self.link in ("basketball", "nba", "hockey", "nfl", "championsleague", "superLig", "liganos", 
-										"ConferenceLeague", "eredivisie", "saudiarabia", "belgianpro"):
+					if self.link in (SPORTS | FOOTBALL):
 						res.append(MultiContentEntryText(pos=(430, 15), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 					else:
 						res.append(MultiContentEntryText(pos=(420, 15), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 				else:
-					if self.link in ("basketball", "nba", "hockey", "nfl", "championsleague", "superLig", "liganos", 
-										"ConferenceLeague", "eredivisie", "saudiarabia", "belgianpro"):
+					if self.link in (SPORTS | FOOTBALL):
 						res.append(MultiContentEntryText(pos=(350, 15), size=(500, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 					else:
 						res.append(MultiContentEntryText(pos=(420, 15), size=(785, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
