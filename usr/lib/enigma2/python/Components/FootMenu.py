@@ -128,8 +128,6 @@ class FlexibleMenu(GUIComponent):
 		self.pagelabel.setHAlign(eLabel.alignCenter)
 		self.pagelabel.setZPosition(100)
 		self.pager_center.setBackgroundColor(parseColor("#00272727"))
-		self.pager_center.resize(eSize(0, 0))
-		self.pager_center.setTransparent(1)
 
 		if reswidth == 1920:
 		      self.pagelabel.setFont(gFont("FootIcons", 18))
@@ -141,6 +139,8 @@ class FlexibleMenu(GUIComponent):
 		      self.pagelabel.setBackgroundColor(parseColor("#00000000"))
 		      self.pagelabel.move(ePoint(0, self.panelheight - 75))
 		      self.pagelabel.resize(eSize(1985, 46))
+		      self.pager_center.resize(eSize(0, 0))
+		      self.pager_center.setTransparent(1)
 
 		self.skinAttributes = attribs
 		self.buildEntry()
