@@ -1979,15 +1979,11 @@ class StandingsScreen(Screen):
 		if reswidth == 1920:
 			if self.league in ("basketball", "nba", "nfl"):
 				skin = "assets/skin/FHD/standingsbasketball.xml"
-			elif self.league in ("nfl"):
-				skin = "assets/skin/FHD/standingsnfl.xml"
 			else:
 				skin = "assets/skin/FHD/standings.xml"
 		elif reswidth >= 2560:
 			if self.league in ("basketball", "nba", "nfl"):
 				skin = "assets/skin/UHD/standingsbasketball.xml"
-			elif self.league in ("nfl"):
-				skin = "assets/skin/UHD/standingsnfl.xml"
 			else:
 				skin = "assets/skin/UHD/standings.xml"
 		else:
