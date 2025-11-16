@@ -416,14 +416,14 @@ class FootOnSat(Screen):
 						res.append(MultiContentEntryText(pos=(750, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str("-"), color=0xFF0000))
 				# Team 2 flag/logteam
 				if reswidth >= 2560:
-					if self.link in FOOTBALL:
+					if self.link in (SPORTS | FOOTBALL):
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1440, 5), size=(160, 160), png=loadPNG(teamlog2)))
 						if config.plugins.FootOnSat.enableflag.value:
 							res.append(MultiContentEntryPixmapAlphaBlend(pos=(1420, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 					else:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1550, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 				else:
-					if self.link in FOOTBALL:
+					if self.link in (SPORTS | FOOTBALL):
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1030, 10), size=(160, 160), png=loadPNG(teamlog2)))
 						if config.plugins.FootOnSat.enableflag.value:
 							res.append(MultiContentEntryPixmapAlphaBlend(pos=(1012, 70), size=(40, 30), png=loadPNG(flagTeam2)))
@@ -1977,13 +1977,17 @@ class StandingsScreen(Screen):
 		print(f"self.league: %s" % self.league)
 		self.url = str(url)
 		if reswidth == 1920:
-			if self.league in ("basketball", "nba", "nfl"):
+			if self.league in ("basketball", "nba"):
 				skin = "assets/skin/FHD/standingsbasketball.xml"
+			elif self.league in ("nfl"):
+				skin = "assets/skin/FHD/standingsnfl.xml"
 			else:
 				skin = "assets/skin/FHD/standings.xml"
 		elif reswidth >= 2560:
-			if self.league in ("basketball", "nba", "nfl"):
+			if self.league in ("basketball", "nba"):
 				skin = "assets/skin/UHD/standingsbasketball.xml"
+			elif self.league in ("nfl"):
+				skin = "assets/skin/UHD/standingsnfl.xml"
 			else:
 				skin = "assets/skin/UHD/standings.xml"
 		else:
@@ -2190,27 +2194,24 @@ class StandingsScreen(Screen):
 					continue
 					
 				for row in table['rows']:
-					
 					team_data = row.get('team', {})
-					
 					team_name = team_data.get('name', 'Unknown Team')
 					team_id = team_data.get('id')
 					try:
 						logo_url = "http://api.sofascore.com/api/v1/team/{}/image".format(team_id) if team_id else ""
 					except Exception as e:
 						logo_url = "https://api.sofascore.com/api/v1/team/{}/image".format(team_id) if team_id else ""
-					
 					# Extract all required stats directly from the 'row' dictionary
 					position = str(row.get('position', 0))
 					played = str(row.get('matches', 0))
 					wins = str(row.get('wins', 0))
 					losses = str(row.get('losses', 0))
-					if self.league not in ("basketball", "nba", "nfl"):
-						draws = str(row.get('draws', 0))
+					if self.league not in ("basketball", "nba"):
+						draws = str(row.get('draws', 0)) if self.league not in ("hockey") else str(row.get('overtimeLosses', 0))
 						points = str(row.get('points', 0))
 						goals_scored = str(row.get('scoresFor', 0))
 						goals_conceded = str(row.get('scoresAgainst', 0))
-						goal_diff = str(row.get('scoreDiffFormatted', '0'))
+						goal_diff = str(row.get('scoreDiffFormatted', 0))
 					if self.league in ("basketball", "nba", "nfl"):
 						# Calculate streak
 						streak_val = row.get('streak', 0)
@@ -2223,15 +2224,15 @@ class StandingsScreen(Screen):
 								streak = "-"
 						else:
 							streak = str(streak_val) if streak_val else "-"
+						if self.league in ("nfl"):
+							streak = str(row.get('draws', 0))
 						points_for = row.get('scoresFor', 0)
 						points_against = row.get('scoresAgainst', 0)
 						diff = str(points_for - points_against)
-
 						if played and int(played) > 0:
 							pct = "%.3f" % (float(wins) / float(played))
 						else:
 							pct = ".000"
-
 						standings.append([
 							team_name,
 							position,
@@ -2257,7 +2258,7 @@ class StandingsScreen(Screen):
 							goals_scored,
 							goals_conceded,
 							goal_diff,
-							logo_url # Index 10
+							logo_url
 							])
 
 			self.standings_data = standings
@@ -2603,14 +2604,14 @@ class StandingsScreen(Screen):
 			else:
 				wins = standing[4]
 				losses = standing[6]
+				goals_scored = standing[7]
+				goals_conceded = standing[8]
+				goal_diff = standing[9]
 			team = standing[0]
 			position = standing[1]
 			played = standing[2]
 			points = standing[3]
 			draws = standing[5]
-			goals_scored = standing[7]
-			goals_conceded = standing[8]
-			goal_diff = standing[9]
 			logo_url = standing[10]
 
 			# --- LOGO SIZE AND POSITIONING ---
