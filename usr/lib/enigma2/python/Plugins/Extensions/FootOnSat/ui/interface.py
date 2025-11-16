@@ -368,13 +368,13 @@ class FootOnSat(Screen):
 						teamlog1 = footdefault
 				if not fileExists(teamlog2):
 					if self.link in ("basketball", "nba"):
-						teamlog1 = basketdefault
+						teamlog2 = basketdefault
 					elif self.link in ("hockey"):
-						teamlog1 = hockeydefault
+						teamlog2 = hockeydefault
 					elif self.link in ("nfl"):
-						teamlog1 = nfldefault
+						teamlog2 = nfldefault
 					else:
-						teamlog1 = footdefault
+						teamlog2 = footdefault
 				if self.checkIfexist(match):
 					notif = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/icon/notif_on.png")
 				else:
@@ -385,8 +385,9 @@ class FootOnSat(Screen):
 				    	"basketball", "nba", "hockey", "nfl"
 				}
 				FOOTBALL = {
-				    	"championsleague", "superLig", "liganos", "ConferenceLeague",
-				    	"eredivisie", "saudiarabia", "belgianpro"
+				    	"championsleague", "europaleague", "ConferenceLeague", "premierleague",
+				    	"laliga", "seriea", "ligue1", "eredivisie", "saudiarabia", "belgianpro",
+				    	"bundesliga", "superLig", "liganos"
 				}
 				# Team 1 flag/logteam
 				if self.link in (SPORTS | FOOTBALL):
@@ -407,7 +408,7 @@ class FootOnSat(Screen):
 							res.append(MultiContentEntryText(pos=(700, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
 						else:
 							res.append(MultiContentEntryText(pos=(482, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
-				# Place a checkmark (-) between the results in the section championsleague
+				# Place a checkmark (-) between the results in the section FOOTBALL
 				if (team1_score != "" or match_status != "") and self.link in FOOTBALL:
 					if reswidth >= 2560:
 						res.append(MultiContentEntryText(pos=(990, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str("-"), color=0xFF0000))
@@ -1978,11 +1979,15 @@ class StandingsScreen(Screen):
 		if reswidth == 1920:
 			if self.league in ("basketball", "nba", "nfl"):
 				skin = "assets/skin/FHD/standingsbasketball.xml"
+			elif self.league in ("nfl"):
+				skin = "assets/skin/FHD/standingsnfl.xml"
 			else:
 				skin = "assets/skin/FHD/standings.xml"
 		elif reswidth >= 2560:
 			if self.league in ("basketball", "nba", "nfl"):
 				skin = "assets/skin/UHD/standingsbasketball.xml"
+			elif self.league in ("nfl"):
+				skin = "assets/skin/UHD/standingsnfl.xml"
 			else:
 				skin = "assets/skin/UHD/standings.xml"
 		else:
