@@ -16,7 +16,7 @@ from Tools.LoadPixmap import LoadPixmap
 from Tools.Directories import resolveFilename, SCOPE_PLUGINS, SCOPE_LANGUAGE
 from Components.FootMenu import FlexibleMenu
 from Plugins.Extensions.FootOnSat.ui.Console import Console
-from Plugins.Extensions.FootOnSat.ui.interface import FootOnSat, WebClientContextFactory, readFromFile, logdata
+from Plugins.Extensions.FootOnSat.ui.interface import FootOnSat, WebClientContextFactory, logdata, isUHD
 from Plugins.Extensions.FootOnSat.component.configs import ConfigDictionarySet
 from Plugins.Extensions.FootOnSat.__init__ import __version__
 from twisted.web.client import getPage
@@ -29,6 +29,11 @@ from sys import version_info
 from . import compat
 
 PY3 = version_info[0] == 3
+
+if isUHD():
+        from Plugins.Extensions.FootOnSat.assets.skin.skinUHD import *
+else:
+        from Plugins.Extensions.FootOnSat.assets.skin.skinFHD import *
 
 mounted_partitions = harddiskmanager.getMountedPartitions()
 mounted_devices = []
@@ -83,8 +88,6 @@ config.plugins.FootOnSat.icons = ConfigSelection(default = "icons_default", choi
 
 VER = float(__version__)
 
-reswidth = getDesktop(0).size().width()
-
 DEFAULT_IGNORE_DIR = "/etc/enigma2/ignore"
 def get_ignore_paths():
 	try:
@@ -114,13 +117,7 @@ class FootOnsatLauncher(Screen):
 	def __init__(self, session, *args):
 		self.session = session
 		Screen.__init__(self, session)
-		if reswidth == 1920:
-			skin = "assets/skin/FHD/launcher.xml"
-		elif reswidth == 2560:
-			skin = "assets/skin/UHD/launcher.xml"
-		else:
-			skin = "assets/skin/FHD/launcher.xml"
-		self.skin = readFromFile(skin)
+		self.skin = SKIN_launcher
 		self["setupActions"] = ActionMap(["FootOnsatActions"],
 		{
 			'left': self.left,
@@ -435,7 +432,7 @@ class FootOnsatLauncher(Screen):
 
 class MenuFootOnSat(ConfigListScreen, Screen):
 	if DreamOS():
-		if reswidth == 2560:
+		if isUHD():
 			skin = """
 					<screen name="MenuFootOnSat" position="center,center" size="1522,976" title="Menu FootOnSat" backgroundColor="#20000000">
 				            <widget source="global.CurrentTime" render="Label" position="5,17" size="1511,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
