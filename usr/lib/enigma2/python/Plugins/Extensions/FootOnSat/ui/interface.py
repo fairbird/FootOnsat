@@ -383,8 +383,8 @@ class FootOnSat(Screen):
 				}
 				FOOTBALL = {
 				    	"championsleague", "europaleague", "ConferenceLeague", "premierleague",
-				    	"laliga", "seriea", "ligue1", "eredivisie", "saudiarabia", "belgianpro",
-				    	"bundesliga", "superLig", "liganos", "afcchampions"
+				    	"laliga", "championship", "seriea", "ligue1", "eredivisie", "saudiarabia",
+				    	"bundesliga", "belgianpro", "superLig", "liganos", "afcchampions"
 				}
 				# Team 1 flag/logteam
 				if self.link in (SPORTS | FOOTBALL):
@@ -1345,10 +1345,10 @@ class FootOnSat(Screen):
 							# Skip past matches outside the LIVE_DURATION window
 							pass
 
-						if "Bodø/Glimt" in match['match']:
-							match_name = match['match'].replace("Bodø/Glimt", "Bodø Glimt")
-						else:
-							match_name = match['match']
+						# This code to correction the names
+						match_name = match['match'] \
+							.replace("Bodø/Glimt", "Bodø Glimt") \
+							.replace("Preston N.E.", "Preston N.E")
 
 						if append_match:
 							list.append([
