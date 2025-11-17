@@ -70,7 +70,22 @@ try:
 except ImportError:
 	from urlparse import urlparse, urljoin # Python 2 compatibility
 
-reswidth = getDesktop(0).size().width()
+def getDesktopSize():
+	s = getDesktop(0).size()
+	return (s.width(), s.height())
+
+def isUHD():
+	desktopSize = getDesktopSize()
+	return desktopSize[0] >= 2560
+
+def isFHD():
+	desktopSize = getDesktopSize()
+	return desktopSize[0] == 1920
+
+if isUHD():
+        from Plugins.Extensions.FootOnSat.assets.skin.skinUHD import *
+else:
+        from Plugins.Extensions.FootOnSat.assets.skin.skinFHD import *
 
 DB_PATH = '/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/db/footonsat.db'
 
@@ -82,7 +97,6 @@ json_urls = {
 	"europaleague": "https://www.sofascore.com/tournament/football/europe/uefa-europa-league/679#id:76984",
 	# Conference league
 	"ConferenceLeague": "https://www.sofascore.com/tournament/football/europe/uefa-europa-conference-league/17015#id:76960",
-
 	# England league
 	"premierleague": "https://www.sofascore.com/tournament/football/england/premier-league/17#id:76986",
 	# champion ship league
@@ -104,26 +118,22 @@ json_urls = {
 	"superLig": "https://www.sofascore.com/tournament/football/turkey/trendyol-super-lig/52#id:77805",
 	# Netherlands league
 	"eredivisie": "https://www.sofascore.com/tournament/football/netherlands/eredivisie/37#id:77012",
-
 	# Saudi Arabia league
 	"saudiarabia": "https://www.sofascore.com/tournament/football/saudi-arabia/saudi-pro-league/955#id:80443",
 	# Asia Champions league Elite
 	"afcchampions": "https://www.sofascore.com/tournament/football/asia/afc-champions-league/463#id:77010",
 	# Asia Champions league two
 	"afcchampionstwo": "https://www.sofascore.com/tournament/football/asia/afc-cup/668#id:77009",
-
 	# euroleague basketball
-	"basketball": "https://www.sofascore.com/tournament/basketball/international/euroleague/138#id:78545",
-	
+	"basketball": "https://www.sofascore.com/tournament/basketball/international/euroleague/138#id:78545",	
 	# nba basketball
 	"nba": "https://www.sofascore.com/tournament/basketball/usa/nba/132#id:80229",
-
 	# hockey
 	"hockey": "https://www.sofascore.com/tournament/ice-hockey/usa/nhl/234#id:78476",
-
 	# american football
 	"nfl": "https://www.sofascore.com/tournament/american-football/usa/nfl/9464#id:75522",
 }
+
 # Use thess url to download missing log of team (Extra code)
 log_urls = {
 	# Champions league
@@ -132,7 +142,6 @@ log_urls = {
 	"europaleague": "https://www.worldfootball.net/competition/europa-league/",
 	# Conference league
 	"ConferenceLeague": "https://www.worldfootball.net/competition/conference-league/",
-
 	# England league
 	"premierleague": "https://www.worldfootball.net/competition/eng-premier-league/",
 	# champion ship league
@@ -154,7 +163,6 @@ log_urls = {
 	"superLig": "https://www.worldfootball.net/competition/tur-sueperlig/",
 	# Netherlands league
 	"eredivisie": "https://www.worldfootball.net/competition/ned-eredivisie/",
-
 	# Saudi Arabia league
 	"saudiarabia": "https://www.worldfootball.net/competition/ksa-saudi-pro-league/",
 	# Asia Champions league Elite
@@ -184,11 +192,6 @@ def DreamOS():
 	if os.path.exists('/var/lib/dpkg/status'):
 		return True
 	return False
-
-def readFromFile(filename):
-	_file = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/{}".format(filename))
-	with open(_file, 'r') as f:
-		return f.read()
 
 # Place this function at the top level of your script (outside the StandingsScreen class)
 def sanitize_team_name(team):
@@ -222,13 +225,7 @@ class FootOnSat(Screen):
 		self.session = session
 		Screen.__init__(self, session)
 		self.execing = False # FIX: Prevents AttributeError in base class's close() method
-		if reswidth == 1920:
-			skin = "assets/skin/FHD/interface.xml"
-		elif reswidth >= 2560:
-			skin = "assets/skin/UHD/interface.xml"
-		else:
-			skin = "assets/skin/FHD/interface.xml"
-		self.skin = readFromFile(skin)
+		self.skin = SKIN_interface
 		self["setupActions"] = ActionMap(["FootOnsatActions", "ColorActions"],
 		{
 			"ok": self.ok,
@@ -265,7 +262,7 @@ class FootOnSat(Screen):
 		self.channelData = []
 		self.matches = []
 		# Set items per page based on resolution (5 for QHD/2560, 4 for others)
-		self.items_per_page = 5 if reswidth >= 2560 else 4
+		self.items_per_page = 5 if isUHD() else 4
 		self.create_table()
 		self.callAPI()
 
@@ -284,7 +281,7 @@ class FootOnSat(Screen):
 			res = []
 			gList = []
 			self["list1"].l.setItemHeight(175)
-			if reswidth >= 2560:
+			if isUHD():
 				self["list1"].l.setFont(0, gFont('Regular', 36))
 			else:
 				self["list1"].l.setFont(0, gFont('Regular', 28))
@@ -387,7 +384,7 @@ class FootOnSat(Screen):
 				FOOTBALL = {
 				    	"championsleague", "europaleague", "ConferenceLeague", "premierleague",
 				    	"laliga", "seriea", "ligue1", "eredivisie", "saudiarabia", "belgianpro",
-				    	"bundesliga", "superLig", "liganos"
+				    	"bundesliga", "superLig", "liganos", "afcchampions"
 				}
 				# Team 1 flag/logteam
 				if self.link in (SPORTS | FOOTBALL):
@@ -398,7 +395,7 @@ class FootOnSat(Screen):
 					res.append(MultiContentEntryPixmapAlphaBlend(pos=(420, 70), size=(40, 30), png=loadPNG(flagTeam1)))
 				# Score team 1
 				if self.link not in SPORTS:
-					if reswidth >= 2560:
+					if isUHD():
 						if self.link in FOOTBALL:
 							res.append(MultiContentEntryText(pos=(950, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
 						else:
@@ -410,12 +407,12 @@ class FootOnSat(Screen):
 							res.append(MultiContentEntryText(pos=(482, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
 				# Place a checkmark (-) between the results in the section FOOTBALL
 				if (team1_score != "" or match_status != "") and self.link in FOOTBALL:
-					if reswidth >= 2560:
+					if isUHD():
 						res.append(MultiContentEntryText(pos=(990, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str("-"), color=0xFF0000))
 					else:
 						res.append(MultiContentEntryText(pos=(750, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str("-"), color=0xFF0000))
 				# Team 2 flag/logteam
-				if reswidth >= 2560:
+				if isUHD():
 					if self.link in (SPORTS | FOOTBALL):
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1440, 5), size=(160, 160), png=loadPNG(teamlog2)))
 						if config.plugins.FootOnSat.enableflag.value:
@@ -431,7 +428,7 @@ class FootOnSat(Screen):
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1142, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 				# Score team 2
 				if self.link not in SPORTS:
-					if reswidth >= 2560:
+					if isUHD():
 						if self.link in FOOTBALL:
 							res.append(MultiContentEntryText(pos=(1090, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
 						else:
@@ -450,7 +447,7 @@ class FootOnSat(Screen):
 				# Notification icon
 				res.append(MultiContentEntryPixmapAlphaBlend(pos=(-20, 63), size=(70, 50), png=loadPNG(notif)))
 				# Match name
-				if reswidth >= 2560:
+				if isUHD():
 					if self.link in (SPORTS | FOOTBALL):
 						res.append(MultiContentEntryText(pos=(332, 69), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_HALIGN_CENTER, text=str(match)))
 					else:
@@ -463,7 +460,7 @@ class FootOnSat(Screen):
 				# status_text + match_status
 				if (team1_score != "" or match_status != "") and self.link not in SPORTS:
 					# If score or status exists, display the dynamic status/time (e.g., "Live: 70 min" or "Status: FT")
-					if reswidth >= 2560:
+					if isUHD():
 						if self.link in FOOTBALL:
 							res.append(MultiContentEntryText(pos=(430, 120), size=(400, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=0xFF0000))
 						else:
@@ -475,7 +472,7 @@ class FootOnSat(Screen):
 							res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=0xFF0000))
 				else:
 					# Otherwise, display the scheduled Kick-off time
-					if reswidth >= 2560:
+					if isUHD():
 						if self.link in (SPORTS | FOOTBALL):
 							res.append(MultiContentEntryText(pos=(430, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 						else:
@@ -486,7 +483,7 @@ class FootOnSat(Screen):
 						else:
 							res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 				# Competition name
-				if reswidth >= 2560:
+				if isUHD():
 					if self.link in (SPORTS | FOOTBALL):
 						res.append(MultiContentEntryText(pos=(430, 15), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 					else:
@@ -519,7 +516,7 @@ class FootOnSat(Screen):
 			no_schedules_text = _('No schedules in this section at this time')
 			# Set font and height (mirroring the 'if' block setup)
 			self["list1"].l.setItemHeight(175)
-			if reswidth >= 2560:
+			if isUHD():
 				self["list1"].l.setFont(0, gFont('Regular', 36))
 			else:
 				self["list1"].l.setFont(0, gFont('Regular', 28))
@@ -529,7 +526,7 @@ class FootOnSat(Screen):
 			# Text centered vertically (y=70 is roughly the center of 175 height item) and horizontally
 			res.append(MultiContentEntryText(
 				pos=(0, 70), 
-				size=(850 if reswidth >= 2560 else 660, 36),
+				size=(850 if isUHD() else 660, 36),
 				font=0, 
 				flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, 
 				text=no_schedules_text
@@ -1390,7 +1387,7 @@ class FootOnSat(Screen):
 		res = []
 		gList = []
 		self["list2"].l.setItemHeight(50)
-		if reswidth >= 2560:
+		if isUHD():
 			self["list2"].l.setFont(0, gFont('Regular', 32))
 		else:
 			self["list2"].l.setFont(0, gFont('Regular', 30))
@@ -1707,13 +1704,7 @@ FootOnSatNotifDialog = FootOnSatNotif()
 class FootOnsatNotifScreen(Screen):
 	def __init__(self, session):
 		Screen.__init__(self, session)
-		if reswidth == 1920:
-			skin = "assets/skin/FHD/FootOnsatNotif.xml"
-		elif reswidth >= 2560:
-			skin = "assets/skin/UHD/FootOnsatNotif.xml"
-		else:
-			skin = "assets/skin/FHD/FootOnsatNotif.xml"
-		self.skin = readFromFile(skin)
+		self.skin = SKIN_FootOnsatNotif
 		self['match'] = Label()
 		self['message'] = Label()
 		self['compet'] = Pixmap()
@@ -1976,23 +1967,12 @@ class StandingsScreen(Screen):
 		self.league = str(league)
 		print(f"self.league: %s" % self.league)
 		self.url = str(url)
-		if reswidth == 1920:
-			if self.league in ("basketball", "nba"):
-				skin = "assets/skin/FHD/standingsbasketball.xml"
-			elif self.league in ("nfl"):
-				skin = "assets/skin/FHD/standingsnfl.xml"
-			else:
-				skin = "assets/skin/FHD/standings.xml"
-		elif reswidth >= 2560:
-			if self.league in ("basketball", "nba"):
-				skin = "assets/skin/UHD/standingsbasketball.xml"
-			elif self.league in ("nfl"):
-				skin = "assets/skin/UHD/standingsnfl.xml"
-			else:
-				skin = "assets/skin/UHD/standings.xml"
+		self.league = str(league).lower()
+		if self.league in ("basketball", "nba", "nfl"):
+			label_text = "Ties" if self.league in ("nfl") else "Streak"
+			self.skin = SKIN_standingsbasketball % label_text
 		else:
-			skin = "assets/skin/FHD/standings.xml"
-		self.skin = readFromFile(skin)
+			self.skin = SKIN_standings
 		self["standings_list"] = MenuList([], enableWrapAround=True, content=eListboxPythonMultiContent)
 		# FIX for Python 2 eLabel: encode to UTF-8 if not Python 3
 		title_text = "%s Standings" % self.league
@@ -2570,10 +2550,10 @@ class StandingsScreen(Screen):
 		gList = []
 
 		# Determine ITEM_HEIGHT based on resolution (used multiple times)
-		ITEM_HEIGHT = 65 if reswidth == 1920 else 85
+		ITEM_HEIGHT = 65 if isFHD() else 85
 
 		self["standings_list"].l.setItemHeight(ITEM_HEIGHT)
-		if reswidth >= 2560:
+		if isUHD():
 			self["standings_list"].l.setFont(0, gFont('Regular', 32))
 		else:
 			self["standings_list"].l.setFont(0, gFont('Regular', 28))
@@ -2583,7 +2563,7 @@ class StandingsScreen(Screen):
 		for standing in self.standings_data:
 			if isinstance(standing, str) and standing.startswith("Table "):
 				club_idx = 1  # reset numbering for new table
-				if reswidth == 1920:
+				if isFHD():
 					res = [ITEM_HEIGHT, MultiContentEntryText(pos=(450, 0), size=(960, ITEM_HEIGHT), font=0,
 												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(standing))]
 				else: # UHD skins
@@ -2615,7 +2595,7 @@ class StandingsScreen(Screen):
 			logo_url = standing[10]
 
 			# --- LOGO SIZE AND POSITIONING ---
-			if reswidth == 1920:
+			if isFHD():
 				LOGO_SIZE_H = 50
 				LOGO_Y_POS = 8
 				LOGO_X_POS = 85
@@ -2630,7 +2610,7 @@ class StandingsScreen(Screen):
 
 			res = [ITEM_HEIGHT]
 			# Number
-			if reswidth == 1920:
+			if isFHD():
 				res.append(MultiContentEntryText(pos=(20, 0), size=(50, ITEM_HEIGHT), font=0,
 												 flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, text=str(club_idx)))
 			else:  # 2560
@@ -2641,7 +2621,7 @@ class StandingsScreen(Screen):
 			# logo using file path
 			flagteam_png = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/standings/{}.png".format(sanitize_team_name(team)))
 			if self.league in ("basketball", "nba", "nfl"): # This for basketball, nba and nfl option codes only
-				if reswidth == 1920:
+				if isFHD():
 					if os.path.exists(flagteam_png):
 						if PY3:
 							res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
@@ -2700,7 +2680,7 @@ class StandingsScreen(Screen):
 					res.append(MultiContentEntryText(pos=(2170, LOGO_Y_POS +13), size=(260, LOGO_SIZE_H), font=0,
 											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(pct or "")))
 			else:
-				if reswidth == 1920:
+				if isFHD():
 					if os.path.exists(flagteam_png):
 						if PY3:
 							res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
