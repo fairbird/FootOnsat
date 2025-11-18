@@ -383,7 +383,7 @@ class FootOnSat(Screen):
 				}
 				FOOTBALL = {
 				    	"championsleague", "europaleague", "ConferenceLeague", "premierleague",
-				    	"laliga", "championship", "seriea", "ligue1", "eredivisie", "saudiarabia",
+				    	"laliga", "laliga2", "championship", "seriea", "ligue1", "eredivisie", "saudiarabia",
 				    	"bundesliga", "belgianpro", "superLig", "liganos", "afcchampions"
 				}
 				# Team 1 flag/logteam
