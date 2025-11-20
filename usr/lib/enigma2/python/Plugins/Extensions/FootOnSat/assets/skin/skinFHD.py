@@ -155,8 +155,10 @@ if DreamOS():
 			<eLabel position="1330,670" zPosition="5" size="60,60" text="&#xeb3a;" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;60" transparent="1" />
 			<eLabel position="1335,758" zPosition="5" size="50,50" text="&#xf04e;" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;50" transparent="1" />
 			<eLabel position="1330,843" zPosition="5" size="60,50" text="&#xe870;" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;60" transparent="1" />
-			<widget source="key_red" render="Label" position="108,880" size="385,40" font="Regular;28" halign="center" foregroundColor="#FF0000" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
-			<widget source="key_green" render="Label" position="849,880" size="385,40" font="Regular;28" halign="center" foregroundColor="#00FF00" backgroundColor="#101c1c1c" zPosition="1" transparent="1" />
+			<eLabel position="143,920" size="300,3" backgroundColor="#FF0000" zPosition="5" />
+			<eLabel position="884,920" size="300,3" backgroundColor="#00FF00" zPosition="5" />
+			<widget source="key_red" render="Label" position="108,880" size="385,40" font="Regular;28" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+			<widget source="key_green" render="Label" position="849,880" size="385,40" font="Regular;28" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="1" transparent="1" />
 			<widget name="config" position="75,145" size="1169,800" backgroundColor="#16000000" scrollbarMode="showOnDemand" transparent="1" />
 			<widget source="help" render="Label" position="1315,165" size="532,350" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
 			<widget name="Picture" position="1435,623" size="400,225" zPosition="5" alphatest="blend"/>
@@ -175,8 +177,10 @@ else:
 			<eLabel position="1330,670" zPosition="5" size="60,60" text="&#xeb3a;" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;60" transparent="1" />
 			<eLabel position="1335,758" zPosition="5" size="50,50" text="&#xf04e;" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;50" transparent="1" />
 			<eLabel position="1330,843" zPosition="5" size="60,50" text="&#xe870;" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;60" transparent="1" />
-			<widget source="key_red" render="Label" position="108,880" size="385,40" font="Regular;28" halign="center" foregroundColor="#FF0000" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
-			<widget source="key_green" render="Label" position="849,880" size="385,40" font="Regular;28" halign="center" foregroundColor="#00FF00" backgroundColor="#101c1c1c" zPosition="1" transparent="1" />
+			<eLabel position="143,920" size="300,3" backgroundColor="#FF0000" zPosition="5" />
+			<eLabel position="884,920" size="300,3" backgroundColor="#00FF00" zPosition="5" />
+			<widget source="key_red" render="Label" position="108,880" size="385,40" font="Regular;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+			<widget source="key_green" render="Label" position="849,880" size="385,40" font="Regular;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
 			<widget name="config" font="Regular;28" secondfont="Regular;28" itemHeight="45" position="75,145" size="1169,800" backgroundColor="#16000000" scrollbarMode="showOnDemand" transparent="1" />
 			<widget source="help" render="Label" position="1315,165" size="532,350" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
 			<widget name="Picture" position="1435,623" size="400,225" zPosition="5" alphatest="blend"/>
