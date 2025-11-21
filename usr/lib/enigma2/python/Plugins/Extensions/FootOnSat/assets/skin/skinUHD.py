@@ -57,16 +57,17 @@ SKIN_interface = """
     <eLabel position="1774,894" zPosition="5" size="80,85" text="" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;80" transparent="1" />
     <eLabel position="1776,1011" zPosition="5" size="80,85" text="" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;80" transparent="1" />
     <eLabel position="1780,1115" zPosition="5" size="80,80" text="" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;80" transparent="1" />
-    <widget name="channel" position="1934,811" size="514,52" font="Regular;34" halign="left" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
-    <widget name="sat" position="1934,927" size="514,52" font="Regular;34" halign="left" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
-    <widget name="freq" position="1934,1043" size="514,52" font="Regular;34" halign="left" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
-    <widget name="enc" position="1934,1147" size="514,54" font="Regular;34" halign="left" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+    <widget name="menu" position="166,22" size="882,58" font="Regular;34" halign="left" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+    <widget name="channel" position="1934,811" size="514,52" font="Regular;34" halign="left" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+    <widget name="sat" position="1934,927" size="514,52" font="Regular;34" halign="left" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+    <widget name="freq" position="1934,1043" size="514,52" font="Regular;34" halign="left" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+    <widget name="enc" position="1934,1147" size="514,54" font="Regular;34" halign="left" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
     <widget name="key_red" position="296,1150" font="Regular;38" halign="left" foregroundColor="#FF0000" backgroundColor="#0000FF" zPosition="5" transparent="1" size="353,100" />
-	<widget name="key_green" position="296,1170" size="514,54" font="Regular;38" halign="left" foregroundColor="#00FF00" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+    <widget name="key_green" position="296,1170" size="514,54" font="Regular;38" halign="left" foregroundColor="#00FF00" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
     <widget name="key_yellow" position="1215,1150" font="Regular;38" halign="left" foregroundColor="yellow" backgroundColor="#0000FF" zPosition="5" transparent="1" size="353,100" />
     <widget name="key_blue" position="2067,1200" size="514,54" font="Regular;38" halign="left" foregroundColor="#1E90FF" backgroundColor="#0000FF" zPosition="5" transparent="1" />
-    <widget name="list1" position="76,194" size="1627,875" scrollbarMode="showNever" selectionPixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/button1450x175.png" foregroundColor="white" foregroundColorSelected="#00F9C731" backgroundColorSelected="#0000FF" enableWrapAround="1" transparent="1" zPosition="2" itemsPerPage="5" /> 
-    <widget name="list2" position="1754,200" size="747,456" scrollbarMode="showNever" selectionPixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/list22selectionpixmap.png" foregroundColor="white" foregroundColorSelected="#00F9C731" backgroundColorSelected="#0000FF" enableWrapAround="1" transparent="1" zPosition="3" />
+    <widget name="list1" position="76,194" size="1627,875" scrollbarMode="showNever" selectionPixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/button1450x175.png" foregroundColor="#00ffffff" foregroundColorSelected="#00F9C731" backgroundColorSelected="#0000FF" enableWrapAround="1" transparent="1" zPosition="2" itemsPerPage="5" /> 
+    <widget name="list2" position="1754,200" size="747,456" scrollbarMode="showNever" selectionPixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/list22selectionpixmap.png" foregroundColor="#00ffffff" foregroundColorSelected="#00F9C731" backgroundColorSelected="#0000FF" enableWrapAround="1" transparent="1" zPosition="3" />
     <widget font="Regular;47" foregroundColor="#00ffffff" backgroundColor="#16000000" halign="center" position="1184,13" render="Label" size="191,70" source="global.CurrentTime" transparent="1" valign="center" zPosition="5">
         <convert type="ClockToText">Default</convert>
     </widget>
