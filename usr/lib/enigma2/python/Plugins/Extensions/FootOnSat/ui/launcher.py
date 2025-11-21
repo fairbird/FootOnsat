@@ -70,6 +70,10 @@ config.plugins.FootOnSat.livescore = ConfigSelection(default = "3", choices = [
 	("2", _("Live match + No live Score")),
 	("3", _("Live match + Live Score"))
 	])
+config.plugins.FootOnSat.notify_zap = ConfigSelection(default = "1", choices = [
+	("1", _("sound + Notifications + Zap")),
+	("2", _("sound + Zap only")),
+	])
 config.plugins.FootOnSat.notify = ConfigSelection(default = "1", choices = [
 	("1", _("All three notifications")),
 	("2", _("Only when started match")),
@@ -470,6 +474,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			self.list.append(getConfigListEntry(_("Hide matches that started before"), config.plugins.FootOnSat.finished, _("This option is to specify the time that matches that have finished remain before they disappear from the list")))
 		self.list.append(getConfigListEntry(_("Path to store ignore file"), config.plugins.FootOnSat.devicepath, _("This option to set the path of save file for ignore matches")))
 		self.list.append(getConfigListEntry(_("Choose time for notifications"), config.plugins.FootOnSat.notiftime, _("This feature allows you to choose the number of seconds for notifications to appear.\nMove <Left | Right> to change seconds from (6 - 20)")))
+		self.list.append(getConfigListEntry(_("Choose to notifications and Zap"), config.plugins.FootOnSat.notify_zap, _("This feature allows you to specify the notifications and Zap to selected channel")))
 		self.list.append(getConfigListEntry(_("Choose to display notifications"), config.plugins.FootOnSat.notify, _("This feature allows you to specify the times for notifications to appear when matches start")))
 		self.list.append(getConfigListEntry(_("Choose tone of notifications #press OK to change"), config.plugins.FootOnSat.notiffile, _("This feature allows you to select a notification tone when matches start")))
 		self.list.append(getConfigListEntry(_("Select Icons Style"), config.plugins.FootOnSat.icons, _("This option to enable to select Icons Style.\nChoose and Press Save (Green Button)")))
