@@ -673,27 +673,9 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 
 
 class SelectionScreen(Screen, ConfigListScreen):
-        skin = """
-        	<screen name="SelectionScreen" position="center,center" size="738,524" title="Select Options">
-        		<widget source="list" render="Listbox" position="10,10" size="716,461" scrollbarMode="showOnDemand">
-				<convert type="TemplatedMultiContent">
-				    {
-				        "template": [
-				            MultiContentEntryText(pos=(85,10), size=(650,50), font=0, text=0),
-				            MultiContentEntryPixmapAlphaBlend(pos=(0,0), size=(50,50), png=1)
-				        ],
-				        "fonts": [gFont("Regular", 35)],
-				        "itemHeight": 60
-				    }
-				</convert>
-        		</widget>
-        		<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" position="105,517" size="165,2" zPosition="-10"/>
-        		<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" position="482,517" size="165,2" zPosition="-10"/>
-        		<widget name="key_red" position="70,480" size="246,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;35" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
-        		<widget name="key_green" position="445,480" size="246,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;35" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
-        	</screen>"""
         def __init__(self, session):
                 Screen.__init__(self, session)
+                self.skin = SKIN_SelectionScreen
                 ConfigListScreen.__init__(self, [], session=session)
                 self.session = session
                 self.setup_title = _("Select your choose")
