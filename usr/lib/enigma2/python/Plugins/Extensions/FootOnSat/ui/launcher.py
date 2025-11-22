@@ -31,9 +31,9 @@ from . import compat
 PY3 = version_info[0] == 3
 
 if isUHD():
-        from .skin.skinUHD import *
+        from Plugins.Extensions.FootOnSat.assets.skin.skinUHD import *
 else:
-        from .skin.skinFHD import *
+        from Plugins.Extensions.FootOnSat.assets.skin.skinFHD import *
 
 mounted_partitions = harddiskmanager.getMountedPartitions()
 mounted_devices = []
