@@ -8,7 +8,6 @@ ASSETS_PATH="$PLUGIN_PATH/assets"
 IGNORE_PATH="$PLUGIN_PATH/ignore"
 TMP_DB="/tmp/footonsat.db"
 TMP_ASSETS="/tmp/assets"
-TMP_UI="/tmp/ui"
 
 if [ -f /etc/apt/apt.conf ] ; then
 	STATUS='/var/lib/dpkg/status'
@@ -50,11 +49,11 @@ if [ -d $PLUGIN_PATH ]; then
 	fi
 	echo ""
 	echo "Backup current style ..."
-	mkdir -p "$TMP_UI" >/dev/null 2>&1
 	mkdir -p "$TMP_ASSETS/compet" >/dev/null 2>&1
+	mkdir -p "$TMP_ASSETS/skin" >/dev/null 2>&1
 	cp -a "$ASSETS_PATH/compet/icons" "$TMP_ASSETS/compet" >/dev/null 2>&1
+	cp -a "$ASSETS_PATH/skin" "$TMP_ASSETS" >/dev/null 2>&1
 	cp -a "$ASSETS_PATH/icon" "$TMP_ASSETS" >/dev/null 2>&1
-	cp -a "$PLUGIN_PATH/ui/skin" "$TMP_UI" >/dev/null 2>&1
 #    echo "Remove old version."
 #    if [ "$OS" = "Opensource" ]; then
 #        opkg remove enigma2-plugin-extensions-footonsat
@@ -265,9 +264,6 @@ if [ -d $PLUGIN_PATH ]; then
 	if [ -d "$TMP_ASSETS" ]; then
 		echo "Restore current style ..."
 		cp -a "$TMP_ASSETS" "$PLUGIN_PATH" >/dev/null 2>&1
-	fi
-	if [ -d "$TMP_UI" ]; then
-		cp -a "$TMP_UI" "$PLUGIN_PATH" >/dev/null 2>&1
 	fi
 	echo ""
 fi
