@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import io
 import re
 import sys
 import json
@@ -19,7 +20,8 @@ from unicodedata import normalize
 from difflib import SequenceMatcher
 from datetime import date, datetime, timedelta
 from os.path import join, exists, isfile, dirname
-from enigma import eTimer, gRGB, loadPNG, gPixmapPtr, RT_WRAP, ePoint, RT_HALIGN_CENTER, RT_HALIGN_LEFT, RT_VALIGN_CENTER, eListboxPythonMultiContent, gFont, getDesktop, eConsoleAppContainer
+from enigma import eTimer, gRGB, loadPNG, gPixmapPtr, RT_WRAP, ePoint, RT_HALIGN_CENTER, RT_HALIGN_LEFT, RT_VALIGN_CENTER, eListboxPythonMultiContent, \
+				gFont, getDesktop, eConsoleAppContainer, eServiceCenter, eServiceReference
 from Components.MultiContent import MultiContentEntryText, MultiContentEntryPixmap, MultiContentEntryPixmapAlphaTest, MultiContentEntryPixmapAlphaBlend
 from Components.MenuList import MenuList
 from Components.Label import Label
@@ -29,9 +31,11 @@ from Components.ActionMap import ActionMap
 from Components.NimManager import nimmanager, getConfigSatlist
 from Components.config import config
 from Components.Harddisk import harddiskmanager
+from Screens.InfoBar import InfoBar
 from Screens.Screen import Screen
 from Screens.ChoiceBox import ChoiceBox
 from Screens.MessageBox import MessageBox
+from Screens.ChannelSelection import ChannelSelection
 from Tools.Directories import resolveFilename, SCOPE_PLUGINS, fileExists
 from Tools.LoadPixmap import LoadPixmap
 from twisted.internet import defer, reactor
@@ -43,6 +47,11 @@ from twisted.internet._sslverify import ClientTLSOptions
 from twisted.internet.threads import blockingCallFromThread
 from twisted.web.client import getPage, downloadPage
 from .compat import PY3, compat_urlopen, compat_HTTPError, compat_URLError, compat_Request, compat_str
+
+### images path
+OPENBH="/usr/lib/enigma2/python/Screens/BpBlue.py"
+OPENBH2="/usr/lib/enigma2/python/Screens/BpBlue.pyc"
+OPENVIX="/usr/lib/enigma2/python/Plugins/SystemPlugins/ViX"
 
 try:
 	from urllib.parse import urlparse
@@ -219,15 +228,26 @@ class WebClientContextFactory(ClientContextFactory):
 		return ctx
 
 
+class RAED_ChannelSelection(ChannelSelection):
+	def __init__(self, session):
+		ChannelSelection.__init__(self, session)
+
+
 class FootOnSat(Screen):
 	def __init__(self, session, link, *args):
 		#logdata("FootOnSat-INIT", "Plugin initialization started.")
 		self.session = session
 		Screen.__init__(self, session)
+		self.MENUTEXT = "Press Menu to select zap channel"
 		self.execing = False # FIX: Prevents AttributeError in base class's close() method
 		self.skin = SKIN_interface
+		if fileExists(OPENBH) or fileExists(OPENBH2) or fileExists(OPENVIX):
+			self.servicelist = self.session.instantiateDialog(RAED_ChannelSelection)
+		else:
+			self.servicelist = self.session.instantiateDialog(ChannelSelection)
 		self["setupActions"] = ActionMap(["FootOnsatActions", "ColorActions"],
 		{
+			"menu": self.menu,
 			"ok": self.ok,
 			"down": self.listDOWN,
 			"up": self.listUP,
@@ -247,6 +267,7 @@ class FootOnSat(Screen):
 		self["sat"] = Label()
 		self["freq"] = Label()
 		self["enc"] = Label()
+		self["menu"] = Label()
 		self["key_red"] = Button(_("Ignore Competition"))
 		self["key_yellow"] = Button(_("Reset Ignore List"))
 		self["key_blue"] = Button(_("Scan"))
@@ -281,6 +302,15 @@ class FootOnSat(Screen):
 			res = []
 			gList = []
 			self["list1"].l.setItemHeight(175)
+			sel = self["list1"].getSelectionIndex()
+			if sel >= 0 and sel < len(self.matches):
+				match = self.matches[sel][0] 
+				if self.checkIfexist(match):
+					self["menu"].setText(self.MENUTEXT)
+				else:
+					self["menu"].setText("") 
+			else:
+				self["menu"].setText("")
 			if isUHD():
 				self["list1"].l.setFont(0, gFont('Regular', 36))
 			else:
@@ -616,7 +646,16 @@ class FootOnSat(Screen):
 		if self.selectedList == self["list1"]:
 			self.disablelist2()
 			self.updateCounter()
-			self.resetChannelinfo()
+			self.resetChannelinfo() 
+			sel = self["list1"].getSelectionIndex()
+			if sel >= 0 and sel < len(self.matches):
+				match = self.matches[sel][0] 
+				if self.checkIfexist(match):
+					self["menu"].setText(self.MENUTEXT)
+				else:
+					self["menu"].setText("") 
+			else:
+				self["menu"].setText("")
 		if self.selectedList == self["list2"]:
 			self.updateChannelData()
 
@@ -628,6 +667,15 @@ class FootOnSat(Screen):
 			self.disablelist2()
 			self.updateCounter()
 			self.resetChannelinfo()
+			sel = self["list1"].getSelectionIndex()
+			if sel >= 0 and sel < len(self.matches):
+				match = self.matches[sel][0] 
+				if self.checkIfexist(match):
+					self["menu"].setText(self.MENUTEXT)
+				else:
+					self["menu"].setText("") 
+			else:
+				self["menu"].setText("")
 		if self.selectedList == self["list2"]:
 			self.updateChannelData()
 
@@ -643,6 +691,78 @@ class FootOnSat(Screen):
 			with connect(DB_PATH) as conn:
 				cur = conn.cursor()
 				cur.execute('CREATE TABLE IF NOT EXISTS LIVE_NOTIF (MATCH TEXT primary key , COMPET TEXT , DATE TEXT , TEAM1_FLAG TEXT , TEAM2_FLAG TEXT , FIRST_NOTIF TEXT , FIRST_NOTIF_STATUS TEXT , LIVE_NOTIF_STATUS TEXT,MESSAGE TEXT)')
+
+	def menu(self):
+		if self.selectedList != self["list1"] or len(self.matches) == 0:
+			return
+
+		index = self['list1'].getSelectionIndex()
+		match = self.matches[index][0] if PY3 else self.matches[index][0].decode('utf-8')
+
+		if not self.checkIfexist(match):
+			self.session.open(MessageBox,
+				_("Please press OK on the match first to enable notification!"),
+				MessageBox.TYPE_INFO, timeout=6)
+			return
+
+		self.current_selected_match = match
+
+		# YOUR ORIGINAL UNIVERSAL CODE — 100% UNCHANGED
+		try:
+			from Screens.ChannelSelection import ChannelSelectionSimple
+			sel_class = ChannelSelectionSimple
+		except:
+			try:
+				from Screens.ChannelSelection import SimpleChannelSelection
+				sel_class = SimpleChannelSelection
+			except:
+				from Screens.ChannelSelection import ChannelSelection
+				sel_class = ChannelSelection
+
+		self.session.openWithCallback(self.channelSelected, sel_class, _("Select Notification Channel"))
+
+	def channelSelected(self, service_ref=None):
+		if not service_ref:
+			return
+
+		info = eServiceCenter.getInstance().info(service_ref)
+		channel_name = info.getName(service_ref) if info else "Unknown"
+		ref_string = service_ref.toString()
+
+		index = self['list1'].getSelectionIndex()
+		exact_match = self.matches[index][0]
+		
+		# 1. Handle non-breaking space (Py2/3 safe)
+		try:
+			normalized_match = exact_match.replace(u'\xa0', u' ')
+		except:
+			normalized_match = exact_match.replace('\xa0', ' ')
+			
+		# 2. Collapse all sequences of whitespace to a single space, strip edges, then remove ALL spaces
+		normalized_match = re.sub(r'\s+', ' ', normalized_match).strip()
+		normalized_match = normalized_match.replace(' ', '') # REMOVE ALL SPACES to match original SQL intent
+		# END FIX
+
+		logdata("ZAP_DEBUG", "SAVING ZAP REF → '%s' → %s (%s)" % (normalized_match, channel_name, ref_string))
+
+		try:
+			conn = connect(DB_PATH)
+			c = conn.cursor()
+			c.execute('''CREATE TABLE IF NOT EXISTS zap_channels (match TEXT PRIMARY KEY,ref TEXT)''')
+			# Insert using the fully normalized key (which has no spaces)
+			c.execute("INSERT OR REPLACE INTO zap_channels (match, ref) VALUES (?, ?)", (normalized_match, ref_string))
+			conn.commit()
+			conn.close()
+			logdata("ZAP_DEBUG", "ZAP REF SAVED SUCCESSFULLY → %s" % ref_string)
+		except Exception as e:
+			logdata("ZAP_DEBUG", "SAVE ERROR: %s" % str(e))
+
+		self.session.open(MessageBox,
+			_("Notification channel saved!\n\n") +
+			_("Match: ") + exact_match + "\n" +
+			_("Channel: ") + channel_name + "\n\n" +
+			_("Receiver will zap to this channel when notification appears."),
+			MessageBox.TYPE_INFO, timeout=10)
 
 	def ok(self):
 		if self.selectedList == self["list1"] and len(self.matches) > 0:
@@ -674,7 +794,7 @@ class FootOnSat(Screen):
 					
 					# NOTE: Removed the 'if not self.sameDate(match_date):' check 
 					#       to allow multiple matches at the same time.
-					
+
 					with connect(DB_PATH) as conn:
 						cur = conn.cursor()
 						first_notif, message = self.setFirstNotifTime(match_date)
@@ -1525,7 +1645,6 @@ class FootOnSat(Screen):
 		except NameError:
 			PY3 = False
 		if not PY3:
-			import io
 			def fopen(fname, mode):
 				return io.open(fname, mode, encoding='utf-8')
 		else:
@@ -1730,30 +1849,137 @@ class FootOnsatNotifScreen(Screen):
 		# --- ADDED STATE FOR SEQUENTIAL DISPLAY AND BUG FIX ---
 		self.matches_queue = []
 		self.is_displaying = False
-		self.is_checking = False # CRITICAL Re-entry Lock for checkforNotif
+		self.is_checking = False
 
-	def _update_display_only(self, match, compet, team1, team2, message=None):
-		"""Helper to update the screen elements only."""
-		if self.instance:
-			if FootOnSatNotifDialog.dialog is not None:
-				self['match'].setText(_(str(match)))
-				if message:
-					self['live'].hide()
-					self['message'].setText(str(message))
+	def _update_display_only(self, match, compet, team1, team2, message=None, allow_zap=True):
+		if not self.instance:
+			return
+
+		logdata("ZAP_DEBUG", "=== NOTIFICATION START ===")
+		logdata("ZAP_DEBUG", "Match: '%s'" % match)
+
+		# CRITICAL FIX 2: Normalize key to handle invisible spaces (\xa0) and remove ALL spaces
+		import re
+		
+		# 1. Handle non-breaking space (Py2/3 safe)
+		try:
+			normalized_search_key = match.replace(u'\xa0', u' ')
+		except:
+			normalized_search_key = match.replace('\xa0', ' ')
+			
+		# 2. Collapse all sequences of whitespace to a single space, strip edges, then remove ALL spaces
+		normalized_search_key = re.sub(r'\s+', ' ', normalized_search_key).strip()
+		normalized_search_key = normalized_search_key.replace(' ', '') # REMOVE ALL SPACES to match the saved key
+		# END FIX
+		
+		# Initialize zap_ref outside try block for scope
+		zap_ref = None
+		
+		# Only perform lookup if Zap is enabled by config AND the stage allows it
+		zap_enabled_by_config = config.plugins.FootOnSat.notify_zap.value in ("1", "2")
+		zap_allowed = zap_enabled_by_config and allow_zap 
+
+		if zap_allowed:
+			try:
+				conn = connect(DB_PATH)
+				c = conn.cursor()
+				
+				# Search for the fully normalized key (which has no spaces)
+				c.execute("SELECT ref FROM zap_channels WHERE match = ?", (normalized_search_key,))
+				row = c.fetchone()
+				conn.close()
+
+				if row and row[0]:
+					from enigma import eServiceReference
+					zap_ref = eServiceReference(str(row[0]))
+					logdata("ZAP_DEBUG", "ZAP BY REFERENCE FOUND → %s (%s)" % (zap_ref.getName(), row[0]))
 				else:
-					self['live'].show()
-					self['message'].setText("")
-				banner = FootOnSat.setCompet(compet.lower())
-				self['compet'].instance.setPixmapFromFile(banner)
-				flag1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/{}.png".format(team1))
-				flag2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/{}.png".format(team2))
-				if not fileExists(flag1):
-					flag1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/default.png")
-				if not fileExists(flag2):
-					flag2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/default.png")
-				self['flag1'].instance.setPixmapFromFile(flag1)
-				self['flag2'].instance.setPixmapFromFile(flag2)
-				FootOnSatNotifDialog.dialog.show()
+					logdata("ZAP_DEBUG", "No zap ref found (Search key: '%s')" % normalized_search_key)
+					
+			except Exception as e:
+				logdata("ZAP_DEBUG", "ZAP LOOKUP ERROR: %s" % str(e))
+				zap_ref = None # Ensure it is None on error
+
+		
+		# 🔥 CORRECTED FEATURE LOGIC START
+		
+		if config.plugins.FootOnSat.notify_zap.value == "2":
+			# Case: Zap Only mode. Must suppress notification by NOT calling _do_actual_display.
+			if zap_ref:
+				# Zap channel found: Execute Zap immediately with sound.
+				self._play_tone() 
+				time.sleep(2.0)
+				# 1. Selection: Using the correct function name from your file
+				InfoBar.instance.servicelist.setCurrentSelection(zap_ref)
+				# 2. Zap: Calling the function that should contain the history update hook
+				InfoBar.instance.servicelist.zap()
+				logdata("ZAP_DEBUG", "ZAP COMPLETED")
+			else:
+				# No Zap channel found: Do nothing. (NO ACTION, NO SOUND)
+				logdata("ZAP_DEBUG", "Zap only mode (Option 2) selected. No Zap channel found, skipping notification and zap.")
+			
+			# Notification is suppressed: Manually advance queue and RETURN
+			self._display_next_in_queue()
+			logdata("ZAP_DEBUG", "=== NOTIFICATION END ===\n")
+			return # Exit to prevent calling _do_actual_display
+		
+		# Default path (Option "1" or Zap disabled): Proceed to display the notification
+		self._do_actual_display(match, compet, team1, team2, message, zap_ref=zap_ref)
+
+	def _do_actual_display(self, match, compet, team1, team2, message=None, zap_ref=None):
+		"""Show notification popup and execute Zap AFTER a 2.0s delay if a channel is found."""
+		if not self.instance:
+			logdata("ZAP_DEBUG", "Cannot show popup – no instance")
+			return
+
+		logdata("ZAP_DEBUG", "SHOWING NOTIFICATION POPUP: %s" % match)
+		if message:
+			logdata("ZAP_DEBUG", "Message: %s" % message)
+
+		self['match'].setText(str(match))
+		if message:
+			self['live'].hide()
+			self['message'].setText(str(message))
+		else:
+			self['live'].show()
+			self['message'].setText("")
+
+		banner = FootOnSat.setCompet(compet.lower())
+		self['compet'].instance.setPixmapFromFile(banner)
+
+		flag1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/%s.png" % team1)
+		flag2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/%s.png" % team2)
+		default_flag = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/default.png")
+
+		self['flag1'].instance.setPixmapFromFile(flag1 if fileExists(flag1) else default_flag)
+		self['flag2'].instance.setPixmapFromFile(flag2 if fileExists(flag2) else default_flag)
+
+		# 🔥 Play sound now, tied to the notification display (Option "1")
+		self._play_tone() 
+
+		FootOnSatNotifDialog.dialog.show()
+		logdata("ZAP_DEBUG", "NOTIFICATION POPUP IS NOW VISIBLE")
+		
+		# 🔥 Perform the Zap and Delay HERE for option "1"
+		if zap_ref:
+			try:
+				# 👇 DELAY HERE to let the user see/hear the notification FIRST
+				time.sleep(2.0)
+				
+				logdata("ZAP_DEBUG", "Delay finished, executing Zap.")
+				# 1. Selection: Using the correct function name from your file
+				InfoBar.instance.servicelist.setCurrentSelection(zap_ref)
+				# 2. Zap: Calling the function that should contain the history update hook
+				InfoBar.instance.servicelist.zap()
+				logdata("ZAP_DEBUG", "playService called — channel switching...")
+				logdata("ZAP_DEBUG", "ZAP COMPLETED")
+
+			except Exception as e:
+				logdata("ZAP_DEBUG", "ZAP EXECUTION ERROR: %s" % str(e))
+		else:
+			logdata("ZAP_DEBUG", "Zap not required.")
+
+		logdata("ZAP_DEBUG", "=== NOTIFICATION END ===\n")
 
 	def _display_next_in_queue(self):
 		"""Pulls the next match from the queue, displays it, and schedules the next display or hides the dialog."""
@@ -1767,14 +1993,16 @@ class FootOnsatNotifScreen(Screen):
 
 		# Get the next match to display
 		match_data = self.matches_queue.pop(0)
-		
+		allow_zap = match_data.get('allow_zap', True)
+
 		# Display the current match info 
 		self._update_display_only(
 			match_data['match'], 
 			match_data['compet'], 
 			match_data['team1'], 
 			match_data['team2'], 
-			match_data['message']
+			match_data['message'],
+			allow_zap=allow_zap
 		)
 		
 		COMPENSATION_MS = 3000
@@ -1790,13 +2018,8 @@ class FootOnsatNotifScreen(Screen):
 			# Start final timer with compensated value
 			self.onhideTimer.start(compensated_milliseconds)
 
-	def _start_sequential_display(self):
-		"""Starts the sequential display process if not already running."""
-		if self.is_displaying:
-			return
-
-		self.is_displaying = True
-		# Play sound once per batch (assuming first time notify is called is start of batch)
+	def _play_tone(self):
+		"""Plays the notification tone."""
 		from .launcher import MenuFootOnSat
 		tone_file = MenuFootOnSat.getToneFile()
 		if os.path.exists("/usr/bin/aplay"):
@@ -1805,6 +2028,14 @@ class FootOnsatNotifScreen(Screen):
 			os.system('(gst-launch-1.0 -q --no-fault filesrc location="{}" ! wavparse ! audioconvert ! audioresample ! alsasink > /dev/null 2>&1 &) &'.format(tone_file))
 		else:
 			logdata("FootOnSatNotif", "No supported sound player found (aplay/gst-launch).")
+
+	def _start_sequential_display(self):
+		"""Starts the sequential display process if not already running."""
+		if self.is_displaying:
+			return
+
+		self.is_displaying = True
+		# Sound logic has been MOVED to _play_tone() and is called when action is confirmed.
 			
 		# Start the sequential timer to immediately process the first item
 		self.onhideTimer.start(10)
@@ -1845,7 +2076,8 @@ class FootOnsatNotifScreen(Screen):
 									
 									# 1a. Trigger Notification if option includes 30 min (1, 4, 6, 7)
 									if user_choice in ("1", "4", "6", "7"):
-										self.notify(match_name.strip(), row[1], row[3], row[4], row[8])
+										# Zap NOT allowed here
+										self.notify(match_name.strip(), row[1], row[3], row[4], row[8], allow_zap=False)
 									
 									# 1b. Determine Next Notification Time & Message
 									if user_choice in ("1", "3", "5", "7"):
@@ -1872,7 +2104,8 @@ class FootOnsatNotifScreen(Screen):
 									
 									# 2a. Trigger Notification if option includes 15 min (1, 3, 5, 7)
 									if user_choice in ("1", "3", "5", "7"):
-										self.notify(match_name.strip(), row[1], row[3], row[4], row[8])
+										# Zap NOT allowed here
+										self.notify(match_name.strip(), row[1], row[3], row[4], row[8], allow_zap=False)
 									
 									# 2b. Determine Next Notification Time & Message
 									if user_choice in ("1", "2", "5", "6"):
@@ -1895,8 +2128,8 @@ class FootOnsatNotifScreen(Screen):
 									
 									# 3a. Trigger Notification if option includes Start (1, 2, 5, 6)
 									if user_choice in ("1", "2", "5", "6"):
-										# Trigger the start notification (no message)
-										self.notify(match_name.strip(), row[1], row[3], row[4])
+										# Zap IS allowed here
+										self.notify(match_name.strip(), row[1], row[3], row[4], allow_zap=True)
 										#logdata("FootOnSatNotif", "TRIGGER: Match Start Notif and DB delete for match: %s" % match_name)
 									else:
 										# Log deletion without triggering final notification
@@ -1915,24 +2148,49 @@ class FootOnsatNotifScreen(Screen):
 			self.is_checking = False # Reset the lock ensures it can run again later
 
 	def deloldRecords(self):
+		if not fileExists(DB_PATH):
+			return
+			
 		with connect(DB_PATH) as conn:
 			cur = conn.cursor()
-			# Select all columns to get the match name (row[0]) and date (row[2]) for logging
+			# row[0]=MATCH, row[1]=COMPET, row[2]=DATE
 			rows = cur.execute("select * from LIVE_NOTIF")
 			rows = rows.fetchall()
-			# Note: today is only checked for Date comparison, not time.
-			today = datetime.strptime(datetime.now().strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M") 
+			
+			# Note: All necessary modules (datetime, timedelta, re) are available globally
+			now = datetime.strptime(datetime.now().strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M") 
 			if len(rows) > 0:
 				for row in rows:
-					# row[2] is the DATE field
-					record_date = datetime.strptime(row[2], "%H:%M - %Y-%m-%d")
-					cleanup_time = record_date + timedelta(minutes=1) # Cleanup 1 minute after match time
-					
-					if today > cleanup_time:
-						 cur.execute("DELETE FROM LIVE_NOTIF WHERE DATE = ?", (row[2],))
+					match_name = row[0] 
+					compet_name = row[1] # Reliable field 
+					date_string = row[2] # Reliable field
+					try:
+						# row[2] format: "HH:MM - YYYY-MM-DD"
+						record_date = datetime.strptime(date_string, "%H:%M - %Y-%m-%d")
+						cleanup_time = record_date + timedelta(minutes=1)
+						
+						if now > cleanup_time:
+							
+							# 1. Prepare the key for the ZAP_CHANNELS table (fully cleaned key)
+							# This uses the same logic used during the save/lookup
+							normalized_zap_key = match_name.replace(u'\xa0', u' ')
+							normalized_zap_key = re.sub(r'\s+', ' ', normalized_zap_key).strip()
+							normalized_zap_key = normalized_zap_key.replace(' ', '')
+							
+							# 2. CRITICAL FIX: Delete from LIVE_NOTIF using a reliable composite key (COMPET and DATE).
+							# This bypasses the unreliable MATCH primary key string lookup and guarantees deletion.
+							cur.execute("DELETE FROM LIVE_NOTIF WHERE COMPET = ? AND DATE = ?", (compet_name, date_string,))
+							
+							# 3. Delete from zap_channels using the cleaned key
+							cur.execute("DELETE FROM zap_channels WHERE match = ?", (normalized_zap_key,))
+							
+							logdata("FootOnSatNotif", "CLEANUP SUCCESSFUL: Deleted LIVE_NOTIF and zap_channels for match: %s" % match_name)
+
+					except Exception as e:
+						logdata("FootOnSatNotif", "Error during record cleanup (%s): %s" % (date_string, str(e)))
 			conn.commit()
 
-	def notify(self, match, compet, team1, team2, message=None):
+	def notify(self, match, compet, team1, team2, message=None, allow_zap=True):
 		"""
 		[USER REQUESTED CHANGE] Now queues the notification and starts a sequential display timer.
 		It respects the single-call nature of checkforNotif's loop but delivers the output sequentially.
@@ -1945,6 +2203,7 @@ class FootOnsatNotifScreen(Screen):
 				'team1': team1, 
 				'team2': team2, 
 				'message': message,
+				'allow_zap': allow_zap,
 			}
 			
 			# 2. Add to queue
@@ -1965,7 +2224,7 @@ class StandingsScreen(Screen):
 		Screen.__init__(self, session)
 		#logdata("StandingsScreen_init", "Initializing StandingsScreen for league: %s, url: %s" % (league, url))
 		self.league = str(league)
-		print(f"self.league: %s" % self.league)
+		print("self.league: %s" % self.league)
 		self.url = str(url)
 		self.league = str(league).lower()
 		if self.league in ("basketball", "nba", "nfl"):
@@ -2332,12 +2591,6 @@ class StandingsScreen(Screen):
 					}
 					# === PYTHON 2 FIX: Use Requests/deferToThread to bypass 403 ===
 					#logdata("Logos", "Starting Requests download for logo: %s (PY2 FIX)" % team_name)
-					import requests # Should be available in the Enigma2 image
-					
-					# Use headers in Py2 format (single strings)
-					# === PYTHON 2 FIX: Use Requests with 403 content check ===
-					#logdata("Logos", "Starting Requests download for logo: %s (PY2 FIX)" % team_name)
-					import requests # Should be available in the Enigma2 image
 					
 					# Use headers in Py2 format (single strings)
 					py2_headers = {
