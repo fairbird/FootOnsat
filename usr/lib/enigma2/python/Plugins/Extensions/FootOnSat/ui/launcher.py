@@ -634,18 +634,24 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 
 	def save(self):
 		changed = False
+		icons_changed = False # New flag
+
+		# 1. Check for general config changes
 		for x in self["config"].list:
 			if len(x) > 1:
 				config_item = x[1]
 				if hasattr(config_item, 'isChanged') and config_item.isChanged():
 					changed = True
 					break
-		# Check if notiffile has actually changed
+		
+		# 2. Check if notiffile has actually changed
 		if self.old_notiffile != config.plugins.FootOnSat.notiffile.value:
 			changed = True
-		# Handle icons download
+			
+		# 3. Handle icons download and set icons_changed flag
 		if self.icons_value != config.plugins.FootOnSat.icons.value:
-			changed = True
+			changed = True # General changed flag also set for safety/consistency
+			icons_changed = True # Set the specific flag for restart prompt
 			extract_path = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
 			urls = {
 				"icons_default": "icons_default.tar.gz",
@@ -655,12 +661,16 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			}
 			if config.plugins.FootOnSat.icons.value in urls:
 				os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/%s | tar -xz -C %s" % (urls[config.plugins.FootOnSat.icons.value], extract_path))
-		# Save all other config items
+		
+		# 4. Save all config items
 		for x in self["config"].list:
 			if len(x) > 1:
 				x[1].save()
 		configfile.save()
-		if changed:
+		
+		if icons_changed:
+			self.session.openWithCallback(self.restart, MessageBox, _("You need to restart GUI\nDo you want to do it now ?!"))
+		elif changed:
 			self.close("exit_launcher")
 		else:
 			self.close()
