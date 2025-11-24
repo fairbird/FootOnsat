@@ -1953,8 +1953,8 @@ class FootOnsatNotifScreen(Screen):
 		flag2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/%s.png" % team2)
 		default_flag = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/default.png")
 
-		self['flag1'].instance.setPixmapFromFile(flag1 if fileExists(flag1) else default_flag)
-		self['flag2'].instance.setPixmapFromFile(flag2 if fileExists(flag2) else default_flag)
+		self['flag1'].instance.setPixmapFromFile(str(flag1 if fileExists(flag1) else default_flag))
+		self['flag2'].instance.setPixmapFromFile(str(flag2 if fileExists(flag2) else default_flag))
 
 		# 🔥 Play sound now, tied to the notification display (Option "1")
 		self._play_tone() 
