@@ -117,8 +117,9 @@ json_urls = {
 	# Spain league 1 + 2
 	"laliga": "https://www.sofascore.com/tournament/football/spain/laliga/8#id:77559",
 	"laliga2": "https://www.sofascore.com/tournament/football/spain/laliga-2/54#id:77558",
-	# Germany league
+	# Germany league 1 + 2
 	"bundesliga": "https://www.sofascore.com/tournament/football/germany/bundesliga/35#id:77333",
+	"bundesliga2": "https://www.sofascore.com/tournament/football/germany/2-bundesliga/44#id:77354",
 	# Portugal league
 	"liganos": "https://www.sofascore.com/tournament/football/portugal/liga-portugal-betclic/238#id:77806",
 	# Belgium league
@@ -162,8 +163,9 @@ log_urls = {
 	# Spain league 1 + 2
 	"laliga": "https://www.worldfootball.net/competition/esp-primera-division/",
 	"laliga2": "https://www.worldfootball.net/competition/esp-segunda-division/",
-	# Germany league
+	# Germany league 1 + 2
 	"bundesliga": "https://www.worldfootball.net/competition/bundesliga/",
+	"bundesliga2": "https://www.worldfootball.net/competition/co3/germany-2-bundesliga/",
 	# Portugal league
 	"liganos": "https://www.worldfootball.net/competition/por-primeira-liga/",
 	# Belgium league
@@ -414,7 +416,7 @@ class FootOnSat(Screen):
 				FOOTBALL = {
 				    	"championsleague", "europaleague", "ConferenceLeague", "premierleague",
 				    	"laliga", "laliga2", "championship", "seriea", "ligue1", "eredivisie", "saudiarabia",
-				    	"bundesliga", "belgianpro", "superLig", "liganos", "afcchampions"
+				    	"bundesliga", "bundesliga2", "belgianpro", "superLig", "liganos", "afcchampions"
 				}
 				# Team 1 flag/logteam
 				if self.link in (SPORTS | FOOTBALL):
