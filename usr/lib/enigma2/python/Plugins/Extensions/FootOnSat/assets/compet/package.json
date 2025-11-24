@@ -2421,20 +2421,20 @@
             "banner": "uefa super cup"
         },
         {
-            "label": "uefa u-17 championship 2026 qualifiers",
-            "banner": "uefa u-17 championship 2026 qualifiers"
+            "label": "uefa u-17 championship qualifiers",
+            "banner": "uefa u-17 championship qualifiers"
         },
 	{
-            "label": "uefa u-17 championships 2026",
-            "banner": "uefa u-17 championships 2026"
+            "label": "uefa u-17 championships",
+            "banner": "uefa u-17 championships"
         },
 	{
-            "label": "uefa u-19 championship 2026 qualifiers",
-            "banner": "uefa u-19 championship 2026 qualifiers"
+            "label": "uefa u-19 championship qualifiers",
+            "banner": "uefa u-19 championship qualifiers"
         },
         {
-            "label": "uefa u-19 championships 2026",
-            "banner": "uefa u-19 championships 2026"
+            "label": "uefa u-19 championships",
+            "banner": "uefa u-19 championships"
         },
         {
             "label": "uefa u-20 elite league",
@@ -2445,8 +2445,8 @@
             "banner": "uefa u-21 championship 2027 qualifiers"
         },
 	{
-            "label": "uefa u-21 championships 2027 ",
-            "banner": "uefa u-21 championships 2027"
+            "label": "uefa u-21 championships",
+            "banner": "uefa u-21 championships"
         },
 	{
             "label": "uefa womens champions league",
@@ -2455,6 +2455,10 @@
 	{
             "label": "uefa womens euro 2025",
             "banner": "uefa womens euro 2025"
+        },
+	{
+            "label": "uefa womens europa cup",
+            "banner": "uefa womens europa cup"
         },
 	{            
             "label": "uefa womens nations league",
@@ -2686,5 +2690,3 @@
         }
     ]
 }
-
-

@@ -16,7 +16,7 @@ from Tools.LoadPixmap import LoadPixmap
 from Tools.Directories import resolveFilename, SCOPE_PLUGINS, SCOPE_LANGUAGE
 from Components.FootMenu import FlexibleMenu
 from Plugins.Extensions.FootOnSat.ui.Console import Console
-from Plugins.Extensions.FootOnSat.ui.interface import FootOnSat, WebClientContextFactory, readFromFile, logdata
+from Plugins.Extensions.FootOnSat.ui.interface import FootOnSat, WebClientContextFactory, logdata, isUHD
 from Plugins.Extensions.FootOnSat.component.configs import ConfigDictionarySet
 from Plugins.Extensions.FootOnSat.__init__ import __version__
 from twisted.web.client import getPage
@@ -29,6 +29,11 @@ from sys import version_info
 from . import compat
 
 PY3 = version_info[0] == 3
+
+if isUHD():
+        from Plugins.Extensions.FootOnSat.assets.skin.skinUHD import *
+else:
+        from Plugins.Extensions.FootOnSat.assets.skin.skinFHD import *
 
 mounted_partitions = harddiskmanager.getMountedPartitions()
 mounted_devices = []
@@ -65,6 +70,10 @@ config.plugins.FootOnSat.livescore = ConfigSelection(default = "3", choices = [
 	("2", _("Live match + No live Score")),
 	("3", _("Live match + Live Score"))
 	])
+config.plugins.FootOnSat.notify_zap = ConfigSelection(default = "1", choices = [
+	("1", _("sound + Notifications + Zap")),
+	("2", _("sound + Zap only")),
+	])
 config.plugins.FootOnSat.notify = ConfigSelection(default = "1", choices = [
 	("1", _("All three notifications")),
 	("2", _("Only when started match")),
@@ -83,8 +92,6 @@ config.plugins.FootOnSat.icons = ConfigSelection(default = "icons_default", choi
 
 VER = float(__version__)
 
-reswidth = getDesktop(0).size().width()
-
 DEFAULT_IGNORE_DIR = "/etc/enigma2/ignore"
 def get_ignore_paths():
 	try:
@@ -97,7 +104,7 @@ def get_ignore_paths():
 	else:
 		ignore_dir = join(normalized_path, "ignore")
 	ignore_file = join(ignore_dir, "ignore-match.json")
-	if not os.path.exists(ignore_dir):
+	if not exists(ignore_dir):
 		try:
 			os.makedirs(ignore_dir)
 		except Exception:
@@ -105,7 +112,7 @@ def get_ignore_paths():
 	return ignore_dir, ignore_file
 
 def DreamOS():
-	if os.path.exists('/var/lib/dpkg/status'):
+	if exists('/var/lib/dpkg/status'):
 		return True
 	return False
 
@@ -114,13 +121,7 @@ class FootOnsatLauncher(Screen):
 	def __init__(self, session, *args):
 		self.session = session
 		Screen.__init__(self, session)
-		if reswidth == 1920:
-			skin = "assets/skin/FHD/launcher.xml"
-		elif reswidth == 2560:
-			skin = "assets/skin/UHD/launcher.xml"
-		else:
-			skin = "assets/skin/FHD/launcher.xml"
-		self.skin = readFromFile(skin)
+		self.skin = SKIN_launcher
 		self["setupActions"] = ActionMap(["FootOnsatActions"],
 		{
 			'left': self.left,
@@ -171,8 +172,8 @@ class FootOnsatLauncher(Screen):
 			self.error("JSON parsing failed: " + str(e))
 			return
 		ordering = ["today", "championsleague", "europaleague", "ConferenceLeague", "premierleague", "laliga", "seriea",
-		"bundesliga", "ligue1", "saudiarabia", "worldcup", "afcchampions", "afcchampionstwo","championship", "cafchampions", "superLig",
-		"belgianpro", "eredivisie", "laliga2", "liganos", "basketball", "nba", "formula1"]
+		"bundesliga", "bundesliga2", "ligue1", "saudiarabia", "worldcup", "afcchampions", "afcchampionstwo","championship", "cafchampions", "superLig",
+		"belgianpro", "eredivisie", "laliga2", "liganos", "basketball", "nba", "hockey", "nfl", "formula1"]
 		# Keep only items in ordering, then sort according to ordering
 		# filtered_compet = [c for c in ordering if c in compet]
 		# self.menuList = self.custom_sort(ordering, filtered_compet)
@@ -434,49 +435,6 @@ class FootOnsatLauncher(Screen):
 
 
 class MenuFootOnSat(ConfigListScreen, Screen):
-	if DreamOS():
-		if reswidth == 2560:
-			skin = """
-					<screen name="MenuFootOnSat" position="center,center" size="1522,976" title="Menu FootOnSat" backgroundColor="#20000000">
-				            <widget source="global.CurrentTime" render="Label" position="5,17" size="1511,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
-				                <convert type="ClockToText">Format:%d-%m-%Y    %H:%M:%S</convert>
-				            </widget>
-				            <widget name="config" position="18,70" size="1495,430" backgroundColor="#20000000" scrollbarMode="showOnDemand" />
-				            <eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="448,950" zPosition="-10" />
-				            <eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="830,950" zPosition="-10" />
-				            <widget render="Label" source="key_red" position="448,905" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" />
-				            <widget render="Label" source="key_green" position="830,905" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1" />
-				            <widget source="help" render="Label" position="22,560" size="1476,40" font="Regular;29" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5" />
-				            <widget name="Picture" position="521,554" size="480,340" zPosition="5" alphatest="blend" />
-					</screen>"""
-		else:
-			skin = """
-					<screen name="MenuFootOnSat" position="center,center" size="1040,900" title="Menu FootOnSat" backgroundColor="#20000000">
-						<widget source="global.CurrentTime" render="Label" position="5,5" size="1022,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
-							<convert type="ClockToText">Format:%d-%m-%Y&#160;%H:%M:%S</convert>
-						</widget>
-						<widget name="config" position="18,70" size="1005,420" backgroundColor="#20000000" scrollbarMode="showOnDemand"/>
-						<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,860" zPosition="-10"/>
-						<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,860" zPosition="-10"/>
-						<widget render="Label" source="key_red" position="223,825" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
-						<widget render="Label" source="key_green" position="585,825" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
-						<widget source="help" render="Label" position="18,580" size="1004,150" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
-						<widget name="Picture" position="313,570" size="400,225" zPosition="5" alphatest="blend"/>
-					</screen>"""
-	else:
-		skin = """
-				<screen name="MenuFootOnSat" position="center,center" size="1080,860" title="Menu FootOnSat" backgroundColor="#20000000">
-					<widget source="global.CurrentTime" render="Label" position="5,5" size="1022,50" font="Regular;35" halign="center" foregroundColor="#00ffa500" backgroundColor="#16000000" transparent="1">
-						<convert type="ClockToText">Format:%d-%m-%Y     %H:%M:%S</convert>
-					</widget>
-					<widget name="config" font="Regular;28" secondfont="Regular;28" itemHeight="45" position="18,50" size="1030,500" backgroundColor="#20000000" scrollbarMode="showOnDemand"/>
-					<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" size="235,5" position="223,850" zPosition="-10"/>
-					<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" size="235,5" position="585,850" zPosition="-10"/>
-					<widget render="Label" source="key_red" position="223,805" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
-					<widget render="Label" source="key_green" position="585,805" size="235,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;28" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
-					<widget source="help" render="Label" position="18,580" size="1004,150" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="bottom" halign="center" transparent="1" zPosition="5"/>
-					<widget name="Picture" position="313,568" size="400,225" zPosition="5" alphatest="blend"/>
-				</screen>"""
 
 	def __init__(self, session):
 		self.session = session
@@ -484,6 +442,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.list = []
 		ConfigListScreen.__init__(self, self.list)
 		self.configChanged = False
+		self.skin = SKIN_MenuFootOnSat
 
 		self["setupActions"] = ActionMap(["FootOnsatActions"],
 		{
@@ -508,16 +467,17 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.list = []
 		self.list.append(getConfigListEntry(_("Show Plugin #press OK to change"), config.plugins.FootOnSat.showplugin, _("This option to show Plugin in any where you like")))
 		self.list.append(getConfigListEntry(_("Enable checking for Online Update"), config.plugins.FootOnSat.updateonline, _("This option to Enable or Disable checking for Online Update")))
-		self.list.append(getConfigListEntry(_("Enable flags for teams in Basketball"), config.plugins.FootOnSat.enableflag, _("This option to Enable or Disable flags for teams in (Basketball) only")))
+		self.list.append(getConfigListEntry(_("Enable flags of teams"), config.plugins.FootOnSat.enableflag, _("This option to Enable or Disable flags of teams with logo")))
 		self.list.append(getConfigListEntry(_("Enable live match + Live score"), config.plugins.FootOnSat.livescore, _("This feature allows you to show or hide the matches still live with or withou result")))
 		if config.plugins.FootOnSat.livescore.value in ["2", "3"]:
 			self.list.append(getConfigListEntry(_("Select appear live + score of match in"), config.plugins.FootOnSat.livescoresections, _("This feature allows you to show matches live with result in sections")))
 			self.list.append(getConfigListEntry(_("Hide matches that started before"), config.plugins.FootOnSat.finished, _("This option is to specify the time that matches that have finished remain before they disappear from the list")))
 		self.list.append(getConfigListEntry(_("Path to store ignore file"), config.plugins.FootOnSat.devicepath, _("This option to set the path of save file for ignore matches")))
 		self.list.append(getConfigListEntry(_("Choose time for notifications"), config.plugins.FootOnSat.notiftime, _("This feature allows you to choose the number of seconds for notifications to appear.\nMove <Left | Right> to change seconds from (6 - 20)")))
+		self.list.append(getConfigListEntry(_("Choose to notifications and Zap"), config.plugins.FootOnSat.notify_zap, _("This feature allows you to specify the notifications and Zap to selected channel")))
 		self.list.append(getConfigListEntry(_("Choose to display notifications"), config.plugins.FootOnSat.notify, _("This feature allows you to specify the times for notifications to appear when matches start")))
 		self.list.append(getConfigListEntry(_("Choose tone of notifications #press OK to change"), config.plugins.FootOnSat.notiffile, _("This feature allows you to select a notification tone when matches start")))
-		self.list.append(getConfigListEntry(_("Select Icons Style"), config.plugins.FootOnSat.icons, _("This option to enable to select Icons Style")))
+		self.list.append(getConfigListEntry(_("Select Icons Style"), config.plugins.FootOnSat.icons, _("This option to enable to select Icons Style.\nChoose and Press Save (Green Button)")))
 		self["config"].list = self.list
 		self["config"].l.setList(self.list)
 		self["config"].onSelectionChanged.append(self.updateHelp)
@@ -599,10 +559,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 	def updateHelp(self):
 		cur = self["config"].getCurrent()
 		if cur:
-			if cur[1] is config.plugins.FootOnSat.icons:
-				self["help"].text = ""
-			else:
-				self["help"].text = cur[2]
+			self["help"].text = cur[2]
 
 	def Picture(self):
 		try:
@@ -620,7 +577,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/icons_renkli.png')
 			elif index == "italia2012_icons":
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/italia2012_icons.png')
-			if pic and self['Picture'].instance and os.path.exists(pic):
+			if pic and self['Picture'].instance and exists(pic):
 				self['Picture'].instance.setPixmapFromFile(pic)
 				self['Picture'].show()
 			else:
@@ -716,27 +673,9 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 
 
 class SelectionScreen(Screen, ConfigListScreen):
-        skin = """
-        	<screen name="SelectionScreen" position="center,center" size="738,524" title="Select Options">
-        		<widget source="list" render="Listbox" position="10,10" size="716,461" scrollbarMode="showOnDemand">
-				<convert type="TemplatedMultiContent">
-				    {
-				        "template": [
-				            MultiContentEntryText(pos=(85,10), size=(650,50), font=0, text=0),
-				            MultiContentEntryPixmapAlphaBlend(pos=(0,0), size=(50,50), png=1)
-				        ],
-				        "fonts": [gFont("Regular", 35)],
-				        "itemHeight": 60
-				    }
-				</convert>
-        		</widget>
-        		<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" position="105,517" size="165,2" zPosition="-10"/>
-        		<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" position="482,517" size="165,2" zPosition="-10"/>
-        		<widget name="key_red" position="70,480" size="246,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;35" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
-        		<widget name="key_green" position="445,480" size="246,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;35" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
-        	</screen>"""
         def __init__(self, session):
                 Screen.__init__(self, session)
+                self.skin = SKIN_SelectionScreen
                 ConfigListScreen.__init__(self, [], session=session)
                 self.session = session
                 self.setup_title = _("Select your choose")

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
+import io
 import re
 import sys
 import json
@@ -19,7 +20,8 @@ from unicodedata import normalize
 from difflib import SequenceMatcher
 from datetime import date, datetime, timedelta
 from os.path import join, exists, isfile, dirname
-from enigma import eTimer, gRGB, loadPNG, gPixmapPtr, RT_WRAP, ePoint, RT_HALIGN_CENTER, RT_HALIGN_LEFT, RT_VALIGN_CENTER, eListboxPythonMultiContent, gFont, getDesktop, eConsoleAppContainer
+from enigma import eTimer, gRGB, loadPNG, gPixmapPtr, RT_WRAP, ePoint, RT_HALIGN_CENTER, RT_HALIGN_LEFT, RT_VALIGN_CENTER, eListboxPythonMultiContent, \
+				gFont, getDesktop, eConsoleAppContainer, eServiceCenter, eServiceReference
 from Components.MultiContent import MultiContentEntryText, MultiContentEntryPixmap, MultiContentEntryPixmapAlphaTest, MultiContentEntryPixmapAlphaBlend
 from Components.MenuList import MenuList
 from Components.Label import Label
@@ -29,9 +31,11 @@ from Components.ActionMap import ActionMap
 from Components.NimManager import nimmanager, getConfigSatlist
 from Components.config import config
 from Components.Harddisk import harddiskmanager
+from Screens.InfoBar import InfoBar
 from Screens.Screen import Screen
 from Screens.ChoiceBox import ChoiceBox
 from Screens.MessageBox import MessageBox
+from Screens.ChannelSelection import ChannelSelection
 from Tools.Directories import resolveFilename, SCOPE_PLUGINS, fileExists
 from Tools.LoadPixmap import LoadPixmap
 from twisted.internet import defer, reactor
@@ -43,6 +47,11 @@ from twisted.internet._sslverify import ClientTLSOptions
 from twisted.internet.threads import blockingCallFromThread
 from twisted.web.client import getPage, downloadPage
 from .compat import PY3, compat_urlopen, compat_HTTPError, compat_URLError, compat_Request, compat_str
+
+### images path
+OPENBH="/usr/lib/enigma2/python/Screens/BpBlue.py"
+OPENBH2="/usr/lib/enigma2/python/Screens/BpBlue.pyc"
+OPENVIX="/usr/lib/enigma2/python/Plugins/SystemPlugins/ViX"
 
 try:
 	from urllib.parse import urlparse
@@ -70,7 +79,22 @@ try:
 except ImportError:
 	from urlparse import urlparse, urljoin # Python 2 compatibility
 
-reswidth = getDesktop(0).size().width()
+def getDesktopSize():
+	s = getDesktop(0).size()
+	return (s.width(), s.height())
+
+def isUHD():
+	desktopSize = getDesktopSize()
+	return desktopSize[0] >= 2560
+
+def isFHD():
+	desktopSize = getDesktopSize()
+	return desktopSize[0] == 1920
+
+if isUHD():
+        from Plugins.Extensions.FootOnSat.assets.skin.skinUHD import *
+else:
+        from Plugins.Extensions.FootOnSat.assets.skin.skinFHD import *
 
 DB_PATH = '/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/db/footonsat.db'
 
@@ -82,7 +106,6 @@ json_urls = {
 	"europaleague": "https://www.sofascore.com/tournament/football/europe/uefa-europa-league/679#id:76984",
 	# Conference league
 	"ConferenceLeague": "https://www.sofascore.com/tournament/football/europe/uefa-europa-conference-league/17015#id:76960",
-
 	# England league
 	"premierleague": "https://www.sofascore.com/tournament/football/england/premier-league/17#id:76986",
 	# champion ship league
@@ -94,8 +117,9 @@ json_urls = {
 	# Spain league 1 + 2
 	"laliga": "https://www.sofascore.com/tournament/football/spain/laliga/8#id:77559",
 	"laliga2": "https://www.sofascore.com/tournament/football/spain/laliga-2/54#id:77558",
-	# Germany league
+	# Germany league 1 + 2
 	"bundesliga": "https://www.sofascore.com/tournament/football/germany/bundesliga/35#id:77333",
+	"bundesliga2": "https://www.sofascore.com/tournament/football/germany/2-bundesliga/44#id:77354",
 	# Portugal league
 	"liganos": "https://www.sofascore.com/tournament/football/portugal/liga-portugal-betclic/238#id:77806",
 	# Belgium league
@@ -104,20 +128,22 @@ json_urls = {
 	"superLig": "https://www.sofascore.com/tournament/football/turkey/trendyol-super-lig/52#id:77805",
 	# Netherlands league
 	"eredivisie": "https://www.sofascore.com/tournament/football/netherlands/eredivisie/37#id:77012",
-
 	# Saudi Arabia league
 	"saudiarabia": "https://www.sofascore.com/tournament/football/saudi-arabia/saudi-pro-league/955#id:80443",
 	# Asia Champions league Elite
 	"afcchampions": "https://www.sofascore.com/tournament/football/asia/afc-champions-league/463#id:77010",
 	# Asia Champions league two
 	"afcchampionstwo": "https://www.sofascore.com/tournament/football/asia/afc-cup/668#id:77009",
-
 	# euroleague basketball
-	"basketball": "https://www.sofascore.com/tournament/basketball/international/euroleague/138#id:78545",
-	
+	"basketball": "https://www.sofascore.com/tournament/basketball/international/euroleague/138#id:78545",	
 	# nba basketball
 	"nba": "https://www.sofascore.com/tournament/basketball/usa/nba/132#id:80229",
+	# hockey
+	"hockey": "https://www.sofascore.com/tournament/ice-hockey/usa/nhl/234#id:78476",
+	# american football
+	"nfl": "https://www.sofascore.com/tournament/american-football/usa/nfl/9464#id:75522",
 }
+
 # Use thess url to download missing log of team (Extra code)
 log_urls = {
 	# Champions league
@@ -126,7 +152,6 @@ log_urls = {
 	"europaleague": "https://www.worldfootball.net/competition/europa-league/",
 	# Conference league
 	"ConferenceLeague": "https://www.worldfootball.net/competition/conference-league/",
-
 	# England league
 	"premierleague": "https://www.worldfootball.net/competition/eng-premier-league/",
 	# champion ship league
@@ -138,8 +163,9 @@ log_urls = {
 	# Spain league 1 + 2
 	"laliga": "https://www.worldfootball.net/competition/esp-primera-division/",
 	"laliga2": "https://www.worldfootball.net/competition/esp-segunda-division/",
-	# Germany league
+	# Germany league 1 + 2
 	"bundesliga": "https://www.worldfootball.net/competition/bundesliga/",
+	"bundesliga2": "https://www.worldfootball.net/competition/co3/germany-2-bundesliga/",
 	# Portugal league
 	"liganos": "https://www.worldfootball.net/competition/por-primeira-liga/",
 	# Belgium league
@@ -148,7 +174,6 @@ log_urls = {
 	"superLig": "https://www.worldfootball.net/competition/tur-sueperlig/",
 	# Netherlands league
 	"eredivisie": "https://www.worldfootball.net/competition/ned-eredivisie/",
-
 	# Saudi Arabia league
 	"saudiarabia": "https://www.worldfootball.net/competition/ksa-saudi-pro-league/",
 	# Asia Champions league Elite
@@ -179,11 +204,6 @@ def DreamOS():
 		return True
 	return False
 
-def readFromFile(filename):
-	_file = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/{}".format(filename))
-	with open(_file, 'r') as f:
-		return f.read()
-
 # Place this function at the top level of your script (outside the StandingsScreen class)
 def sanitize_team_name(team):
 	"""Replaces problematic characters (non-ASCII, spaces, etc.) for use in permanent filenames."""
@@ -210,21 +230,26 @@ class WebClientContextFactory(ClientContextFactory):
 		return ctx
 
 
+class RAED_ChannelSelection(ChannelSelection):
+	def __init__(self, session):
+		ChannelSelection.__init__(self, session)
+
+
 class FootOnSat(Screen):
 	def __init__(self, session, link, *args):
 		#logdata("FootOnSat-INIT", "Plugin initialization started.")
 		self.session = session
 		Screen.__init__(self, session)
+		self.MENUTEXT = "Press Menu to select zap channel"
 		self.execing = False # FIX: Prevents AttributeError in base class's close() method
-		if reswidth == 1920:
-			skin = "assets/skin/FHD/interface.xml"
-		elif reswidth >= 2560:
-			skin = "assets/skin/UHD/interface.xml"
+		self.skin = SKIN_interface
+		if fileExists(OPENBH) or fileExists(OPENBH2) or fileExists(OPENVIX):
+			self.servicelist = self.session.instantiateDialog(RAED_ChannelSelection)
 		else:
-			skin = "assets/skin/FHD/interface.xml"
-		self.skin = readFromFile(skin)
+			self.servicelist = self.session.instantiateDialog(ChannelSelection)
 		self["setupActions"] = ActionMap(["FootOnsatActions", "ColorActions"],
 		{
+			"menu": self.menu,
 			"ok": self.ok,
 			"down": self.listDOWN,
 			"up": self.listUP,
@@ -244,6 +269,7 @@ class FootOnSat(Screen):
 		self["sat"] = Label()
 		self["freq"] = Label()
 		self["enc"] = Label()
+		self["menu"] = Label()
 		self["key_red"] = Button(_("Ignore Competition"))
 		self["key_yellow"] = Button(_("Reset Ignore List"))
 		self["key_blue"] = Button(_("Scan"))
@@ -259,7 +285,7 @@ class FootOnSat(Screen):
 		self.channelData = []
 		self.matches = []
 		# Set items per page based on resolution (5 for QHD/2560, 4 for others)
-		self.items_per_page = 5 if reswidth >= 2560 else 4
+		self.items_per_page = 5 if isUHD() else 4
 		self.create_table()
 		self.callAPI()
 
@@ -278,7 +304,16 @@ class FootOnSat(Screen):
 			res = []
 			gList = []
 			self["list1"].l.setItemHeight(175)
-			if reswidth >= 2560:
+			sel = self["list1"].getSelectionIndex()
+			if sel >= 0 and sel < len(self.matches):
+				match = self.matches[sel][0] 
+				if self.checkIfexist(match):
+					self["menu"].setText(self.MENUTEXT)
+				else:
+					self["menu"].setText("") 
+			else:
+				self["menu"].setText("")
+			if isUHD():
 				self["list1"].l.setFont(0, gFont('Regular', 36))
 			else:
 				self["list1"].l.setFont(0, gFont('Regular', 28))
@@ -343,6 +378,8 @@ class FootOnSat(Screen):
 				teamlog2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/teamlog/{}.png".format(log2))
 				basketdefault = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/teamlog/baskedefault.png")
 				footdefault = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/teamlog/footdefault.png")
+				hockeydefault = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/teamlog/hockeydefault.png")
+				nfldefault = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/teamlog/nfldefault.png")
 				banner = FootOnSat.setCompet(str(compet).lower())
 				match_date = self.getTime(match_date)
 				if not fileExists(flagTeam1):
@@ -350,69 +387,91 @@ class FootOnSat(Screen):
 				if not fileExists(flagTeam2):
 					flagTeam2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/default.png")
 				if not fileExists(teamlog1):
-					teamlog1 = basketdefault if self.link in ("basketball", "nba") else footdefault
+					if self.link in ("basketball", "nba"):
+						teamlog1 = basketdefault
+					elif self.link in ("hockey"):
+						teamlog1 = hockeydefault
+					elif self.link in ("nfl"):
+						teamlog1 = nfldefault
+					else:
+						teamlog1 = footdefault
 				if not fileExists(teamlog2):
-					teamlog2 = basketdefault if self.link in ("basketball", "nba") else footdefault
+					if self.link in ("basketball", "nba"):
+						teamlog2 = basketdefault
+					elif self.link in ("hockey"):
+						teamlog2 = hockeydefault
+					elif self.link in ("nfl"):
+						teamlog2 = nfldefault
+					else:
+						teamlog2 = footdefault
 				if self.checkIfexist(match):
 					notif = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/icon/notif_on.png")
 				else:
 					notif = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/icon/notif_off.png")
 				# Initialize list entry
 				res.append(MultiContentEntryText())
+				SPORTS = {
+				    	"basketball", "nba", "hockey", "nfl"
+				}
+				FOOTBALL = {
+				    	"championsleague", "europaleague", "ConferenceLeague", "premierleague",
+				    	"laliga", "laliga2", "championship", "seriea", "ligue1", "eredivisie", "saudiarabia",
+				    	"bundesliga", "bundesliga2", "belgianpro", "superLig", "liganos", "afcchampions"
+				}
 				# Team 1 flag/logteam
-				if self.link in ("basketball", "nba", "championsleague"):
+				if self.link in (SPORTS | FOOTBALL):
 					res.append(MultiContentEntryPixmapAlphaBlend(pos=(70, 5), size=(160, 160), png=loadPNG(teamlog1)))
 					if config.plugins.FootOnSat.enableflag.value:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(212, 70), size=(40, 30), png=loadPNG(flagTeam1)))
 				else:
 					res.append(MultiContentEntryPixmapAlphaBlend(pos=(420, 70), size=(40, 30), png=loadPNG(flagTeam1)))
 				# Score team 1
-				if self.link not in ("basketball", "nba"):
-					if reswidth >= 2560:
-						if self.link in ("championsleague"):
+				if self.link not in SPORTS:
+					if isUHD():
+						if self.link in FOOTBALL:
 							res.append(MultiContentEntryText(pos=(950, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
 						else:
 							res.append(MultiContentEntryText(pos=(500, 69), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
 					else:
-						if self.link in ("championsleague"):
+						if self.link in FOOTBALL:
 							res.append(MultiContentEntryText(pos=(700, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
 						else:
 							res.append(MultiContentEntryText(pos=(482, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
-				# Place a checkmark (-) between the results in the section championsleague only
-				if (team1_score != "" or match_status != "") and self.link in ("championsleague"):
-					if reswidth >= 2560:
+				# Place a checkmark (-) between the results in the section FOOTBALL
+				if (team1_score != "" or match_status != "") and self.link in FOOTBALL:
+					if isUHD():
 						res.append(MultiContentEntryText(pos=(990, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str("-"), color=0xFF0000))
 					else:
 						res.append(MultiContentEntryText(pos=(750, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str("-"), color=0xFF0000))
 				# Team 2 flag/logteam
-				if reswidth >= 2560:
-					if self.link in ("basketball", "nba", "championsleague"):
+				if isUHD():
+					if self.link in (SPORTS | FOOTBALL):
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1440, 5), size=(160, 160), png=loadPNG(teamlog2)))
 						if config.plugins.FootOnSat.enableflag.value:
 							res.append(MultiContentEntryPixmapAlphaBlend(pos=(1420, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 					else:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1550, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 				else:
-					if self.link in ("basketball", "nba", "championsleague"):
+					if self.link in (SPORTS | FOOTBALL):
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1030, 10), size=(160, 160), png=loadPNG(teamlog2)))
 						if config.plugins.FootOnSat.enableflag.value:
 							res.append(MultiContentEntryPixmapAlphaBlend(pos=(1012, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 					else:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1142, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 				# Score team 2
-				if self.link not in ("basketball", "nba"):
-					if reswidth >= 2560:
-						if self.link in ("championsleague"):
+				if self.link not in SPORTS:
+					if isUHD():
+						if self.link in FOOTBALL:
 							res.append(MultiContentEntryText(pos=(1090, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
 						else:
 							res.append(MultiContentEntryText(pos=(1490, 69), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
 					else:
-						if self.link in ("championsleague"):
+						if self.link in FOOTBALL:
 							res.append(MultiContentEntryText(pos=(792, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
 						else:
 							res.append(MultiContentEntryText(pos=(1092, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
 				# Competition banner
-				if self.link not in ("basketball", "nba", "championsleague"):
+				if self.link not in (SPORTS | FOOTBALL):
 					try:
 						res.append(MultiContentEntryPixmapAlphaTest(pos=(65, 6), size=(320, 163), png=loadPNG(banner), flags=BT_SCALE))
 					except TypeError:
@@ -420,49 +479,49 @@ class FootOnSat(Screen):
 				# Notification icon
 				res.append(MultiContentEntryPixmapAlphaBlend(pos=(-20, 63), size=(70, 50), png=loadPNG(notif)))
 				# Match name
-				if reswidth >= 2560:
-					if self.link in ("basketball", "nba", "championsleague"):
+				if isUHD():
+					if self.link in (SPORTS | FOOTBALL):
 						res.append(MultiContentEntryText(pos=(332, 69), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_HALIGN_CENTER, text=str(match)))
 					else:
 						res.append(MultiContentEntryText(pos=(550, 69), size=(900, 40), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
 				else:
-					if self.link in ("basketball", "nba", "championsleague"):
+					if self.link in (SPORTS | FOOTBALL):
 						res.append(MultiContentEntryText(pos=(310, 66), size=(660, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(match)))
 					else:
 						res.append(MultiContentEntryText(pos=(500, 66), size=(570, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
 				# status_text + match_status
-				if (team1_score != "" or match_status != "") and self.link not in ("basketball", "nba"):
+				if (team1_score != "" or match_status != "") and self.link not in SPORTS:
 					# If score or status exists, display the dynamic status/time (e.g., "Live: 70 min" or "Status: FT")
-					if reswidth >= 2560:
-						if self.link in ("championsleague"):
+					if isUHD():
+						if self.link in FOOTBALL:
 							res.append(MultiContentEntryText(pos=(430, 120), size=(400, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=0xFF0000))
 						else:
 							res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=0xFF0000))
 					else:
-						if self.link in ("championsleague"):
+						if self.link in FOOTBALL:
 							res.append(MultiContentEntryText(pos=(350, 120), size=(200, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=0xFF0000))
 						else:
 							res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=0xFF0000))
 				else:
 					# Otherwise, display the scheduled Kick-off time
-					if reswidth >= 2560:
-						if self.link in ("basketball", "nba", "championsleague"):
+					if isUHD():
+						if self.link in (SPORTS | FOOTBALL):
 							res.append(MultiContentEntryText(pos=(430, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 						else:
 							res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 					else:
-						if self.link in ("basketball", "nba", "championsleague"):
+						if self.link in (SPORTS | FOOTBALL):
 							res.append(MultiContentEntryText(pos=(350, 120), size=(500, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 						else:
 							res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
 				# Competition name
-				if reswidth >= 2560:
-					if self.link in ("basketball", "nba", "championsleague"):
+				if isUHD():
+					if self.link in (SPORTS | FOOTBALL):
 						res.append(MultiContentEntryText(pos=(430, 15), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 					else:
 						res.append(MultiContentEntryText(pos=(420, 15), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 				else:
-					if self.link in ("basketball", "nba", "championsleague"):
+					if self.link in (SPORTS | FOOTBALL):
 						res.append(MultiContentEntryText(pos=(350, 15), size=(500, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 					else:
 						res.append(MultiContentEntryText(pos=(420, 15), size=(785, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
@@ -489,7 +548,7 @@ class FootOnSat(Screen):
 			no_schedules_text = _('No schedules in this section at this time')
 			# Set font and height (mirroring the 'if' block setup)
 			self["list1"].l.setItemHeight(175)
-			if reswidth >= 2560:
+			if isUHD():
 				self["list1"].l.setFont(0, gFont('Regular', 36))
 			else:
 				self["list1"].l.setFont(0, gFont('Regular', 28))
@@ -499,7 +558,7 @@ class FootOnSat(Screen):
 			# Text centered vertically (y=70 is roughly the center of 175 height item) and horizontally
 			res.append(MultiContentEntryText(
 				pos=(0, 70), 
-				size=(850 if reswidth >= 2560 else 660, 36),
+				size=(850 if isUHD() else 660, 36),
 				font=0, 
 				flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, 
 				text=no_schedules_text
@@ -589,7 +648,16 @@ class FootOnSat(Screen):
 		if self.selectedList == self["list1"]:
 			self.disablelist2()
 			self.updateCounter()
-			self.resetChannelinfo()
+			self.resetChannelinfo() 
+			sel = self["list1"].getSelectionIndex()
+			if sel >= 0 and sel < len(self.matches):
+				match = self.matches[sel][0] 
+				if self.checkIfexist(match):
+					self["menu"].setText(self.MENUTEXT)
+				else:
+					self["menu"].setText("") 
+			else:
+				self["menu"].setText("")
 		if self.selectedList == self["list2"]:
 			self.updateChannelData()
 
@@ -601,6 +669,15 @@ class FootOnSat(Screen):
 			self.disablelist2()
 			self.updateCounter()
 			self.resetChannelinfo()
+			sel = self["list1"].getSelectionIndex()
+			if sel >= 0 and sel < len(self.matches):
+				match = self.matches[sel][0] 
+				if self.checkIfexist(match):
+					self["menu"].setText(self.MENUTEXT)
+				else:
+					self["menu"].setText("") 
+			else:
+				self["menu"].setText("")
 		if self.selectedList == self["list2"]:
 			self.updateChannelData()
 
@@ -616,6 +693,78 @@ class FootOnSat(Screen):
 			with connect(DB_PATH) as conn:
 				cur = conn.cursor()
 				cur.execute('CREATE TABLE IF NOT EXISTS LIVE_NOTIF (MATCH TEXT primary key , COMPET TEXT , DATE TEXT , TEAM1_FLAG TEXT , TEAM2_FLAG TEXT , FIRST_NOTIF TEXT , FIRST_NOTIF_STATUS TEXT , LIVE_NOTIF_STATUS TEXT,MESSAGE TEXT)')
+
+	def menu(self):
+		if self.selectedList != self["list1"] or len(self.matches) == 0:
+			return
+
+		index = self['list1'].getSelectionIndex()
+		match = self.matches[index][0] if PY3 else self.matches[index][0].decode('utf-8')
+
+		if not self.checkIfexist(match):
+			self.session.open(MessageBox,
+				_("Please press OK on the match first to enable notification!"),
+				MessageBox.TYPE_INFO, timeout=6)
+			return
+
+		self.current_selected_match = match
+
+		# YOUR ORIGINAL UNIVERSAL CODE — 100% UNCHANGED
+		try:
+			from Screens.ChannelSelection import ChannelSelectionSimple
+			sel_class = ChannelSelectionSimple
+		except:
+			try:
+				from Screens.ChannelSelection import SimpleChannelSelection
+				sel_class = SimpleChannelSelection
+			except:
+				from Screens.ChannelSelection import ChannelSelection
+				sel_class = ChannelSelection
+
+		self.session.openWithCallback(self.channelSelected, sel_class, _("Select Notification Channel"))
+
+	def channelSelected(self, service_ref=None):
+		if not service_ref:
+			return
+
+		info = eServiceCenter.getInstance().info(service_ref)
+		channel_name = info.getName(service_ref) if info else "Unknown"
+		ref_string = service_ref.toString()
+
+		index = self['list1'].getSelectionIndex()
+		exact_match = self.matches[index][0]
+		
+		# 1. Handle non-breaking space (Py2/3 safe)
+		try:
+			normalized_match = exact_match.replace(u'\xa0', u' ')
+		except:
+			normalized_match = exact_match.replace('\xa0', ' ')
+			
+		# 2. Collapse all sequences of whitespace to a single space, strip edges, then remove ALL spaces
+		normalized_match = re.sub(r'\s+', ' ', normalized_match).strip()
+		normalized_match = normalized_match.replace(' ', '') # REMOVE ALL SPACES to match original SQL intent
+		# END FIX
+
+		logdata("ZAP_DEBUG", "SAVING ZAP REF → '%s' → %s (%s)" % (normalized_match, channel_name, ref_string))
+
+		try:
+			conn = connect(DB_PATH)
+			c = conn.cursor()
+			c.execute('''CREATE TABLE IF NOT EXISTS zap_channels (match TEXT PRIMARY KEY,ref TEXT)''')
+			# Insert using the fully normalized key (which has no spaces)
+			c.execute("INSERT OR REPLACE INTO zap_channels (match, ref) VALUES (?, ?)", (normalized_match, ref_string))
+			conn.commit()
+			conn.close()
+			logdata("ZAP_DEBUG", "ZAP REF SAVED SUCCESSFULLY → %s" % ref_string)
+		except Exception as e:
+			logdata("ZAP_DEBUG", "SAVE ERROR: %s" % str(e))
+
+		self.session.open(MessageBox,
+			_("Notification channel saved!\n\n") +
+			_("Match: ") + exact_match + "\n" +
+			_("Channel: ") + channel_name + "\n\n" +
+			_("Receiver will zap to this channel when notification appears."),
+			MessageBox.TYPE_INFO, timeout=10)
 
 	def ok(self):
 		if self.selectedList == self["list1"] and len(self.matches) > 0:
@@ -647,7 +796,7 @@ class FootOnSat(Screen):
 					
 					# NOTE: Removed the 'if not self.sameDate(match_date):' check 
 					#       to allow multiple matches at the same time.
-					
+
 					with connect(DB_PATH) as conn:
 						cur = conn.cursor()
 						first_notif, message = self.setFirstNotifTime(match_date)
@@ -1318,10 +1467,10 @@ class FootOnSat(Screen):
 							# Skip past matches outside the LIVE_DURATION window
 							pass
 
-						if "Bodø/Glimt" in match['match']:
-							match_name = match['match'].replace("Bodø/Glimt", "Bodø Glimt")
-						else:
-							match_name = match['match']
+						# This code to correction the names
+						match_name = match['match'] \
+							.replace("Bodø/Glimt", "Bodø Glimt") \
+							.replace("Preston N.E.", "Preston N.E")
 
 						if append_match:
 							list.append([
@@ -1360,7 +1509,7 @@ class FootOnSat(Screen):
 		res = []
 		gList = []
 		self["list2"].l.setItemHeight(50)
-		if reswidth >= 2560:
+		if isUHD():
 			self["list2"].l.setFont(0, gFont('Regular', 32))
 		else:
 			self["list2"].l.setFont(0, gFont('Regular', 30))
@@ -1498,7 +1647,6 @@ class FootOnSat(Screen):
 		except NameError:
 			PY3 = False
 		if not PY3:
-			import io
 			def fopen(fname, mode):
 				return io.open(fname, mode, encoding='utf-8')
 		else:
@@ -1677,13 +1825,7 @@ FootOnSatNotifDialog = FootOnSatNotif()
 class FootOnsatNotifScreen(Screen):
 	def __init__(self, session):
 		Screen.__init__(self, session)
-		if reswidth == 1920:
-			skin = "assets/skin/FHD/FootOnsatNotif.xml"
-		elif reswidth >= 2560:
-			skin = "assets/skin/UHD/FootOnsatNotif.xml"
-		else:
-			skin = "assets/skin/FHD/FootOnsatNotif.xml"
-		self.skin = readFromFile(skin)
+		self.skin = SKIN_FootOnsatNotif
 		self['match'] = Label()
 		self['message'] = Label()
 		self['compet'] = Pixmap()
@@ -1709,30 +1851,137 @@ class FootOnsatNotifScreen(Screen):
 		# --- ADDED STATE FOR SEQUENTIAL DISPLAY AND BUG FIX ---
 		self.matches_queue = []
 		self.is_displaying = False
-		self.is_checking = False # CRITICAL Re-entry Lock for checkforNotif
+		self.is_checking = False
 
-	def _update_display_only(self, match, compet, team1, team2, message=None):
-		"""Helper to update the screen elements only."""
-		if self.instance:
-			if FootOnSatNotifDialog.dialog is not None:
-				self['match'].setText(_(str(match)))
-				if message:
-					self['live'].hide()
-					self['message'].setText(str(message))
+	def _update_display_only(self, match, compet, team1, team2, message=None, allow_zap=True):
+		if not self.instance:
+			return
+
+		logdata("ZAP_DEBUG", "=== NOTIFICATION START ===")
+		logdata("ZAP_DEBUG", "Match: '%s'" % match)
+
+		# CRITICAL FIX 2: Normalize key to handle invisible spaces (\xa0) and remove ALL spaces
+		import re
+		
+		# 1. Handle non-breaking space (Py2/3 safe)
+		try:
+			normalized_search_key = match.replace(u'\xa0', u' ')
+		except:
+			normalized_search_key = match.replace('\xa0', ' ')
+			
+		# 2. Collapse all sequences of whitespace to a single space, strip edges, then remove ALL spaces
+		normalized_search_key = re.sub(r'\s+', ' ', normalized_search_key).strip()
+		normalized_search_key = normalized_search_key.replace(' ', '') # REMOVE ALL SPACES to match the saved key
+		# END FIX
+		
+		# Initialize zap_ref outside try block for scope
+		zap_ref = None
+		
+		# Only perform lookup if Zap is enabled by config AND the stage allows it
+		zap_enabled_by_config = config.plugins.FootOnSat.notify_zap.value in ("1", "2")
+		zap_allowed = zap_enabled_by_config and allow_zap 
+
+		if zap_allowed:
+			try:
+				conn = connect(DB_PATH)
+				c = conn.cursor()
+				
+				# Search for the fully normalized key (which has no spaces)
+				c.execute("SELECT ref FROM zap_channels WHERE match = ?", (normalized_search_key,))
+				row = c.fetchone()
+				conn.close()
+
+				if row and row[0]:
+					from enigma import eServiceReference
+					zap_ref = eServiceReference(str(row[0]))
+					logdata("ZAP_DEBUG", "ZAP BY REFERENCE FOUND → %s (%s)" % (zap_ref.getName(), row[0]))
 				else:
-					self['live'].show()
-					self['message'].setText("")
-				banner = FootOnSat.setCompet(compet.lower())
-				self['compet'].instance.setPixmapFromFile(banner)
-				flag1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/{}.png".format(team1))
-				flag2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/{}.png".format(team2))
-				if not fileExists(flag1):
-					flag1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/default.png")
-				if not fileExists(flag2):
-					flag2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/default.png")
-				self['flag1'].instance.setPixmapFromFile(flag1)
-				self['flag2'].instance.setPixmapFromFile(flag2)
-				FootOnSatNotifDialog.dialog.show()
+					logdata("ZAP_DEBUG", "No zap ref found (Search key: '%s')" % normalized_search_key)
+					
+			except Exception as e:
+				logdata("ZAP_DEBUG", "ZAP LOOKUP ERROR: %s" % str(e))
+				zap_ref = None # Ensure it is None on error
+
+		
+		# 🔥 CORRECTED FEATURE LOGIC START
+		
+		if config.plugins.FootOnSat.notify_zap.value == "2":
+			# Case: Zap Only mode. Must suppress notification by NOT calling _do_actual_display.
+			if zap_ref:
+				# Zap channel found: Execute Zap immediately with sound.
+				self._play_tone() 
+				time.sleep(2.0)
+				# 1. Selection: Using the correct function name from your file
+				InfoBar.instance.servicelist.setCurrentSelection(zap_ref)
+				# 2. Zap: Calling the function that should contain the history update hook
+				InfoBar.instance.servicelist.zap()
+				logdata("ZAP_DEBUG", "ZAP COMPLETED")
+			else:
+				# No Zap channel found: Do nothing. (NO ACTION, NO SOUND)
+				logdata("ZAP_DEBUG", "Zap only mode (Option 2) selected. No Zap channel found, skipping notification and zap.")
+			
+			# Notification is suppressed: Manually advance queue and RETURN
+			self._display_next_in_queue()
+			logdata("ZAP_DEBUG", "=== NOTIFICATION END ===\n")
+			return # Exit to prevent calling _do_actual_display
+		
+		# Default path (Option "1" or Zap disabled): Proceed to display the notification
+		self._do_actual_display(match, compet, team1, team2, message, zap_ref=zap_ref)
+
+	def _do_actual_display(self, match, compet, team1, team2, message=None, zap_ref=None):
+		"""Show notification popup and execute Zap AFTER a 2.0s delay if a channel is found."""
+		if not self.instance:
+			logdata("ZAP_DEBUG", "Cannot show popup – no instance")
+			return
+
+		logdata("ZAP_DEBUG", "SHOWING NOTIFICATION POPUP: %s" % match)
+		if message:
+			logdata("ZAP_DEBUG", "Message: %s" % message)
+
+		self['match'].setText(str(match))
+		if message:
+			self['live'].hide()
+			self['message'].setText(str(message))
+		else:
+			self['live'].show()
+			self['message'].setText("")
+
+		banner = FootOnSat.setCompet(compet.lower())
+		self['compet'].instance.setPixmapFromFile(banner)
+
+		flag1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/%s.png" % team1)
+		flag2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/%s.png" % team2)
+		default_flag = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/default.png")
+
+		self['flag1'].instance.setPixmapFromFile(flag1 if fileExists(flag1) else default_flag)
+		self['flag2'].instance.setPixmapFromFile(flag2 if fileExists(flag2) else default_flag)
+
+		# 🔥 Play sound now, tied to the notification display (Option "1")
+		self._play_tone() 
+
+		FootOnSatNotifDialog.dialog.show()
+		logdata("ZAP_DEBUG", "NOTIFICATION POPUP IS NOW VISIBLE")
+		
+		# 🔥 Perform the Zap and Delay HERE for option "1"
+		if zap_ref:
+			try:
+				# 👇 DELAY HERE to let the user see/hear the notification FIRST
+				time.sleep(2.0)
+				
+				logdata("ZAP_DEBUG", "Delay finished, executing Zap.")
+				# 1. Selection: Using the correct function name from your file
+				InfoBar.instance.servicelist.setCurrentSelection(zap_ref)
+				# 2. Zap: Calling the function that should contain the history update hook
+				InfoBar.instance.servicelist.zap()
+				logdata("ZAP_DEBUG", "playService called — channel switching...")
+				logdata("ZAP_DEBUG", "ZAP COMPLETED")
+
+			except Exception as e:
+				logdata("ZAP_DEBUG", "ZAP EXECUTION ERROR: %s" % str(e))
+		else:
+			logdata("ZAP_DEBUG", "Zap not required.")
+
+		logdata("ZAP_DEBUG", "=== NOTIFICATION END ===\n")
 
 	def _display_next_in_queue(self):
 		"""Pulls the next match from the queue, displays it, and schedules the next display or hides the dialog."""
@@ -1746,14 +1995,16 @@ class FootOnsatNotifScreen(Screen):
 
 		# Get the next match to display
 		match_data = self.matches_queue.pop(0)
-		
+		allow_zap = match_data.get('allow_zap', True)
+
 		# Display the current match info 
 		self._update_display_only(
 			match_data['match'], 
 			match_data['compet'], 
 			match_data['team1'], 
 			match_data['team2'], 
-			match_data['message']
+			match_data['message'],
+			allow_zap=allow_zap
 		)
 		
 		COMPENSATION_MS = 3000
@@ -1769,13 +2020,8 @@ class FootOnsatNotifScreen(Screen):
 			# Start final timer with compensated value
 			self.onhideTimer.start(compensated_milliseconds)
 
-	def _start_sequential_display(self):
-		"""Starts the sequential display process if not already running."""
-		if self.is_displaying:
-			return
-
-		self.is_displaying = True
-		# Play sound once per batch (assuming first time notify is called is start of batch)
+	def _play_tone(self):
+		"""Plays the notification tone."""
 		from .launcher import MenuFootOnSat
 		tone_file = MenuFootOnSat.getToneFile()
 		if os.path.exists("/usr/bin/aplay"):
@@ -1784,6 +2030,14 @@ class FootOnsatNotifScreen(Screen):
 			os.system('(gst-launch-1.0 -q --no-fault filesrc location="{}" ! wavparse ! audioconvert ! audioresample ! alsasink > /dev/null 2>&1 &) &'.format(tone_file))
 		else:
 			logdata("FootOnSatNotif", "No supported sound player found (aplay/gst-launch).")
+
+	def _start_sequential_display(self):
+		"""Starts the sequential display process if not already running."""
+		if self.is_displaying:
+			return
+
+		self.is_displaying = True
+		# Sound logic has been MOVED to _play_tone() and is called when action is confirmed.
 			
 		# Start the sequential timer to immediately process the first item
 		self.onhideTimer.start(10)
@@ -1824,7 +2078,8 @@ class FootOnsatNotifScreen(Screen):
 									
 									# 1a. Trigger Notification if option includes 30 min (1, 4, 6, 7)
 									if user_choice in ("1", "4", "6", "7"):
-										self.notify(match_name.strip(), row[1], row[3], row[4], row[8])
+										# Zap NOT allowed here
+										self.notify(match_name.strip(), row[1], row[3], row[4], row[8], allow_zap=False)
 									
 									# 1b. Determine Next Notification Time & Message
 									if user_choice in ("1", "3", "5", "7"):
@@ -1851,7 +2106,8 @@ class FootOnsatNotifScreen(Screen):
 									
 									# 2a. Trigger Notification if option includes 15 min (1, 3, 5, 7)
 									if user_choice in ("1", "3", "5", "7"):
-										self.notify(match_name.strip(), row[1], row[3], row[4], row[8])
+										# Zap NOT allowed here
+										self.notify(match_name.strip(), row[1], row[3], row[4], row[8], allow_zap=False)
 									
 									# 2b. Determine Next Notification Time & Message
 									if user_choice in ("1", "2", "5", "6"):
@@ -1874,8 +2130,8 @@ class FootOnsatNotifScreen(Screen):
 									
 									# 3a. Trigger Notification if option includes Start (1, 2, 5, 6)
 									if user_choice in ("1", "2", "5", "6"):
-										# Trigger the start notification (no message)
-										self.notify(match_name.strip(), row[1], row[3], row[4])
+										# Zap IS allowed here
+										self.notify(match_name.strip(), row[1], row[3], row[4], allow_zap=True)
 										#logdata("FootOnSatNotif", "TRIGGER: Match Start Notif and DB delete for match: %s" % match_name)
 									else:
 										# Log deletion without triggering final notification
@@ -1894,24 +2150,49 @@ class FootOnsatNotifScreen(Screen):
 			self.is_checking = False # Reset the lock ensures it can run again later
 
 	def deloldRecords(self):
+		if not fileExists(DB_PATH):
+			return
+			
 		with connect(DB_PATH) as conn:
 			cur = conn.cursor()
-			# Select all columns to get the match name (row[0]) and date (row[2]) for logging
+			# row[0]=MATCH, row[1]=COMPET, row[2]=DATE
 			rows = cur.execute("select * from LIVE_NOTIF")
 			rows = rows.fetchall()
-			# Note: today is only checked for Date comparison, not time.
-			today = datetime.strptime(datetime.now().strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M") 
+			
+			# Note: All necessary modules (datetime, timedelta, re) are available globally
+			now = datetime.strptime(datetime.now().strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M") 
 			if len(rows) > 0:
 				for row in rows:
-					# row[2] is the DATE field
-					record_date = datetime.strptime(row[2], "%H:%M - %Y-%m-%d")
-					cleanup_time = record_date + timedelta(minutes=1) # Cleanup 1 minute after match time
-					
-					if today > cleanup_time:
-						 cur.execute("DELETE FROM LIVE_NOTIF WHERE DATE = ?", (row[2],))
+					match_name = row[0] 
+					compet_name = row[1] # Reliable field 
+					date_string = row[2] # Reliable field
+					try:
+						# row[2] format: "HH:MM - YYYY-MM-DD"
+						record_date = datetime.strptime(date_string, "%H:%M - %Y-%m-%d")
+						cleanup_time = record_date + timedelta(minutes=1)
+						
+						if now > cleanup_time:
+							
+							# 1. Prepare the key for the ZAP_CHANNELS table (fully cleaned key)
+							# This uses the same logic used during the save/lookup
+							normalized_zap_key = match_name.replace(u'\xa0', u' ')
+							normalized_zap_key = re.sub(r'\s+', ' ', normalized_zap_key).strip()
+							normalized_zap_key = normalized_zap_key.replace(' ', '')
+							
+							# 2. CRITICAL FIX: Delete from LIVE_NOTIF using a reliable composite key (COMPET and DATE).
+							# This bypasses the unreliable MATCH primary key string lookup and guarantees deletion.
+							cur.execute("DELETE FROM LIVE_NOTIF WHERE COMPET = ? AND DATE = ?", (compet_name, date_string,))
+							
+							# 3. Delete from zap_channels using the cleaned key
+							cur.execute("DELETE FROM zap_channels WHERE match = ?", (normalized_zap_key,))
+							
+							logdata("FootOnSatNotif", "CLEANUP SUCCESSFUL: Deleted LIVE_NOTIF and zap_channels for match: %s" % match_name)
+
+					except Exception as e:
+						logdata("FootOnSatNotif", "Error during record cleanup (%s): %s" % (date_string, str(e)))
 			conn.commit()
 
-	def notify(self, match, compet, team1, team2, message=None):
+	def notify(self, match, compet, team1, team2, message=None, allow_zap=True):
 		"""
 		[USER REQUESTED CHANGE] Now queues the notification and starts a sequential display timer.
 		It respects the single-call nature of checkforNotif's loop but delivers the output sequentially.
@@ -1924,6 +2205,7 @@ class FootOnsatNotifScreen(Screen):
 				'team1': team1, 
 				'team2': team2, 
 				'message': message,
+				'allow_zap': allow_zap,
 			}
 			
 			# 2. Add to queue
@@ -1943,15 +2225,15 @@ class StandingsScreen(Screen):
 		self.session = session
 		Screen.__init__(self, session)
 		#logdata("StandingsScreen_init", "Initializing StandingsScreen for league: %s, url: %s" % (league, url))
-		if reswidth == 1920:
-			skin = "assets/skin/FHD/standings.xml"
-		elif reswidth >= 2560:
-			skin = "assets/skin/UHD/standings.xml"
-		else:
-			skin = "assets/skin/FHD/standings.xml"
-		self.skin = readFromFile(skin)
 		self.league = str(league)
+		print("self.league: %s" % self.league)
 		self.url = str(url)
+		self.league = str(league).lower()
+		if self.league in ("basketball", "nba", "nfl"):
+			label_text = "Ties" if self.league in ("nfl") else "Streak"
+			self.skin = SKIN_standingsbasketball % label_text
+		else:
+			self.skin = SKIN_standings
 		self["standings_list"] = MenuList([], enableWrapAround=True, content=eListboxPythonMultiContent)
 		# FIX for Python 2 eLabel: encode to UTF-8 if not Python 3
 		title_text = "%s Standings" % self.league
@@ -2153,41 +2435,72 @@ class StandingsScreen(Screen):
 					continue
 					
 				for row in table['rows']:
-					
 					team_data = row.get('team', {})
-					
 					team_name = team_data.get('name', 'Unknown Team')
 					team_id = team_data.get('id')
 					try:
 						logo_url = "http://api.sofascore.com/api/v1/team/{}/image".format(team_id) if team_id else ""
 					except Exception as e:
 						logo_url = "https://api.sofascore.com/api/v1/team/{}/image".format(team_id) if team_id else ""
-					
 					# Extract all required stats directly from the 'row' dictionary
 					position = str(row.get('position', 0))
 					played = str(row.get('matches', 0))
-					points = str(row.get('points', 0))
 					wins = str(row.get('wins', 0))
-					draws = str(row.get('draws', 0))
 					losses = str(row.get('losses', 0))
-					goals_scored = str(row.get('scoresFor', 0))
-					goals_conceded = str(row.get('scoresAgainst', 0))
-					goal_diff = str(row.get('scoreDiffFormatted', '0'))
-
-					# Append 11 elements to the list to match your screen's columns
-					standings.append([
-						team_name,
-						position,
-						played,
-						points,
-						wins,
-						draws,
-						losses,
-						goals_scored,
-						goals_conceded,
-						goal_diff,
-						logo_url # Index 10
-					])
+					if self.league not in ("basketball", "nba"):
+						draws = str(row.get('draws', 0)) if self.league not in ("hockey") else str(row.get('overtimeLosses', 0))
+						points = str(row.get('points', 0))
+						goals_scored = str(row.get('scoresFor', 0))
+						goals_conceded = str(row.get('scoresAgainst', 0))
+						goal_diff = str(row.get('scoreDiffFormatted', 0))
+					if self.league in ("basketball", "nba", "nfl"):
+						# Calculate streak
+						streak_val = row.get('streak', 0)
+						if isinstance(streak_val, int):
+							if streak_val > 0:
+								streak = "W%d" % streak_val
+							elif streak_val < 0:
+								streak = "L%d" % abs(streak_val)
+							else:
+								streak = "-"
+						else:
+							streak = str(streak_val) if streak_val else "-"
+						if self.league in ("nfl"):
+							streak = str(row.get('draws', 0))
+						points_for = row.get('scoresFor', 0)
+						points_against = row.get('scoresAgainst', 0)
+						diff = str(points_for - points_against)
+						if played and int(played) > 0:
+							pct = "%.3f" % (float(wins) / float(played))
+						else:
+							pct = ".000"
+						standings.append([
+							team_name,
+							position,
+							played,
+							wins,
+							losses,
+							streak,
+							diff,
+							pct,
+							"",
+							"",
+							logo_url
+							])
+					else:
+						standings.append([
+							team_name,
+							position,
+							played,
+							points,
+							wins,
+							draws,
+							losses,
+							goals_scored,
+							goals_conceded,
+							goal_diff,
+							logo_url
+							])
 
 			self.standings_data = standings
 			
@@ -2280,12 +2593,6 @@ class StandingsScreen(Screen):
 					}
 					# === PYTHON 2 FIX: Use Requests/deferToThread to bypass 403 ===
 					#logdata("Logos", "Starting Requests download for logo: %s (PY2 FIX)" % team_name)
-					import requests # Should be available in the Enigma2 image
-					
-					# Use headers in Py2 format (single strings)
-					# === PYTHON 2 FIX: Use Requests with 403 content check ===
-					#logdata("Logos", "Starting Requests download for logo: %s (PY2 FIX)" % team_name)
-					import requests # Should be available in the Enigma2 image
 					
 					# Use headers in Py2 format (single strings)
 					py2_headers = {
@@ -2498,10 +2805,10 @@ class StandingsScreen(Screen):
 		gList = []
 
 		# Determine ITEM_HEIGHT based on resolution (used multiple times)
-		ITEM_HEIGHT = 65 if reswidth == 1920 else 85
+		ITEM_HEIGHT = 65 if isFHD() else 85
 
 		self["standings_list"].l.setItemHeight(ITEM_HEIGHT)
-		if reswidth >= 2560:
+		if isUHD():
 			self["standings_list"].l.setFont(0, gFont('Regular', 32))
 		else:
 			self["standings_list"].l.setFont(0, gFont('Regular', 28))
@@ -2511,7 +2818,7 @@ class StandingsScreen(Screen):
 		for standing in self.standings_data:
 			if isinstance(standing, str) and standing.startswith("Table "):
 				club_idx = 1  # reset numbering for new table
-				if reswidth == 1920:
+				if isFHD():
 					res = [ITEM_HEIGHT, MultiContentEntryText(pos=(450, 0), size=(960, ITEM_HEIGHT), font=0,
 												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(standing))]
 				else: # UHD skins
@@ -2520,23 +2827,33 @@ class StandingsScreen(Screen):
 				gList.append(res)
 				continue
 
+
+			if self.league in ("basketball", "nba", "nfl"):
+				wins = standing[3]
+				losses = standing[4]
+				raw_diff = standing[6]
+				pct = standing[7]
+				streak = standing[5]
+				diff_int = int(raw_diff) if raw_diff not in (None, "", "-") else 0
+				diff = "+{}".format(diff_int) if diff_int > 0 else str(diff_int)
+			else:
+				wins = standing[4]
+				losses = standing[6]
+				goals_scored = standing[7]
+				goals_conceded = standing[8]
+				goal_diff = standing[9]
 			team = standing[0]
 			position = standing[1]
 			played = standing[2]
 			points = standing[3]
-			wins = standing[4]
 			draws = standing[5]
-			losses = standing[6]
-			goals_scored = standing[7]
-			goals_conceded = standing[8]
-			goal_diff = standing[9]
 			logo_url = standing[10]
 
 			# --- LOGO SIZE AND POSITIONING ---
-			if reswidth == 1920:
+			if isFHD():
 				LOGO_SIZE_H = 50
 				LOGO_Y_POS = 8
-				LOGO_X_POS = 95
+				LOGO_X_POS = 85
 				TEAM_NAME_X_POS = 160
 				TEXT_Y_OFFSET = 0  # No offset needed for 1920
 			else:  # 2560
@@ -2547,9 +2864,8 @@ class StandingsScreen(Screen):
 				TEXT_Y_OFFSET = LOGO_Y_POS  # Align text with logo vertical position
 
 			res = [ITEM_HEIGHT]
-			# number
 			# Number
-			if reswidth == 1920:
+			if isFHD():
 				res.append(MultiContentEntryText(pos=(20, 0), size=(50, ITEM_HEIGHT), font=0,
 												 flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, text=str(club_idx)))
 			else:  # 2560
@@ -2559,76 +2875,136 @@ class StandingsScreen(Screen):
 
 			# logo using file path
 			flagteam_png = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/standings/{}.png".format(sanitize_team_name(team)))
-			if reswidth == 1920:
-				if os.path.exists(flagteam_png):
-					if PY3:
-						res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
-																   png=loadPNG(flagteam_png), flags=BT_SCALE))
-					else: # DreamOS
-						res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
-																   png=loadPNG(flagteam_png)))
-				# team name - increased width for better display
-				res.append(MultiContentEntryText(pos=(TEAM_NAME_X_POS, 0), size=(400, ITEM_HEIGHT), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team or "")))
-				# matches played - aligned with "Played" header
-				res.append(MultiContentEntryText(pos=(553, 0), size=(80, ITEM_HEIGHT), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(played or "")))
-				# points - aligned with "Points" header
-				res.append(MultiContentEntryText(pos=(708, 0), size=(80, ITEM_HEIGHT), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(points or "")))
-				# wins - aligned with "Wins" header
-				res.append(MultiContentEntryText(pos=(852, 0), size=(80, ITEM_HEIGHT), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(wins or "")))
-				# draws - aligned with "Draws" header
-				res.append(MultiContentEntryText(pos=(997, 0), size=(80, ITEM_HEIGHT), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(draws or "")))
-				# losses - aligned with "Losses" header
-				res.append(MultiContentEntryText(pos=(1152, 0), size=(80, ITEM_HEIGHT), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(losses or "")))
-				# goals scored - aligned with "Goals Scored" header
-				res.append(MultiContentEntryText(pos=(1342, 0), size=(80, ITEM_HEIGHT), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_scored or "")))
-				# goals conceded - aligned with "Conceded" header
-				res.append(MultiContentEntryText(pos=(1520, 0), size=(80, ITEM_HEIGHT), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_conceded or "")))
-				# goal diff - aligned with "Difference" header
-				res.append(MultiContentEntryText(pos=(1680, 0), size=(80, ITEM_HEIGHT), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goal_diff or "")))
-			else: # UHD skins (2560)
-				if os.path.exists(flagteam_png):
-					if PY3:
-						res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
-                                                                   png=loadPNG(flagteam_png), flags=BT_SCALE))
-					else: # DreamOS
-						res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
-                                                                   png=loadPNG(flagteam_png)))
-				# team name - increased width for better display
-				res.append(MultiContentEntryText(pos=(200, LOGO_Y_POS +13), size=(550, LOGO_SIZE_H), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team or "")))
-				# matches played - aligned with "Played" header
-				res.append(MultiContentEntryText(pos=(630, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(played or "")))
-				# points - aligned with "Points" header
-				res.append(MultiContentEntryText(pos=(880, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(points or "")))
-				# wins - aligned with "Wins" header
-				res.append(MultiContentEntryText(pos=(1120, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(wins or "")))
-				# draws - aligned with "Draws" header
-				res.append(MultiContentEntryText(pos=(1375, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(draws or "")))
-				# losses - aligned with "Losses" header
-				res.append(MultiContentEntryText(pos=(1610, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(losses or "")))
-				# goals scored - aligned with "Goals Scored" header
-				res.append(MultiContentEntryText(pos=(1865, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_scored or "")))
-				# goals conceded - aligned with "Conceded" header
-				res.append(MultiContentEntryText(pos=(2075, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_conceded or "")))
-				# goal diff - aligned with "Difference" header
-				res.append(MultiContentEntryText(pos=(2265, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
-												 flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goal_diff or "")))
+			if self.league in ("basketball", "nba", "nfl"): # This for basketball, nba and nfl option codes only
+				if isFHD():
+					if os.path.exists(flagteam_png):
+						if PY3:
+							res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+													png=loadPNG(flagteam_png), flags=BT_SCALE))
+						else: # DreamOS
+							res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+													png=loadPNG(flagteam_png)))
+					# team name - increased width for better display
+					res.append(MultiContentEntryText(pos=(TEAM_NAME_X_POS, 0), size=(400, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team or "")))
+					# matches played - aligned with "Played" header
+					res.append(MultiContentEntryText(pos=(553, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(played or "")))
+					# wins - aligned with "Wins" header
+					res.append(MultiContentEntryText(pos=(745, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(wins or "")))
+					# losses - aligned with "Losses" header
+					res.append(MultiContentEntryText(pos=(957, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(losses or "")))
+					# Streak - aligned with "Streak" header
+					res.append(MultiContentEntryText(pos=(1138, 0), size=(80, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(streak or "")))
+					# Difference (DIFF) - CORRETO: +24, -6
+					res.append(MultiContentEntryText(pos=(1340, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(diff or "")))
+					# Win Percentage (PCT)
+					res.append(MultiContentEntryText(pos=(1570, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(pct or "")))
+				else: # UHD skins (2560)
+					if os.path.exists(flagteam_png):
+						if PY3:
+							res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+												png=loadPNG(flagteam_png), flags=BT_SCALE))
+						else: # DreamOS
+							res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+												png=loadPNG(flagteam_png)))
+					# team name - increased width for better display
+					res.append(MultiContentEntryText(pos=(200, LOGO_Y_POS +13), size=(600, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team or "")))
+					# matches played - aligned with "Played" header
+					res.append(MultiContentEntryText(pos=(670, LOGO_Y_POS +13), size=(300, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(played or "")))
+					# wins - aligned with "Wins" header
+					res.append(MultiContentEntryText(pos=(970, LOGO_Y_POS +13), size=(260, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(wins or "")))
+					# losses - aligned with "Losses" header
+					res.append(MultiContentEntryText(pos=(1270, LOGO_Y_POS +13), size=(260, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(losses or "")))
+					# Streak - aligned with "Streak" header
+					res.append(MultiContentEntryText(pos=(1570, LOGO_Y_POS +13), size=(260, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(streak or "")))
+					# Difference (DIFF) - CORRETO: +24, -6
+					res.append(MultiContentEntryText(pos=(1870, LOGO_Y_POS +13), size=(260, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(diff or "")))
+					# Win Percentage (PCT)
+					res.append(MultiContentEntryText(pos=(2170, LOGO_Y_POS +13), size=(260, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(pct or "")))
+			else:
+				if isFHD():
+					if os.path.exists(flagteam_png):
+						if PY3:
+							res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+													png=loadPNG(flagteam_png), flags=BT_SCALE))
+						else: # DreamOS
+							res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+													png=loadPNG(flagteam_png)))
+					# team name - increased width for better display
+					res.append(MultiContentEntryText(pos=(TEAM_NAME_X_POS, 0), size=(400, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team or "")))
+					# matches played - aligned with "Played" header
+					res.append(MultiContentEntryText(pos=(553, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(played or "")))
+					# points - aligned with "Points" header
+					res.append(MultiContentEntryText(pos=(708, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(points or "")))
+					# wins - aligned with "Wins" header
+					res.append(MultiContentEntryText(pos=(852, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(wins or "")))
+					# draws - aligned with "Draws" header
+					res.append(MultiContentEntryText(pos=(997, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(draws or "")))
+					# losses - aligned with "Losses" header
+					res.append(MultiContentEntryText(pos=(1152, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(losses or "")))
+					# goals scored - aligned with "Goals Scored" header
+					res.append(MultiContentEntryText(pos=(1342, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_scored or "")))
+					# goals conceded - aligned with "Conceded" header
+					res.append(MultiContentEntryText(pos=(1520, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_conceded or "")))
+					# goal diff - aligned with "Difference" header
+					res.append(MultiContentEntryText(pos=(1680, 0), size=(80, ITEM_HEIGHT), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goal_diff or "")))
+				else: # UHD skins (2560)
+					if os.path.exists(flagteam_png):
+						if PY3:
+							res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+				                                                       png=loadPNG(flagteam_png), flags=BT_SCALE))
+						else: # DreamOS
+							res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
+				                                                       png=loadPNG(flagteam_png)))
+					# team name - increased width for better display
+					res.append(MultiContentEntryText(pos=(200, LOGO_Y_POS +13), size=(550, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team or "")))
+					# matches played - aligned with "Played" header
+					res.append(MultiContentEntryText(pos=(630, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(played or "")))
+					# points - aligned with "Points" header
+					res.append(MultiContentEntryText(pos=(880, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(points or "")))
+					# wins - aligned with "Wins" header
+					res.append(MultiContentEntryText(pos=(1120, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(wins or "")))
+					# draws - aligned with "Draws" header
+					res.append(MultiContentEntryText(pos=(1375, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(draws or "")))
+					# losses - aligned with "Losses" header
+					res.append(MultiContentEntryText(pos=(1610, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(losses or "")))
+					# goals scored - aligned with "Goals Scored" header
+					res.append(MultiContentEntryText(pos=(1865, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_scored or "")))
+					# goals conceded - aligned with "Conceded" header
+					res.append(MultiContentEntryText(pos=(2075, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goals_conceded or "")))
+					# goal diff - aligned with "Difference" header
+					res.append(MultiContentEntryText(pos=(2265, LOGO_Y_POS +13), size=(140, LOGO_SIZE_H), font=0,
+											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goal_diff or "")))
 			gList.append(res)
 
 		self["standings_list"].setList(gList)
