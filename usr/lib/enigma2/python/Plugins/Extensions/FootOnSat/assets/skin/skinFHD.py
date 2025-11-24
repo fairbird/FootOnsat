@@ -163,7 +163,6 @@ if DreamOS():
 				<convert type="ClockToText">Format:%d-%m-%Y&#160;%H:%M:%S</convert>
 			</widget>
 		</screen>
-	</screen>
 	"""
 else:
 	SKIN_MenuFootOnSat = """
