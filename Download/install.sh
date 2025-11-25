@@ -1,13 +1,18 @@
 #!/bin/sh
 
 #wget -q "--no-check-certificate" https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh
-VERSION=4.5
+VERSION=4.6
 PLUGIN_PATH="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
 DB_FILE="$PLUGIN_PATH/db/footonsat.db"
 ASSETS_PATH="$PLUGIN_PATH/assets"
 IGNORE_PATH="$PLUGIN_PATH/ignore"
 TMP_DB="/tmp/footonsat.db"
 TMP_ASSETS="/tmp/assets"
+
+E2Settings='/etc/enigma2/settings'
+SETTING_NAME="config.plugins.FootOnSat.icons"
+BASE_URL="https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/"
+CURRENT_VALUE=$(grep "^$SETTING_NAME=" "$E2Settings" | awk -F '=' '{print $2}' | tr -d '\n\r' | sed 's/s\///')
 
 if [ -f /etc/apt/apt.conf ] ; then
 	STATUS='/var/lib/dpkg/status'
@@ -44,6 +49,7 @@ fi
 if [ -d $PLUGIN_PATH ]; then
 
 	if [ -f "$DB_FILE" ]; then
+		echo ""
 		echo "Backup old db..."
 		cp -a "$DB_FILE" "$TMP_DB" >/dev/null 2>&1
 	fi
@@ -62,7 +68,7 @@ if [ -d $PLUGIN_PATH ]; then
 #    fi
 
 fi
-
+echo ""
 if python --version 2>&1 | grep -q '^Python 3\.'; then
    echo "You have Python3 image"
    PYTHON='PY3'
@@ -177,7 +183,7 @@ if ! grep -q 'ffmpeg' "$STATUS" || ! grep -q 'alsa-utils-aplay' "$STATUS"; then
 fi
 
 if grep -q "$SQLITE3" "$STATUS"; then
-	echo ""
+	: # Null command (do nothing, but satisfy the shell syntax)
 else
 	echo "#########################################################"
 	echo "#       $SQLITE3 Not found in feed                      #"
@@ -186,7 +192,7 @@ else
 fi
 
 if grep -q "$PYSIX" "$STATUS"; then
-	echo ""
+	: # Null command (do nothing, but satisfy the shell syntax)
 else
 	echo "#########################################################"
 	echo "#       $PYSIX Not found in feed                        #"
@@ -195,7 +201,7 @@ else
 fi
 
 if grep -q "$SOUP4" "$STATUS"; then
-	echo ""
+	: # Null command (do nothing, but satisfy the shell syntax)
 else
 	echo "#########################################################"
 	echo "#       $SOUP4 Not found in feed                        #"
@@ -204,7 +210,7 @@ else
 fi
 
 if grep -q "$DIFFLIB" "$STATUS"; then
-	echo ""
+	: # Null command (do nothing, but satisfy the shell syntax)
 else
 	echo "#########################################################"
 	echo "#       $DIFFLIB Not found in feed                      #"
@@ -213,7 +219,7 @@ else
 fi
 
 if grep -q "$THREADING" "$STATUS"; then
-	echo ""
+	: # Null command (do nothing, but satisfy the shell syntax)
 else
 	echo "#########################################################"
 	echo "#       $THREADING Not found in feed                    #"
@@ -222,7 +228,7 @@ else
 fi
 
 if grep -q "$PLI" "$STATUS"; then
-	echo ""
+	: # Null command (do nothing, but satisfy the shell syntax)
 else
 	echo "#########################################################"
 	echo "#       $PLI Not found in feed                          #"
@@ -231,7 +237,7 @@ else
 fi
 
 if grep -q "$REQUESTES" "$STATUS"; then
-	echo ""
+	: # Null command (do nothing, but satisfy the shell syntax)
 else
 	echo "#########################################################"
 	echo "#       $REQUESTES Not found in feed                    #"
@@ -240,11 +246,12 @@ else
 fi
 
 echo " ** Download and install FootOnsat ** "
+echo ""
 cd /tmp
 set -e
 rm -rf *main* >/dev/null 2>&1
 rm -rf *FootOnsat* >/dev/null 2>&1
-wget "https://github.com/fairbird/FootOnsat/archive/refs/heads/main.tar.gz"
+wget -q "https://github.com/fairbird/FootOnsat/archive/refs/heads/main.tar.gz"
 if [ -f "/tmp/main.tar.gz" ]; then
 	echo "remove old version"
 	echo ""
@@ -261,14 +268,23 @@ if [ -d $PLUGIN_PATH ]; then
 		cp -a "$TMP_DB" "$DB_FILE" >/dev/null 2>&1
 	fi
 	echo ""
-	if [ -d "$TMP_ASSETS" ]; then
-		echo "Restore current style ..."
-		cp -a "$TMP_ASSETS" "$PLUGIN_PATH" >/dev/null 2>&1
-	fi
+	echo "Restore current style is: $CURRENT_VALUE"
 	echo ""
+	case "$CURRENT_VALUE" in
+    		"icons_renkli")
+        		FILE_NAME="icons_renkli.tar.gz"
+        		;;
+    		"icons_buwalla")
+        		FILE_NAME="icons_buwalla.tar.gz"
+        		;;
+    		"icons_italia2012")
+        		FILE_NAME="icons_italia2012.tar.gz"
+        		;;
+    		*)
+	esac
+	wget -q -O - "${BASE_URL}${FILE_NAME}" | tar -xz -C "$PLUGIN_PATH"
 fi
 echo "clean tmp ..."
-echo ""
 rm -rf *FootOnsat* >/dev/null 2>&1
 rm -rf *main* >/dev/null 2>&1
 rm -rf *assets* >/dev/null 2>&1

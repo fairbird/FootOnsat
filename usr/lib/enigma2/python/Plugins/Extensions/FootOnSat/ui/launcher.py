@@ -87,7 +87,7 @@ config.plugins.FootOnSat.icons = ConfigSelection(default = "icons_default", choi
 	("icons_default", _("default icons")),
 	("icons_buwalla", _("buwalla icons")),
 	("icons_renkli", _("renkli icons")),
-	("italia2012_icons", _("italia2012 Full style color"))
+	("icons_italia2012", _("italia2012 Full style color"))
 	])
 
 VER = float(__version__)
@@ -575,8 +575,8 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/icons_buwalla.png')
 			elif index == "icons_renkli":
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/icons_renkli.png')
-			elif index == "italia2012_icons":
-				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/italia2012_icons.png')
+			elif index == "icons_italia2012":
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/icons_italia2012.png')
 			if pic and self['Picture'].instance and exists(pic):
 				self['Picture'].instance.setPixmapFromFile(pic)
 				self['Picture'].show()
@@ -657,7 +657,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 				"icons_default": "icons_default.tar.gz",
 				"icons_buwalla": "icons_buwalla.tar.gz",
 				"icons_renkli": "icons_renkli.tar.gz",
-				"italia2012_icons": "italia2012_icons.tar.gz",
+				"icons_italia2012": "icons_italia2012.tar.gz",
 			}
 			if config.plugins.FootOnSat.icons.value in urls:
 				os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/%s | tar -xz -C %s" % (urls[config.plugins.FootOnSat.icons.value], extract_path))
