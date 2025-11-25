@@ -185,7 +185,7 @@ class FlexibleMenu(GUIComponent):
 
 			self.total_pages = int(math.ceil(float(len(self.list)) / self.itemPerPage))
 
-			excluded_icons = ["italia2012_icons"] # Add future exclusions here
+			excluded_icons = ["icons_italia2012"] # Add future exclusions here
 			is_icon_excluded = config.plugins.FootOnSat.icons.value in excluded_icons
 			show_match_today_text = not is_icon_excluded
 
