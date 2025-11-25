@@ -424,7 +424,7 @@ class FootOnsatLauncher(Screen):
 		try:
 			if answer:
 				cmdlist = []
-				cmd="wget https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh"
+				cmd="wget -q https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh"
 				cmdlist.append(cmd)
 				self.session.open(Console, title='Installing last update, enigma will be started after install', cmdlist=cmdlist, finishedCallback=self.myCallback, closeOnSuccess=False)
 		except:
@@ -660,7 +660,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 				"icons_italia2012": "icons_italia2012.tar.gz",
 			}
 			if config.plugins.FootOnSat.icons.value in urls:
-				os.system("wget -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/%s | tar -xz -C %s" % (urls[config.plugins.FootOnSat.icons.value], extract_path))
+				os.system("wget -q -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/%s | tar -xz -C %s" % (urls[config.plugins.FootOnSat.icons.value], extract_path))
 		
 		# 4. Save all config items
 		for x in self["config"].list:
