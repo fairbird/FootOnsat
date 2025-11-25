@@ -416,7 +416,7 @@ class FootOnSat(Screen):
 				FOOTBALL = {
 				    	"championsleague", "europaleague", "ConferenceLeague", "premierleague",
 				    	"laliga", "laliga2", "championship", "seriea", "ligue1", "eredivisie", "saudiarabia",
-				    	"bundesliga", "bundesliga2", "belgianpro", "superLig", "liganos", "afcchampions"
+				    	"bundesliga", "bundesliga2", "belgianpro", "superLig", "liganos", "afcchampions", "afcchampionstwo"
 				}
 				# Team 1 flag/logteam
 				if self.link in (SPORTS | FOOTBALL):
