@@ -11,7 +11,6 @@ TMP_ASSETS="/tmp/assets"
 
 E2Settings='/etc/enigma2/settings'
 SETTING_NAME="config.plugins.FootOnSat.icons"
-BASE_URL="https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/"
 CURRENT_VALUE=$(grep "^$SETTING_NAME=" "$E2Settings" | awk -F '=' '{print $2}' | tr -d '\n\r' | sed 's/s\///')
 
 if [ -f /etc/apt/apt.conf ] ; then
@@ -54,12 +53,12 @@ if [ -d $PLUGIN_PATH ]; then
 		cp -a "$DB_FILE" "$TMP_DB" >/dev/null 2>&1
 	fi
 	echo ""
-	echo "Backup current style ..."
-	mkdir -p "$TMP_ASSETS/compet" >/dev/null 2>&1
-	mkdir -p "$TMP_ASSETS/skin" >/dev/null 2>&1
-	cp -a "$ASSETS_PATH/compet/icons" "$TMP_ASSETS/compet" >/dev/null 2>&1
-	cp -a "$ASSETS_PATH/skin" "$TMP_ASSETS" >/dev/null 2>&1
-	cp -a "$ASSETS_PATH/icon" "$TMP_ASSETS" >/dev/null 2>&1
+#	echo "Backup current style ..."
+#	mkdir -p "$TMP_ASSETS/compet" >/dev/null 2>&1
+#	mkdir -p "$TMP_ASSETS/skin" >/dev/null 2>&1
+#	cp -a "$ASSETS_PATH/compet/icons" "$TMP_ASSETS/compet" >/dev/null 2>&1
+#	cp -a "$ASSETS_PATH/skin" "$TMP_ASSETS" >/dev/null 2>&1
+#	cp -a "$ASSETS_PATH/icon" "$TMP_ASSETS" >/dev/null 2>&1
 #    echo "Remove old version."
 #    if [ "$OS" = "Opensource" ]; then
 #        opkg remove enigma2-plugin-extensions-footonsat
@@ -270,25 +269,35 @@ if [ -d $PLUGIN_PATH ]; then
 	echo ""
 	echo "Restore current style is: $CURRENT_VALUE"
 	echo ""
+	FILE_NAME=""
 	case "$CURRENT_VALUE" in
-    		"icons_renkli")
-        		FILE_NAME="icons_renkli.tar.gz"
-        		;;
-    		"icons_buwalla")
-        		FILE_NAME="icons_buwalla.tar.gz"
-        		;;
-    		"icons_italia2012")
-        		FILE_NAME="icons_italia2012.tar.gz"
-        		;;
-    		*)
+	    "icons_renkli")
+		  FILE_NAME="icons_renkli.tar.gz"
+		  ;;
+	    "icons_buwalla")
+		  FILE_NAME="icons_buwalla.tar.gz"
+		  ;;
+	    "icons_italia2012")
+		  FILE_NAME="icons_italia2012.tar.gz"
+		  ;;
+	    *)
+		  # If no match, FILE_NAME remains empty
+		  ;;
 	esac
-	wget -q -O - "${BASE_URL}${FILE_NAME}" | tar -xz -C "$PLUGIN_PATH"
+	if [ -n "$FILE_NAME" ]; then
+	    cd /tmp/FootOnsat-main/Download/Style-Icons-Files
+	    tar -xzf "${FILE_NAME}" >/dev/null 2>&1
+	    cp -r assets "$PLUGIN_PATH" >/dev/null 2>&1
+	fi
 fi
+
 echo "clean tmp ..."
+cd /tmp
 rm -rf *FootOnsat* >/dev/null 2>&1
+rm -rf *footonsat* >/dev/null 2>&1
 rm -rf *main* >/dev/null 2>&1
-rm -rf *assets* >/dev/null 2>&1
-rm -rf *ui* >/dev/null 2>&1
+#rm -rf *assets* >/dev/null 2>&1
+#rm -rf *ui* >/dev/null 2>&1
 rm -rf *TMP_DB* >/dev/null 2>&1
 cd ..
 echo
