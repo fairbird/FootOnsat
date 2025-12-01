@@ -1911,11 +1911,9 @@ class FootOnsatNotifScreen(Screen):
 				# Zap channel found: Execute Zap immediately with sound.
 				self._play_tone() 
 				time.sleep(2.0)
-				# 1. Selection: Using the correct function name from your file
-				InfoBar.instance.servicelist.setCurrentSelection(zap_ref)
-				# 2. Zap: Calling the function that should contain the history update hook
-				InfoBar.instance.servicelist.zap()
-				logdata("ZAP_DEBUG", "ZAP COMPLETED")
+				InfoBar.instance.session.nav.playService(zap_ref)
+				InfoBar.instance.servicelist.addToHistory(zap_ref)
+				logdata("ZAP_DEBUG", "playService called — channel switching...")
 			else:
 				# No Zap channel found: Do nothing. (NO ACTION, NO SOUND)
 				logdata("ZAP_DEBUG", "Zap only mode (Option 2) selected. No Zap channel found, skipping notification and zap.")
@@ -1967,14 +1965,10 @@ class FootOnsatNotifScreen(Screen):
 			try:
 				# 👇 DELAY HERE to let the user see/hear the notification FIRST
 				time.sleep(2.0)
-				
 				logdata("ZAP_DEBUG", "Delay finished, executing Zap.")
-				# 1. Selection: Using the correct function name from your file
-				InfoBar.instance.servicelist.setCurrentSelection(zap_ref)
-				# 2. Zap: Calling the function that should contain the history update hook
-				InfoBar.instance.servicelist.zap()
+				InfoBar.instance.session.nav.playService(zap_ref)
+				InfoBar.instance.servicelist.addToHistory(zap_ref)
 				logdata("ZAP_DEBUG", "playService called — channel switching...")
-				logdata("ZAP_DEBUG", "ZAP COMPLETED")
 
 			except Exception as e:
 				logdata("ZAP_DEBUG", "ZAP EXECUTION ERROR: %s" % str(e))
