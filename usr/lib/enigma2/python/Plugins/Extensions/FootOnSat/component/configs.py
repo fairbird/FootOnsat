@@ -10,9 +10,11 @@ class ConfigDictionarySet(ConfigElement):
 		self.callback = None  # Explicitly ensure callback is initialized
 
 	def load(self):
-		# self.dirs = self.default if self.saved_value is None else self.fromString(self.saved_value)
 		ConfigElement.load(self)
-		self.dirs = self.value
+		if self.saved_value is not None:
+			self.dirs = self.fromString(self.saved_value)
+		else:
+			self.dirs = self.default
 
 	def save(self):
 		del_keys = []
