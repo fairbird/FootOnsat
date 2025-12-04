@@ -235,6 +235,21 @@ class RAED_ChannelSelection(ChannelSelection):
 		ChannelSelection.__init__(self, session)
 
 
+class RAED_ChannelSelection2(object):
+	def __init__(self, session=None):
+		pass
+	def setCurrentSelection(self, *a, **k):
+		pass
+	def zap(self, *a, **k):
+		pass
+	def addToHistory(self, *a, **k):
+		pass
+	def saveChannel(self, *a, **k):
+		pass
+	def clearPath(self, *a, **k):
+		pass
+
+
 class FootOnSat(Screen):
 	def __init__(self, session, link, *args):
 		#logdata("FootOnSat-INIT", "Plugin initialization started.")
@@ -243,7 +258,9 @@ class FootOnSat(Screen):
 		self.MENUTEXT = "Press Menu to select zap channel"
 		self.execing = False # FIX: Prevents AttributeError in base class's close() method
 		self.skin = SKIN_interface
-		if fileExists(OPENBH) or fileExists(OPENBH2) or fileExists(OPENVIX):
+		if DreamOS():
+			self.servicelist = RAED_ChannelSelection2()
+		elif fileExists(OPENBH) or fileExists(OPENBH2) or fileExists(OPENVIX):
 			self.servicelist = self.session.instantiateDialog(RAED_ChannelSelection)
 		else:
 			self.servicelist = self.session.instantiateDialog(ChannelSelection)
