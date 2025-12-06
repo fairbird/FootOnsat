@@ -258,7 +258,7 @@ class FootOnSat(Screen):
 		self.MENUTEXT = "Press Menu to select zap channel"
 		self.execing = False # FIX: Prevents AttributeError in base class's close() method
 		self.skin = SKIN_interface
-		if DreamOS():
+		if DreamOS() or not PY3:
 			self.servicelist = RAED_ChannelSelection2()
 		elif fileExists(OPENBH) or fileExists(OPENBH2) or fileExists(OPENVIX):
 			self.servicelist = self.session.instantiateDialog(RAED_ChannelSelection)
