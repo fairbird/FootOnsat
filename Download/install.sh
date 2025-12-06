@@ -147,7 +147,7 @@ else
         opkg install $DIFFLIB
         opkg install $THREADING
         opkg install $PLI
-		opkg install $REQUESTES
+        opkg install $REQUESTES
         echo "========================================================================"
     else
         echo "=========================================================================="
@@ -158,7 +158,7 @@ else
         apt-get update
         echo "========================================================================"
         echo " Downloading alsa-utils-aplay ......"
-		apt-get install ffmpeg -y
+        apt-get install ffmpeg -y
         apt-get install alsa-utils-aplay -y
         echo "========================================================================"
         echo "========================================================================"

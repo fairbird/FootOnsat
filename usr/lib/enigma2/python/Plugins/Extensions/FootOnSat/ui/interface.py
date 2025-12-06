@@ -421,7 +421,10 @@ class FootOnSat(Screen):
 						teamlog2 = nfldefault
 					else:
 						teamlog2 = footdefault
-				if self.checkIfexist(match):
+				notif_status = self.checkIfexist(match)
+				if notif_status == 2:
+					notif = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/icon/notif_on2.png")
+				elif notif_status == 1:
 					notif = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/icon/notif_on.png")
 				else:
 					notif = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/icon/notif_off.png")
@@ -776,6 +779,8 @@ class FootOnSat(Screen):
 		except Exception as e:
 			logdata("ZAP_DEBUG", "SAVE ERROR: %s" % str(e))
 
+		self.iniMenu()
+
 		self.session.open(MessageBox,
 			_("Notification channel saved!\n\n") +
 			_("Match: ") + exact_match + "\n" +
@@ -801,31 +806,20 @@ class FootOnSat(Screen):
 
 			# Only allow selection/unselection for future matches
 			if datetime.strptime(match_date, "%H:%M - %Y-%m-%d") > datetime.now():
-				if self.checkIfexist(match):
-					# --- UNSELECT ACTION --- (Match is already in the DB)
-					with connect(DB_PATH) as conn:
-						cur = conn.cursor()
+				with connect(DB_PATH) as conn:
+					cur = conn.cursor()
+					if self.checkIfexist(match):
+						# --- CLEAN DB ACTION --- remove notification + zap
 						cur.execute("DELETE FROM LIVE_NOTIF WHERE MATCH = ?", (match,))
-					# Re-enable the log line for clarity on unselect
-					#logdata("FootOnSatNotif", "UNSELECT: Deleted notification for match: %s" % match) 
-				else:
-					# --- SELECT ACTION --- (Match is NOT in the DB)
-					
-					# NOTE: Removed the 'if not self.sameDate(match_date):' check 
-					#       to allow multiple matches at the same time.
-
-					with connect(DB_PATH) as conn:
-						cur = conn.cursor()
+						cur.execute("DELETE FROM zap_channels WHERE match = ?", (re.sub(r'\s+', '', match),))
+						logdata("FootOnSatNotif", "CLEANED DB: Removed notification and zap for match: %s" % match)
+					else:
+						# --- SELECT ACTION --- add notification
 						first_notif, message = self.setFirstNotifTime(match_date)
-						
-						# Use "Waiting" for both status fields as per current schema, 
-						# relying on FIRST_NOTIF time for sequential updates.
 						cur.execute("INSERT INTO LIVE_NOTIF(MATCH,COMPET,DATE,TEAM1_FLAG,TEAM2_FLAG,FIRST_NOTIF,FIRST_NOTIF_STATUS,LIVE_NOTIF_STATUS,MESSAGE) values (?,?,?,?,?,?,?,?,?)", (
 							match, compet, match_date, flag1, flag2, first_notif, "Waiting", "Waiting", message,))
-						
-						# Re-enable the log line for clarity on select
-						#logdata("FootOnSatNotif", "SELECT: Inserted notification for match: %s. Notif time: %s" % (match, first_notif))
-			
+						logdata("FootOnSatNotif", "SELECT: Inserted notification for match: %s. Notif time: %s" % (match, first_notif))
+
 			self.iniMenu()
 
 	def setFirstNotifTime(self, dt):
@@ -865,17 +859,28 @@ class FootOnSat(Screen):
 
 	def checkIfexist(self, match):
 		if PY3:
-			match = match
+			match_key = match
 		else:
-			match = match.decode('utf-8')
+			match_key = match.decode('utf-8')
 		with connect(DB_PATH) as conn:
 			cur = conn.cursor()
-			cur.execute("SELECT MATCH FROM LIVE_NOTIF WHERE MATCH = ?", (match,))
+			cur.execute("SELECT MATCH FROM LIVE_NOTIF WHERE MATCH = ?", (match_key,))
 			data = cur.fetchone()
 			if data is None:
-				return False
+				return 0
+		key = re.sub(r'\s+', '', match_key)
+		try:
+			conn = connect(DB_PATH)
+			c = conn.cursor()
+			c.execute("SELECT ref FROM zap_channels WHERE match = ?", (key,))
+			z = c.fetchone()
+			conn.close()
+			if z:
+				return 2
 			else:
-				return True
+				return 1
+		except:
+			return 1
 
 	def getTime(self, match_date):
 		timezone = strftime("%z")
