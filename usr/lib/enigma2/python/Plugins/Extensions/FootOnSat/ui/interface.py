@@ -287,6 +287,7 @@ class FootOnSat(Screen):
 		self["freq"] = Label()
 		self["enc"] = Label()
 		self["menu"] = Label()
+		self["menu2"] = Label()
 		self["key_red"] = Button(_("Ignore Competition"))
 		self["key_yellow"] = Button(_("Reset Ignore List"))
 		self["key_blue"] = Button(_("Scan"))
@@ -323,13 +324,34 @@ class FootOnSat(Screen):
 			self["list1"].l.setItemHeight(175)
 			sel = self["list1"].getSelectionIndex()
 			if sel >= 0 and sel < len(self.matches):
-				match = self.matches[sel][0] 
+				match = self.matches[sel][0]
 				if self.checkIfexist(match):
 					self["menu"].setText(self.MENUTEXT)
+					try:
+						key = re.sub(r'\s+', '', match)
+						conn = connect(DB_PATH)
+						c = conn.cursor()
+						c.execute("SELECT ref FROM zap_channels WHERE match = ?", (key,))
+						z = c.fetchone()
+						conn.close()
+						if z:
+							service_ref = eServiceReference(z[0])
+							info = eServiceCenter.getInstance().info(service_ref)
+							channel_name = info.getName(service_ref) if info else ""
+							if channel_name:
+								self["menu2"].setText("Will be Zap to >> " + channel_name)
+							else:
+								self["menu2"].setText("")
+						else:
+							self["menu2"].setText("")
+					except:
+						self["menu2"].setText("")
 				else:
-					self["menu"].setText("") 
+					self["menu"].setText("")
+					self["menu2"].setText("")
 			else:
 				self["menu"].setText("")
+				self["menu2"].setText("")
 			if isUHD():
 				self["list1"].l.setFont(0, gFont('Regular', 36))
 			else:
@@ -661,30 +683,7 @@ class FootOnSat(Screen):
 			self.enablelist2()
 			self.updateChannelData()
 
-	def listDOWN(self):
-		if self.selectedList.getCurrent():
-			instance = self.selectedList.instance
-			instance.moveSelection(instance.moveDown)
-		if self.selectedList == self["list1"]:
-			self.disablelist2()
-			self.updateCounter()
-			self.resetChannelinfo() 
-			sel = self["list1"].getSelectionIndex()
-			if sel >= 0 and sel < len(self.matches):
-				match = self.matches[sel][0] 
-				if self.checkIfexist(match):
-					self["menu"].setText(self.MENUTEXT)
-				else:
-					self["menu"].setText("") 
-			else:
-				self["menu"].setText("")
-		if self.selectedList == self["list2"]:
-			self.updateChannelData()
-
-	def listUP(self):
-		if self.selectedList.getCurrent():
-			instance = self.selectedList.instance
-			instance.moveSelection(instance.moveUp)
+	def updateMenuWidgets(self):
 		if self.selectedList == self["list1"]:
 			self.disablelist2()
 			self.updateCounter()
@@ -694,12 +693,46 @@ class FootOnSat(Screen):
 				match = self.matches[sel][0] 
 				if self.checkIfexist(match):
 					self["menu"].setText(self.MENUTEXT)
+					key = re.sub(r'\s+', '', match)
+					try:
+						conn = connect(DB_PATH)
+						c = conn.cursor()
+						c.execute("SELECT ref FROM zap_channels WHERE match = ?", (key,))
+						z = c.fetchone()
+						conn.close()
+						if z:
+							service_ref = eServiceReference(z[0])
+							info = eServiceCenter.getInstance().info(service_ref)
+							channel_name = info.getName(service_ref) if info else ""
+							if channel_name:
+								self["menu2"].setText("Will be Zap to >> " + channel_name)
+							else:
+								self["menu2"].setText("")
+						else:
+							self["menu2"].setText("")
+					except:
+						self["menu2"].setText("")
 				else:
-					self["menu"].setText("") 
+					self["menu"].setText("")
+					self["menu2"].setText("")
 			else:
 				self["menu"].setText("")
+				self["menu2"].setText("")
 		if self.selectedList == self["list2"]:
 			self.updateChannelData()
+
+
+	def listDOWN(self):
+		if self.selectedList.getCurrent():
+			instance = self.selectedList.instance
+			instance.moveSelection(instance.moveDown)
+		self.updateMenuWidgets()
+
+	def listUP(self):
+		if self.selectedList.getCurrent():
+			instance = self.selectedList.instance
+			instance.moveSelection(instance.moveUp)
+		self.updateMenuWidgets()
 
 	def create_table(self):
 		try:

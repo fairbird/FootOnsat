@@ -57,6 +57,7 @@ SKIN_interface = """
     <eLabel position="1335,758" zPosition="5" size="50,50" text="&#xf04e;" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;50" transparent="1" />
     <eLabel position="1330,843" zPosition="5" size="60,50" text="&#xe870;" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;60" transparent="1" />
     <widget name="menu" position="119,15" size="674,45" font="Regular;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" />
+    <widget name="menu2" position="1074,15" size="805,45" font="Regular;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#16000000" zPosition="5" transparent="1"/>
     <widget name="channel" position="1450,600" size="385,39" font="Regular;25" halign="left" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
     <widget name="sat" position="1450,684" size="385,39" font="Regular;25" halign="left" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
     <widget name="freq" position="1450,765" size="385,39" font="Regular;25" halign="left" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
@@ -152,13 +153,17 @@ if DreamOS():
 		<screen name="MenuFootOnSat" position="0,0" size="1920,1080" backgroundColor="transparent" flags="wfNoBorder" title="MenuFootOnSat">
 			<ePixmap position="0,0" zPosition="-1" size="1920,1080" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/bglist.png"/>
 			<ePixmap position="0,0" zPosition="1" size="1920,70" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/infobar_top.png" alphatest="blend" />
+			<eLabel position="1330,586" zPosition="5" size="60,60" text="&#xe333;" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;60" transparent="1"/>
+			<eLabel position="1330,670" zPosition="5" size="60,60" text="&#xeb3a;" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;60" transparent="1" />
+			<eLabel position="1335,758" zPosition="5" size="50,50" text="&#xf04e;" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;50" transparent="1" />
+			<eLabel position="1330,843" zPosition="5" size="60,50" text="&#xe870;" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;60" transparent="1" />
 			<eLabel position="143,920" size="300,3" backgroundColor="#FF0000" zPosition="5" />
 			<eLabel position="884,920" size="300,3" backgroundColor="#00FF00" zPosition="5" />
 			<widget source="key_red" render="Label" position="108,880" size="385,40" font="Regular;28" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
 			<widget source="key_green" render="Label" position="849,880" size="385,40" font="Regular;28" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="1" transparent="1" />
 			<widget name="config" position="75,145" size="1169,800" backgroundColor="#16000000" scrollbarMode="showOnDemand" transparent="1" />
 			<widget source="help" render="Label" position="1315,165" size="532,350" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
-			<widget name="Picture" position="1400,635" size="400,225" zPosition="5" alphatest="blend"/>
+			<widget name="Picture" position="1435,623" size="400,225" zPosition="5" alphatest="blend"/>
 			<widget font="Regular;35" foregroundColor="#00ffffff" backgroundColor="#16000000" halign="center" position="center,15" render="Label" size="650,52" source="global.CurrentTime" transparent="1" valign="center" zPosition="5">
 				<convert type="ClockToText">Format:%d-%m-%Y&#160;%H:%M:%S</convert>
 			</widget>
@@ -169,13 +174,17 @@ else:
 		<screen name="MenuFootOnSat" position="0,0" size="1920,1080" backgroundColor="transparent" flags="wfNoBorder" title="MenuFootOnSat">
 			<ePixmap position="0,0" zPosition="-1" size="1920,1080" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/bglist.png"/>
 			<ePixmap position="0,0" zPosition="1" size="1920,70" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/infobar_top.png" alphatest="blend" />
+			<eLabel position="1330,586" zPosition="5" size="60,60" text="&#xe333;" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;60" transparent="1"/>
+			<eLabel position="1330,670" zPosition="5" size="60,60" text="&#xeb3a;" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;60" transparent="1" />
+			<eLabel position="1335,758" zPosition="5" size="50,50" text="&#xf04e;" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;50" transparent="1" />
+			<eLabel position="1330,843" zPosition="5" size="60,50" text="&#xe870;" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;60" transparent="1" />
 			<eLabel position="143,920" size="300,3" backgroundColor="#FF0000" zPosition="5" />
 			<eLabel position="884,920" size="300,3" backgroundColor="#00FF00" zPosition="5" />
 			<widget source="key_red" render="Label" position="108,880" size="385,40" font="Regular;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
 			<widget source="key_green" render="Label" position="849,880" size="385,40" font="Regular;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
 			<widget name="config" font="Regular;28" secondfont="Regular;28" itemHeight="45" position="75,145" size="1169,800" backgroundColor="#16000000" scrollbarMode="showOnDemand" transparent="1" />
 			<widget source="help" render="Label" position="1315,165" size="532,350" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
-			<widget name="Picture" position="1400,635" size="400,225" zPosition="5" alphatest="blend"/>
+			<widget name="Picture" position="1435,623" size="400,225" zPosition="5" alphatest="blend"/>
 			<widget font="Regular;35" foregroundColor="#00ffffff" backgroundColor="#16000000" halign="center" position="center,15" render="Label" size="650,52" source="global.CurrentTime" transparent="1" valign="center" zPosition="5">
 				<convert type="ClockToText">Format:%d-%m-%Y     %H:%M:%S</convert>
 			</widget>
