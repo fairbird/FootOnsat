@@ -471,7 +471,7 @@ class FootOnSat(Screen):
 				if self.link not in SPORTS:
 					if isUHD():
 						if self.link in FOOTBALL:
-							res.append(MultiContentEntryText(pos=(950, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
+							res.append(MultiContentEntryText(pos=(1020, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
 						else:
 							res.append(MultiContentEntryText(pos=(500, 69), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
 					else:
@@ -482,7 +482,7 @@ class FootOnSat(Screen):
 				# Place a checkmark (-) between the results in the section FOOTBALL
 				if (team1_score != "" or match_status != "") and self.link in FOOTBALL:
 					if isUHD():
-						res.append(MultiContentEntryText(pos=(1050, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str("-"), color=0xFF0000))
+						res.append(MultiContentEntryText(pos=(1050, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str("-"), color=0xFF0000))
 					else:
 						res.append(MultiContentEntryText(pos=(750, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str("-"), color=0xFF0000))
 				# Team 2 flag/logteam
