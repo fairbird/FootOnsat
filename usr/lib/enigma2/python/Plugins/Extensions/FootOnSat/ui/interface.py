@@ -1496,7 +1496,7 @@ class FootOnSat(Screen):
 						if suffix in compet:
 							compet = compet.split(suffix)[0].strip()
 
-					if compet not in ignored_competitions:
+					if compet not in ignored_competitions or self.link != "today":
 						match_date = datetime.strptime(match['date'] + ' ' + match['time'], '%Y-%m-%d %H:%M')
 						match_date_adjusted = datetime.strptime(self.getTime(match['time'] + ' - ' + match['date']), '%H:%M - %Y-%m-%d')
 
