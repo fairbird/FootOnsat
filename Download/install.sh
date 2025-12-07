@@ -271,6 +271,9 @@ if [ -d $PLUGIN_PATH ]; then
 	echo ""
 	FILE_NAME=""
 	case "$CURRENT_VALUE" in
+	    "icons_default")
+		  FILE_NAME="icons_default.tar.gz"
+		  ;;
 	    "icons_renkli")
 		  FILE_NAME="icons_renkli.tar.gz"
 		  ;;
