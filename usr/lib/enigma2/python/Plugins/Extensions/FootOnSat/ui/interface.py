@@ -230,26 +230,6 @@ class WebClientContextFactory(ClientContextFactory):
 		return ctx
 
 
-class RAED_ChannelSelection(ChannelSelection):
-	def __init__(self, session):
-		ChannelSelection.__init__(self, session)
-
-
-class RAED_ChannelSelection2(object):
-	def __init__(self, session=None):
-		pass
-	def setCurrentSelection(self, *a, **k):
-		pass
-	def zap(self, *a, **k):
-		pass
-	def addToHistory(self, *a, **k):
-		pass
-	def saveChannel(self, *a, **k):
-		pass
-	def clearPath(self, *a, **k):
-		pass
-
-
 class FootOnSat(Screen):
 	def __init__(self, session, link, *args):
 		#logdata("FootOnSat-INIT", "Plugin initialization started.")
@@ -258,12 +238,6 @@ class FootOnSat(Screen):
 		self.MENUTEXT = "Press Menu to select zap channel"
 		self.execing = False # FIX: Prevents AttributeError in base class's close() method
 		self.skin = SKIN_interface
-		if DreamOS() or not PY3:
-			self.servicelist = RAED_ChannelSelection2()
-		elif fileExists(OPENBH) or fileExists(OPENBH2) or fileExists(OPENVIX):
-			self.servicelist = self.session.instantiateDialog(RAED_ChannelSelection)
-		else:
-			self.servicelist = self.session.instantiateDialog(ChannelSelection)
 		self["setupActions"] = ActionMap(["FootOnsatActions", "ColorActions"],
 		{
 			"menu": self.menu,
