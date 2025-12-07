@@ -1,6 +1,1 @@
-- Add Red button = notification + zap
-- Fix clean save history from notification if disable it
-- Fix auto zap back to last channel on py2 imagea
-- Add new info widget for zap channel
-- Update UHD skin Thanks (dniestre)
-- Update ignore feature. To igonor league only in Today match
+- Fix some bugs on DreamOS Python2

@@ -298,27 +298,34 @@ class FootOnSat(Screen):
 			self["list1"].l.setItemHeight(175)
 			sel = self["list1"].getSelectionIndex()
 			if sel >= 0 and sel < len(self.matches):
-				match = self.matches[sel][0]
+				match = self.matches[sel][0] 
 				if self.checkIfexist(match):
 					self["menu"].setText(self.MENUTEXT)
+					key = re.sub(r'\s+', '', match)
 					try:
-						key = re.sub(r'\s+', '', match)
 						conn = connect(DB_PATH)
 						c = conn.cursor()
 						c.execute("SELECT ref FROM zap_channels WHERE match = ?", (key,))
 						z = c.fetchone()
 						conn.close()
 						if z:
-							service_ref = eServiceReference(z[0])
+							service_ref_string = z[0]
+							#logdata("ZAP_DEBUG", "Raw zap ref from DB: '%s' (type: %s)" % (service_ref_string, type(service_ref_string)))
+							if not PY3 and isinstance(service_ref_string, unicode):
+								service_ref_string = service_ref_string.encode('utf-8', 'ignore')
+							service_ref = eServiceReference(service_ref_string)
 							info = eServiceCenter.getInstance().info(service_ref)
 							channel_name = info.getName(service_ref) if info else ""
+							#logdata("ZAP_DEBUG", "Fetched channel name: '%s'" % channel_name)
 							if channel_name:
 								self["menu2"].setText("Will be Zap to >> " + channel_name)
 							else:
 								self["menu2"].setText("")
 						else:
+							#logdata("ZAP_DEBUG", "No zap ref found for match → '%s'" % key)
 							self["menu2"].setText("")
-					except:
+					except Exception as e:
+						#logdata("ZAP_DEBUG", "Error fetching zap ref: %s" % str(e))
 						self["menu2"].setText("")
 				else:
 					self["menu"].setText("")
@@ -326,6 +333,7 @@ class FootOnSat(Screen):
 			else:
 				self["menu"].setText("")
 				self["menu2"].setText("")
+
 			if isUHD():
 				self["list1"].l.setFont(0, gFont('Regular', 36))
 			else:
@@ -675,16 +683,23 @@ class FootOnSat(Screen):
 						z = c.fetchone()
 						conn.close()
 						if z:
-							service_ref = eServiceReference(z[0])
+							service_ref_string = z[0]
+							#logdata("ZAP_DEBUG", "Raw zap ref from DB: '%s' (type: %s)" % (service_ref_string, type(service_ref_string)))
+							if not PY3 and isinstance(service_ref_string, unicode):
+								service_ref_string = service_ref_string.encode('utf-8', 'ignore')
+							service_ref = eServiceReference(service_ref_string)
 							info = eServiceCenter.getInstance().info(service_ref)
 							channel_name = info.getName(service_ref) if info else ""
+							#logdata("ZAP_DEBUG", "Fetched channel name: '%s'" % channel_name)
 							if channel_name:
 								self["menu2"].setText("Will be Zap to >> " + channel_name)
 							else:
 								self["menu2"].setText("")
 						else:
+							#logdata("ZAP_DEBUG", "No zap ref found for match → '%s'" % key)
 							self["menu2"].setText("")
-					except:
+					except Exception as e:
+						#logdata("ZAP_DEBUG", "Error fetching zap ref: %s" % str(e))
 						self["menu2"].setText("")
 				else:
 					self["menu"].setText("")
@@ -692,9 +707,9 @@ class FootOnSat(Screen):
 			else:
 				self["menu"].setText("")
 				self["menu2"].setText("")
+
 		if self.selectedList == self["list2"]:
 			self.updateChannelData()
-
 
 	def listDOWN(self):
 		if self.selectedList.getCurrent():
