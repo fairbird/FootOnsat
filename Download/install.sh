@@ -11,7 +11,14 @@ TMP_ASSETS="/tmp/assets"
 
 E2Settings='/etc/enigma2/settings'
 SETTING_NAME="config.plugins.FootOnSat.icons"
-CURRENT_VALUE=$(grep "^$SETTING_NAME=" "$E2Settings" | awk -F '=' '{print $2}' | tr -d '\n\r' | sed 's/s\///')
+CURRENT_VALUE=$(
+    grep "^$SETTING_NAME=" "$E2Settings" \
+    | awk -F '=' '{print $2}' \
+    | tr -d '\n\r' \
+    | sed 's#s/##'
+)
+
+[ -z "$CURRENT_VALUE" ] && CURRENT_VALUE="icons_default"
 
 if [ -f /etc/apt/apt.conf ] ; then
 	STATUS='/var/lib/dpkg/status'
@@ -271,9 +278,6 @@ if [ -d $PLUGIN_PATH ]; then
 	echo ""
 	FILE_NAME=""
 	case "$CURRENT_VALUE" in
-	    "icons_default")
-		  FILE_NAME="icons_default.tar.gz"
-		  ;;
 	    "icons_renkli")
 		  FILE_NAME="icons_renkli.tar.gz"
 		  ;;
@@ -284,7 +288,7 @@ if [ -d $PLUGIN_PATH ]; then
 		  FILE_NAME="icons_italia2012.tar.gz"
 		  ;;
 	    *)
-		  # If no match, FILE_NAME remains empty
+		  FILE_NAME="icons_default.tar.gz"
 		  ;;
 	esac
 	if [ -n "$FILE_NAME" ]; then
@@ -308,7 +312,7 @@ echo
 echo ""
 echo "#########################################################"
 echo "#          FootOnsat INSTALLED SUCCESSFULLY             #"
-echo "#              BY ZIKO  & Redouane & Raed               #"
+echo "#        BY ZIKO & Redouane & Raed (fairbird)           #"
 echo "#########################################################"
 echo "#                Restart Enigma2 GUI                    #"
 echo "#########################################################"
