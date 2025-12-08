@@ -58,6 +58,26 @@ try:
 except ImportError:
 	from urlparse import urlparse
 
+def logdata(label_name = "", data = None):
+	try:
+		data=str(data)
+		with io.open("/tmp/FootOnSat.log", "a", encoding="utf-8") as fp:
+			fp.write(str(label_name) + " : " + data + "\n")
+	except:
+		pass
+
+def trace_error():
+	try:
+		traceback.print_exc(file=sys.stdout)
+		traceback.print_exc(file=open("/tmp/FootOnSat.log", "a"))
+	except:
+		pass
+
+def DreamOS():
+	if os.path.exists('/var/lib/dpkg/status'):
+		return True
+	return False
+
 # Check for PIL availability first, and import if found
 try:
 	from PIL import Image
@@ -182,28 +202,6 @@ log_urls = {
 	"afcchampionstwo": "https://www.worldfootball.net/competition/afc-champions-league-two/",
 }
 
-def logdata(label_name = "", data = None):
-	try:
-		data=str(data)
-		fp = open("/tmp/FootOnSat.log", "a")
-		fp.write( str(label_name) + " : " + data+"\n")
-		fp.close()
-	except:
-		trace_error()    
-		pass
-
-def trace_error():
-	try:
-		traceback.print_exc(file=sys.stdout)
-		traceback.print_exc(file=open("/tmp/FootOnSat.log", "a"))
-	except:
-		pass
-
-def DreamOS():
-	if os.path.exists('/var/lib/dpkg/status'):
-		return True
-	return False
-
 # Place this function at the top level of your script (outside the StandingsScreen class)
 def sanitize_team_name(team):
 	"""Replaces problematic characters (non-ASCII, spaces, etc.) for use in permanent filenames."""
@@ -303,11 +301,12 @@ class FootOnSat(Screen):
 					self["menu"].setText(self.MENUTEXT)
 					key = re.sub(r'\s+', '', match)
 					try:
-						conn = connect(DB_PATH)
-						c = conn.cursor()
-						c.execute("SELECT ref FROM zap_channels WHERE match = ?", (key,))
-						z = c.fetchone()
-						conn.close()
+						# CRITICAL FIX 1: Use 'with connect' for guaranteed connection closure
+						with connect(DB_PATH) as conn:
+							c = conn.cursor()
+							c.execute("SELECT ref FROM zap_channels WHERE match = ?", (key,))
+							z = c.fetchone()
+						
 						if z:
 							service_ref_string = z[0]
 							#logdata("ZAP_DEBUG", "Raw zap ref from DB: '%s' (type: %s)" % (service_ref_string, type(service_ref_string)))
@@ -677,11 +676,12 @@ class FootOnSat(Screen):
 					self["menu"].setText(self.MENUTEXT)
 					key = re.sub(r'\s+', '', match)
 					try:
-						conn = connect(DB_PATH)
-						c = conn.cursor()
-						c.execute("SELECT ref FROM zap_channels WHERE match = ?", (key,))
-						z = c.fetchone()
-						conn.close()
+						# CRITICAL FIX 1: Use 'with connect' for guaranteed connection closure
+						with connect(DB_PATH) as conn:
+							c = conn.cursor()
+							c.execute("SELECT ref FROM zap_channels WHERE match = ?", (key,))
+							z = c.fetchone()
+						
 						if z:
 							service_ref_string = z[0]
 							#logdata("ZAP_DEBUG", "Raw zap ref from DB: '%s' (type: %s)" % (service_ref_string, type(service_ref_string)))
@@ -787,17 +787,17 @@ class FootOnSat(Screen):
 		normalized_match = normalized_match.replace(' ', '') # REMOVE ALL SPACES to match original SQL intent
 		# END FIX
 
-		logdata("ZAP_DEBUG", "SAVING ZAP REF → '%s' → %s (%s)" % (normalized_match, channel_name, ref_string))
+		#logdata("ZAP_DEBUG", "SAVING ZAP REF → '%s' → %s (%s)" % (normalized_match, channel_name, ref_string))
 
 		try:
-			conn = connect(DB_PATH)
-			c = conn.cursor()
-			c.execute('''CREATE TABLE IF NOT EXISTS zap_channels (match TEXT PRIMARY KEY,ref TEXT)''')
-			# Insert using the fully normalized key (which has no spaces)
-			c.execute("INSERT OR REPLACE INTO zap_channels (match, ref) VALUES (?, ?)", (normalized_match, ref_string))
-			conn.commit()
-			conn.close()
-			logdata("ZAP_DEBUG", "ZAP REF SAVED SUCCESSFULLY → %s" % ref_string)
+			# CRITICAL FIX: Use 'with connect' for guaranteed connection closure
+			with connect(DB_PATH) as conn:
+				c = conn.cursor()
+				c.execute('''CREATE TABLE IF NOT EXISTS zap_channels (match TEXT PRIMARY KEY,ref TEXT)''')
+				# Insert using the fully normalized key (which has no spaces)
+				c.execute("INSERT OR REPLACE INTO zap_channels (match, ref) VALUES (?, ?)", (normalized_match, ref_string))
+				conn.commit()
+			#logdata("ZAP_DEBUG", "ZAP REF SAVED SUCCESSFULLY → %s" % ref_string)
 		except Exception as e:
 			logdata("ZAP_DEBUG", "SAVE ERROR: %s" % str(e))
 
@@ -834,13 +834,13 @@ class FootOnSat(Screen):
 						# --- CLEAN DB ACTION --- remove notification + zap
 						cur.execute("DELETE FROM LIVE_NOTIF WHERE MATCH = ?", (match,))
 						cur.execute("DELETE FROM zap_channels WHERE match = ?", (re.sub(r'\s+', '', match),))
-						logdata("FootOnSatNotif", "CLEANED DB: Removed notification and zap for match: %s" % match)
+						#logdata("FootOnSatNotif", "CLEANED DB: Removed notification and zap for match: %s" % match)
 					else:
 						# --- SELECT ACTION --- add notification
 						first_notif, message = self.setFirstNotifTime(match_date)
 						cur.execute("INSERT INTO LIVE_NOTIF(MATCH,COMPET,DATE,TEAM1_FLAG,TEAM2_FLAG,FIRST_NOTIF,FIRST_NOTIF_STATUS,LIVE_NOTIF_STATUS,MESSAGE) values (?,?,?,?,?,?,?,?,?)", (
 							match, compet, match_date, flag1, flag2, first_notif, "Waiting", "Waiting", message,))
-						logdata("FootOnSatNotif", "SELECT: Inserted notification for match: %s. Notif time: %s" % (match, first_notif))
+						#logdata("FootOnSatNotif", "SELECT: Inserted notification for match: %s. Notif time: %s" % (match, first_notif))
 
 			self.iniMenu()
 
@@ -892,11 +892,12 @@ class FootOnSat(Screen):
 				return 0
 		key = re.sub(r'\s+', '', match_key)
 		try:
-			conn = connect(DB_PATH)
-			c = conn.cursor()
-			c.execute("SELECT ref FROM zap_channels WHERE match = ?", (key,))
-			z = c.fetchone()
-			conn.close()
+			# CRITICAL FIX: Use 'with connect' for guaranteed connection closure
+			with connect(DB_PATH) as conn:
+				c = conn.cursor()
+				c.execute("SELECT ref FROM zap_channels WHERE match = ?", (key,))
+				z = c.fetchone()
+
 			if z:
 				return 2
 			else:
@@ -980,7 +981,7 @@ class FootOnSat(Screen):
 			try:
 				sniFactory = WebClientContextFactory()
 			except Exception as e:
-				logdata("fetch_live_results", "Failed to create WebClientContextFactory: %s" % str(e))
+				#logdata("fetch_live_results", "Failed to create WebClientContextFactory: %s" % str(e))
 				self.matches = [list(m) for m in self.matches]
 				self.iniMenu()
 				return
@@ -1901,8 +1902,8 @@ class FootOnsatNotifScreen(Screen):
 		if not self.instance:
 			return
 
-		logdata("ZAP_DEBUG", "=== NOTIFICATION START ===")
-		logdata("ZAP_DEBUG", "Match: '%s'" % match)
+		#logdata("ZAP_DEBUG", "=== NOTIFICATION START ===")
+		#logdata("ZAP_DEBUG", "Match: '%s'" % match)
 
 		# CRITICAL FIX 2: Normalize key to handle invisible spaces (\xa0) and remove ALL spaces
 		import re
@@ -1927,20 +1928,20 @@ class FootOnsatNotifScreen(Screen):
 
 		if zap_allowed:
 			try:
-				conn = connect(DB_PATH)
-				c = conn.cursor()
-				
-				# Search for the fully normalized key (which has no spaces)
-				c.execute("SELECT ref FROM zap_channels WHERE match = ?", (normalized_search_key,))
-				row = c.fetchone()
-				conn.close()
-
+				# CRITICAL FIX: Use 'with connect' for guaranteed connection closure
+				with connect(DB_PATH) as conn:
+					c = conn.cursor()
+					
+					# Search for the fully normalized key (which has no spaces)
+					c.execute("SELECT ref FROM zap_channels WHERE match = ?", (normalized_search_key,))
+					row = c.fetchone()
+					
 				if row and row[0]:
 					from enigma import eServiceReference
 					zap_ref = eServiceReference(str(row[0]))
-					logdata("ZAP_DEBUG", "ZAP BY REFERENCE FOUND → %s (%s)" % (zap_ref.getName(), row[0]))
-				else:
-					logdata("ZAP_DEBUG", "No zap ref found (Search key: '%s')" % normalized_search_key)
+					#logdata("ZAP_DEBUG", "ZAP BY REFERENCE FOUND → %s (%s)" % (zap_ref.getName(), row[0]))
+				#else:
+					#logdata("ZAP_DEBUG", "No zap ref found (Search key: '%s')" % normalized_search_key)
 					
 			except Exception as e:
 				logdata("ZAP_DEBUG", "ZAP LOOKUP ERROR: %s" % str(e))
@@ -1958,13 +1959,13 @@ class FootOnsatNotifScreen(Screen):
 				InfoBar.instance.session.nav.playService(zap_ref)
 				InfoBar.instance.servicelist.addToHistory(zap_ref)
 				logdata("ZAP_DEBUG", "playService called — channel switching...")
-			else:
+			#else:
 				# No Zap channel found: Do nothing. (NO ACTION, NO SOUND)
-				logdata("ZAP_DEBUG", "Zap only mode (Option 2) selected. No Zap channel found, skipping notification and zap.")
+				#logdata("ZAP_DEBUG", "Zap only mode (Option 2) selected. No Zap channel found, skipping notification and zap.")
 			
 			# Notification is suppressed: Manually advance queue and RETURN
 			self._display_next_in_queue()
-			logdata("ZAP_DEBUG", "=== NOTIFICATION END ===\n")
+			#logdata("ZAP_DEBUG", "=== NOTIFICATION END ===\n")
 			return # Exit to prevent calling _do_actual_display
 		
 		# Default path (Option "1" or Zap disabled): Proceed to display the notification
@@ -1976,9 +1977,9 @@ class FootOnsatNotifScreen(Screen):
 			logdata("ZAP_DEBUG", "Cannot show popup – no instance")
 			return
 
-		logdata("ZAP_DEBUG", "SHOWING NOTIFICATION POPUP: %s" % match)
-		if message:
-			logdata("ZAP_DEBUG", "Message: %s" % message)
+		#logdata("ZAP_DEBUG", "SHOWING NOTIFICATION POPUP: %s" % match)
+		#if message:
+		#	logdata("ZAP_DEBUG", "Message: %s" % message)
 
 		self['match'].setText(str(match))
 		if message:
@@ -2002,24 +2003,24 @@ class FootOnsatNotifScreen(Screen):
 		self._play_tone() 
 
 		FootOnSatNotifDialog.dialog.show()
-		logdata("ZAP_DEBUG", "NOTIFICATION POPUP IS NOW VISIBLE")
+		#logdata("ZAP_DEBUG", "NOTIFICATION POPUP IS NOW VISIBLE")
 		
 		# 🔥 Perform the Zap and Delay HERE for option "1"
 		if zap_ref:
 			try:
 				# 👇 DELAY HERE to let the user see/hear the notification FIRST
 				time.sleep(2.0)
-				logdata("ZAP_DEBUG", "Delay finished, executing Zap.")
+				#logdata("ZAP_DEBUG", "Delay finished, executing Zap.")
 				InfoBar.instance.session.nav.playService(zap_ref)
 				InfoBar.instance.servicelist.addToHistory(zap_ref)
-				logdata("ZAP_DEBUG", "playService called — channel switching...")
+				#logdata("ZAP_DEBUG", "playService called — channel switching...")
 
 			except Exception as e:
 				logdata("ZAP_DEBUG", "ZAP EXECUTION ERROR: %s" % str(e))
-		else:
-			logdata("ZAP_DEBUG", "Zap not required.")
+		#else:
+			#logdata("ZAP_DEBUG", "Zap not required.")
 
-		logdata("ZAP_DEBUG", "=== NOTIFICATION END ===\n")
+		#logdata("ZAP_DEBUG", "=== NOTIFICATION END ===\n")
 
 	def _display_next_in_queue(self):
 		"""Pulls the next match from the queue, displays it, and schedules the next display or hides the dialog."""
@@ -2224,7 +2225,7 @@ class FootOnsatNotifScreen(Screen):
 							# 3. Delete from zap_channels using the cleaned key
 							cur.execute("DELETE FROM zap_channels WHERE match = ?", (normalized_zap_key,))
 							
-							logdata("FootOnSatNotif", "CLEANUP SUCCESSFUL: Deleted LIVE_NOTIF and zap_channels for match: %s" % match_name)
+							#logdata("FootOnSatNotif", "CLEANUP SUCCESSFUL: Deleted LIVE_NOTIF and zap_channels for match: %s" % match_name)
 
 					except Exception as e:
 						logdata("FootOnSatNotif", "Error during record cleanup (%s): %s" % (date_string, str(e)))
