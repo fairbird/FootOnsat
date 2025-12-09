@@ -2,6 +2,7 @@
 import os
 import io
 import re
+import gc
 import sys
 import json
 import math
@@ -184,18 +185,17 @@ log_urls = {
 
 def logdata(label_name = "", data = None):
 	try:
-		data=str(data)
-		fp = open("/tmp/FootOnSat.log", "a")
-		fp.write( str(label_name) + " : " + data+"\n")
-		fp.close()
+		data = str(data)
+		with open("/tmp/FootOnSat.log", "a") as fp:
+			fp.write(str(label_name) + " : " + data + "\n")
 	except:
-		trace_error()    
 		pass
 
 def trace_error():
 	try:
+		with open("/tmp/FootOnSat.log", "a") as f:
+			traceback.print_exc(file=f)
 		traceback.print_exc(file=sys.stdout)
-		traceback.print_exc(file=open("/tmp/FootOnSat.log", "a"))
 	except:
 		pass
 
@@ -303,11 +303,10 @@ class FootOnSat(Screen):
 					self["menu"].setText(self.MENUTEXT)
 					key = re.sub(r'\s+', '', match)
 					try:
-						conn = connect(DB_PATH)
-						c = conn.cursor()
-						c.execute("SELECT ref FROM zap_channels WHERE match = ?", (key,))
-						z = c.fetchone()
-						conn.close()
+						with connect(DB_PATH) as conn: # <-- FIX: Use 'with' statement for guaranteed closing
+							c = conn.cursor()
+							c.execute("SELECT ref FROM zap_channels WHERE match = ?", (key,))
+							z = c.fetchone()
 						if z:
 							service_ref_string = z[0]
 							#logdata("ZAP_DEBUG", "Raw zap ref from DB: '%s' (type: %s)" % (service_ref_string, type(service_ref_string)))
@@ -677,11 +676,10 @@ class FootOnSat(Screen):
 					self["menu"].setText(self.MENUTEXT)
 					key = re.sub(r'\s+', '', match)
 					try:
-						conn = connect(DB_PATH)
-						c = conn.cursor()
-						c.execute("SELECT ref FROM zap_channels WHERE match = ?", (key,))
-						z = c.fetchone()
-						conn.close()
+						with connect(DB_PATH) as conn: # <-- FIX: Use 'with' statement for guaranteed closing
+							c = conn.cursor()
+							c.execute("SELECT ref FROM zap_channels WHERE match = ?", (key,))
+							z = c.fetchone()
 						if z:
 							service_ref_string = z[0]
 							#logdata("ZAP_DEBUG", "Raw zap ref from DB: '%s' (type: %s)" % (service_ref_string, type(service_ref_string)))
@@ -790,13 +788,12 @@ class FootOnSat(Screen):
 		logdata("ZAP_DEBUG", "SAVING ZAP REF → '%s' → %s (%s)" % (normalized_match, channel_name, ref_string))
 
 		try:
-			conn = connect(DB_PATH)
-			c = conn.cursor()
-			c.execute('''CREATE TABLE IF NOT EXISTS zap_channels (match TEXT PRIMARY KEY,ref TEXT)''')
-			# Insert using the fully normalized key (which has no spaces)
-			c.execute("INSERT OR REPLACE INTO zap_channels (match, ref) VALUES (?, ?)", (normalized_match, ref_string))
-			conn.commit()
-			conn.close()
+			with connect(DB_PATH) as conn: # <-- FIX: Use 'with' for transaction safety and guaranteed close
+				c = conn.cursor()
+				c.execute('CREATE TABLE IF NOT EXISTS zap_channels (match TEXT primary key, ref TEXT)''')
+				# Insert using the fully normalized key (which has no spaces)
+				c.execute("INSERT OR REPLACE INTO zap_channels (match, ref) VALUES (?, ?)", (normalized_match, ref_string))
+				# conn.commit() is implicitly called if the 'with' block exits without error
 			logdata("ZAP_DEBUG", "ZAP REF SAVED SUCCESSFULLY → %s" % ref_string)
 		except Exception as e:
 			logdata("ZAP_DEBUG", "SAVE ERROR: %s" % str(e))
@@ -884,24 +881,29 @@ class FootOnSat(Screen):
 			match_key = match
 		else:
 			match_key = match.decode('utf-8')
+		
+		# Connection 1: Using 'with' (Good)
 		with connect(DB_PATH) as conn:
 			cur = conn.cursor()
 			cur.execute("SELECT MATCH FROM LIVE_NOTIF WHERE MATCH = ?", (match_key,))
 			data = cur.fetchone()
 			if data is None:
 				return 0
+		
 		key = re.sub(r'\s+', '', match_key)
 		try:
-			conn = connect(DB_PATH)
-			c = conn.cursor()
-			c.execute("SELECT ref FROM zap_channels WHERE match = ?", (key,))
-			z = c.fetchone()
-			conn.close()
+			# Connection 2: FIX! Use 'with' here to ensure the connection is closed
+			with connect(DB_PATH) as conn:
+				c = conn.cursor()
+				c.execute("SELECT ref FROM zap_channels WHERE match = ?", (key,))
+				z = c.fetchone()
+			# 'conn.close()' is now called automatically when the 'with' block exits
+			
 			if z:
 				return 2
 			else:
 				return 1
-		except:
+		except Exception as e: # It's good practice to catch a specific exception or log the error
 			return 1
 
 	def getTime(self, match_date):
@@ -1074,9 +1076,10 @@ class FootOnSat(Screen):
 
 				# url1 always
 				try:
-					r = requests.get(url1, headers=headers2, timeout=20)
-					r.raise_for_status()
-					results.append(r.content)
+					with requests.get(url1, headers=headers2, timeout=20) as r:
+						r.raise_for_status()
+						# Read content *inside* the 'with' block
+						results.append(r.content)
 					#logdata("fetch_live_results", "DEBUG URL1 (Py2) OK (%d KB)" % (len(r.content)//1024))
 				except Exception as e:
 					logdata("fetch_live_results", "DEBUG URL1 (Py2) FAILED: %s" % str(e))
@@ -1927,14 +1930,15 @@ class FootOnsatNotifScreen(Screen):
 
 		if zap_allowed:
 			try:
-				conn = connect(DB_PATH)
-				c = conn.cursor()
+				# FIX! Use 'with' here to ensure the connection is closed
+				with connect(DB_PATH) as conn:
+					c = conn.cursor()
+					
+					# Search for the fully normalized key (which has no spaces)
+					c.execute("SELECT ref FROM zap_channels WHERE match = ?", (normalized_search_key,))
+					row = c.fetchone()
+				# 'conn.close()' is now called automatically
 				
-				# Search for the fully normalized key (which has no spaces)
-				c.execute("SELECT ref FROM zap_channels WHERE match = ?", (normalized_search_key,))
-				row = c.fetchone()
-				conn.close()
-
 				if row and row[0]:
 					from enigma import eServiceReference
 					zap_ref = eServiceReference(str(row[0]))
@@ -1946,7 +1950,6 @@ class FootOnsatNotifScreen(Screen):
 				logdata("ZAP_DEBUG", "ZAP LOOKUP ERROR: %s" % str(e))
 				zap_ref = None # Ensure it is None on error
 
-		
 		# 🔥 CORRECTED FEATURE LOGIC START
 		
 		if config.plugins.FootOnSat.notify_zap.value == "2":
@@ -2185,6 +2188,8 @@ class FootOnsatNotifScreen(Screen):
 			logdata("FootOnSatNotif", "ERROR in checkforNotif: %s" % str(e))
 		
 		finally:
+			if 'gc' in sys.modules:  # Checks if the 'gc' (Garbage Collector) module is available and loaded.
+				gc.collect()         # Forces immediate cleanup of unreferenced objects and file handles.
 			self.is_checking = False # Reset the lock ensures it can run again later
 
 	def deloldRecords(self):
@@ -2340,8 +2345,8 @@ class StandingsScreen(Screen):
 				season_id = parsed_url.fragment.split(':')[-1]
 			
 		except Exception as e:
-			#logdata("StandingsScreen", "ERROR during URL parsing: %s" % str(e))
-			trace_error()
+			logdata("StandingsScreen", "ERROR during URL parsing: %s" % str(e))
+			#trace_error()
 			
 		if not tournament_id or not season_id or not tournament_id.isdigit() or not season_id.isdigit():
 			#logdata("StandingsScreen", "CRITICAL ERROR: Failed to extract numeric IDs. T-ID:'%s', S-ID:'%s'." % (tournament_id, season_id))
@@ -2423,10 +2428,10 @@ class StandingsScreen(Screen):
 
 			def _fetch_with_requests_py2():
 				try:
-					r = requests.get(api_url, headers=headers2, timeout=10)
-					r.raise_for_status()
-					# Twisted expects a deferred result, which is the raw content
-					return r.content 
+					with requests.get(api_url, headers=headers2, timeout=10) as r: 
+						r.raise_for_status()
+						# Return content *after* reading it inside the 'with' block
+						return r.content
 				except Exception as e:
 					#logdata("StandingsScreen", "Python 2 Requests fetch failed: %s" % str(e))
 					# Raise to trigger the deferred errback
@@ -2550,8 +2555,8 @@ class StandingsScreen(Screen):
 			self.display_standings()
 
 		except Exception as e:
-			#logdata("StandingsScreen", "Failed to parse JSON for API %s: %s" % (api_url, str(e)))
-			trace_error()
+			logdata("StandingsScreen", "Failed to parse JSON for API %s: %s" % (api_url, str(e)))
+			#trace_error()
 			self.standings_data = []
 			self.display_standings()
 
@@ -2641,10 +2646,9 @@ class StandingsScreen(Screen):
 						'Cache-Control': 'no-cache',
 					}
 					
-					r = requests.get(logo_url, headers=py2_headers, timeout=5, verify=False)
-					r.raise_for_status()
-					
-					data = r.content
+					with requests.get(logo_url, headers=py2_headers, timeout=5, verify=False) as r:
+						r.raise_for_status()
+						data = r.content
 					
 					# === CRITICAL FIX: Ensure it’s actually image data (not HTML 403 page) ===
 					if not (data.startswith(b'\x89PNG') or data.startswith(b'\xff\xd8') or data.startswith(b'GIF')):
@@ -2674,8 +2678,8 @@ class StandingsScreen(Screen):
 						#logdata("Logos", "Converted and saved %s logo for '%s' to PNG via PIL." % (ext[1:].upper(), team_name))
 						success = True
 					except Exception as e:
-						#logdata("Logos", "PIL conversion FAILED for %s: %s" % (team_name, str(e)))
-						trace_error() # Include trace for better debugging
+						logdata("Logos", "PIL conversion FAILED for %s: %s" % (team_name, str(e)))
+						#trace_error() # Include trace for better debugging
 						# Fallback to simple copy if PIL fails (e.g., corrupted file)
 						shutil.copyfile(temp_file, filename_png)
 						success = True # Still logged as found
@@ -2692,8 +2696,8 @@ class StandingsScreen(Screen):
 				return success
 					
 			except Exception as e:
-				#logdata("Logos", "Failed to download/process logo for %s: %s" % (team_name, str(e)))
-				trace_error()
+				logdata("Logos", "Failed to download/process logo for %s: %s" % (team_name, str(e)))
+				#trace_error()
 				return False
 			finally:
 				# Ensure cleanup regardless of success/failure
