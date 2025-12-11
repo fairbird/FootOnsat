@@ -1076,10 +1076,9 @@ class FootOnSat(Screen):
 
 				# url1 always
 				try:
-					with requests.get(url1, headers=headers2, timeout=20) as r:
-						r.raise_for_status()
-						# Read content *inside* the 'with' block
-						results.append(r.content)
+					r = requests.get(url1, headers=headers2, timeout=20)
+					r.raise_for_status()
+					results.append(r.content)
 					#logdata("fetch_live_results", "DEBUG URL1 (Py2) OK (%d KB)" % (len(r.content)//1024))
 				except Exception as e:
 					logdata("fetch_live_results", "DEBUG URL1 (Py2) FAILED: %s" % str(e))
@@ -2428,10 +2427,10 @@ class StandingsScreen(Screen):
 
 			def _fetch_with_requests_py2():
 				try:
-					with requests.get(api_url, headers=headers2, timeout=10) as r: 
-						r.raise_for_status()
-						# Return content *after* reading it inside the 'with' block
-						return r.content
+					r = requests.get(api_url, headers=headers2, timeout=10)
+					r.raise_for_status()
+					# Twisted expects a deferred result, which is the raw content
+					return r.content 
 				except Exception as e:
 					#logdata("StandingsScreen", "Python 2 Requests fetch failed: %s" % str(e))
 					# Raise to trigger the deferred errback
@@ -2646,9 +2645,9 @@ class StandingsScreen(Screen):
 						'Cache-Control': 'no-cache',
 					}
 					
-					with requests.get(logo_url, headers=py2_headers, timeout=5, verify=False) as r:
-						r.raise_for_status()
-						data = r.content
+					r = requests.get(logo_url, headers=py2_headers, timeout=5, verify=False)
+					r.raise_for_status()
+					data = r.content
 					
 					# === CRITICAL FIX: Ensure it’s actually image data (not HTML 403 page) ===
 					if not (data.startswith(b'\x89PNG') or data.startswith(b'\xff\xd8') or data.startswith(b'GIF')):
