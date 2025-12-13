@@ -302,6 +302,8 @@ class FootOnSat(Screen):
 				if self.checkIfexist(match):
 					self["menu"].setText(self.MENUTEXT)
 					key = re.sub(r'\s+', '', match)
+					if not PY3:
+						key = key.decode('utf-8') if isinstance(key, str) else key
 					try:
 						with connect(DB_PATH) as conn: # <-- FIX: Use 'with' statement for guaranteed closing
 							c = conn.cursor()
@@ -675,6 +677,8 @@ class FootOnSat(Screen):
 				if self.checkIfexist(match):
 					self["menu"].setText(self.MENUTEXT)
 					key = re.sub(r'\s+', '', match)
+					if not PY3:
+						key = key.decode('utf-8') if isinstance(key, str) else key
 					try:
 						with connect(DB_PATH) as conn: # <-- FIX: Use 'with' statement for guaranteed closing
 							c = conn.cursor()
@@ -891,6 +895,8 @@ class FootOnSat(Screen):
 				return 0
 		
 		key = re.sub(r'\s+', '', match_key)
+		if not PY3:
+			key = key.decode('utf-8') if isinstance(key, str) else key
 		try:
 			# Connection 2: FIX! Use 'with' here to ensure the connection is closed
 			with connect(DB_PATH) as conn:
