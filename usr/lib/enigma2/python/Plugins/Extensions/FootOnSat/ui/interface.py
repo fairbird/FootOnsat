@@ -102,6 +102,8 @@ DB_PATH = '/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/db/footonsat.db'
 ## url for Standings table
 json_urls = {
 	# Champions league
+	"africancup": "https://www.sofascore.com/tournament/football/africa/africa-cup-of-nations/270#id:71636",
+	# Champions league
 	"championsleague": "https://www.sofascore.com/tournament/football/europe/uefa-champions-league/7#id:76953",
 	# Europa league
 	"europaleague": "https://www.sofascore.com/tournament/football/europe/uefa-europa-league/679#id:76984",
