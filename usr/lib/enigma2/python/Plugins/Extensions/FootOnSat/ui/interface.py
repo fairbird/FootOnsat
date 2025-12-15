@@ -833,6 +833,7 @@ class FootOnSat(Screen):
 			if datetime.strptime(match_date, "%H:%M - %Y-%m-%d") > datetime.now():
 				with connect(DB_PATH) as conn:
 					cur = conn.cursor()
+					cur.execute("CREATE TABLE IF NOT EXISTS zap_channels (match TEXT primary key, ref TEXT)")
 					if self.checkIfexist(match):
 						# --- CLEAN DB ACTION --- remove notification + zap
 						cur.execute("DELETE FROM LIVE_NOTIF WHERE MATCH = ?", (match,))
