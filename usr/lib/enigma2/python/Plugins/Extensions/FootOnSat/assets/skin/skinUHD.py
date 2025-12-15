@@ -111,7 +111,7 @@ SKIN_standings = """
     <eLabel text="Goals Scored | Conceded | Difference" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1882,300" size="610,70" zPosition="5" transparent="1" halign="center" />
 
     <!-- Standings list -->  
-    <widget name="standings_list" position="65,380" size="2434,958" scrollbarMode="showNever"
+    <widget name="standings_list" position="65,380" size="2434,948" scrollbarMode="showNever"
     		foregroundColor="#ffffff" foregroundColorSelected="#ffff00" enableWrapAround="1" transparent="1" zPosition="2" />
 
     <!-- Red key label -->
@@ -141,7 +141,7 @@ SKIN_standingsbasketball = """
     <eLabel text="Win Percentage" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="2230,300" size="260,70" zPosition="5" transparent="1" halign="center" />
 
     <!-- Standings list -->  
-    <widget name="standings_list" position="65,380" size="2434,958" scrollbarMode="showNever" foregroundColor="#ffffff" foregroundColorSelected="#ffff00" enableWrapAround="1" transparent="1" zPosition="2" />
+    <widget name="standings_list" position="65,380" size="2434,948" scrollbarMode="showNever" foregroundColor="#ffffff" foregroundColorSelected="#ffff00" enableWrapAround="1" transparent="1" zPosition="2" />
 
     <!-- Red key label -->
     <widget name="key_red" position="61,1376" size="1179,60" font="Regular;38" halign="left" foregroundColor="#FF0000" backgroundColor="#0000FF" zPosition="5" transparent="1" />
