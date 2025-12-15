@@ -2195,7 +2195,7 @@ class FootOnsatNotifScreen(Screen):
 			logdata("FootOnSatNotif", "ERROR in checkforNotif: %s" % str(e))
 		
 		finally:
-			if 'gc' in sys.modules:  # Checks if the 'gc' (Garbage Collector) module is available and loaded.
+			if 'gc' in sys.modules and sys.version_info >= (3, 14):  # Checks if the 'gc' (Garbage Collector) module is available and loaded.
 				gc.collect()         # Forces immediate cleanup of unreferenced objects and file handles.
 			self.is_checking = False # Reset the lock ensures it can run again later
 
