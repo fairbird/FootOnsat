@@ -441,7 +441,7 @@ class FootOnSat(Screen):
 				    	"basketball", "nba", "hockey", "nfl"
 				}
 				FOOTBALL = {
-				    	"championsleague", "europaleague", "ConferenceLeague", "premierleague",
+				    	"championsleague", "europaleague", "ConferenceLeague", "premierleague", "africancup",
 				    	"laliga", "laliga2", "championship", "seriea", "ligue1", "eredivisie", "saudiarabia",
 				    	"bundesliga", "bundesliga2", "belgianpro", "superLig", "liganos", "afcchampions", "afcchampionstwo"
 				}
