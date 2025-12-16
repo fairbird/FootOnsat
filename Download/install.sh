@@ -28,6 +28,25 @@ elif [ -f /etc/opkg/opkg.conf ] ; then
 	OS='Opensource'
 fi
 
+ARCH=$(uname -m)
+
+if echo "$ARCH" | grep -qi 'armv7l'; then
+	echo ':Your Device IS ARM processor ...'
+	DEVICE="arm"
+elif echo "$ARCH" | grep -qi 'aarch64'; then
+	echo ':Your Device IS AARCH64 processor ...'
+	DEVICE="arm64"
+elif echo "$ARCH" | grep -qi 'mips'; then
+	echo ':Your Device IS MIPS processor ...'
+	DEVICE="mips"
+elif echo "$ARCH" | grep -qi 'sh4'; then
+	echo ':Your Device IS SH4 processor ...'
+	DEVICE="sh4"
+else
+	echo 'Unknown Device'
+	DEVICE="unknown"
+fi
+
 # Find the highest python3.xx version in /usr/bin
 PYTHON_BIN=$(ls /usr/bin/python3.*[0-9] 2>/dev/null | \
     sed 's/[^0-9]*\([0-9]\+\)$/\1/' | sort -n | tail -n 1 | \
@@ -179,6 +198,18 @@ else
         apt-get install $REQUESTES -y
         echo "========================================================================"
     fi
+fi
+
+if ! grep -q 'ffmpeg' "$STATUS" || ! grep -q 'alsa-utils-aplay' "$STATUS"; then
+	if [ "$DEVICE" = "arm64" ]; then
+		cd /tmp
+		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/arm64/alsa-utils-aplay.deb"
+		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/arm64/alsa-utils-amixer.deb"
+		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/arm64/alsa-utils-arecord.deb"
+		dpkg -i --force-overwrite *.deb
+		apt-get install -f -y
+		cd ..
+	fi
 fi
 
 if ! grep -q 'ffmpeg' "$STATUS" || ! grep -q 'alsa-utils-aplay' "$STATUS"; then
