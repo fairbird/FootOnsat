@@ -451,7 +451,7 @@ class FootOnSat(Screen):
 					if config.plugins.FootOnSat.enableflag.value:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(212, 70), size=(40, 30), png=loadPNG(flagTeam1)))
 				else:
-					res.append(MultiContentEntryPixmapAlphaBlend(pos=(420, 70), size=(40, 30), png=loadPNG(flagTeam1)))
+					res.append(MultiContentEntryPixmapAlphaBlend(pos=(420, 74), size=(40, 30), png=loadPNG(flagTeam1)))
 				# Score team 1
 				if self.link not in SPORTS:
 					if isUHD():
@@ -477,7 +477,7 @@ class FootOnSat(Screen):
 						if config.plugins.FootOnSat.enableflag.value:
 							res.append(MultiContentEntryPixmapAlphaBlend(pos=(1420, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 					else:
-						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1550, 70), size=(40, 30), png=loadPNG(flagTeam2)))
+						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1550, 74), size=(40, 30), png=loadPNG(flagTeam2)))
 				else:
 					if self.link in (SPORTS | FOOTBALL):
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1030, 10), size=(160, 160), png=loadPNG(teamlog2)))
