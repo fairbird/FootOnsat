@@ -451,7 +451,7 @@ class FootOnSat(Screen):
 					if config.plugins.FootOnSat.enableflag.value:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(212, 70), size=(40, 30), png=loadPNG(flagTeam1)))
 				else:
-					res.append(MultiContentEntryPixmapAlphaBlend(pos=(420, 73), size=(40, 30), png=loadPNG(flagTeam1)))
+					res.append(MultiContentEntryPixmapAlphaBlend(pos=(420, 70), size=(40, 30), png=loadPNG(flagTeam1)))
 				# Score team 1
 				if self.link not in SPORTS:
 					if isUHD():
@@ -477,7 +477,7 @@ class FootOnSat(Screen):
 						if config.plugins.FootOnSat.enableflag.value:
 							res.append(MultiContentEntryPixmapAlphaBlend(pos=(1420, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 					else:
-						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1550, 73), size=(40, 30), png=loadPNG(flagTeam2)))
+						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1550, 70), size=(40, 30), png=loadPNG(flagTeam2)))
 				else:
 					if self.link in (SPORTS | FOOTBALL):
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(1030, 10), size=(160, 160), png=loadPNG(teamlog2)))
@@ -572,7 +572,10 @@ class FootOnSat(Screen):
 		else:
 			# If no data is found, display message in the list instead of a MessageBox
 			gList = []
-			no_schedules_text = _('No schedules in this section at this time')
+			if self.link == "live":
+				no_schedules_text = _('No Live matches at this time')
+			else:
+				no_schedules_text = _('No schedules in this section at this time')
 			# Set font and height (mirroring the 'if' block setup)
 			self["list1"].l.setItemHeight(175)
 			if isUHD():
@@ -597,7 +600,7 @@ class FootOnSat(Screen):
 			self['key_red'].hide()
 			self['key_yellow'].hide()
 			self['key_blue'].hide()
-			if self.link == "today":
+			if self.link in ["today", "live"]:
 				self['key_green'].hide()
 			else:
 				self['key_green'].show()
@@ -939,7 +942,8 @@ class FootOnSat(Screen):
 
 	def callAPI(self):
 		#logdata("FootOnSat-API", "Starting callAPI to fetch main schedule: %s" % self.link)
-		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/{}.json'.format(self.link)
+		url_link = "today" if self.link == "live" else self.link
+		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/{}.json'.format(url_link)
 		sniFactory = WebClientContextFactory(url)
 		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
             # This code only for test locale json files
@@ -1488,8 +1492,9 @@ class FootOnSat(Screen):
 		
 		# ... (rest of the fetching and parsing logic) ...
 
-		if self.js['footonsat'] != []:
-			for match in self.js['footonsat']:
+		if self.js.get('footonsat') or self.link == "live":
+			target_data = self.js.get('footonsat', [])
+			for match in target_data:
 				try:
 					compet = str(match['compet']).strip()
 					for suffix in [' - Week ', ' - Matchday ', ' - Round ']:
@@ -1511,16 +1516,17 @@ class FootOnSat(Screen):
 						append_match = False
 
 						if is_upcoming:
-							append_match = True
-							team1_score = "" # Clear initial scores for upcoming matches
+							# Today shows upcoming, Live does not
+							append_match = False if self.link == "live" else True
+							team1_score = "" 
 							team2_score = ""
 						elif is_live:
+							# Keep your original logic exactly as it was
 							if config.plugins.FootOnSat.livescore.value in ["2", "3"]:
 								append_match = True
-							# If config.livescore.value is NOT "3", scores are cleared later if needed, but we keep them here for the upcoming live score fetch.
 						else:
-							# Skip past matches outside the LIVE_DURATION window
-							pass
+							# For finished matches: Only show in Live section
+							append_match = True if self.link == "live" else False
 
 						# This code to correction the names
 						match_name = match['match'] \
@@ -1528,6 +1534,9 @@ class FootOnSat(Screen):
 							.replace("Preston N.E.", "Preston N.E")
 
 						if append_match:
+							if self.link == "live" and not is_live:
+								continue
+
 							list.append([
 									str(match_name),
 									str(match['time']) + ' - ' + str(match['date']),
@@ -1547,10 +1556,12 @@ class FootOnSat(Screen):
 
 			# Only fetch live results for live/finished matches if livescore is set to "3"
 			if config.plugins.FootOnSat.livescore.value == "3":
-				if config.plugins.FootOnSat.livescoresections.value == "1":
+				# Added 'and self.link != "today"' to block scores for the today section
+				if config.plugins.FootOnSat.livescoresections.value == "1" and self.link != "today":
 					self.fetch_live_results()
 				elif config.plugins.FootOnSat.livescoresections.value == "2":
-					if self.link == "today":
+					# Logic: If setting is 'Specific Section', use it for 'live'
+					if self.link == "live":
 						self.fetch_live_results()
 
 			self.onWindowShow()

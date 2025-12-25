@@ -171,9 +171,14 @@ class FootOnsatLauncher(Screen):
 			logdata("getData-json-error", str(e))
 			self.error("JSON parsing failed: " + str(e))
 			return
-		ordering = ["today", "championsleague", "europaleague", "ConferenceLeague", "premierleague", "laliga", "seriea",
+		ordering = ["live", "today", "championsleague", "europaleague", "ConferenceLeague", "premierleague", "laliga", "seriea",
 		"bundesliga", "bundesliga2", "ligue1", "saudiarabia", "worldcup", "africancup", "afcchampions", "afcchampionstwo","championship", "cafchampions", "superLig",
 		"belgianpro", "eredivisie", "laliga2", "liganos", "basketball", "nba", "hockey", "nfl", "formula1"]
+
+		# Ensure "live" is always present even if not in JSON
+		if "live" not in compet:
+			compet = list(compet)
+			compet.append("live")
 		# Keep only items in ordering, then sort according to ordering
 		# filtered_compet = [c for c in ordering if c in compet]
 		# self.menuList = self.custom_sort(ordering, filtered_compet)
