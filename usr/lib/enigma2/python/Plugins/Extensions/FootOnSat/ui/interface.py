@@ -1516,16 +1516,22 @@ class FootOnSat(Screen):
 						append_match = False
 
 						if is_upcoming:
-							# Today shows upcoming, Live does not
+							# Today shows only matches that have NOT started yet
+							# Live does not show upcoming matches
 							append_match = False if self.link == "live" else True
 							team1_score = "" 
 							team2_score = ""
 						elif is_live:
-							# Keep your original logic exactly as it was
-							if config.plugins.FootOnSat.livescore.value in ["2", "3"]:
-								append_match = True
+							# IMPORTANT: Once a match is LIVE, it is REMOVED from Today
+							# and only appended if we are in the 'live' section (or league sections)
+							if self.link == "today":
+								append_match = False
+							else:
+								# Keep your original check for other sections
+								if config.plugins.FootOnSat.livescore.value in ["2", "3"]:
+									append_match = True
 						else:
-							# For finished matches: Only show in Live section
+							# Finished matches: Only show in Live section
 							append_match = True if self.link == "live" else False
 
 						# This code to correction the names

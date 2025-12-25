@@ -1,2 +1,3 @@
 - Add new section (Live) For Live + Finished matches only
 - No more result append in (Match Today) only in (Live) and other sections
+- Any matches started and after moved to (Live) section then will be hiding from (Match Today) immediately
