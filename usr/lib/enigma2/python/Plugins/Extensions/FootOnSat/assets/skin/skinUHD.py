@@ -158,7 +158,7 @@ if DreamOS():
 			    <eLabel position="1245,1235" size="300,3" backgroundColor="#00FF00" zPosition="5" />
 			    <widget source="key_red" render="Label" position="296,1185" size="353,50" font="Regular;38" halign="center" foregroundColor="#00ffffff" backgroundColor="#0000FF" zPosition="5" transparent="1" />
 			    <widget source="key_green" render="Label" position="1215,1185" size="353,50" font="Regular;38" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
-			    <widget name="config" position="76,194" size="1627,875" backgroundColor="#00000000" scrollbarMode="showOnDemand" transparent="1" zPosition="2" />
+			    <widget name="config" position="76,194" size="1627,875" backgroundColor="#00000000"  backgroundColorSelected="#0000FF" scrollbarMode="showOnDemand" transparent="1" zPosition="2" />
 			    <widget source="help" render="Label" position="1760,389" size="710,188" font="Regular;29" foregroundColor="#00e5b243" backgroundColor="#16000000" halign="center" transparent="1" zPosition="5" />
 			    <widget name="Picture" position="1900,830" size="480,340" zPosition="5" alphatest="blend" />
 			    <widget font="Regular;47" foregroundColor="#00ffffff" backgroundColor="#16000000" halign="center" position="center,13" render="Label" size="811,70" source="global.CurrentTime" transparent="1" valign="center" zPosition="5">
@@ -176,7 +176,7 @@ else:
 			    <eLabel position="1245,1235" size="300,3" backgroundColor="#00FF00" zPosition="5" />
 			    <widget source="key_red" render="Label" position="296,1185" size="353,50" font="Regular;38" halign="center" foregroundColor="#00ffffff" backgroundColor="#0000FF" zPosition="5" transparent="1" />
 			    <widget source="key_green" render="Label" position="1215,1185" size="353,50" font="Regular;38" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
-			    <widget name="config" font="Regular;28" secondfont="Regular;28" itemHeight="45" position="76,194" size="1627,875" backgroundColor="#00000000" scrollbarMode="showOnDemand" transparent="1" zPosition="2" />
+			    <widget name="config" font="Regular;28" secondfont="Regular;28" itemHeight="45" position="76,194" size="1627,875" backgroundColor="#00000000"  backgroundColorSelected="#0000FF" scrollbarMode="showOnDemand" transparent="1" zPosition="2" />
 			    <widget source="help" render="Label" position="1760,389" size="710,188" font="Regular;29" foregroundColor="#00e5b243" backgroundColor="#16000000" halign="center" transparent="1" zPosition="5" />
 			    <widget name="Picture" position="1900,830" size="480,340" zPosition="5" alphatest="blend" />
 			    <widget font="Regular;47" foregroundColor="#00ffffff" backgroundColor="#16000000" halign="center" position="center,13" render="Label" size="811,70" source="global.CurrentTime" transparent="1" valign="center" zPosition="5">
