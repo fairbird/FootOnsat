@@ -57,8 +57,8 @@ SKIN_interface = """
     <eLabel position="1774,894" zPosition="5" size="80,85" text="" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;80" transparent="1" />
     <eLabel position="1776,1011" zPosition="5" size="80,85" text="" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;80" transparent="1" />
     <eLabel position="1780,1115" zPosition="5" size="80,80" text="" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;80" transparent="1" />
-    <widget name="menu" position="166,22" size="882,58" font="Regular;34" halign="left" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
-    <widget name="menu2" position="1421,22" size="1099,58" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1"/>
+    <widget name="menu" position="171,32" size="822,58" font="Regular;34" halign="left" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+    <widget name="menu2" position="1563,32" size="825,58" font="Regular;34" halign="right" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
     <widget name="channel" position="1934,811" size="514,52" font="Regular;34" halign="left" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
     <widget name="sat" position="1934,927" size="514,52" font="Regular;34" halign="left" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
     <widget name="freq" position="1934,1043" size="514,52" font="Regular;34" halign="left" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
@@ -69,10 +69,10 @@ SKIN_interface = """
     <widget name="key_blue" position="2067,1200" size="514,54" font="Regular;38" halign="left" foregroundColor="#1E90FF" backgroundColor="#0000FF" zPosition="5" transparent="1" />
     <widget name="list1" position="76,194" size="1627,875" scrollbarMode="showNever" selectionPixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/button1450x175.png" foregroundColor="#00ffffff" foregroundColorSelected="#00F9C731" backgroundColorSelected="#0000FF" enableWrapAround="1" transparent="1" zPosition="2" itemsPerPage="5" /> 
     <widget name="list2" position="1754,200" size="747,456" scrollbarMode="showNever" selectionPixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/list22selectionpixmap.png" foregroundColor="#00ffffff" foregroundColorSelected="#00F9C731" backgroundColorSelected="#0000FF" enableWrapAround="1" transparent="1" zPosition="3" />
-    <widget font="Regular;47" foregroundColor="#00ffffff" backgroundColor="#16000000" halign="center" position="1184,13" render="Label" size="191,70" source="global.CurrentTime" transparent="1" valign="center" zPosition="5">
-        <convert type="ClockToText">Default</convert>
+    <widget font="Regular;47" foregroundColor="#00ffffff" backgroundColor="#16000000" halign="center" position="center,13" render="Label" size="473,70" source="global.CurrentTime" transparent="1" valign="center" zPosition="5">
+        <convert type="ClockToText">Format:%H:%M  %a. %d.%m.%Y</convert>
     </widget>
-    <widget name="counter" foregroundColor="#00ffffff" backgroundColor="#16000000" position="874,1167" size="191,70" font="Regular;38" transparent="1" valign="center" zPosition="5" />
+    <widget name="counter" foregroundColor="#00ffffff" backgroundColor="#16000000" position="756,1167" halign="center" size="309,70" font="Regular;38" transparent="1" valign="center" zPosition="5" />
     <ePixmap position="767,1180" zPosition="6" size="43,43" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/spin-down.png" alphatest="blend" />
     <ePixmap position="1011,1180" zPosition="6" size="43,43" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/spin-up.png" alphatest="blend" />
 </screen>
@@ -85,7 +85,7 @@ SKIN_FootOnsatNotif = """
     <widget name="flag2" zPosition="5" position="1134,94" size="54,40" alphatest="blend" />
     <widget name="match" font="Regular;32" position="509,54" zPosition="2" valign="center" halign="center" size="622,120" backgroundColor="transparent" transparent="1" />
     <widget name="message" font="Regular;35" position="509,114" zPosition="2" valign="center" halign="center" size="622,120" backgroundColor="transparent" transparent="1" />
-    <widget name="live" zPosition="5" position="753,10" size="134,67" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/live_notifuhd.png" alphatest="blend" />
+    <widget name="live" zPosition="5" position="753,10" size="150,83" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/live_notifuhd.png" alphatest="blend" />
     <ePixmap position="0,0" zPosition="1" size="1200,234" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/notif_baruhd.png" alphatest="blend" />
 </screen>
 """
@@ -111,12 +111,11 @@ SKIN_standings = """
     <eLabel text="Goals Scored | Conceded | Difference" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1882,300" size="610,70" zPosition="5" transparent="1" halign="center" />
 
     <!-- Standings list -->  
-    <widget name="standings_list" position="65,380" size="2434,948" scrollbarMode="showNever"
+    <widget name="standings_list" position="65,380" size="2434,940" scrollbarMode="showNever"
     		foregroundColor="#ffffff" foregroundColorSelected="#ffff00" enableWrapAround="1" transparent="1" zPosition="2" />
 
     <!-- Red key label -->
-    <widget name="key_red" position="61,1376" size="1179,60" font="Regular;38" halign="left"
-        	foregroundColor="#FF0000" backgroundColor="#0000FF" zPosition="5" transparent="1" />
+    <widget name="key_red" position="61,1358" size="502,60" font="Regular;38" halign="left" foregroundColor="#00ffffff" backgroundColor="#0000FF" zPosition="5" transparent="1" />
 </screen>
 """
 
@@ -144,26 +143,28 @@ SKIN_standingsbasketball = """
     <widget name="standings_list" position="65,380" size="2434,948" scrollbarMode="showNever" foregroundColor="#ffffff" foregroundColorSelected="#ffff00" enableWrapAround="1" transparent="1" zPosition="2" />
 
     <!-- Red key label -->
-    <widget name="key_red" position="61,1376" size="1179,60" font="Regular;38" halign="left" foregroundColor="#FF0000" backgroundColor="#0000FF" zPosition="5" transparent="1" />
+    <widget name="key_red" position="61,1358" size="502,60" font="Regular;38" halign="left" foregroundColor="#00ffffff" backgroundColor="#0000FF" zPosition="5" transparent="1" />
 </screen>
 """
 
 if DreamOS():
 	SKIN_MenuFootOnSat = """
 		<screen name="MenuFootOnSat" position="0,0" size="2560,1440" backgroundColor="transparent" flags="wfNoBorder" title="MenuFootOnSat">
-			    <ePixmap position="0,0" zPosition="-1" size="2560,1440" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/bglist.png" scale="streach" />
-			    <ePixmap position="0,0" zPosition="1" size="2560,94" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/infobar_top.png" alphatest="blend" scale="streach" />
-			    <eLabel position="76,194" size="1627,875" backgroundColor="#262626" zPosition="0" />
-			    <eLabel position="326,1235" size="300,3" backgroundColor="#FF0000" zPosition="5" />
-			    <eLabel position="1245,1235" size="300,3" backgroundColor="#00FF00" zPosition="5" />
-			    <widget source="key_red" render="Label" position="296,1185" size="353,50" font="Regular;38" halign="center" foregroundColor="#00ffffff" backgroundColor="#0000FF" zPosition="5" transparent="1" />
-			    <widget source="key_green" render="Label" position="1215,1185" size="353,50" font="Regular;38" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
-			    <widget name="config" position="76,194" size="1627,875" backgroundColor="#00000000"  backgroundColorSelected="#0000FF" scrollbarMode="showOnDemand" transparent="1" zPosition="2" />
-			    <widget source="help" render="Label" position="1760,389" size="710,188" font="Regular;29" foregroundColor="#00e5b243" backgroundColor="#16000000" halign="center" transparent="1" zPosition="5" />
-			    <widget name="Picture" position="1900,830" size="480,340" zPosition="5" alphatest="blend" />
-			    <widget font="Regular;47" foregroundColor="#00ffffff" backgroundColor="#16000000" halign="center" position="center,13" render="Label" size="811,70" source="global.CurrentTime" transparent="1" valign="center" zPosition="5">
-				  <convert type="ClockToText">Format:%d-%m-%Y&#160;%H:%M:%S</convert>
-			    </widget>
+		<ePixmap position="0,0" zPosition="-1" size="2560,1440" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/bglist.png" scale="streach" />
+		<ePixmap position="0,0" zPosition="1" size="2560,94" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/infobar_top.png" alphatest="blend" scale="streach" />
+		<eLabel position="76,194" size="1627,875" backgroundColor="#262626" zPosition="0" />
+		<eLabel position="226,1235" size="300,3" backgroundColor="#FF0000" zPosition="5" />
+		<eLabel position="740,1235" size="300,3" backgroundColor="#00FF00" zPosition="5" />
+		<eLabel position="1245,1235" size="300,3" backgroundColor="#0000FF" zPosition="5" />
+		<widget source="key_red" render="Label" position="201,1185" size="353,50" font="Regular;38" halign="center" foregroundColor="#00ffffff" backgroundColor="#0000FF" zPosition="5" transparent="1" />
+		<widget source="key_green" render="Label" position="710,1185" size="353,50" font="Regular;38" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+		<widget source="key_blue" render="Label" position="1215,1185" size="353,50" font="Regular;38" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />	    
+		<widget name="config" position="76,194" size="1627,875" backgroundColor="#00000000" backgroundColorSelected="#0000FF" scrollbarMode="showOnDemand" transparent="1" zPosition="2" />
+		<widget source="help" render="Label" position="1760,389" size="710,188" font="Regular;29" foregroundColor="#00e5b243" backgroundColor="#16000000" halign="center" transparent="1" zPosition="5" />
+		<widget name="Picture" position="1900,830" size="480,340" zPosition="5" alphatest="blend" />
+		<widget font="Regular;47" foregroundColor="#00ffffff" backgroundColor="#16000000" halign="center" position="center,13" render="Label" size="811,70" source="global.CurrentTime" transparent="1" valign="center" zPosition="5">
+			<convert type="ClockToText">Format:%H:%M:%S</convert>
+			</widget>
 		</screen>
 	"""
 else:
