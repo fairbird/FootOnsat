@@ -417,7 +417,7 @@ class FootOnsatLauncher(Screen):
 						self.session.openWithCallback(
 							self.install,
 							MessageBox,
-							_("New version %s is available.\n\nDo want ot install now." % self.new_version),
+							_("New version %s is available.\n\nDo want to install now." % self.new_version),
 							MessageBox.TYPE_YESNO
 						)
 				except Exception as e:
@@ -454,11 +454,13 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			"cancel": self.cancel,
 			"red": self.cancel,
 			"green": self.save,
+			"blue": self.reinstall,
 			"ok": self.keyOk,
 		}, -1)
 
 		self["key_red"] = StaticText(_("Exit"))
 		self["key_green"] = StaticText(_("Save"))
+		self["key_blue"] = StaticText(_("Install Plugin"))
 
 		self["Picture"] = Pixmap()
 		self["help"] = StaticText()
@@ -679,6 +681,22 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			self.close("exit_launcher")
 		else:
 			self.close()
+
+	def reinstall(self):
+		self.session.openWithCallback(self.doinstall, MessageBox, _("Do You want to Reinstall pluign again ?!"), MessageBox.TYPE_YESNO)
+
+	def doinstall(self,answer=False):
+		try:
+			if answer:
+				cmdlist = []
+				cmd="wget -q https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh"
+				cmdlist.append(cmd)
+				self.session.open(Console, title='Installing last update, enigma will be started after install', cmdlist=cmdlist, finishedCallback=self.myCallback, closeOnSuccess=False)
+		except:
+			trace_error()
+	
+	def myCallback(self):
+		return
 
 	def restart(self,answer=None):
 		if answer:
