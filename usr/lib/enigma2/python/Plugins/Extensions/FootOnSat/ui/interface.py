@@ -549,7 +549,7 @@ class FootOnSat(Screen):
 						res.append(MultiContentEntryText(pos=(420, 15), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 				else:
 					if self.link in (SPORTS | FOOTBALL):
-						res.append(MultiContentEntryText(pos=(320, 15), size=(500, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
+						res.append(MultiContentEntryText(pos=(320, 15), size=(650, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 					else:
 						res.append(MultiContentEntryText(pos=(420, 15), size=(785, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 				gList.append(res)
