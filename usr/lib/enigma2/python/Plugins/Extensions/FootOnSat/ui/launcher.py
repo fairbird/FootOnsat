@@ -57,12 +57,12 @@ config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
 config.plugins.FootOnSat.enableflag = ConfigYesNo(default=True)
 config.plugins.FootOnSat.notiftime = ConfigInteger(default=6, limits=(6, 20))
 config.plugins.FootOnSat.notiffile = ConfigText(default="notif1", visible_width = 250, fixed_size = False)
-config.plugins.FootOnSat.livecolor = ConfigSelection(default = 0xFF0000, choices = [
-	(0xFF0000, _("RED")),
-	(0xFFFFFF, _("WHITE")),
-	(0x00FF00, _("GREEN")),
-	(0x000000, _("BLACK")),
-	(0x0000FF, _("BLUE"))
+config.plugins.FootOnSat.livecolor = ConfigSelection(default="0xFF0000", choices = [
+	("0xFF0000", _("RED")),
+	("0xFFFFFF", _("WHITE")),
+	("0x00FF00", _("GREEN")),
+	("0x000000", _("BLACK")),
+	("0x0000FF", _("BLUE")),
 	])
 config.plugins.FootOnSat.finished = ConfigSelection(default = "2", choices = [
 	("2", _("2 hours")),

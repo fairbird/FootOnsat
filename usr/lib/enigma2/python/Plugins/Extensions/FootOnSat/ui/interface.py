@@ -290,7 +290,7 @@ class FootOnSat(Screen):
 		self.iniMenu()
 
 	def iniMenu(self):
-		LIVECOLORE = config.plugins.FootOnSat.livecolor.value
+		LIVECOLORE = int(config.plugins.FootOnSat.livecolor.value, 16)
 		if len(self.matches) > 0:
 			# This code only for test 
 			#self.matches[0][5] = "6"
