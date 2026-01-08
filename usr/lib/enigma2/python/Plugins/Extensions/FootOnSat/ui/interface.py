@@ -290,6 +290,7 @@ class FootOnSat(Screen):
 		self.iniMenu()
 
 	def iniMenu(self):
+		LIVECOLORE = config.plugins.FootOnSat.livecolor.value
 		if len(self.matches) > 0:
 			# This code only for test 
 			#self.matches[0][5] = "6"
@@ -456,20 +457,20 @@ class FootOnSat(Screen):
 				if self.link not in SPORTS:
 					if isUHD():
 						if self.link in FOOTBALL:
-							res.append(MultiContentEntryText(pos=(1020, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
+							res.append(MultiContentEntryText(pos=(1020, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=LIVECOLORE))
 						else:
-							res.append(MultiContentEntryText(pos=(500, 69), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
+							res.append(MultiContentEntryText(pos=(500, 69), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=LIVECOLORE))
 					else:
 						if self.link in FOOTBALL:
-							res.append(MultiContentEntryText(pos=(700, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
+							res.append(MultiContentEntryText(pos=(700, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=LIVECOLORE))
 						else:
-							res.append(MultiContentEntryText(pos=(482, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=0xFF0000))
+							res.append(MultiContentEntryText(pos=(482, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=LIVECOLORE))
 				# Place a checkmark (-) between the results in the section FOOTBALL
 				if (team1_score != "" or match_status != "") and self.link in FOOTBALL:
 					if isUHD():
-						res.append(MultiContentEntryText(pos=(1050, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str("-"), color=0xFF0000))
+						res.append(MultiContentEntryText(pos=(1050, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str("-"), color=LIVECOLORE))
 					else:
-						res.append(MultiContentEntryText(pos=(750, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str("-"), color=0xFF0000))
+						res.append(MultiContentEntryText(pos=(750, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str("-"), color=LIVECOLORE))
 				# Team 2 flag/logteam
 				if isUHD():
 					if self.link in (SPORTS | FOOTBALL):
@@ -489,14 +490,14 @@ class FootOnSat(Screen):
 				if self.link not in SPORTS:
 					if isUHD():
 						if self.link in FOOTBALL:
-							res.append(MultiContentEntryText(pos=(1110, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
+							res.append(MultiContentEntryText(pos=(1110, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=LIVECOLORE))
 						else:
-							res.append(MultiContentEntryText(pos=(1490, 69), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
+							res.append(MultiContentEntryText(pos=(1490, 69), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=LIVECOLORE))
 					else:
 						if self.link in FOOTBALL:
-							res.append(MultiContentEntryText(pos=(792, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
+							res.append(MultiContentEntryText(pos=(792, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=LIVECOLORE))
 						else:
-							res.append(MultiContentEntryText(pos=(1092, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=0xFF0000))
+							res.append(MultiContentEntryText(pos=(1092, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=LIVECOLORE))
 				# Competition banner
 				if self.link not in (SPORTS | FOOTBALL):
 					try:
@@ -521,14 +522,14 @@ class FootOnSat(Screen):
 					# If score or status exists, display the dynamic status/time (e.g., "Live: 70 min" or "Status: FT")
 					if isUHD():
 						if self.link in FOOTBALL:
-							res.append(MultiContentEntryText(pos=(430, 120), size=(400, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=0xFF0000))
+							res.append(MultiContentEntryText(pos=(430, 120), size=(400, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=LIVECOLORE))
 						else:
-							res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=0xFF0000))
+							res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=LIVECOLORE))
 					else:
 						if self.link in FOOTBALL:
-							res.append(MultiContentEntryText(pos=(320, 120), size=(240, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=0xFF0000))
+							res.append(MultiContentEntryText(pos=(320, 120), size=(240, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=LIVECOLORE))
 						else:
-							res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=0xFF0000))
+							res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=LIVECOLORE))
 				else:
 					# Otherwise, display the scheduled Kick-off time
 					if isUHD():

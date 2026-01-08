@@ -57,6 +57,13 @@ config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
 config.plugins.FootOnSat.enableflag = ConfigYesNo(default=True)
 config.plugins.FootOnSat.notiftime = ConfigInteger(default=6, limits=(6, 20))
 config.plugins.FootOnSat.notiffile = ConfigText(default="notif1", visible_width = 250, fixed_size = False)
+config.plugins.FootOnSat.livecolor = ConfigSelection(default = 0xFF0000, choices = [
+	(0xFF0000, _("RED")),
+	(0xFFFFFF, _("WHITE")),
+	(0x00FF00, _("GREEN")),
+	(0x000000, _("BLACK")),
+	(0x0000FF, _("BLUE"))
+	])
 config.plugins.FootOnSat.finished = ConfigSelection(default = "2", choices = [
 	("2", _("2 hours")),
 	("3", _("3 hours"))
@@ -479,6 +486,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		if config.plugins.FootOnSat.livescore.value in ["2", "3"]:
 			self.list.append(getConfigListEntry(_("Select appear live + score of match in"), config.plugins.FootOnSat.livescoresections, _("This feature allows you to show matches live with result in sections")))
 			self.list.append(getConfigListEntry(_("Hide matches that started before"), config.plugins.FootOnSat.finished, _("This option is to specify the time that matches that have finished remain before they disappear from the list")))
+			self.list.append(getConfigListEntry(_("Color or score and Status"), config.plugins.FootOnSat.livecolor, _("This option allows you to choose the color of score and status.")))
 		self.list.append(getConfigListEntry(_("Path to store ignore file"), config.plugins.FootOnSat.devicepath, _("This option to set the path of save file for ignore matches")))
 		self.list.append(getConfigListEntry(_("Choose time for notifications"), config.plugins.FootOnSat.notiftime, _("This feature allows you to choose the number of seconds for notifications to appear.\nMove <Left | Right> to change seconds from (6 - 20)")))
 		self.list.append(getConfigListEntry(_("Choose to notifications and Zap"), config.plugins.FootOnSat.notify_zap, _("This feature allows you to specify the notifications and Zap to selected channel")))
