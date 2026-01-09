@@ -159,7 +159,7 @@ if DreamOS():
 			<widget source="key_red" render="Label" position="108,880" size="385,40" font="Regular;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
 			<widget source="key_green" render="Label" position="474,880" size="385,40" font="Regular;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
 			<widget source="key_blue" render="Label" position="849,880" size="385,40" font="Regular;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
-			<widget name="config" position="75,145" size="1169,800" backgroundColor="#16000000" scrollbarMode="showOnDemand" transparent="1" />
+			<widget name="config" position="75,145" size="1169,720" backgroundColor="#16000000" scrollbarMode="showOnDemand" transparent="1" />
 			<widget source="help" render="Label" position="1315,165" size="532,350" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
 			<widget name="Picture" position="1380,623" size="400,225" zPosition="5" alphatest="blend"/>
 			<widget font="Regular;35" foregroundColor="#00ffffff" backgroundColor="#16000000" halign="center" position="center,15" render="Label" size="650,52" source="global.CurrentTime" transparent="1" valign="center" zPosition="5">
@@ -178,7 +178,7 @@ else:
 			<widget source="key_red" render="Label" position="108,880" size="385,40" font="Regular;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
 			<widget source="key_green" render="Label" position="474,880" size="385,40" font="Regular;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
 			<widget source="key_blue" render="Label" position="849,880" size="385,40" font="Regular;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
-			<widget name="config" font="Regular;28" secondfont="Regular;28" itemHeight="45" position="75,145" size="1169,800" backgroundColor="#16000000" scrollbarMode="showOnDemand" transparent="1" />
+			<widget name="config" font="Regular;28" secondfont="Regular;28" itemHeight="45" position="75,145" size="1169,720" backgroundColor="#16000000" scrollbarMode="showOnDemand" transparent="1" />
 			<widget source="help" render="Label" position="1315,165" size="532,350" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
 			<widget name="Picture" position="1380,623" size="400,225" zPosition="5" alphatest="blend"/>
 			<widget font="Regular;35" foregroundColor="#00ffffff" backgroundColor="#16000000" halign="center" position="center,15" render="Label" size="650,52" source="global.CurrentTime" transparent="1" valign="center" zPosition="5">
