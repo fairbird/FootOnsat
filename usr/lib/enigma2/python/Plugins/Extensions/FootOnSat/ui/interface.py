@@ -1205,6 +1205,9 @@ class FootOnSat(Screen):
 						status = 'CANCELED'
 					elif stype == 'finished':
 						status = 'FINISHED'
+					elif stype == 'postponed':
+						status = 'POSTPONED'
+						h_score = a_score = ''
 					elif stype == 'inprogress':
 						m = re.search(r'(\d{1,3}[\'+]*\+?\d*)\s*\'', descr)
 						if m:
@@ -1284,7 +1287,7 @@ class FootOnSat(Screen):
 					pass
 				name = compat_str(name).strip().lower()
 				name = re.sub(r'[^a-z\s]', ' ', name, flags=re.IGNORECASE) 
-				NOISE = r'\b(nk|afc|fc|cf|as|ac|sk|fk|tsv|utd|united|national|club|team|squad|sport|athletic|calcio|ploie[șs]ti|ploiești|ploieshti|aif|ifk|goteborg|göteborg|kf|ks|af|seinajoki|peshkopi)\b'
+				NOISE = r'\b(nk|afc|fc|cf|as|ac|sk|fk|tsv|national|squad|sport|calcio|ploie[șs]ti|ploiești|ploieshti|aif|ifk|goteborg|göteborg|kf|ks|af|seinajoki|peshkopi)\b'
 				name = re.sub(NOISE, ' ', name, flags=re.IGNORECASE)
 				name = re.sub(r'\s+', ' ', name).strip()
 				return name
@@ -1313,7 +1316,7 @@ class FootOnSat(Screen):
 					try:
 						local_name = compat_str(match[0])
 						#teams = re.split(r'\s+vs\s+|\s+-\s+', local_name)
-						teams = re.split(r'\s+(?:vs|v|VS|Vs|VS.)\s+|\s+-\s+', local_name, flags=re.IGNORECASE)
+						teams = re.split(r'\s+(?:vs\.|vs|v\.|v|VS|Vs|VS\.)\s+|\s+-\s+', local_name, flags=re.IGNORECASE)
 						if len(teams) != 2:
 							continue
 							
@@ -1338,7 +1341,7 @@ class FootOnSat(Screen):
 
 						local_name = compat_str(match[0])
 						#teams = re.split(r'\s+vs\s+|\s+-\s+', local_name)
-						teams = re.split(r'\s+(?:vs|v|VS|Vs|VS.)\s+|\s+-\s+', local_name, flags=re.IGNORECASE)
+						teams = re.split(r'\s+(?:vs\.|vs|v\.|v|VS|Vs|VS\.)\s+|\s+-\s+', local_name, flags=re.IGNORECASE)
 						if len(teams) != 2:
 							match[5] = match[6] = match[7] = ""
 							continue

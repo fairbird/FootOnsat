@@ -1,4 +1,1 @@
-- New plugin log (By oktus)
-- Update some icons (Thanks Greenwich)
-- Add new option (Color or score and Status)
-- Add new button (Blue) in option screen to Reinstall plugin
+- fix: improve livescore matching and match status handling
