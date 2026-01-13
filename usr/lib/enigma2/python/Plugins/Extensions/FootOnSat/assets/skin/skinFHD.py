@@ -163,7 +163,7 @@ SKIN_MatchDetails = """
     <widget name="score" position="800,200" size="320,150" font="Regular;120" halign="center" valign="center" foregroundColor="#ffcc00" backgroundColor="#101010" transparent="1" />
     <widget name="status" position="800,350" size="320,60" font="Regular;34" halign="center" valign="center" foregroundColor="#00ff00" backgroundColor="#101010" transparent="1" />
     
-    <widget name="details_list" position="0,500" size="1910,480" scrollbarMode="showOnDemand" transparent="1" />
+    <widget name="details_list" position="50,430" size="1780,580" scrollbarMode="showOnDemand" transparent="1" />
 
     <eLabel text="Move Left or Right for Statistics" position="910,1000" size="969,60" font="Regular;35" foregroundColor="#ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" halign="center" valign="center" />
 

@@ -1929,8 +1929,7 @@ class MatchDetailsScreen(Screen):
 		Screen.__init__(self, session)
 		self.skin = SKIN_MatchDetails
 		self.event_id = str(event_id)
-		
-		self["title"] = Label(str(match_name))
+		self["title"] = Label(str(match_name) + " - Details")
 		self["home_name_big"] = Label(str(home_full))
 		self["away_name_big"] = Label(str(away_full))
 		self["home_team"] = Label(str(home_country))
@@ -2004,9 +2003,9 @@ class MatchDetailsScreen(Screen):
 			else:
 				ITEM_H = 70    # Row Height: Increase to add space between rows
 				FONT_S = 36    # Font Size: Increase to make text bigger
-				L_X = 20       # Home Position: Higher = Right, Lower = Left
-				C_X = 810      # Minute Position: Higher = Right, Lower = Left
-				R_X = 950      # Away Position: Higher = Right, Lower = Left
+				L_X = 0       # Home Position: Higher = Right, Lower = Left
+				C_X = 850      # Minute Position: Higher = Right, Lower = Left
+				R_X = 1010      # Away Position: Higher = Right, Lower = Left
 				TEXT_W = 750   # Max width for player names
 				T_W = 100      # Max width for minute box
 
