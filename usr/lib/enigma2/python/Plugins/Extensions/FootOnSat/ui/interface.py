@@ -76,6 +76,11 @@ except ImportError:
 	RT_HALIGN_LEFT = 0
 
 try:
+	from enigma import RT_HALIGN_RIGHT
+except ImportError:
+	RT_HALIGN_RIGHT = 2
+
+try:
 	from urllib.parse import urlparse, urljoin
 except ImportError:
 	from urlparse import urlparse, urljoin # Python 2 compatibility
@@ -818,39 +823,60 @@ class FootOnSat(Screen):
 			MessageBox.TYPE_INFO, timeout=10)
 
 	def ok(self):
-		if self.selectedList == self["list1"] and len(self.matches) > 0:
-			index = self['list1'].getSelectionIndex()
-			if PY3:
-				match = self.matches[index][0]
-				match_date = self.getTime(self.matches[index][1])
-				compet = self.matches[index][2]
-				flag1 = self.matches[index][3]
-				flag2 = self.matches[index][4]
+		if self.selectedList != self["list1"] or len(self.matches) == 0:
+			return
+
+		index = self['list1'].getSelectionIndex()
+		
+		if self.link == "live":
+			current_match = self.matches[index]
+			if len(current_match) > 8 and current_match[8]:
+				event_id = current_match[8]
+				
+				# match[0] usually contains "Team A vs Team B"
+				match_str = current_match[0]
+				parts = re.split(r'\s+v[s]?\s+', match_str, 1, flags=re.IGNORECASE)
+				home_full = parts[0].strip() if len(parts) > 1 else "Home"
+				away_full = parts[1].strip() if len(parts) > 1 else "Away"
+
+				# Open the screen with ALL parameters
+				self.session.open(MatchDetailsScreen, 
+					event_id, 
+					current_match[2], # Competition (Title)
+					home_full,        # Full Name (Bodo Glimt)
+					away_full,        # Full Name (Diosgyor)
+					current_match[3], # Country (Norway)
+					current_match[4]) # Country (Hungary)
 			else:
-				match = self.matches[index][0].decode('utf8')
-				match_date = self.getTime(self.matches[index][1].decode('utf8'))
-				compet = self.matches[index][2].decode('utf8')
-				flag1 = self.matches[index][3].decode('utf8')
-				flag2 = self.matches[index][4].decode('utf8')
+				self.session.open(MessageBox, _("Match details not available for this source."), MessageBox.TYPE_INFO, timeout=3)
+				return
 
-			# Only allow selection/unselection for future matches
-			if datetime.strptime(match_date, "%H:%M - %Y-%m-%d") > datetime.now():
-				with connect(DB_PATH) as conn:
-					cur = conn.cursor()
-					cur.execute("CREATE TABLE IF NOT EXISTS zap_channels (match TEXT primary key, ref TEXT)")
-					if self.checkIfexist(match):
-						# --- CLEAN DB ACTION --- remove notification + zap
-						cur.execute("DELETE FROM LIVE_NOTIF WHERE MATCH = ?", (match,))
-						cur.execute("DELETE FROM zap_channels WHERE match = ?", (re.sub(r'\s+', '', match),))
-						logdata("FootOnSatNotif", "CLEANED DB: Removed notification and zap for match: %s" % match)
-					else:
-						# --- SELECT ACTION --- add notification
-						first_notif, message = self.setFirstNotifTime(match_date)
-						cur.execute("INSERT INTO LIVE_NOTIF(MATCH,COMPET,DATE,TEAM1_FLAG,TEAM2_FLAG,FIRST_NOTIF,FIRST_NOTIF_STATUS,LIVE_NOTIF_STATUS,MESSAGE) values (?,?,?,?,?,?,?,?,?)", (
-							match, compet, match_date, flag1, flag2, first_notif, "Waiting", "Waiting", message,))
-						logdata("FootOnSatNotif", "SELECT: Inserted notification for match: %s. Notif time: %s" % (match, first_notif))
+		if PY3:
+			match = self.matches[index][0]
+			match_date = self.getTime(self.matches[index][1])
+			compet = self.matches[index][2]
+			flag1 = self.matches[index][3]
+			flag2 = self.matches[index][4]
+		else:
+			match = self.matches[index][0].decode('utf8')
+			match_date = self.getTime(self.matches[index][1].decode('utf8'))
+			compet = self.matches[index][2].decode('utf8')
+			flag1 = self.matches[index][3].decode('utf8')
+			flag2 = self.matches[index][4].decode('utf8')
 
-			self.iniMenu()
+		if datetime.strptime(match_date, "%H:%M - %Y-%m-%d") > datetime.now():
+			with connect(DB_PATH) as conn:
+				cur = conn.cursor()
+				cur.execute("CREATE TABLE IF NOT EXISTS zap_channels (match TEXT primary key, ref TEXT)")
+				if self.checkIfexist(match):
+					cur.execute("DELETE FROM LIVE_NOTIF WHERE MATCH = ?", (match,))
+					cur.execute("DELETE FROM zap_channels WHERE match = ?", (re.sub(r'\s+', '', match),))
+				else:
+					first_notif, message = self.setFirstNotifTime(match_date)
+					cur.execute("INSERT INTO LIVE_NOTIF(MATCH,COMPET,DATE,TEAM1_FLAG,TEAM2_FLAG,FIRST_NOTIF,FIRST_NOTIF_STATUS,LIVE_NOTIF_STATUS,MESSAGE) values (?,?,?,?,?,?,?,?,?)", (
+						match, compet, match_date, flag1, flag2, first_notif, "Waiting", "Waiting", message,))
+
+		self.iniMenu()
 
 	def setFirstNotifTime(self, dt):
 		dt_obj = datetime.strptime(dt, "%H:%M - %Y-%m-%d")
@@ -1258,7 +1284,8 @@ class FootOnSat(Screen):
 						"team2_score": a_score,
 						"match_status": status,
 						"match_dt": match_dt,
-						"raw_descr": descr
+						"raw_descr": descr,
+						"id": ev.get('id', '')
 					})
 				except Exception as e:
 					logdata("FootOnSat-Sofa-ERROR", "Error building live_matches for an event: %s" % str(e))
@@ -1403,13 +1430,15 @@ class FootOnSat(Screen):
 									best_live = {
 										"team1_score": live["team1_score"],
 										"team2_score": live["team2_score"],
-										"match_status": live["match_status"]
+										"match_status": live["match_status"],
+										"id": live.get("id", "")
 									}
 								else:
 									best_live = {
 										"team1_score": live["team2_score"],
 										"team2_score": live["team1_score"],
-										"match_status": live["match_status"]
+										"match_status": live["match_status"],
+										"id": live.get("id", "")
 									}
 
 						if best_sim >= THRESHOLD and best_live:
@@ -1417,6 +1446,11 @@ class FootOnSat(Screen):
 								match[5] = compat_str(best_live["team1_score"]).strip()
 								match[6] = compat_str(best_live["team2_score"]).strip()
 								match[7] = compat_str(best_live["match_status"]).strip()
+								# Append ID safely at the end (Index 8)
+								if len(match) > 8:
+									match[8] = str(best_live["id"])
+								else:
+									match.append(str(best_live["id"]))
 							else:
 								match[5] = match[6] = match[7] = ""
 						else:
@@ -1887,6 +1921,255 @@ class FootOnSat(Screen):
 				# logdata("keyYellow", "Error selecting competition to remove: " + str(e))
 				# This addresses the original error which likely occurred here due to string conversion failure
 				self.session.open(MessageBox, _('Error accessing ignore list!'), MessageBox.TYPE_ERROR, timeout=5)
+
+
+class MatchDetailsScreen(Screen):
+	def __init__(self, session, event_id, match_name, home_full, away_full, home_country, away_country):
+		self.session = session
+		Screen.__init__(self, session)
+		self.skin = SKIN_MatchDetails
+		self.event_id = str(event_id)
+		
+		self["title"] = Label(str(match_name))
+		self["home_name_big"] = Label(str(home_full))
+		self["away_name_big"] = Label(str(away_full))
+		self["home_team"] = Label(str(home_country))
+		self["away_team"] = Label(str(away_country))
+		self["score"] = Label("- : -")
+		self["status"] = Label(_("Loading..."))
+		self["key_red"] = Label(_("Close"))
+		
+		self["details_list"] = MenuList([], enableWrapAround=True, content=eListboxPythonMultiContent)
+		
+		self["setupActions"] = ActionMap(["FootOnsatActions", "ColorActions"], {
+			"cancel": self.close,
+			"back": self.close,
+			"red": self.close,
+			"ok": self.close,
+			"up": self.up,
+			"down": self.down,
+			"left": self.openStats,
+			"right": self.openStats,
+		}, -1)
+		
+		self.onLayoutFinish.append(self.fetch_details)
+
+	def up(self):
+		self["details_list"].up()
+
+	def down(self):
+		self["details_list"].down()
+
+	def openStats(self):
+		self.session.openWithCallback(self.statsCallback, MatchStatisticsScreen, self.event_id, self["title"].getText(), self["home_name_big"].getText(), self["away_name_big"].getText())
+
+	def statsCallback(self, answer=None):
+		# If user pressed EXIT in stats screen, we close this screen too
+		if answer == "exit_all":
+			self.close()
+
+	def fetch_details(self):
+		def _get_data(eid):
+			headers = {'User-Agent': 'Mozilla/5.0'}
+			try:
+				url_i = "https://api.sofascore.com/api/v1/event/{}/incidents".format(eid)
+				url_e = "https://api.sofascore.com/api/v1/event/{}".format(eid)
+				res_i = requests.get(url_i, headers=headers, timeout=10).json()
+				res_e = requests.get(url_e, headers=headers, timeout=10).json()
+				return res_i, res_e
+			except:
+				return None, None
+		d = deferToThread(_get_data, self.event_id)
+		d.addCallback(self.process_data)
+
+	def process_data(self, data):
+		inc_js, ev_js = data
+		if ev_js and 'event' in ev_js:
+			ev = ev_js['event']
+			h = ev.get('homeScore', {}).get('current', 0)
+			a = ev.get('awayScore', {}).get('current', 0)
+			self["score"].setText(str(h) + " - " + str(a))
+			self["status"].setText(str(ev.get('status', {}).get('description', '')))
+
+		gList = []
+		if inc_js and 'incidents' in inc_js:
+			if isUHD():
+				ITEM_H = 120   # Row Height: Increase to add space between rows
+				FONT_S = 50    # Font Size: Increase to make text bigger
+				L_X = 40       # Home Position: Higher = Right, Lower = Left
+				C_X = 1620     # Minute Position: Higher = Right, Lower = Left
+				R_X = 1900     # Away Position: Higher = Right, Lower = Left
+				TEXT_W = 1500  # Max width for player names
+				T_W = 200      # Max width for minute box
+			else:
+				ITEM_H = 70    # Row Height: Increase to add space between rows
+				FONT_S = 36    # Font Size: Increase to make text bigger
+				L_X = 20       # Home Position: Higher = Right, Lower = Left
+				C_X = 810      # Minute Position: Higher = Right, Lower = Left
+				R_X = 950      # Away Position: Higher = Right, Lower = Left
+				TEXT_W = 750   # Max width for player names
+				T_W = 100      # Max width for minute box
+
+			self["details_list"].l.setItemHeight(ITEM_H)
+			self["details_list"].l.setFont(0, gFont('Regular', FONT_S))
+
+			sorted_inc = sorted(inc_js['incidents'], key=lambda x: x.get('time', 0), reverse=True)
+			for inc in sorted_inc:
+				itype = inc.get('incidentType')
+				if itype not in ('goal', 'card', 'substitution'): continue
+				
+				# Force time to string for Py2
+				itime = str(inc.get('time', '')) + "'"
+				is_home = inc.get('isHome', True)
+				text = ""
+				color = 0xFFFFFF
+				
+				if itype == 'goal':
+					player_name = str(inc.get('player', {}).get('name', 'Goal'))
+					text = "GOAL: " + player_name
+					color = 0x00FF00
+				elif itype == 'card':
+					card_type = str(inc.get('incidentClass', '')).upper()
+					player_name = str(inc.get('player', {}).get('name', ''))
+					text = card_type + ": " + player_name
+					color = 0xFF0000 if 'red' in text.lower() else 0xFFFF00
+				elif itype == 'substitution':
+					player_in = str(inc.get('playerIn', {}).get('name', ''))
+					text = "SUB: " + player_in
+					color = 0xAAAAAA
+
+				res = []
+				res.append(MultiContentEntryText()) # Anchor
+				# Minute
+				res.append(MultiContentEntryText(pos=(C_X, 0), size=(T_W, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=itime))
+				
+				if is_home:
+					# Home Team text (string forced via logic above)
+					res.append(MultiContentEntryText(pos=(L_X, 0), size=(TEXT_W, ITEM_H), font=0, flags=RT_HALIGN_RIGHT|RT_VALIGN_CENTER, text=text, color=color))
+				else:
+					# Away Team text (string forced via logic above)
+					res.append(MultiContentEntryText(pos=(R_X, 0), size=(TEXT_W, ITEM_H), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=text, color=color))
+				gList.append(res)
+		
+		if not gList:
+			w = 3440 if isUHD() else 1720
+			res = []
+			res.append(MultiContentEntryText()) # Anchor
+			# Force "No incidents" message to string
+			err_msg = str(_("No incidents available"))
+			res.append(MultiContentEntryText(pos=(0, 0), size=(w, 80), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=err_msg))
+			gList.append(res)
+		self["details_list"].setList(gList)
+
+
+class MatchStatisticsScreen(Screen):
+	def __init__(self, session, event_id, match_name, home_name, away_name):
+		self.session = session
+		Screen.__init__(self, session)
+		self.skin = isUHD() and SKIN_MatchStatistics_UHD or SKIN_MatchStatistics
+		self.event_id = event_id
+		
+		self["title"] = Label(str(match_name) + " - Statistics")
+		self["home_team"] = Label(str(home_name))
+		self["away_team"] = Label(str(away_name))
+		self["key_red"] = Label(_("Close"))
+		self["stats_list"] = MenuList([], enableWrapAround=True, content=eListboxPythonMultiContent)
+		
+		self["setupActions"] = ActionMap(["FootOnsatActions", "ColorActions"], {
+			"cancel": self.exitAll,
+			"back": self.exitAll,
+			"red": self.exitAll,
+			"left": self.close,
+			"right": self.close,
+			"up": self.up,
+			"down": self.down,
+		}, -1)
+		
+		self.onLayoutFinish.append(self.fetch_stats)
+
+	def up(self):
+		self["stats_list"].up()
+
+	def down(self):
+		self["stats_list"].down()
+
+	def exitAll(self):
+		self.close("exit_all")
+
+	def fetch_stats(self):
+		def _get_stats(eid):
+			headers = {'User-Agent': 'Mozilla/5.0'}
+			try:
+				url = "https://api.sofascore.com/api/v1/event/{}/statistics".format(eid)
+				return requests.get(url, headers=headers, timeout=10).json()
+			except:
+				return None
+		d = deferToThread(_get_stats, self.event_id)
+		d.addCallback(self.process_stats)
+
+	def process_stats(self, data):
+		gList = []
+		if isUHD():
+			ITEM_H = 120  # Row Height: Increase to add space between rows
+			FONT_S = 52   # Font Size: Increase to make text bigger
+			W_LIST = 3440 # Total width of the list box
+			HOME_X = 20   # Move Home value: Higher = Right, Lower = Left
+			NAME_X = 400  # Move Stat Name: Higher = Right, Lower = Left
+			AWAY_X = 3000 # Move Away value: Higher = Right, Lower = Left
+			COL_W  = 400  # Width of the value boxes
+			NAME_W = 2640 # Width of the middle name box
+		else:
+			ITEM_H = 80   # Row Height: Increase to add space between rows
+			FONT_S = 36   # Font Size: Increase to make text bigger
+			W_LIST = 1720 # Total width of the list box
+			HOME_X = 10   # Move Home value: Higher = Right, Lower = Left
+			NAME_X = 250  # Move Stat Name: Higher = Right, Lower = Left
+			AWAY_X = 1450 # Move Away value: Higher = Right, Lower = Left
+			COL_W  = 250  # Width of the value boxes
+			NAME_W = 1220 # Width of the middle name box
+			
+		self["stats_list"].l.setItemHeight(ITEM_H)
+		self["stats_list"].l.setFont(0, gFont('Regular', FONT_S))
+
+		if data and 'statistics' in data:
+			for period in data['statistics']:
+				if period.get('period') == 'ALL':
+					for group in period.get('groups', []):
+						# --- Group Header (Fixing the not-a-string error here) ---
+						res = []
+						res.append(MultiContentEntryText()) # Anchor
+						# Force header to string for Py2
+						header_raw = group.get('groupName', '')
+						header_text = str("-- " + header_raw + " --") 
+						res.append(MultiContentEntryText(pos=(0, 0), size=(W_LIST, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=header_text, color=0xffcc00))
+						gList.append(res)
+						
+						for item in group.get('statisticsItems', []):
+							res = []
+							res.append(MultiContentEntryText()) # Anchor
+							
+							# Force all values to strings for Py2
+							val_h = str(item.get('home', '0'))
+							val_n = str(item.get('name', ''))
+							val_a = str(item.get('away', '0'))
+							
+							# Home
+							res.append(MultiContentEntryText(pos=(HOME_X, 0), size=(COL_W, ITEM_H), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=val_h))
+							# Name
+							res.append(MultiContentEntryText(pos=(NAME_X, 0), size=(NAME_W, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=val_n, color=0xaaaaaa))
+							# Away
+							res.append(MultiContentEntryText(pos=(AWAY_X, 0), size=(COL_W, ITEM_H), font=0, flags=RT_HALIGN_RIGHT|RT_VALIGN_CENTER, text=val_a))
+							gList.append(res)
+					break
+
+		if not gList:
+			res = []
+			res.append(MultiContentEntryText()) # Anchor
+			no_data_text = str(_("No statistics information available"))
+			res.append(MultiContentEntryText(pos=(0, 0), size=(W_LIST, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=no_data_text, color=0xff0000))
+			gList.append(res)
+		
+		self["stats_list"].setList(gList)
 
 
 class FootOnSatNotif:
