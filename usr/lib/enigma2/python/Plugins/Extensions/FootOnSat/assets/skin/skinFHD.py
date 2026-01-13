@@ -148,6 +148,47 @@ SKIN_standingsbasketball = """
         foregroundColor="#00ff2525" backgroundColor="#16000000" zPosition="5" transparent="1" />
 </screen>
 """
+
+SKIN_MatchDetails = """
+<screen name="MatchDetailsScreen" position="0,0" size="1920,1080" title="Match Details" flags="wfNoBorder" backgroundColor="#101010">
+    <eLabel position="0,0" size="1920,120" backgroundColor="#003366" zPosition="0" />
+    <widget name="title" position="40,20" size="1840,80" font="Regular;50" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#003366" transparent="1" zPosition="1"/>
+    
+    <widget name="home_name_big" position="100,180" size="700,200" font="Regular;70" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#101010" transparent="1" />
+    <widget name="away_name_big" position="1120,180" size="700,200" font="Regular;70" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#101010" transparent="1" />
+
+    <widget name="home_team" position="100,380" size="700,80" font="Regular;40" halign="center" valign="top" foregroundColor="#aaaaaa" backgroundColor="#101010" transparent="1" />
+    <widget name="away_team" position="1120,380" size="700,80" font="Regular;40" halign="center" valign="top" foregroundColor="#aaaaaa" backgroundColor="#101010" transparent="1" />
+
+    <widget name="score" position="800,200" size="320,150" font="Regular;120" halign="center" valign="center" foregroundColor="#ffcc00" backgroundColor="#101010" transparent="1" />
+    <widget name="status" position="800,350" size="320,60" font="Regular;34" halign="center" valign="center" foregroundColor="#00ff00" backgroundColor="#101010" transparent="1" />
+    
+    <widget name="details_list" position="0,500" size="1910,480" scrollbarMode="showOnDemand" transparent="1" />
+
+    <eLabel text="Move Left or Right for Statistics" position="910,1000" size="969,60" font="Regular;35" foregroundColor="#ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" halign="center" valign="center" />
+
+    <eLabel position="0,1076" size="1920,4" backgroundColor="#333333" />
+    <widget name="key_red" position="40,1000" size="400,60" zPosition="1" font="Regular;34" halign="left" valign="center" backgroundColor="#101010" transparent="1" foregroundColor="red" />
+</screen>
+"""
+
+SKIN_MatchStatistics = """
+<screen name="MatchStatisticsScreen" position="0,0" size="1920,1080" title="Match Statistics" flags="wfNoBorder" backgroundColor="#101010">
+    <eLabel position="0,0" size="1920,120" backgroundColor="#006633" zPosition="0" />
+    <widget name="title" position="40,20" size="1840,80" font="Regular;50" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#006633" transparent="1" zPosition="1" />
+	
+    <widget name="home_team" position="100,150" size="700,100" font="Regular;60" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
+    <widget name="away_team" position="1120,150" size="700,100" font="Regular;60" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
+	
+    <widget name="stats_list" position="100,280" size="1780,700" scrollbarMode="showOnDemand" transparent="1" />
+
+    <eLabel text="Move Left or Right for Details" position="910,1000" size="969,60" font="Regular;35" foregroundColor="#ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" halign="center" valign="center" />
+   
+    <eLabel position="0,1076" size="1920,4" backgroundColor="#333333" />
+    <widget name="key_red" position="40,1000" size="400,60" zPosition="1" font="Regular;34" halign="left" valign="center" backgroundColor="#101010" transparent="1" foregroundColor="red" />
+</screen>
+"""
+
 if DreamOS():
 	SKIN_MenuFootOnSat = """
 		<screen name="MenuFootOnSat" position="0,0" size="1920,1080" backgroundColor="transparent" flags="wfNoBorder" title="MenuFootOnSat">
