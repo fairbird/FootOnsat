@@ -150,7 +150,7 @@ SKIN_standingsbasketball = """
 """
 
 SKIN_MatchDetails = """
-<screen name="MatchDetailsScreen" position="0,0" size="1920,1080" title="Match Details" flags="wfNoBorder" backgroundColor="#101010">
+<screen name="MatchDetailsScreen" position="0,0" size="1920,1080" title="Match Details" flags="wfNoBorder" backgroundColor="#16000000">
     <eLabel position="0,0" size="1920,120" backgroundColor="#003366" zPosition="0" />
     <widget name="title" position="40,20" size="1840,80" font="Regular;50" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#003366" transparent="1" zPosition="1"/>
     
@@ -173,7 +173,7 @@ SKIN_MatchDetails = """
 """
 
 SKIN_MatchStatistics = """
-<screen name="MatchStatisticsScreen" position="0,0" size="1920,1080" title="Match Statistics" flags="wfNoBorder" backgroundColor="#101010">
+<screen name="MatchStatisticsScreen" position="0,0" size="1920,1080" title="Match Statistics" flags="wfNoBorder" backgroundColor="#16000000">
     <eLabel position="0,0" size="1920,120" backgroundColor="#006633" zPosition="0" />
     <widget name="title" position="40,20" size="1840,80" font="Regular;50" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#006633" transparent="1" zPosition="1" />
 	

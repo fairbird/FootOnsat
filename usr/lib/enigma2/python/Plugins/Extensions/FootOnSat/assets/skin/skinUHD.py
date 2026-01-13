@@ -148,7 +148,7 @@ SKIN_standingsbasketball = """
 """
 
 SKIN_MatchDetails = """
-<screen name="MatchDetailsScreen" position="0,0" size="3840,2160" title="Match Details" flags="wfNoBorder" backgroundColor="#101010">
+<screen name="MatchDetailsScreen" position="0,0" size="3840,2160" title="Match Details" flags="wfNoBorder" backgroundColor="#16000000">
     <eLabel position="0,0" size="3840,240" backgroundColor="#003366" zPosition="0" />
     <widget name="title" position="80,40" size="3680,160" font="Regular;100" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#003366" transparent="1" zPosition="1" />
     
