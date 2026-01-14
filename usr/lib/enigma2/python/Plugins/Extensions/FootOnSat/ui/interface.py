@@ -224,6 +224,7 @@ def sanitize_team_name(team):
 	name = name.replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ú", "u") 
 	return name
 
+
 # The CRITICAL class for TLS SNI support
 class WebClientContextFactory(ClientContextFactory):
 	def __init__(self, url=None):
@@ -1993,21 +1994,39 @@ class MatchDetailsScreen(Screen):
 		gList = []
 		if inc_js and 'incidents' in inc_js:
 			if isUHD():
-				ITEM_H = 120   # Row Height: Increase to add space between rows
-				FONT_S = 50    # Font Size: Increase to make text bigger
-				L_X = 40       # Home Position: Higher = Right, Lower = Left
-				C_X = 1620     # Minute Position: Higher = Right, Lower = Left
-				R_X = 1900     # Away Position: Higher = Right, Lower = Left
-				TEXT_W = 1500  # Max width for player names
-				T_W = 200      # Max width for minute box
+				ITEM_H = 120   # Row Height
+				FONT_S = 50    # Font Size
+				C_X    = 1620  # Minute X Position
+				T_W    = 200   # Minute Width
+				# --- HOME SIDE ---
+				H_TXT_X = 40   # Home Player Name X
+				H_TXT_W = 1450 # Home Player Name Width
+				H_IMG_X = 1530 # Home Icon X
+				# --- AWAY SIDE ---
+				A_IMG_X = 1850 # Away Icon X
+				A_TXT_X = 1930 # Away Player Name X
+				A_TXT_W = 1450 # Away Player Name Width
+				# --- ICON SIZE ---
+				IMG_W  = 60    # Fixed Width
+				IMG_H  = 80    # Fixed Height
+				IMG_Y  = 20    # Vertical Offset
 			else:
-				ITEM_H = 70    # Row Height: Increase to add space between rows
-				FONT_S = 36    # Font Size: Increase to make text bigger
-				L_X = 0       # Home Position: Higher = Right, Lower = Left
-				C_X = 850      # Minute Position: Higher = Right, Lower = Left
-				R_X = 1010      # Away Position: Higher = Right, Lower = Left
-				TEXT_W = 750   # Max width for player names
-				T_W = 100      # Max width for minute box
+				ITEM_H = 70    # Row Height
+				FONT_S = 36    # Font Size
+				C_X    = 850   # Minute X Position
+				T_W    = 100   # Minute Width
+				# --- HOME SIDE ---
+				H_TXT_X = 10   # Home Player Name X
+				H_TXT_W = 750  # Home Player Name Width
+				H_IMG_X = 780  # Home Icon X
+				# --- AWAY SIDE ---
+				A_IMG_X = 970  # Away Icon X
+				A_TXT_X = 1040 # Away Player Name X
+				A_TXT_W = 700  # Away Player Name Width
+				# --- ICON SIZE ---
+				IMG_W  = 60    # Fixed Width
+				IMG_H  = 80    # Fixed Height
+				IMG_Y  = -5    # Vertical Offset (Slightly up to fit 80px in 70px row)
 
 			self["details_list"].l.setItemHeight(ITEM_H)
 			self["details_list"].l.setFont(0, gFont('Regular', FONT_S))
@@ -2017,47 +2036,44 @@ class MatchDetailsScreen(Screen):
 				itype = inc.get('incidentType')
 				if itype not in ('goal', 'card', 'substitution'): continue
 				
-				# Force time to string for Py2
 				itime = str(inc.get('time', '')) + "'"
 				is_home = inc.get('isHome', True)
 				text = ""
 				color = 0xFFFFFF
+				icon_name = ""
 				
 				if itype == 'goal':
-					player_name = str(inc.get('player', {}).get('name', 'Goal'))
-					text = "GOAL: " + player_name
+					text = str(inc.get('player', {}).get('name', 'Goal'))
 					color = 0x00FF00
+					icon_name = "goal.png"
 				elif itype == 'card':
-					card_type = str(inc.get('incidentClass', '')).upper()
-					player_name = str(inc.get('player', {}).get('name', ''))
-					text = card_type + ": " + player_name
-					color = 0xFF0000 if 'red' in text.lower() else 0xFFFF00
+					ic_class = str(inc.get('incidentClass', '')).lower()
+					text = str(inc.get('player', {}).get('name', ''))
+					color = 0xFFFF00 if 'yellow' in ic_class else 0xFF0000
+					icon_name = "yellowcard.png" if 'yellow' in ic_class else "redcard.png"
 				elif itype == 'substitution':
-					player_in = str(inc.get('playerIn', {}).get('name', ''))
-					text = "SUB: " + player_in
+					text = str(inc.get('playerIn', {}).get('name', ''))
 					color = 0xAAAAAA
+					icon_name = "substitution.png"
 
 				res = []
 				res.append(MultiContentEntryText()) # Anchor
-				# Minute
 				res.append(MultiContentEntryText(pos=(C_X, 0), size=(T_W, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=itime))
 				
+				icon_path = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/icon/{}".format(icon_name))
+				png = loadPNG(icon_path)
+
 				if is_home:
-					# Home Team text (string forced via logic above)
-					res.append(MultiContentEntryText(pos=(L_X, 0), size=(TEXT_W, ITEM_H), font=0, flags=RT_HALIGN_RIGHT|RT_VALIGN_CENTER, text=text, color=color))
+					if png:
+						res.append(MultiContentEntryPixmapAlphaBlend(pos=(H_IMG_X, IMG_Y), size=(IMG_W, IMG_H), png=png))
+					res.append(MultiContentEntryText(pos=(H_TXT_X, 0), size=(H_TXT_W, ITEM_H), font=0, flags=RT_HALIGN_RIGHT|RT_VALIGN_CENTER, text=text, color=color))
 				else:
-					# Away Team text (string forced via logic above)
-					res.append(MultiContentEntryText(pos=(R_X, 0), size=(TEXT_W, ITEM_H), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=text, color=color))
+					if png:
+						res.append(MultiContentEntryPixmapAlphaBlend(pos=(A_IMG_X, IMG_Y), size=(IMG_W, IMG_H), png=png))
+					res.append(MultiContentEntryText(pos=(A_TXT_X, 0), size=(A_TXT_W, ITEM_H), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=text, color=color))
+				
 				gList.append(res)
 		
-		if not gList:
-			w = 3440 if isUHD() else 1720
-			res = []
-			res.append(MultiContentEntryText()) # Anchor
-			# Force "No incidents" message to string
-			err_msg = str(_("No incidents available"))
-			res.append(MultiContentEntryText(pos=(0, 0), size=(w, 80), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=err_msg))
-			gList.append(res)
 		self["details_list"].setList(gList)
 
 
@@ -2065,15 +2081,14 @@ class MatchStatisticsScreen(Screen):
 	def __init__(self, session, event_id, match_name, home_name, away_name):
 		self.session = session
 		Screen.__init__(self, session)
-		self.skin = isUHD() and SKIN_MatchStatistics_UHD or SKIN_MatchStatistics
+		self.skin = SKIN_MatchStatistics
 		self.event_id = event_id
-		
 		self["title"] = Label(str(match_name) + " - Statistics")
 		self["home_team"] = Label(str(home_name))
 		self["away_team"] = Label(str(away_name))
 		self["key_red"] = Label(_("Close"))
 		self["stats_list"] = MenuList([], enableWrapAround=True, content=eListboxPythonMultiContent)
-		
+
 		self["setupActions"] = ActionMap(["FootOnsatActions", "ColorActions"], {
 			"cancel": self.exitAll,
 			"back": self.exitAll,
@@ -2083,7 +2098,7 @@ class MatchStatisticsScreen(Screen):
 			"up": self.up,
 			"down": self.down,
 		}, -1)
-		
+
 		self.onLayoutFinish.append(self.fetch_stats)
 
 	def up(self):
