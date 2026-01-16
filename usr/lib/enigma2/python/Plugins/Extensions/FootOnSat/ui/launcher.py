@@ -4,6 +4,7 @@ from Screens.Screen import Screen
 from Screens.Standby import TryQuitMainloop
 from Screens.MessageBox import MessageBox
 from Screens.ChoiceBox import ChoiceBox
+from Plugins.Plugin import PluginDescriptor
 from Components.ActionMap import ActionMap
 from Components.Pixmap import Pixmap
 from Components.Sources.StaticText import StaticText
@@ -11,6 +12,7 @@ from Components.Label import Label
 from Components.Sources.List import List
 from Components.Harddisk import harddiskmanager
 from Components.ConfigList import ConfigListScreen
+from Components.PluginComponent import plugins
 from Components.config import config, ConfigYesNo, ConfigInteger, ConfigSubsection, ConfigSelection, getConfigListEntry, NoSave, configfile, ConfigText
 from Tools.LoadPixmap import LoadPixmap
 from Tools.Directories import resolveFilename, SCOPE_PLUGINS, SCOPE_LANGUAGE
@@ -35,6 +37,11 @@ if isUHD():
 else:
         from Plugins.Extensions.FootOnSat.assets.skin.skinFHD import *
 
+def DreamOS():
+	if os.path.exists('/var/lib/dpkg/status'):
+		return True
+	return False
+
 mounted_partitions = harddiskmanager.getMountedPartitions()
 mounted_devices = []
 default_ignore_dir = "/etc/enigma2/ignore"
@@ -57,6 +64,11 @@ config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
 config.plugins.FootOnSat.enableflag = ConfigYesNo(default=True)
 config.plugins.FootOnSat.notiftime = ConfigInteger(default=6, limits=(6, 20))
 config.plugins.FootOnSat.notiffile = ConfigText(default="notif1", visible_width = 250, fixed_size = False)
+config.plugins.FootOnSat.useDashMP4 = ConfigYesNo(default=False)
+config.plugins.FootOnSat.best_resolution = ConfigSelection(default='22', choices=[
+	('38', '4096x3072'), ('37', '1920x1080'), ('22', '1280x720'),
+	('35', '854x480'), ('18', '640x360'), ('5', '400x240'), ('17', '176x144')
+])
 config.plugins.FootOnSat.livecolor = ConfigSelection(default="0xFF0000", choices = [
 	("0xFF0000", _("RED")),
 	("0xFFFFFF", _("WHITE")),
@@ -66,7 +78,10 @@ config.plugins.FootOnSat.livecolor = ConfigSelection(default="0xFF0000", choices
 	])
 config.plugins.FootOnSat.finished = ConfigSelection(default = "2", choices = [
 	("2", _("2 hours")),
-	("3", _("3 hours"))
+	("3", _("3 hours")),
+	("4", _("4 hours")),
+	("5", _("5 hours")),
+	("6", _("6 hours"))
 	])
 config.plugins.FootOnSat.livescoresections = ConfigSelection(default = "1", choices = [
 	("1", _("All Sections")),
@@ -96,6 +111,10 @@ config.plugins.FootOnSat.icons = ConfigSelection(default = "icons_default", choi
 	("icons_renkli", _("renkli icons")),
 	("icons_italia2012", _("italia2012 Full style color"))
 	])
+config.plugins.FootOnSat.player = ConfigSelection(default='4097', choices=[
+        ('4097', _('Default')),
+        ('5002', _('ExtePlayer'))
+    ])
 
 VER = float(__version__)
 
@@ -492,6 +511,13 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.list.append(getConfigListEntry(_("Choose to notifications and Zap"), config.plugins.FootOnSat.notify_zap, _("This feature allows you to specify the notifications and Zap to selected channel")))
 		self.list.append(getConfigListEntry(_("Choose to display notifications"), config.plugins.FootOnSat.notify, _("This feature allows you to specify the times for notifications to appear when matches start")))
 		self.list.append(getConfigListEntry(_("Choose tone of notifications #press OK to change"), config.plugins.FootOnSat.notiffile, _("This feature allows you to select a notification tone when matches start")))
+		self.list.append(getConfigListEntry(_("Use DASH MP4 format"), config.plugins.FootOnSat.useDashMP4, _("This feature allows you to Use DASH MP4 format when this need.")))
+		if config.plugins.FootOnSat.useDashMP4.value:
+			self.list.append(getConfigListEntry(_("Best resolution for first found"), config.plugins.FootOnSat.best_resolution, _("What maximum resolution used, if available.\nIf you have a slow Internet connection, you can use a lower resolution.")))
+		for p in plugins.getPlugins(where=PluginDescriptor.WHERE_MENU):
+			if 'ServiceApp' in p.path:
+				self.list.append((_('Media player:'),config.plugins.FootOnSat.player, _('Specify the player which will be used for media playback.')))
+				break
 		self.list.append(getConfigListEntry(_("Select Icons Style"), config.plugins.FootOnSat.icons, _("This option to enable to select Icons Style.\nChoose and Press Save (Green Button)")))
 		self["config"].list = self.list
 		self["config"].l.setList(self.list)

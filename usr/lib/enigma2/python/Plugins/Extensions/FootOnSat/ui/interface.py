@@ -14,6 +14,7 @@ import traceback
 import threading
 import difflib
 import requests
+import subprocess
 from time import strftime
 from sqlite3 import connect
 from bs4 import BeautifulSoup
@@ -32,11 +33,13 @@ from Components.ActionMap import ActionMap
 from Components.NimManager import nimmanager, getConfigSatlist
 from Components.config import config
 from Components.Harddisk import harddiskmanager
-from Screens.InfoBar import InfoBar
+from Components.PluginComponent import plugins
 from Screens.Screen import Screen
+from Screens.InfoBar import InfoBar, MoviePlayer
 from Screens.ChoiceBox import ChoiceBox
 from Screens.MessageBox import MessageBox
 from Screens.ChannelSelection import ChannelSelection
+from Plugins.Plugin import PluginDescriptor
 from Tools.Directories import resolveFilename, SCOPE_PLUGINS, fileExists
 from Tools.LoadPixmap import LoadPixmap
 from twisted.internet import defer, reactor
@@ -47,7 +50,8 @@ from twisted.internet.threads import deferToThread
 from twisted.internet._sslverify import ClientTLSOptions
 from twisted.internet.threads import blockingCallFromThread
 from twisted.web.client import getPage, downloadPage
-from .compat import PY3, compat_urlopen, compat_HTTPError, compat_URLError, compat_Request, compat_str
+from .YouTubeVideoUrl import YouTubeVideoUrl
+from .compat import PY3, compat_urlopen, compat_HTTPError, compat_URLError, compat_Request, compat_str, compat_quote
 
 ### images path
 OPENBH="/usr/lib/enigma2/python/Screens/BpBlue.py"
@@ -67,6 +71,17 @@ except ImportError:
 	PIL_AVAILABLE = False
 	# Log a warning if PIL is not available, as conversion will fail
 	logdata("Logos", "WARNING: PIL/Pillow library not found. Non-PNG logo conversion will fail.")
+
+# Detect which binary is on the system
+if exists("/usr/bin/yt-dlp-legacy"):
+	YTDLP_BINARY = "/usr/bin/yt-dlp-legacy"
+	YTDLP_AVAILABLE = True
+elif exists("/usr/bin/yt-dlp"):
+	YTDLP_BINARY = "/usr/bin/yt-dlp"
+	YTDLP_AVAILABLE = True
+else:
+	YTDLP_BINARY = None
+	YTDLP_AVAILABLE = False
 
 try:
 	from enigma import BT_SCALE, RT_VALIGN_CENTER, RT_HALIGN_LEFT
@@ -1518,9 +1533,14 @@ class FootOnSat(Screen):
 			# Check the configuration value for the "finished" duration
 			if config.plugins.FootOnSat.finished.value == "2":
 				HOUR = 2
-			else:
-				# Default to 3 hours if option is not '2'
+			elif config.plugins.FootOnSat.finished.value == "3":
 				HOUR = 3
+			elif config.plugins.FootOnSat.finished.value == "4":
+				HOUR = 4
+			elif config.plugins.FootOnSat.finished.value == "5":
+				HOUR = 5
+			else:
+				HOUR = 6
 		except AttributeError:
 			# Fallback in case the config element is missing or not properly initialized
 			HOUR = 2
@@ -1933,8 +1953,8 @@ class MatchDetailsScreen(Screen):
 		self["title"] = Label(str(match_name) + " - Details")
 		self["home_name_big"] = Label(str(home_full))
 		self["away_name_big"] = Label(str(away_full))
-		self["home_team"] = Label(str(home_country))
-		self["away_team"] = Label(str(away_country))
+		self["home_team"] = Pixmap()
+		self["away_team"] = Pixmap()
 		self["score"] = Label("- : -")
 		self["status"] = Label(_("Loading..."))
 		self["key_red"] = Label(_("Close"))
@@ -1948,25 +1968,54 @@ class MatchDetailsScreen(Screen):
 			"ok": self.close,
 			"up": self.up,
 			"down": self.down,
-			"left": self.openStats,
+			"left": self.openMedia,
 			"right": self.openStats,
 		}, -1)
+
+		self.home_country = home_country
+		self.away_country = away_country
+		self.onLayoutFinish.append(self.onLayoutFinished)
+
+	def onLayoutFinished(self):
+		self.fetch_details()
+		self.showFlags(self.home_country, self.away_country)
+
+	def showFlags(self, team1, team2):
+		# --- Size and Position of Flags ---
+		if isUHD():
+			h_pos, a_pos = (750, 680), (2790, 680) # Flag positions for UHD
+		else:
+			h_pos, a_pos = (400, 340), (1420, 340) # Flag positions for FHD
+
+		flagTeam1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/{}.png".format(team1))
+		flagTeam2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/{}.png".format(team2))
 		
-		self.onLayoutFinish.append(self.fetch_details)
+		if not fileExists(flagTeam1):
+			flagTeam1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/default.png") # Default Home Flag
+		if not fileExists(flagTeam2):
+			flagTeam2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/default.png") # Default Away Flag
+
+		for side, path, pos in [("home_team", flagTeam1, h_pos), ("away_team", flagTeam2, a_pos)]:
+			if self[side].instance:
+				self[side].instance.setPixmapFromFile(path)
+				self[side].instance.move(ePoint(pos[0], pos[1]))
+				self[side].instance.show()
+
+	def openMedia(self):
+		self.session.openWithCallback(self.navCallback, MatchMediaScreen, self.event_id, self["title"].getText().replace(" - Details", ""))
+
+	def openStats(self):
+		self.session.openWithCallback(self.navCallback, MatchStatisticsScreen, self.event_id, self["title"].getText().replace(" - Details", ""), self["home_name_big"].getText(), self["away_name_big"].getText())
+
+	def navCallback(self, answer=None):
+		if answer == "exit_all":
+			self.close()
 
 	def up(self):
 		self["details_list"].up()
 
 	def down(self):
 		self["details_list"].down()
-
-	def openStats(self):
-		self.session.openWithCallback(self.statsCallback, MatchStatisticsScreen, self.event_id, self["title"].getText(), self["home_name_big"].getText(), self["away_name_big"].getText())
-
-	def statsCallback(self, answer=None):
-		# If user pressed EXIT in stats screen, we close this screen too
-		if answer == "exit_all":
-			self.close()
 
 	def fetch_details(self):
 		def _get_data(eid):
@@ -1998,15 +2047,12 @@ class MatchDetailsScreen(Screen):
 				FONT_S = 50    # Font Size
 				C_X    = 1620  # Minute X Position
 				T_W    = 200   # Minute Width
-				# --- HOME SIDE ---
 				H_TXT_X = 40   # Home Player Name X
 				H_TXT_W = 1450 # Home Player Name Width
 				H_IMG_X = 1530 # Home Icon X
-				# --- AWAY SIDE ---
 				A_IMG_X = 1850 # Away Icon X
 				A_TXT_X = 1930 # Away Player Name X
 				A_TXT_W = 1450 # Away Player Name Width
-				# --- ICON SIZE ---
 				IMG_W  = 60    # Fixed Width
 				IMG_H  = 80    # Fixed Height
 				IMG_Y  = 20    # Vertical Offset
@@ -2015,23 +2061,21 @@ class MatchDetailsScreen(Screen):
 				FONT_S = 36    # Font Size
 				C_X    = 850   # Minute X Position
 				T_W    = 100   # Minute Width
-				# --- HOME SIDE ---
 				H_TXT_X = 10   # Home Player Name X
 				H_TXT_W = 750  # Home Player Name Width
 				H_IMG_X = 780  # Home Icon X
-				# --- AWAY SIDE ---
 				A_IMG_X = 970  # Away Icon X
 				A_TXT_X = 1040 # Away Player Name X
 				A_TXT_W = 700  # Away Player Name Width
-				# --- ICON SIZE ---
 				IMG_W  = 60    # Fixed Width
 				IMG_H  = 80    # Fixed Height
-				IMG_Y  = -5    # Vertical Offset (Slightly up to fit 80px in 70px row)
+				IMG_Y  = -5    # Vertical Offset
 
 			self["details_list"].l.setItemHeight(ITEM_H)
 			self["details_list"].l.setFont(0, gFont('Regular', FONT_S))
 
-			sorted_inc = sorted(inc_js['incidents'], key=lambda x: x.get('time', 0), reverse=True)
+			# Sort: Top to Bottom (Start of match to end)
+			sorted_inc = sorted(inc_js['incidents'], key=lambda x: x.get('time', 0), reverse=False)
 			for inc in sorted_inc:
 				itype = inc.get('incidentType')
 				if itype not in ('goal', 'card', 'substitution'): continue
@@ -2056,23 +2100,21 @@ class MatchDetailsScreen(Screen):
 					color = 0xAAAAAA
 					icon_name = "substitution.png"
 
-				res = []
-				res.append(MultiContentEntryText()) # Anchor
-				res.append(MultiContentEntryText(pos=(C_X, 0), size=(T_W, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=itime))
+				# --- Incident List Row Information ---
+				res = [MultiContentEntryText()] # List row anchor
+				res.append(MultiContentEntryText(pos=(C_X, 0), size=(T_W, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=itime)) # Match Minute
 				
-				icon_path = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/icon/{}".format(icon_name))
-				png = loadPNG(icon_path)
+				icon_path = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/icon/{}".format(icon_name)) # Icon Path
+				png = loadPNG(icon_path) # Load Incident Icon
 
 				if is_home:
-					if png:
-						res.append(MultiContentEntryPixmapAlphaBlend(pos=(H_IMG_X, IMG_Y), size=(IMG_W, IMG_H), png=png))
-					res.append(MultiContentEntryText(pos=(H_TXT_X, 0), size=(H_TXT_W, ITEM_H), font=0, flags=RT_HALIGN_RIGHT|RT_VALIGN_CENTER, text=text, color=color))
+					if png: res.append(MultiContentEntryPixmapAlphaBlend(pos=(H_IMG_X, IMG_Y), size=(IMG_W, IMG_H), png=png)) # Home Incident Icon
+					res.append(MultiContentEntryText(pos=(H_TXT_X, 0), size=(H_TXT_W, ITEM_H), font=0, flags=RT_HALIGN_RIGHT|RT_VALIGN_CENTER, text=text, color=color)) # Home Player Name
 				else:
-					if png:
-						res.append(MultiContentEntryPixmapAlphaBlend(pos=(A_IMG_X, IMG_Y), size=(IMG_W, IMG_H), png=png))
-					res.append(MultiContentEntryText(pos=(A_TXT_X, 0), size=(A_TXT_W, ITEM_H), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=text, color=color))
+					if png: res.append(MultiContentEntryPixmapAlphaBlend(pos=(A_IMG_X, IMG_Y), size=(IMG_W, IMG_H), png=png)) # Away Incident Icon
+					res.append(MultiContentEntryText(pos=(A_TXT_X, 0), size=(A_TXT_W, ITEM_H), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=text, color=color)) # Away Player Name
 				
-				gList.append(res)
+				gList.append(res) # Add Row to List
 		
 		self["details_list"].setList(gList)
 
@@ -2093,22 +2135,32 @@ class MatchStatisticsScreen(Screen):
 			"cancel": self.exitAll,
 			"back": self.exitAll,
 			"red": self.exitAll,
-			"left": self.close,
-			"right": self.close,
 			"up": self.up,
 			"down": self.down,
+			"left": self.close,
+			"right": self.openMedia,
 		}, -1)
-
+		
 		self.onLayoutFinish.append(self.fetch_stats)
+
+	def exitAll(self):
+		self.close("exit_all")
+
+	def openMedia(self):
+		clean_title = self["title"].getText().replace(" - Statistics", "")
+		self.session.openWithCallback(self.navCallback, MatchMediaScreen, self.event_id, clean_title)
+
+	def navCallback(self, answer=None):
+		if answer == "exit_all":
+			self.close("exit_all")
+		else:
+			self.close()
 
 	def up(self):
 		self["stats_list"].up()
 
 	def down(self):
 		self["stats_list"].down()
-
-	def exitAll(self):
-		self.close("exit_all")
 
 	def fetch_stats(self):
 		def _get_stats(eid):
@@ -2186,6 +2238,240 @@ class MatchStatisticsScreen(Screen):
 		self["stats_list"].setList(gList)
 
 
+class MatchMediaScreen(Screen):
+	def __init__(self, session, event_id, match_name):
+		self.session = session
+		Screen.__init__(self, session)
+		self.skin = SKIN_MatchMedia
+		self.event_id = event_id
+
+		self["title"] = Label(str(match_name) + " - Media")
+		self["key_red"] = Label(_("Close"))
+		self["media_list"] = MenuList([], enableWrapAround=True, content=eListboxPythonMultiContent)
+
+		self["setupActions"] = ActionMap(["FootOnsatActions", "ColorActions"], {
+			"cancel": self.exitAll, 
+			"back": self.exitAll,
+			"red": self.exitAll,
+			"ok": self.playVideo,
+			"up": self.up,
+			"down": self.down,
+			"left": self.openStats,
+			"right": self.close,
+		}, -1)
+		for p in plugins.getPlugins(where=PluginDescriptor.WHERE_MENU):
+			if 'ServiceApp' in p.path and exists("/usr/bin/exteplayer3"):
+				break
+		else:
+			config.plugins.FootOnSat.player.value = '4097'
+
+		self.onLayoutFinish.append(self.fetch_media)
+
+	def up(self):
+		self["media_list"].up()
+
+	def down(self):
+		self["media_list"].down()
+
+	def exitAll(self):
+		self.close("exit_all")
+
+	def openStats(self):
+		clean_title = self["title"].getText().replace(" - Media", "")
+		self.session.openWithCallback(self.navCallback, MatchStatisticsScreen, self.event_id, clean_title, "", "")
+
+	def navCallback(self, answer=None):
+		if answer == "exit_all":
+			self.close("exit_all")
+		else:
+			self.close()
+
+	def fetch_media(self):
+		def _get_media(eid):
+			headers = {'User-Agent': 'Mozilla/5.0'}
+			try:
+				url = "https://api.sofascore.com/api/v1/event/{}/media".format(eid)
+				return requests.get(url, headers=headers, timeout=10).json()
+			except:
+				return None
+		d = deferToThread(_get_media, self.event_id)
+		d.addCallback(self.process_media)
+
+	def process_media(self, data):
+		gList = []
+		if isUHD():
+			ITEM_H = 120   # Row Height: Increase to add space between rows
+			FONT_S = 52    # Font Size: Increase to make text bigger
+			W_LIST = 3440  # Total width of the list box
+			X_OFF  = 40    # Left Padding for text
+		else:
+			ITEM_H = 80    # Row Height: Increase to add space between rows
+			FONT_S = 36    # Font Size: Increase to make text bigger
+			W_LIST = 1720  # Total width of the list box
+			X_OFF  = 20    # Left Padding for text
+			
+		self["media_list"].l.setItemHeight(ITEM_H)
+		self["media_list"].l.setFont(0, gFont('Regular', FONT_S))
+
+		if data and 'media' in data:
+			for item in data['media']:
+				v_url = item.get('url', '')
+				if not v_url: 
+					continue
+				
+				v_url = str(v_url)
+				title = str(item.get('title', 'Video'))
+				subtitle = item.get('subtitle')
+				
+				display_text = title
+				if subtitle:
+					display_text = title + " (" + str(subtitle) + ")"
+
+				res = []
+				res.append(v_url)
+				res.append(MultiContentEntryText())
+				res.append(MultiContentEntryText(pos=(X_OFF, 0), size=(W_LIST - X_OFF, ITEM_H), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=display_text))
+				gList.append(res)
+
+		if not gList:
+			res = []
+			res.append(None)
+			res.append(MultiContentEntryText())
+			err_msg = str(_("No media available"))
+			res.append(MultiContentEntryText(pos=(0, 0), size=(W_LIST, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=err_msg, color=0xff0000))
+			gList.append(res)
+		
+		self["media_list"].setList(gList)
+
+	def playVideo(self):
+		cur = self["media_list"].getCurrent()
+		if not cur or not cur[0]:
+			return
+		url = cur[0].strip()
+		#logdata("Processing URL", str(url))
+		self.play_timer_conn = None
+		self.error_timer_conn = None
+		is_youtube = "youtube.com" in url.lower() or "youtu.be" in url.lower()
+		is_twitter = "twitter.com" in url.lower() or "x.com" in url.lower()
+		if is_youtube:
+			self.wait_dialog = self.session.open(MessageBox, _("Please wait while extracting video stream..."), MessageBox.TYPE_INFO, enable_input=False)
+			from twisted.internet.threads import deferToThread
+			def safe_extract(video_url):
+				try:
+					v_id = video_url
+					if 'watch?v=' in v_id: v_id = v_id.split('watch?v=')[-1]
+					elif 'youtu.be/' in v_id: v_id = v_id.split('youtu.be/')[-1]
+					if '&' in v_id: v_id = v_id.split('&')[0]
+					ytdl = YouTubeVideoUrl()
+					result = ytdl.extract(v_id)
+					return str(result) if result else ""
+				except Exception as e:
+					logdata("EXTRACT_ERROR_THREAD_FUNC", str(e))
+					return ""
+			deferToThread(safe_extract, url).addCallback(self.playAfterExtract).addErrback(self.playback_error)
+		elif is_twitter:
+			self.wait_dialog = self.session.open(MessageBox, _("Please wait while extracting video stream..."), MessageBox.TYPE_INFO, enable_input=False)
+			from twisted.internet.threads import deferToThread
+			deferToThread(self.extract_twitter_stream, url).addCallback(self.playAfterExtract).addErrback(self.playback_error)
+		else:
+			self.playAfterExtract(str(url))
+
+	def playAfterExtract(self, video_url):
+		video_url = video_url or ""
+		#logdata("PLAY_CHECK", str(video_url))
+		if hasattr(self, 'wait_dialog') and self.wait_dialog:
+			self.wait_dialog.close()
+		if not video_url or not isinstance(video_url, (str, compat_str)) or not video_url.startswith("http"):
+			#logdata("PLAY_ABORT", "INVALID_URL")
+			self.session.open(MessageBox, _("Failed to extract video stream or link is broken."), MessageBox.TYPE_ERROR)
+			return
+		pure_url = video_url
+		user_agent = None
+		if "#http_user_agent=" in video_url:
+			pure_url, user_agent = video_url.split("#http_user_agent=", 1)
+			if "&Referer=" in user_agent:
+				user_agent = user_agent.split("&Referer=")[0]
+		try:
+			try:
+				from urllib.request import Request, urlopen
+			except ImportError:
+				from urllib2 import Request, urlopen
+			req = Request(pure_url)
+			if user_agent: req.add_header("User-Agent", user_agent)
+			req.add_header("Referer", "https://www.youtube.com/")
+			req.add_header("Range", "bytes=0-1")
+			resp = urlopen(req, timeout=10)
+			code = getattr(resp, "getcode", lambda: 200)()
+			if code not in (200, 206): raise Exception("HTTP_%s" % code)
+		except Exception as e:
+			#logdata("PLAY_ABORT_HTTP", str(e))
+			if "403" not in str(e):
+				self.session.open(MessageBox, _("Failed to extract video stream or link is broken."), MessageBox.TYPE_ERROR)
+				return
+		name = str(self["title"].getText())
+		stype = int(config.plugins.FootOnSat.player.value)
+		ref_str = "%d:0:1:0:0:0:0:0:0:0::%s" % (stype, compat_quote(name))
+		ref = eServiceReference(ref_str)
+		if user_agent:
+			if DreamOS():
+				#logdata("PLAY_PLATFORM", "DreamOS_YT")
+				ref.setPath(str(pure_url))
+				ref.setData(0, str(user_agent))
+			else:
+				#logdata("PLAY_PLATFORM", "Standard_YT")
+				ref.setPath(str(video_url))
+		else:
+			#logdata("PLAY_PLATFORM", "Direct_URL")
+			ref.setPath(str(pure_url))
+		ref.setName(name)
+		#logdata("PLAY_FINAL_REF", ref.toString())
+		self.play_timer = eTimer()
+		if DreamOS():
+			self.play_timer_conn = self.play_timer.timeout.connect(lambda: self.session.open(MoviePlayer, ref))
+		else:
+			self.play_timer.callback.append(lambda: self.session.open(MoviePlayer, ref))
+		self.play_timer.start(200, True)
+
+	def extract_twitter_stream(self, url):
+		try:
+			import urllib3
+			urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+		except: pass
+		try:
+			t_id = url.split('/')[-1].split('?')[0]
+			api_url = "https://api.fxtwitter.com/i/status/%s" % t_id
+			headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
+			r = requests.get(api_url, headers=headers, timeout=15, verify=False)
+			if r.status_code == 200:
+				data = r.json()
+				tweet = data.get('tweet', {})
+				media = tweet.get('media', {})
+				videos = media.get('videos', [])
+				if videos:
+					video_url = videos[0].get('url')
+					if not isinstance(video_url, str):
+						video_url = video_url.encode('utf-8')
+					return video_url
+			return None
+		except Exception as e:
+			logdata("Twitter Exception", str(e))
+			return None
+
+	def playback_error(self, failure):
+		if hasattr(self, 'wait_dialog') and self.wait_dialog:
+			self.wait_dialog.close()
+		if failure == "missing_ytdlp":
+			msg = _("python of yt-dlp is missing!")
+		else:
+			msg = _("Failed to extract video stream or link is broken.")
+		self.error_timer = eTimer()
+		if DreamOS():
+			self.error_timer_conn = self.error_timer.timeout.connect(lambda: self.session.open(MessageBox, msg, MessageBox.TYPE_ERROR, timeout=10))
+		else:
+			self.error_timer.callback.append(lambda: self.session.open(MessageBox, msg, MessageBox.TYPE_ERROR, timeout=10))
+		self.error_timer.start(250, True)
+
+
 class FootOnSatNotif:
 	def __init__(self):
 		self.dialog = None
@@ -2232,9 +2518,6 @@ class FootOnsatNotifScreen(Screen):
 
 		logdata("ZAP_DEBUG", "=== NOTIFICATION START ===")
 		logdata("ZAP_DEBUG", "Match: '%s'" % match)
-
-		# CRITICAL FIX 2: Normalize key to handle invisible spaces (\xa0) and remove ALL spaces
-		import re
 		
 		# 1. Handle non-breaking space (Py2/3 safe)
 		try:

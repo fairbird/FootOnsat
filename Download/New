@@ -1,1 +1,4 @@
-- Improve screen of Match Details Screen
+- Add new screen of Match Media (To play videos of highlight match if available)
+- Add new option (Use DASH MP4 format) for (open source images work only if enable)
+- Add new option (Best resolution for first found) only if enable (Use DASH MP4 format)
+- Add new option (Media player:) if install (ServiceApp + ExtePlayer3) for (open source images only)
