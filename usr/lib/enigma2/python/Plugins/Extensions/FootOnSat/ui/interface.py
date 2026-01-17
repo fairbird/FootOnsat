@@ -2077,6 +2077,9 @@ class MatchDetailsScreen(Screen):
 			# Sort: Top to Bottom (Start of match to end)
 			sorted_inc = sorted(inc_js['incidents'], key=lambda x: x.get('time', 0), reverse=False)
 			for inc in sorted_inc:
+				# If time is less than 0 or isBenchPlayer flag is True, skip it.
+				if inc.get('time', 0) < 0 or inc.get('isBenchPlayer', False):
+					continue
 				itype = inc.get('incidentType')
 				if itype not in ('goal', 'card', 'substitution'): continue
 				
@@ -2300,43 +2303,62 @@ class MatchMediaScreen(Screen):
 	def process_media(self, data):
 		gList = []
 		if isUHD():
-			ITEM_H = 120   # Row Height: Increase to add space between rows
-			FONT_S = 52    # Font Size: Increase to make text bigger
-			W_LIST = 3440  # Total width of the list box
-			X_OFF  = 40    # Left Padding for text
+			ITEM_H = 120             # Row Height: Increase to add space between rows
+			FONT_S = 52              # Font Size: Increase to make text bigger
+			W_LIST = 3440            # Total width of the list box
+			X_OFF  = 40              # Left Padding for text
+			IMG_W, IMG_H = 100, 100   # info: Icon dimensions for UHD (100 is width, 100 is height)
+			X_TEXT = 180             # info: Start position for text after the icon in UHD
 		else:
-			ITEM_H = 80    # Row Height: Increase to add space between rows
-			FONT_S = 36    # Font Size: Increase to make text bigger
-			W_LIST = 1720  # Total width of the list box
-			X_OFF  = 20    # Left Padding for text
-			
+			ITEM_H = 80              # Row Height: Increase to add space between rows
+			FONT_S = 36              # Font Size: Increase to make text bigger
+			W_LIST = 1720            # Total width of the list box
+			X_OFF  = 20              # Left Padding for text
+			IMG_W, IMG_H = 60, 60    # info: Icon dimensions for FHD (60 is width, 60 is height)
+			X_TEXT = 120             # info: Start position for text after the icon in FHD
+
 		self["media_list"].l.setItemHeight(ITEM_H)
 		self["media_list"].l.setFont(0, gFont('Regular', FONT_S))
+		
+		path = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/icon/")
+		if isUHD():
+			icon_yt = path + "youtube_iconUHD.png"
+			icon_tw = path + "twitter_iconUHD.png"
+		else:
+			icon_yt = path + "youtube_icon.png"
+			icon_tw = path + "twitter_icon.png"
 
 		if data and 'media' in data:
 			for item in data['media']:
 				v_url = item.get('url', '')
-				if not v_url: 
-					continue
-				
+				if not v_url: continue
 				v_url = str(v_url)
 				title = str(item.get('title', 'Video'))
 				subtitle = item.get('subtitle')
+				display_text = title + " (" + str(subtitle) + ")" if subtitle else title
 				
-				display_text = title
-				if subtitle:
-					display_text = title + " (" + str(subtitle) + ")"
+				res = [v_url]
+				res.append(MultiContentEntryText()) # Anchor
+				
+				# info: Check URL for Youtube or Twitter to assign correct icon
+				icon_path = None
+				if "youtube.com" in v_url.lower() or "youtu.be" in v_url.lower():
+					icon_path = icon_yt
+				elif "twitter.com" in v_url.lower() or "x.com" in v_url.lower():
+					icon_path = icon_tw
 
-				res = []
-				res.append(v_url)
-				res.append(MultiContentEntryText())
-				res.append(MultiContentEntryText(pos=(X_OFF, 0), size=(W_LIST - X_OFF, ITEM_H), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=display_text))
+				if icon_path and exists(icon_path):
+					# info: Use LoadPixmap with size to force auto-scaling of the PNG file
+					ptr = loadPNG(icon_path)
+					if ptr:
+						res.append(MultiContentEntryPixmapAlphaBlend(pos=(X_OFF, (ITEM_H - IMG_H)//2), size=(IMG_W, IMG_H), png=ptr))
+
+				# info: Draw the video title text after the fixed icon position
+				res.append(MultiContentEntryText(pos=(X_TEXT, 0), size=(W_LIST - X_TEXT, ITEM_H), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=display_text))
 				gList.append(res)
 
 		if not gList:
-			res = []
-			res.append(None)
-			res.append(MultiContentEntryText())
+			res = [None, MultiContentEntryText()]
 			err_msg = str(_("No media available"))
 			res.append(MultiContentEntryText(pos=(0, 0), size=(W_LIST, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=err_msg, color=0xff0000))
 			gList.append(res)

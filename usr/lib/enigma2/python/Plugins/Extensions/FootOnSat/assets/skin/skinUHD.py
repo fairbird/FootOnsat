@@ -152,36 +152,47 @@ SKIN_MatchDetails = """
     <eLabel position="0,0" size="3840,240" backgroundColor="#003366" zPosition="0" />
     <widget name="title" position="80,40" size="3680,160" font="Regular;100" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#003366" transparent="1" zPosition="1" />
     
-    <widget name="home_name_big" position="200,360" size="1400,400" font="Regular;140" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#101010" transparent="1" />
-    <widget name="away_name_big" position="2240,360" size="1400,400" font="Regular;140" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#101010" transparent="1" />
+    <widget name="home_name_big" position="200,360" size="1400,300" font="Regular;140" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#101010" transparent="1" />
+    <widget name="away_name_big" position="2240,360" size="1400,300" font="Regular;140" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#101010" transparent="1" />
 
-    <widget name="home_team" position="200,760" size="1400,160" font="Regular;80" halign="center" valign="top" foregroundColor="#aaaaaa" backgroundColor="#101010" transparent="1" />
-    <widget name="away_team" position="2240,760" size="1400,160" font="Regular;80" halign="center" valign="top" foregroundColor="#aaaaaa" backgroundColor="#101010" transparent="1" />
+    <widget name="home_team" position="750,680" size="300,200" alphatest="blend" />
+    <widget name="away_team" position="2790,680" size="300,200" alphatest="blend" />
 
     <widget name="score" position="1600,400" size="640,300" font="Regular;240" halign="center" valign="center" foregroundColor="#ffcc00" backgroundColor="#101010" transparent="1" />
     <widget name="status" position="1600,700" size="640,120" font="Regular;68" halign="center" valign="center" foregroundColor="#00ff00" backgroundColor="#101010" transparent="1" />
     
     <widget name="details_list" position="50,1000" size="3540,960" scrollbarMode="showOnDemand" transparent="1" />
- 
-    <eLabel text="Move Left or Right for Statistics" position="1785,2000" size="2000,120" font="Regular;55" foregroundColor="#ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" halign="center" />  
-    
+
+    <eLabel text="&lt; Media | Statistics &gt;" position="1785,2000" size="2000,120" font="Regular;55" foregroundColor="#ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" halign="center" />  
+
     <eLabel position="0,2152" size="3840,8" backgroundColor="#333333" />
     <widget name="key_red" position="80,2000" size="800,120" zPosition="1" font="Regular;68" halign="left" valign="center" backgroundColor="#101010" transparent="1" foregroundColor="red" />
 </screen>
 """
 
-SKIN_MatchStatistics_UHD = """
-<screen name="MatchStatisticsScreen" position="0,0" size="3840,2160" title="Match Statistics" flags="wfNoBorder" backgroundColor="#101010">
-    <eLabel position="0,0" size="3840,240" backgroundColor="#006633" zPosition="0" />
-    <widget name="title" position="80,40" size="3680,160" font="Regular;100" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#006633" transparent="1" zPosition="1" />
-	
-    <widget name="home_team" position="200,300" size="1400,200" font="Regular;120" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
-    <widget name="away_team" position="2240,300" size="1400,200" font="Regular;120" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
-	
-    <widget name="stats_list" position="200,560" size="3440,1400" scrollbarMode="showOnDemand" transparent="1" />
+SKIN_MatchMedia = """
+<screen name="MatchMediaScreen" position="0,0" size="3840,2160" title="Match Media" flags="wfNoBorder" backgroundColor="#16000000">
+    <eLabel position="0,0" size="3840,240" backgroundColor="#660000" zPosition="0" />
+    <widget name="title" position="80,40" size="3680,160" font="Regular;100" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#660000" transparent="1" zPosition="1"/>
+    
+    <widget name="media_list" position="200,360" size="3440,1600" scrollbarMode="showOnDemand" transparent="1" />
 
-    <eLabel text="Move Left or Right for Details" position="1785,2000" size="2000,120" font="Regular;55" foregroundColor="#ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" halign="center" />  
-   
+    <eLabel text="< Statistics | Details >" position="1820,2000" size="1938,120" font="Regular;70" foregroundColor="#ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" halign="center" valign="center" />
+
+    <eLabel position="0,2152" size="3840,8" backgroundColor="#333333" />
+    <widget name="key_red" position="80,2000" size="800,120" zPosition="1" font="Regular;68" halign="left" valign="center" backgroundColor="#101010" transparent="1" foregroundColor="red" />
+</screen>
+"""
+
+SKIN_MatchMedia = """
+<screen name="MatchMediaScreen" position="0,0" size="3840,2160" title="Match Media" flags="wfNoBorder" backgroundColor="#16000000">
+    <eLabel position="0,0" size="3840,240" backgroundColor="#660000" zPosition="0" />
+    <widget name="title" position="80,40" size="3680,160" font="Regular;100" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#660000" transparent="1" zPosition="1"/>
+    
+    <widget name="media_list" position="200,360" size="3440,1600" scrollbarMode="showOnDemand" transparent="1" />
+
+    <eLabel text="&lt; Statistics | Details &gt;" position="1820,2000" size="1938,120" font="Regular;70" foregroundColor="#ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" halign="center" valign="center" />
+
     <eLabel position="0,2152" size="3840,8" backgroundColor="#333333" />
     <widget name="key_red" position="80,2000" size="800,120" zPosition="1" font="Regular;68" halign="left" valign="center" backgroundColor="#101010" transparent="1" foregroundColor="red" />
 </screen>
