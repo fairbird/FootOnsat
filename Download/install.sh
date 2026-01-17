@@ -104,6 +104,10 @@ if python --version 2>&1 | grep -q '^Python 3\.'; then
    THREADING='python3-threading'
    PLI='python3-pillow'
    REQUESTES='python3-requests'
+   JSON='python3-json'
+   IO='python3-io'
+   EMAIL='python3-email'
+   DATETIME='python3-datetime'
 else
    echo "You have Python2 image"
    PYTHON='PY2'
@@ -114,6 +118,10 @@ else
    THREADING='python-threading'
    PLI='python-imaging'
    REQUESTES='python-requests'
+   JSON='python-json'
+   IO='python-io'
+   EMAIL='python-email'
+   DATETIME='python-datetime'
 fi
 
 if grep -q "$SQLITE3" "$STATUS"; then
@@ -148,8 +156,25 @@ if grep -q "$REQUESTES" "$STATUS"; then
     requestes='Installed'
 fi
 
+if grep -q "$JSON" "$STATUS"; then
+    json='Installed'
+fi
+
+if grep -q "$IO" "$STATUS"; then
+    io='Installed'
+fi
+
+if grep -q "$EMAIL" "$STATUS"; then
+    email='Installed'
+fi
+
+if grep -q "$DATETIME" "$STATUS"; then
+    datetime='Installed'
+fi
+
 if [ "$sqlite" = "Installed" -a "$six" = "Installed" -a "$aplay" = "Installed" -a "$beautifulsoup4" = "Installed" -a \
-      "$difflib" = "Installed" -a "$threading" = "Installed" -a "$pil" = "Installed" -a "$requestes" = "Installed" ]; then
+      "$difflib" = "Installed" -a "$threading" = "Installed" -a "$pil" = "Installed" -a "$requestes" = "Installed" -a \
+       "$json" = "Installed" -a "$io" = "Installed" -a "$email" = "Installed" -a "$datetime" = "Installed" ]; then
      echo ""
 else
 
@@ -166,7 +191,7 @@ else
         opkg install alsa-utils-aplay
         echo "========================================================================"
         echo "========================================================================"
-        echo " Downloading $SQLITE3 , $PYSIX , $SOUP4 , $DIFFLIB , $THREADING , $PLI , $REQUESTES  ......"
+        echo " Downloading packages depend ......"
         opkg install $SQLITE3
         opkg install $PYSIX
         opkg install $SOUP4
@@ -174,6 +199,10 @@ else
         opkg install $THREADING
         opkg install $PLI
         opkg install $REQUESTES
+        opkg install $JSON
+        opkg install $IO
+        opkg install $EMAIL
+        opkg install $DATETIME
         echo "========================================================================"
     else
         echo "=========================================================================="
@@ -188,7 +217,7 @@ else
         apt-get install alsa-utils-aplay -y
         echo "========================================================================"
         echo "========================================================================"
-        echo " Downloading $SQLITE3 , $PYSIX , $SOUP4 , $DIFFLIB , $THREADING , $PLI , $REQUESTES ......"
+        echo " Downloading packages depend ......"
         apt-get install $SQLITE3 -y
         apt-get install $PYSIX -y
         apt-get install $SOUP4 -y
@@ -196,6 +225,10 @@ else
         apt-get install $THREADING -y
         apt-get install $PLI -y
         apt-get install $REQUESTES -y
+        apt-get install $JSON -y
+        apt-get install $IO -y
+        apt-get install $EMAIL -y
+        apt-get install $DATETIME -y
         echo "========================================================================"
     fi
 fi
@@ -278,6 +311,42 @@ if grep -q "$REQUESTES" "$STATUS"; then
 else
 	echo "#########################################################"
 	echo "#       $REQUESTES Not found in feed                    #"
+	echo "#########################################################"
+	exit 1
+fi
+
+if grep -q "$JSON" "$STATUS"; then
+	: # Null command (do nothing, but satisfy the shell syntax)
+else
+	echo "#########################################################"
+	echo "#            $JSON Not found in feed                    #"
+	echo "#########################################################"
+	exit 1
+fi
+
+if grep -q "$IO" "$STATUS"; then
+	: # Null command (do nothing, but satisfy the shell syntax)
+else
+	echo "#########################################################"
+	echo "#       	   $IO Not found in feed                    #"
+	echo "#########################################################"
+	exit 1
+fi
+
+if grep -q "$EMAIL" "$STATUS"; then
+	: # Null command (do nothing, but satisfy the shell syntax)
+else
+	echo "#########################################################"
+	echo "#           $EMAIL Not found in feed                    #"
+	echo "#########################################################"
+	exit 1
+fi
+
+if grep -q "$DATETIME" "$STATUS"; then
+	: # Null command (do nothing, but satisfy the shell syntax)
+else
+	echo "#########################################################"
+	echo "#        $DATETIME Not found in feed                    #"
 	echo "#########################################################"
 	exit 1
 fi

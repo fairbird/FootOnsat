@@ -1,38 +1,22 @@
 # -*- coding: utf-8 -*-
-import os
-import io
-import re
-import gc
-import sys
-import json
-import math
-import codecs
-import random
-import time
-import shutil
-import traceback
-import threading
-import difflib
-import requests
-import subprocess
+import os, io, re, gc, sys, json, math, codecs, random, time, shutil, difflib, requests, subprocess
 from time import strftime
 from sqlite3 import connect
 from bs4 import BeautifulSoup
 from unicodedata import normalize
 from difflib import SequenceMatcher
 from datetime import date, datetime, timedelta
-from os.path import join, exists, isfile, dirname
-from enigma import eTimer, gRGB, loadPNG, gPixmapPtr, RT_WRAP, ePoint, RT_HALIGN_CENTER, RT_HALIGN_LEFT, RT_VALIGN_CENTER, eListboxPythonMultiContent, \
-				gFont, getDesktop, eConsoleAppContainer, eServiceCenter, eServiceReference
-from Components.MultiContent import MultiContentEntryText, MultiContentEntryPixmap, MultiContentEntryPixmapAlphaTest, MultiContentEntryPixmapAlphaBlend
+from os.path import join, exists
+from enigma import eSize, eTimer, gRGB, loadPNG, gPixmapPtr, RT_WRAP, ePoint, RT_HALIGN_CENTER, RT_HALIGN_LEFT, RT_VALIGN_CENTER, eListboxPythonMultiContent, \
+				gFont, eConsoleAppContainer, eServiceCenter, eServiceReference
+from Components.MultiContent import MultiContentEntryText, MultiContentEntryPixmap, MultiContentEntryPixmapAlphaBlend
 from Components.MenuList import MenuList
 from Components.Label import Label
 from Components.Button import Button
 from Components.Pixmap import Pixmap
 from Components.ActionMap import ActionMap
-from Components.NimManager import nimmanager, getConfigSatlist
+from Components.NimManager import nimmanager
 from Components.config import config
-from Components.Harddisk import harddiskmanager
 from Components.PluginComponent import plugins
 from Screens.Screen import Screen
 from Screens.InfoBar import InfoBar, MoviePlayer
@@ -44,14 +28,14 @@ from Tools.Directories import resolveFilename, SCOPE_PLUGINS, fileExists
 from Tools.LoadPixmap import LoadPixmap
 from twisted.internet import defer, reactor
 from twisted.python.failure import Failure
-from twisted.internet.defer import DeferredList
 from twisted.internet.ssl import ClientContextFactory
 from twisted.internet.threads import deferToThread
 from twisted.internet._sslverify import ClientTLSOptions
 from twisted.internet.threads import blockingCallFromThread
 from twisted.web.client import getPage, downloadPage
 from .YouTubeVideoUrl import YouTubeVideoUrl
-from .compat import PY3, compat_urlopen, compat_HTTPError, compat_URLError, compat_Request, compat_str, compat_quote
+from .compat import *
+from .setup import *
 
 ### images path
 OPENBH="/usr/lib/enigma2/python/Screens/BpBlue.py"
@@ -59,9 +43,9 @@ OPENBH2="/usr/lib/enigma2/python/Screens/BpBlue.pyc"
 OPENVIX="/usr/lib/enigma2/python/Plugins/SystemPlugins/ViX"
 
 try:
-	from urllib.parse import urlparse
+	from urllib.parse import urlparse, urljoin
 except ImportError:
-	from urlparse import urlparse
+	from urlparse import urlparse, urljoin
 
 # Check for PIL availability first, and import if found
 try:
@@ -71,17 +55,6 @@ except ImportError:
 	PIL_AVAILABLE = False
 	# Log a warning if PIL is not available, as conversion will fail
 	logdata("Logos", "WARNING: PIL/Pillow library not found. Non-PNG logo conversion will fail.")
-
-# Detect which binary is on the system
-if exists("/usr/bin/yt-dlp-legacy"):
-	YTDLP_BINARY = "/usr/bin/yt-dlp-legacy"
-	YTDLP_AVAILABLE = True
-elif exists("/usr/bin/yt-dlp"):
-	YTDLP_BINARY = "/usr/bin/yt-dlp"
-	YTDLP_AVAILABLE = True
-else:
-	YTDLP_BINARY = None
-	YTDLP_AVAILABLE = False
 
 try:
 	from enigma import BT_SCALE, RT_VALIGN_CENTER, RT_HALIGN_LEFT
@@ -94,23 +67,6 @@ try:
 	from enigma import RT_HALIGN_RIGHT
 except ImportError:
 	RT_HALIGN_RIGHT = 2
-
-try:
-	from urllib.parse import urlparse, urljoin
-except ImportError:
-	from urlparse import urlparse, urljoin # Python 2 compatibility
-
-def getDesktopSize():
-	s = getDesktop(0).size()
-	return (s.width(), s.height())
-
-def isUHD():
-	desktopSize = getDesktopSize()
-	return desktopSize[0] >= 2560
-
-def isFHD():
-	desktopSize = getDesktopSize()
-	return desktopSize[0] == 1920
 
 if isUHD():
         from Plugins.Extensions.FootOnSat.assets.skin.skinUHD import *
@@ -204,27 +160,6 @@ log_urls = {
 	# Asia Champions league two
 	"afcchampionstwo": "https://www.worldfootball.net/competition/afc-champions-league-two/",
 }
-
-def logdata(label_name = "", data = None):
-	try:
-		data = str(data)
-		with open("/tmp/FootOnSat.log", "a") as fp:
-			fp.write(str(label_name) + " : " + data + "\n")
-	except:
-		pass
-
-def trace_error():
-	try:
-		with open("/tmp/FootOnSat.log", "a") as f:
-			traceback.print_exc(file=f)
-		traceback.print_exc(file=sys.stdout)
-	except:
-		pass
-
-def DreamOS():
-	if os.path.exists('/var/lib/dpkg/status'):
-		return True
-	return False
 
 # Place this function at the top level of your script (outside the StandingsScreen class)
 def sanitize_team_name(team):
@@ -522,9 +457,9 @@ class FootOnSat(Screen):
 				# Competition banner
 				if self.link not in (SPORTS | FOOTBALL):
 					try:
-						res.append(MultiContentEntryPixmapAlphaTest(pos=(65, 6), size=(320, 163), png=loadPNG(banner), flags=BT_SCALE))
+						res.append(MultiContentEntryPixmapAlphaBlend(pos=(65, 6), size=(320, 163), png=loadPNG(banner), flags=BT_SCALE))
 					except TypeError:
-						res.append(MultiContentEntryPixmapAlphaTest(pos=(65, 6), size=(320, 163), png=loadPNG(banner)))
+						res.append(MultiContentEntryPixmapAlphaBlend(pos=(65, 6), size=(320, 163), png=loadPNG(banner)))
 				# Notification icon
 				res.append(MultiContentEntryPixmapAlphaBlend(pos=(-20, 63), size=(70, 50), png=loadPNG(notif)))
 				# Match name
@@ -1981,22 +1916,28 @@ class MatchDetailsScreen(Screen):
 		self.showFlags(self.home_country, self.away_country)
 
 	def showFlags(self, team1, team2):
-		# --- Size and Position of Flags ---
 		if isUHD():
-			h_pos, a_pos = (750, 680), (2790, 680) # Flag positions for UHD
+			h_pos, a_pos = (750, 680), (2790, 680)
+			# info: Set specific big size for UHD (Width, Height)
+			flag_size = eSize(300, 200)
 		else:
-			h_pos, a_pos = (400, 340), (1420, 340) # Flag positions for FHD
+			h_pos, a_pos = (370, 320), (1400, 320)
+			# info: Set specific big size for FHD (Width, Height)
+			flag_size = eSize(120, 80)
 
 		flagTeam1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/{}.png".format(team1))
 		flagTeam2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/{}.png".format(team2))
-		
+
 		if not fileExists(flagTeam1):
-			flagTeam1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/default.png") # Default Home Flag
+			flagTeam1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/default.png")
 		if not fileExists(flagTeam2):
-			flagTeam2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/default.png") # Default Away Flag
+			flagTeam2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/default.png")
 
 		for side, path, pos in [("home_team", flagTeam1, h_pos), ("away_team", flagTeam2, a_pos)]:
 			if self[side].instance:
+				# info: setScale(1) forces the image to stretch to the new widget size
+				self[side].instance.setScale(1)
+				self[side].instance.resize(flag_size)
 				self[side].instance.setPixmapFromFile(path)
 				self[side].instance.move(ePoint(pos[0], pos[1]))
 				self[side].instance.show()
