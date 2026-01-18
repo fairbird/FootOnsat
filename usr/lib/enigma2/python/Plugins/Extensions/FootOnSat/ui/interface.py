@@ -461,7 +461,8 @@ class FootOnSat(Screen):
 					except TypeError:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(65, 6), size=(320, 163), png=loadPNG(banner)))
 				# Notification icon
-				res.append(MultiContentEntryPixmapAlphaBlend(pos=(-20, 63), size=(70, 50), png=loadPNG(notif)))
+				if self.link != "live":
+					res.append(MultiContentEntryPixmapAlphaBlend(pos=(-20, 63), size=(70, 50), png=loadPNG(notif)))
 				# Match name
 				if isUHD():
 					if self.link in (SPORTS | FOOTBALL):
@@ -619,8 +620,8 @@ class FootOnSat(Screen):
 			self.enablelist1()
 			self.disablelist2()
 			self.resetChannelinfo()
-		elif self.selectedList == self["list1"]:
-			self.exit()
+		#elif self.selectedList == self["list1"]:
+		#	self.exit()
 
 	def right(self):
 		if self.selectedList.getCurrent():
@@ -701,33 +702,34 @@ class FootOnSat(Screen):
 				cur.execute('CREATE TABLE IF NOT EXISTS LIVE_NOTIF (MATCH TEXT primary key , COMPET TEXT , DATE TEXT , TEAM1_FLAG TEXT , TEAM2_FLAG TEXT , FIRST_NOTIF TEXT , FIRST_NOTIF_STATUS TEXT , LIVE_NOTIF_STATUS TEXT,MESSAGE TEXT)')
 
 	def menu(self):
-		if self.selectedList != self["list1"] or len(self.matches) == 0:
-			return
+		if self.link != "live":
+			if self.selectedList != self["list1"] or len(self.matches) == 0:
+				return
 
-		index = self['list1'].getSelectionIndex()
-		match = self.matches[index][0] if PY3 else self.matches[index][0].decode('utf-8')
+			index = self['list1'].getSelectionIndex()
+			match = self.matches[index][0] if PY3 else self.matches[index][0].decode('utf-8')
 
-		if not self.checkIfexist(match):
-			self.session.open(MessageBox,
-				_("Please press OK on the match first to enable notification!"),
-				MessageBox.TYPE_INFO, timeout=6)
-			return
+			if not self.checkIfexist(match):
+				self.session.open(MessageBox,
+					_("Please press OK on the match first to enable notification!"),
+					MessageBox.TYPE_INFO, timeout=6)
+				return
 
-		self.current_selected_match = match
+			self.current_selected_match = match
 
-		# YOUR ORIGINAL UNIVERSAL CODE — 100% UNCHANGED
-		try:
-			from Screens.ChannelSelection import ChannelSelectionSimple
-			sel_class = ChannelSelectionSimple
-		except:
+			# YOUR ORIGINAL UNIVERSAL CODE — 100% UNCHANGED
 			try:
-				from Screens.ChannelSelection import SimpleChannelSelection
-				sel_class = SimpleChannelSelection
+				from Screens.ChannelSelection import ChannelSelectionSimple
+				sel_class = ChannelSelectionSimple
 			except:
-				from Screens.ChannelSelection import ChannelSelection
-				sel_class = ChannelSelection
+				try:
+					from Screens.ChannelSelection import SimpleChannelSelection
+					sel_class = SimpleChannelSelection
+				except:
+					from Screens.ChannelSelection import ChannelSelection
+					sel_class = ChannelSelection
 
-		self.session.openWithCallback(self.channelSelected, sel_class, _("Select Notification Channel"))
+			self.session.openWithCallback(self.channelSelected, sel_class, _("Select Notification Channel"))
 
 	def channelSelected(self, service_ref=None):
 		if not service_ref:
@@ -2203,11 +2205,13 @@ class MatchMediaScreen(Screen):
 			"left": self.openStats,
 			"right": self.close,
 		}, -1)
-		for p in plugins.getPlugins(where=PluginDescriptor.WHERE_MENU):
-			if 'ServiceApp' in p.path and exists("/usr/bin/exteplayer3"):
-				break
-		else:
-			config.plugins.FootOnSat.player.value = '4097'
+		# Check for ServiceApp/Exteplayer3 only if NOT using DreamOS 8193
+		if config.plugins.FootOnSat.player.value != '8193':
+			for p in plugins.getPlugins(where=PluginDescriptor.WHERE_MENU):
+				if 'ServiceApp' in p.path and exists("/usr/bin/exteplayer3"):
+					break
+			else:
+				config.plugins.FootOnSat.player.value = '4097'
 
 		self.onLayoutFinish.append(self.fetch_media)
 

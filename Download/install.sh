@@ -132,10 +132,6 @@ if grep -q "$PYSIX" "$STATUS"; then
     six='Installed'
 fi
 
-if grep -q 'alsa-utils-aplay' "$STATUS"; then
-    aplay='Installed'
-fi
-
 if grep -q "$SOUP4" "$STATUS"; then
     beautifulsoup4='Installed'
 fi
@@ -172,9 +168,26 @@ if grep -q "$DATETIME" "$STATUS"; then
     datetime='Installed'
 fi
 
+if grep -q 'alsa-utils-aplay' "$STATUS"; then
+    aplay='Installed'
+fi
+
+if grep -q 'ffmpeg' "$STATUS"; then
+    ffmpeg='Installed'
+fi
+
+if grep -q 'plugin-systemplugins-serviceapp' "$STATUS"; then
+    serviceapp='Installed'
+fi
+
+if grep -q 'exteplayer3' "$STATUS"; then
+    exteplayer3='Installed'
+fi
+
 if [ "$sqlite" = "Installed" -a "$six" = "Installed" -a "$aplay" = "Installed" -a "$beautifulsoup4" = "Installed" -a \
       "$difflib" = "Installed" -a "$threading" = "Installed" -a "$pil" = "Installed" -a "$requestes" = "Installed" -a \
-       "$json" = "Installed" -a "$io" = "Installed" -a "$email" = "Installed" -a "$datetime" = "Installed" ]; then
+      "$json" = "Installed" -a "$io" = "Installed" -a "$email" = "Installed" -a "$datetime" = "Installed" -a \
+      "$ffmpeg" = "Installed" -a "$serviceapp" = "Installed" -a "$exteplayer3" = "Installed" ]; then
      echo ""
 else
 
@@ -186,12 +199,13 @@ else
         echo "========================================================================"
         opkg update
         echo "========================================================================"
-        echo " Downloading alsa-utils-aplay ......"
+        echo " Downloading packages depend ......"
         opkg install ffmpeg
         opkg install alsa-utils-aplay
+        opkg install plugin-systemplugins-serviceapp
+        opkg install exteplayer3
         echo "========================================================================"
         echo "========================================================================"
-        echo " Downloading packages depend ......"
         opkg install $SQLITE3
         opkg install $PYSIX
         opkg install $SOUP4
@@ -212,12 +226,13 @@ else
         echo "========================================================================"
         apt-get update
         echo "========================================================================"
-        echo " Downloading alsa-utils-aplay ......"
+        echo " Downloading packages depend ......"
         apt-get install ffmpeg -y
         apt-get install alsa-utils-aplay -y
+        apt-get install plugin-systemplugins-serviceapp -y
+        apt-get install exteplayer3 -y
         echo "========================================================================"
         echo "========================================================================"
-        echo " Downloading packages depend ......"
         apt-get install $SQLITE3 -y
         apt-get install $PYSIX -y
         apt-get install $SOUP4 -y
@@ -347,6 +362,24 @@ if grep -q "$DATETIME" "$STATUS"; then
 else
 	echo "#########################################################"
 	echo "#        $DATETIME Not found in feed                    #"
+	echo "#########################################################"
+	exit 1
+fi
+
+if ! grep -q 'plugin-systemplugins-serviceapp' "$STATUS"; then
+	: # Null command (do nothing, but satisfy the shell syntax)
+else
+	echo "#########################################################"
+	echo "# plugin-systemplugins-serviceapp Not found in feed     #"
+	echo "#########################################################"
+	exit 1
+fi
+
+if ! grep -q 'exteplayer3' "$STATUS"; then
+	: # Null command (do nothing, but satisfy the shell syntax)
+else
+	echo "#########################################################"
+	echo "#        exteplayer3 Not found in feed                  #"
 	echo "#########################################################"
 	exit 1
 fi

@@ -1,5 +1,7 @@
 - Increase the hours of (Hide matches that started before) to 6 huors
 - Add new screen of Match Media (To play videos of highlight match if available)
-- Add new option (Use DASH MP4 format) for (open source images work only if enable)
+- Add new option (Use DASH MP4 format)
 - Add new option (Best resolution for first found) only if enable (Use DASH MP4 format)
-- Add new option (Media player:) if install (ServiceApp + ExtePlayer3) for (open source images only)
+- Add new option (Media player):
+* For DreamOS (Default (4097) + DreamOS GstPlayer (8193))
+* For open source Need install (ServiceApp + ExtePlayer3) Then get (Default (4097) + Best ExtePlayer3 (5002))

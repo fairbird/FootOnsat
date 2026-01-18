@@ -524,7 +524,16 @@ class YouTubeVideoUrl():
 			if url and our_format in DASHMP4_FORMAT:
 				audio_url = self._extract_dash_audio_format(streaming_formats, player_id, lang)
 				if audio_url:
-					url += SUBURI + audio_url
+					if DreamOS():
+						try:
+							#logdata("DASH_FIX", "Applying DreamOS format")
+							url = "%s#EXT-X-STREAM-INF:AUDIO=\"%s\"" % (url, audio_url)
+							#logdata("DASH_URL", url)
+						except Exception as e:
+							#logdata("DASH_ERR", str(e))
+							url += SUBURI + audio_url
+					else:
+						url += SUBURI + audio_url
 
 		if not url:
 			print('[YouTubeVideoUrl] Try manifest url')
