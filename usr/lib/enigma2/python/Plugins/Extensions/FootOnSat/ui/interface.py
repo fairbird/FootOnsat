@@ -78,8 +78,6 @@ DB_PATH = '/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/db/footonsat.db'
 ## url for Standings table
 json_urls = {
 	# Champions league
-	"africancup": "https://www.sofascore.com/tournament/football/africa/africa-cup-of-nations/270#id:71636",
-	# Champions league
 	"championsleague": "https://www.sofascore.com/tournament/football/europe/uefa-champions-league/7#id:76953",
 	# Europa league
 	"europaleague": "https://www.sofascore.com/tournament/football/europe/uefa-europa-league/679#id:76984",
@@ -159,6 +157,15 @@ log_urls = {
 	"afcchampions": "https://www.worldfootball.net/competition/afc-champions-league-elite/",
 	# Asia Champions league two
 	"afcchampionstwo": "https://www.worldfootball.net/competition/afc-champions-league-two/",
+}
+
+SPORTS = {
+	"basketball", "nba", "hockey", "nfl"
+}
+FOOTBALL = {
+	"championsleague", "europaleague", "ConferenceLeague", "premierleague",
+	"laliga", "laliga2", "championship", "seriea", "ligue1", "eredivisie", "saudiarabia",
+	"bundesliga", "bundesliga2", "belgianpro", "superLig", "liganos", "afcchampions", "afcchampionstwo"
 }
 
 # Place this function at the top level of your script (outside the StandingsScreen class)
@@ -394,14 +401,6 @@ class FootOnSat(Screen):
 					notif = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/icon/notif_off.png")
 				# Initialize list entry
 				res.append(MultiContentEntryText())
-				SPORTS = {
-				    	"basketball", "nba", "hockey", "nfl"
-				}
-				FOOTBALL = {
-				    	"championsleague", "europaleague", "ConferenceLeague", "premierleague", "africancup",
-				    	"laliga", "laliga2", "championship", "seriea", "ligue1", "eredivisie", "saudiarabia",
-				    	"bundesliga", "bundesliga2", "belgianpro", "superLig", "liganos", "afcchampions", "afcchampionstwo"
-				}
 				# Team 1 flag/logteam
 				if self.link in (SPORTS | FOOTBALL):
 					res.append(MultiContentEntryPixmapAlphaBlend(pos=(70, 5), size=(160, 160), png=loadPNG(teamlog1)))
@@ -461,7 +460,7 @@ class FootOnSat(Screen):
 					except TypeError:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(65, 6), size=(320, 163), png=loadPNG(banner)))
 				# Notification icon
-				if self.link != "live":
+				if self.link != "live" and self.link != "end":
 					res.append(MultiContentEntryPixmapAlphaBlend(pos=(-20, 63), size=(70, 50), png=loadPNG(notif)))
 				# Match name
 				if isUHD():
@@ -532,6 +531,8 @@ class FootOnSat(Screen):
 			gList = []
 			if self.link == "live":
 				no_schedules_text = _('No Live matches at this time')
+			elif self.link == "end":
+				no_schedules_text = _('No Finished matches at this time')
 			else:
 				no_schedules_text = _('No schedules in this section at this time')
 			# Set font and height (mirroring the 'if' block setup)
@@ -558,7 +559,7 @@ class FootOnSat(Screen):
 			self['key_red'].hide()
 			self['key_yellow'].hide()
 			self['key_blue'].hide()
-			if self.link in ["today", "live"]:
+			if self.link in ["today", "live", "end"]:
 				self['key_green'].hide()
 			else:
 				self['key_green'].show()
@@ -702,7 +703,7 @@ class FootOnSat(Screen):
 				cur.execute('CREATE TABLE IF NOT EXISTS LIVE_NOTIF (MATCH TEXT primary key , COMPET TEXT , DATE TEXT , TEAM1_FLAG TEXT , TEAM2_FLAG TEXT , FIRST_NOTIF TEXT , FIRST_NOTIF_STATUS TEXT , LIVE_NOTIF_STATUS TEXT,MESSAGE TEXT)')
 
 	def menu(self):
-		if self.link != "live":
+		if self.link != "live" and self.link != "end":
 			if self.selectedList != self["list1"] or len(self.matches) == 0:
 				return
 
@@ -781,7 +782,7 @@ class FootOnSat(Screen):
 
 		index = self['list1'].getSelectionIndex()
 		
-		if self.link == "live":
+		if self.link == "live" or self.link == "end":
 			current_match = self.matches[index]
 			if len(current_match) > 8 and current_match[8]:
 				event_id = current_match[8]
@@ -801,7 +802,7 @@ class FootOnSat(Screen):
 					current_match[3], # Country (Norway)
 					current_match[4]) # Country (Hungary)
 			else:
-				self.session.open(MessageBox, _("Match details not available for this source."), MessageBox.TYPE_INFO, timeout=3)
+				self.session.open(MessageBox, _("Please wait a few seconds to get live data..."), MessageBox.TYPE_INFO, timeout=3)
 				return
 
 		if PY3:
@@ -922,7 +923,7 @@ class FootOnSat(Screen):
 
 	def callAPI(self):
 		#logdata("FootOnSat-API", "Starting callAPI to fetch main schedule: %s" % self.link)
-		url_link = "today" if self.link == "live" else self.link
+		url_link = "today" if self.link in ["live", "end"] else self.link
 		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/{}.json'.format(url_link)
 		sniFactory = WebClientContextFactory(url)
 		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
@@ -1468,19 +1469,24 @@ class FootOnSat(Screen):
 		# 1. UPDATED: Consider matches live for 2 hours
 		try:
 			# Check the configuration value for the "finished" duration
-			if config.plugins.FootOnSat.finished.value == "2":
-				HOUR = 2
-			elif config.plugins.FootOnSat.finished.value == "3":
+			if config.plugins.FootOnSat.finished.value == "3":
 				HOUR = 3
 			elif config.plugins.FootOnSat.finished.value == "4":
 				HOUR = 4
 			elif config.plugins.FootOnSat.finished.value == "5":
 				HOUR = 5
-			else:
+			elif config.plugins.FootOnSat.finished.value == "6":
 				HOUR = 6
+			elif config.plugins.FootOnSat.finished.value == "7":
+				HOUR = 7
+			elif config.plugins.FootOnSat.finished.value == "8":
+				HOUR = 8
+			elif config.plugins.FootOnSat.finished.value == "9999":
+				HOUR = 9999
+			else:
+				HOUR = 3
 		except AttributeError:
-			# Fallback in case the config element is missing or not properly initialized
-			HOUR = 2
+			HOUR = 3
 
 		# Define the duration for how long a match is considered 'live' or recent
 		LIVE_DURATION = timedelta(hours=HOUR) 
@@ -1488,7 +1494,7 @@ class FootOnSat(Screen):
 		
 		# ... (rest of the fetching and parsing logic) ...
 
-		if self.js.get('footonsat') or self.link == "live":
+		if self.js.get('footonsat') or self.link in ["live", "end"]:
 			target_data = self.js.get('footonsat', [])
 			for match in target_data:
 				try:
@@ -1497,7 +1503,7 @@ class FootOnSat(Screen):
 						if suffix in compet:
 							compet = compet.split(suffix)[0].strip()
 
-					if compet not in ignored_competitions or self.link != "today":
+					if compet not in ignored_competitions or self.link not in ["today", "live", "end"]:
 						match_date = datetime.strptime(match['date'] + ' ' + match['time'], '%Y-%m-%d %H:%M')
 						match_date_adjusted = datetime.strptime(self.getTime(match['time'] + ' - ' + match['date']), '%H:%M - %Y-%m-%d')
 
@@ -1514,21 +1520,33 @@ class FootOnSat(Screen):
 						if is_upcoming:
 							# Today shows only matches that have NOT started yet
 							# Live does not show upcoming matches
-							append_match = False if self.link == "live" else True
+							append_match = False if self.link in ["live", "end"] else True
 							team1_score = "" 
 							team2_score = ""
 						elif is_live:
-							# IMPORTANT: Once a match is LIVE, it is REMOVED from Today
-							# and only appended if we are in the 'live' section (or league sections)
+							# Calculate if match is truly finished (90 mins + halftime + injury time)
+							# This creates a "Virtual Whistle" to move matches from Live to End
+							is_really_finished = now > (match_date_adjusted + timedelta(minutes=115))
 							if self.link == "today":
+								# Today section only shows upcoming games
 								append_match = False
+							elif self.link == "end":
+								# End section shows matches only after the 115-minute whistle
+								append_match = True if is_really_finished else False
+							elif self.link == "live":
+								# Live section removes matches immediately after 115 minutes
+								append_match = False if is_really_finished else True
 							else:
-								# Keep your original check for other sections
+								# Keep live matches visible in specific league sections
 								if config.plugins.FootOnSat.livescore.value in ["2", "3"]:
 									append_match = True
 						else:
-							# Finished matches: Only show in Live section
-							append_match = True if self.link == "live" else False
+							# Match is physically finished (not upcoming, not in live duration)
+							# We allow it for both 'live' and 'end' sections here
+							if self.link in ["live", "end"]:
+								append_match = True
+							else:
+								append_match = False
 
 						# This code to correction the names
 						match_name = match['match'] \
@@ -1536,8 +1554,9 @@ class FootOnSat(Screen):
 							.replace("Preston N.E.", "Preston N.E")
 
 						if append_match:
-							if self.link == "live" and not is_live:
-								continue
+							if self.link == "end":
+								if now > (match_date_adjusted + timedelta(hours=HOUR)):
+									continue
 
 							list.append([
 									str(match_name),
@@ -1563,7 +1582,7 @@ class FootOnSat(Screen):
 					self.fetch_live_results()
 				elif config.plugins.FootOnSat.livescoresections.value == "2":
 					# Logic: If setting is 'Specific Section', use it for 'live'
-					if self.link == "live":
+					if self.link == "live" or self.link == "end":
 						self.fetch_live_results()
 
 			self.onWindowShow()
@@ -1921,11 +1940,11 @@ class MatchDetailsScreen(Screen):
 		if isUHD():
 			h_pos, a_pos = (750, 680), (2790, 680)
 			# info: Set specific big size for UHD (Width, Height)
-			flag_size = eSize(300, 200)
+			flag_size = eSize(200, 100)
 		else:
-			h_pos, a_pos = (370, 320), (1400, 320)
+			h_pos, a_pos = (370, 330), (1400, 330)
 			# info: Set specific big size for FHD (Width, Height)
-			flag_size = eSize(120, 80)
+			flag_size = eSize(100, 60)
 
 		flagTeam1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/{}.png".format(team1))
 		flagTeam2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/{}.png".format(team2))
@@ -2033,9 +2052,16 @@ class MatchDetailsScreen(Screen):
 				icon_name = ""
 				
 				if itype == 'goal':
-					text = str(inc.get('player', {}).get('name', 'Goal'))
-					color = 0x00FF00
-					icon_name = "goal.png"
+					# Check if the incident class is specifically 'ownGoal'
+					is_og = str(inc.get('incidentClass', '')).lower() == 'owngoal'
+					if is_og:
+						text = str(inc.get('player', {}).get('name', 'Own Goal')) + " (OG)"
+						color = 0xFF0000
+						icon_name = "owngoal.png"
+					else:
+						text = str(inc.get('player', {}).get('name', 'Goal'))
+						color = 0x00FF00
+						icon_name = "goal.png"
 				elif itype == 'card':
 					ic_class = str(inc.get('incidentClass', '')).lower()
 					text = str(inc.get('player', {}).get('name', ''))

@@ -119,16 +119,18 @@ config.plugins.FootOnSat.livecolor = ConfigSelection(default="0xFF0000", choices
 	("0x000000", _("BLACK")),
 	("0x0000FF", _("BLUE")),
 	])
-config.plugins.FootOnSat.finished = ConfigSelection(default = "2", choices = [
-	("2", _("2 hours")),
+config.plugins.FootOnSat.finished = ConfigSelection(default = "3", choices = [
 	("3", _("3 hours")),
 	("4", _("4 hours")),
 	("5", _("5 hours")),
-	("6", _("6 hours"))
+	("6", _("6 hours")),
+	("7", _("7 hours")),
+	("8", _("8 hours")),
+	("9999", _("Disable (Always keep)"))
 	])
 config.plugins.FootOnSat.livescoresections = ConfigSelection(default = "1", choices = [
 	("1", _("All Sections")),
-	("2", _("Match Today Only")),
+	("2", _("Live and End sections only")),
 	])
 config.plugins.FootOnSat.livescore = ConfigSelection(default = "3", choices = [
 	("1", _("No Live match")),
@@ -205,7 +207,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.list.append(getConfigListEntry(_("Enable live match + Live score"), config.plugins.FootOnSat.livescore, _("This feature allows you to show or hide the matches still live with or withou result")))
 		if config.plugins.FootOnSat.livescore.value in ["2", "3"]:
 			self.list.append(getConfigListEntry(_("Select appear live + score of match in"), config.plugins.FootOnSat.livescoresections, _("This feature allows you to show matches live with result in sections")))
-			self.list.append(getConfigListEntry(_("Hide matches that started before"), config.plugins.FootOnSat.finished, _("This option is to specify the time that matches that have finished remain before they disappear from the list")))
+			self.list.append(getConfigListEntry(_("Time to keep finished matches"), config.plugins.FootOnSat.finished, _("This option specifies how long finished matches remain in the 'Match End' section before they disappear")))
 			self.list.append(getConfigListEntry(_("Color of score and Status"), config.plugins.FootOnSat.livecolor, _("This option allows you to choose the color of score and status.")))
 		self.list.append(getConfigListEntry(_("Path to store ignore file"), config.plugins.FootOnSat.devicepath, _("This option to set the path of save file for ignore matches")))
 		self.list.append(getConfigListEntry(_("Choose time for notifications"), config.plugins.FootOnSat.notiftime, _("This feature allows you to choose the number of seconds for notifications to appear.\nMove <Left | Right> to change seconds from (6 - 20)")))
