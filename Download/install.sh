@@ -187,7 +187,7 @@ fi
 if [ "$sqlite" = "Installed" -a "$six" = "Installed" -a "$aplay" = "Installed" -a "$beautifulsoup4" = "Installed" -a \
       "$difflib" = "Installed" -a "$threading" = "Installed" -a "$pil" = "Installed" -a "$requestes" = "Installed" -a \
       "$json" = "Installed" -a "$io" = "Installed" -a "$email" = "Installed" -a "$datetime" = "Installed" -a \
-      "$ffmpeg" = "Installed" -a "$serviceapp" = "Installed" -a "$exteplayer3" = "Installed" ]; then
+      "$ffmpeg" = "Installed" ]; then
      echo ""
 else
 
@@ -202,8 +202,6 @@ else
         echo " Downloading packages depend ......"
         opkg install ffmpeg
         opkg install alsa-utils-aplay
-        opkg install plugin-systemplugins-serviceapp
-        opkg install exteplayer3
         echo "========================================================================"
         echo "========================================================================"
         opkg install $SQLITE3
@@ -229,8 +227,6 @@ else
         echo " Downloading packages depend ......"
         apt-get install ffmpeg -y
         apt-get install alsa-utils-aplay -y
-        apt-get install plugin-systemplugins-serviceapp -y
-        apt-get install exteplayer3 -y
         echo "========================================================================"
         echo "========================================================================"
         apt-get install $SQLITE3 -y
@@ -246,6 +242,16 @@ else
         apt-get install $DATETIME -y
         echo "========================================================================"
     fi
+fi
+
+if [ "$OS" != "DreamOS" ]; then
+	if [ "$serviceapp" = "Installed" -a "$exteplayer3" = "Installed" ]; then
+		echo ""
+		echo " Downloading serviceapp + exteplayer3 ......"
+		opkg update
+		opkg install plugin-systemplugins-serviceapp
+		opkg install exteplayer3
+	fi
 fi
 
 if ! grep -q 'ffmpeg' "$STATUS" || ! grep -q 'alsa-utils-aplay' "$STATUS"; then
@@ -370,7 +376,7 @@ if ! grep -q 'plugin-systemplugins-serviceapp' "$STATUS"; then
 	: # Null command (do nothing, but satisfy the shell syntax)
 else
 	echo "#########################################################"
-	echo "# plugin-systemplugins-serviceapp Not found in feed     #"
+	echo "#   plugin-systemplugins-serviceapp Not found in feed   #"
 	echo "#########################################################"
 	exit 1
 fi
