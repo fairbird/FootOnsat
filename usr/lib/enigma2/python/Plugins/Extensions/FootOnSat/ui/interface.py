@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os, io, re, gc, sys, json, math, codecs, random, time, shutil, difflib, requests, subprocess
+import os, io, re, gc, sys, json, math, codecs, random, time, shutil, difflib, requests, subprocess, signal
 from time import strftime
 from sqlite3 import connect
 from bs4 import BeautifulSoup
@@ -1515,6 +1515,30 @@ class FootOnSat(Screen):
 						team2_score = str(match.get('score2', "")).strip()
 						match_status = "" # This will be overwritten by fetch_live_results if needed
 
+						# Get status from JSON
+						stype = match.get('stype', '').lower()
+						match_status = ""
+						if stype == 'live': match_status = 'LIVE'
+						elif stype == 'canceled': match_status = 'CANCELED'
+						elif stype == 'finished': match_status = 'FINISHED'
+						elif stype == 'postponed': match_status = 'POSTPONED'
+
+						match_data = [
+							str(match['match']).replace("Bodø/Glimt", "Bodø Glimt").replace("Preston N.E.", "Preston N.E"),
+							str(match['time']) + ' - ' + str(match['date']),
+							str(match['compet']),
+							str(match['flags']['team1']),
+							str(match['flags']['team2']),
+							team1_score,
+							team2_score,
+							match_status,
+							match.get('event_id', '')
+						]
+
+						# Direct move to end history if match is finished, canceled, or postponed
+						if match_status in ['FINISHED', 'CANCELED', 'POSTPONED']:
+							self.manageHistory(match_data)
+
 						append_match = False
 
 						if is_upcoming:
@@ -2370,12 +2394,10 @@ class MatchMediaScreen(Screen):
 			self.playAfterExtract(str(url))
 
 	def playAfterExtract(self, video_url):
-		video_url = video_url or ""
-		#logdata("PLAY_CHECK", str(video_url))
+		video_url = video_url or ""		
 		if hasattr(self, 'wait_dialog') and self.wait_dialog:
 			self.wait_dialog.close()
 		if not video_url or not isinstance(video_url, (str, compat_str)) or not video_url.startswith("http"):
-			#logdata("PLAY_ABORT", "INVALID_URL")
 			self.session.open(MessageBox, _("Failed to extract video stream or link is broken."), MessageBox.TYPE_ERROR)
 			return
 		pure_url = video_url
@@ -2384,20 +2406,37 @@ class MatchMediaScreen(Screen):
 			pure_url, user_agent = video_url.split("#http_user_agent=", 1)
 			if "&Referer=" in user_agent:
 				user_agent = user_agent.split("&Referer=")[0]
+		is_yt = "youtube.com" in pure_url.lower() or "youtu.be" in pure_url.lower() or "googlevideo.com" in pure_url.lower()
+		has_exteplayer = exists("/usr/bin/exteplayer3")
+		logdata("DASH_DEBUG", "is_yt: %s | has_exteplayer: %s | UseDash: %s" % (str(is_yt), str(has_exteplayer), str(config.plugins.FootOnSat.useDashMP4.value)))
+		if is_yt and config.plugins.FootOnSat.useDashMP4.value and not has_exteplayer:
+			logdata("DASH_START", "Entering DASH logic...")
+			logdata("DASH_DEBUG_URL", "Full video_url: %s" % str(video_url))
+			separator = '#EXT-X-STREAM-INF:AUDIO=' if '#EXT-X-STREAM-INF:AUDIO=' in video_url else SUBURI
+			if separator in video_url:
+				logdata("DASH_READY", "Audio stream found via %s. Preparing download..." % separator)
+				try:
+					v_url = pure_url
+					a_url = video_url.split(separator)[-1].replace('"', '').strip()
+					if "#http_user_agent=" in a_url: a_url = a_url.split("#http_user_agent=")[0]
+					a_tmp = "/tmp/a.mp4"
+					ua = str(user_agent) if user_agent else "Mozilla/5.0"
+					down_a = 'wget --no-check-certificate -U "%s" -O %s "%s"' % (ua, a_tmp, a_url)
+					logdata("DASH_DL", "Downloading audio: %s" % down_a)
+					gst_cmd = "gst-launch-1.0 filesrc location=%s ! decodebin ! audioconvert ! audioresample ! alsasink" % a_tmp
+					self.dash_process = subprocess.Popen('%s && %s' % (down_a, gst_cmd), shell=True, preexec_fn=os.setsid)
+					logdata("DASH_GST", "Audio download and background playback started.")
+				except Exception as e:
+					logdata("DASH_FATAL", "Error: %s" % str(e))
 		try:
-			try:
-				from urllib.request import Request, urlopen
-			except ImportError:
-				from urllib2 import Request, urlopen
-			req = Request(pure_url)
+			req = compat_Request(pure_url)
 			if user_agent: req.add_header("User-Agent", user_agent)
 			req.add_header("Referer", "https://www.youtube.com/")
 			req.add_header("Range", "bytes=0-1")
-			resp = urlopen(req, timeout=10)
+			resp = compat_urlopen(req, timeout=10)
 			code = getattr(resp, "getcode", lambda: 200)()
 			if code not in (200, 206): raise Exception("HTTP_%s" % code)
 		except Exception as e:
-			#logdata("PLAY_ABORT_HTTP", str(e))
 			if "403" not in str(e):
 				self.session.open(MessageBox, _("Failed to extract video stream or link is broken."), MessageBox.TYPE_ERROR)
 				return
@@ -2407,23 +2446,29 @@ class MatchMediaScreen(Screen):
 		ref = eServiceReference(ref_str)
 		if user_agent:
 			if DreamOS():
-				#logdata("PLAY_PLATFORM", "DreamOS_YT")
+				# DreamOS often needs the pure URL + User-Agent separately
 				ref.setPath(str(pure_url))
 				ref.setData(0, str(user_agent))
 			else:
-				#logdata("PLAY_PLATFORM", "Standard_YT")
 				ref.setPath(str(video_url))
 		else:
-			#logdata("PLAY_PLATFORM", "Direct_URL")
 			ref.setPath(str(pure_url))
 		ref.setName(name)
-		#logdata("PLAY_FINAL_REF", ref.toString())
 		self.play_timer = eTimer()
 		if DreamOS():
-			self.play_timer_conn = self.play_timer.timeout.connect(lambda: self.session.open(MoviePlayer, ref))
+			self.play_timer_conn = self.play_timer.timeout.connect(lambda: self.session.openWithCallback(self.stopDashAudio, MoviePlayer, ref))
 		else:
-			self.play_timer.callback.append(lambda: self.session.open(MoviePlayer, ref))
+			self.play_timer.callback.append(lambda: self.session.openWithCallback(self.stopDashAudio, MoviePlayer, ref))
 		self.play_timer.start(200, True)
+
+	def stopDashAudio(self, *args):
+		if hasattr(self, 'dash_process') and self.dash_process:
+			try:
+				os.killpg(os.getpgid(self.dash_process.pid), signal.SIGTERM)
+				logdata("DASH_STOP", "Audio process killed.")
+				del self.dash_process
+			except:
+				pass
 
 	def extract_twitter_stream(self, url):
 		try:
