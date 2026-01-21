@@ -130,12 +130,11 @@ config.plugins.FootOnSat.finished = ConfigSelection(default = "3", choices = [
 	])
 config.plugins.FootOnSat.livescoresections = ConfigSelection(default = "1", choices = [
 	("1", _("All Sections")),
-	("2", _("Live and End sections only")),
+	("2", _("Live and Match End sections only")),
 	])
-config.plugins.FootOnSat.livescore = ConfigSelection(default = "3", choices = [
-	("1", _("No Live match")),
-	("2", _("Live match + No live Score")),
-	("3", _("Live match + Live Score"))
+config.plugins.FootOnSat.livescore = ConfigSelection(default = "2", choices = [
+	("1", _("No live Score + Status")),
+	("2", _("Live Score + Status"))
 	])
 config.plugins.FootOnSat.notify_zap = ConfigSelection(default = "1", choices = [
 	("1", _("sound + Notifications + Zap")),
@@ -204,11 +203,11 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.list.append(getConfigListEntry(_("Show Plugin #press OK to change"), config.plugins.FootOnSat.showplugin, _("This option to show Plugin in any where you like")))
 		self.list.append(getConfigListEntry(_("Enable checking for Online Update"), config.plugins.FootOnSat.updateonline, _("This option to Enable or Disable checking for Online Update")))
 		self.list.append(getConfigListEntry(_("Enable flags of teams"), config.plugins.FootOnSat.enableflag, _("This option to Enable or Disable flags of teams with logo")))
-		self.list.append(getConfigListEntry(_("Enable live match + Live score"), config.plugins.FootOnSat.livescore, _("This feature allows you to show or hide the matches still live with or withou result")))
-		if config.plugins.FootOnSat.livescore.value in ["2", "3"]:
+		self.list.append(getConfigListEntry(_("Enable Live score + status"), config.plugins.FootOnSat.livescore, _("This feature allows you to show or hide the matches with or without result + status")))
+		if config.plugins.FootOnSat.livescore.value in ["2"]:
 			self.list.append(getConfigListEntry(_("Select appear live + score of match in"), config.plugins.FootOnSat.livescoresections, _("This feature allows you to show matches live with result in sections")))
 			self.list.append(getConfigListEntry(_("Time to keep finished matches"), config.plugins.FootOnSat.finished, _("This option specifies how long finished matches remain in the 'Match End' section before they disappear")))
-			self.list.append(getConfigListEntry(_("Color of score and Status"), config.plugins.FootOnSat.livecolor, _("This option allows you to choose the color of score and status.")))
+			self.list.append(getConfigListEntry(_("Color of score and status"), config.plugins.FootOnSat.livecolor, _("This option allows you to choose the color of score and status.")))
 		self.list.append(getConfigListEntry(_("Path to store ignore file"), config.plugins.FootOnSat.devicepath, _("This option to set the path of save file for ignore matches")))
 		self.list.append(getConfigListEntry(_("Choose time for notifications"), config.plugins.FootOnSat.notiftime, _("This feature allows you to choose the number of seconds for notifications to appear.\nMove <Left | Right> to change seconds from (6 - 20)")))
 		self.list.append(getConfigListEntry(_("Choose to notifications and Zap"), config.plugins.FootOnSat.notify_zap, _("This feature allows you to specify the notifications and Zap to selected channel")))

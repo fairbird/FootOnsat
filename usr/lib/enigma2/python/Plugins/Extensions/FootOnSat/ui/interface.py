@@ -2062,21 +2062,18 @@ class MatchDetailsScreen(Screen):
 
 			# Sort: Top to Bottom (Start of match to end)
 			sorted_inc = sorted(inc_js['incidents'], key=lambda x: x.get('time', 0), reverse=False)
+			player_cards = {}
 			for inc in sorted_inc:
-				# If time is less than 0 or isBenchPlayer flag is True, skip it.
 				if inc.get('time', 0) < 0 or inc.get('isBenchPlayer', False):
 					continue
 				itype = inc.get('incidentType')
 				if itype not in ('goal', 'card', 'substitution'): continue
-				
 				itime = str(inc.get('time', '')) + "'"
 				is_home = inc.get('isHome', True)
 				text = ""
 				color = 0xFFFFFF
 				icon_name = ""
-				
 				if itype == 'goal':
-					# Check if the incident class is specifically 'ownGoal'
 					is_og = str(inc.get('incidentClass', '')).lower() == 'owngoal'
 					if is_og:
 						text = str(inc.get('player', {}).get('name', 'Own Goal')) + " (OG)"
@@ -2088,9 +2085,19 @@ class MatchDetailsScreen(Screen):
 						icon_name = "goal.png"
 				elif itype == 'card':
 					ic_class = str(inc.get('incidentClass', '')).lower()
+					p_id = inc.get('player', {}).get('id', 'unknown')
 					text = str(inc.get('player', {}).get('name', ''))
-					color = 0xFFFF00 if 'yellow' in ic_class else 0xFF0000
-					icon_name = "yellowcard.png" if 'yellow' in ic_class else "redcard.png"
+					if 'yellow' in ic_class:
+						player_cards[p_id] = player_cards.get(p_id, 0) + 1
+						if player_cards[p_id] >= 2:
+							color = 0xFF0000
+							icon_name = "redcard.png"
+						else:
+							color = 0xFFFF00
+							icon_name = "yellowcard.png"
+					else:
+						color = 0xFF0000
+						icon_name = "redcard.png"
 				elif itype == 'substitution':
 					text = str(inc.get('playerIn', {}).get('name', ''))
 					color = 0xAAAAAA

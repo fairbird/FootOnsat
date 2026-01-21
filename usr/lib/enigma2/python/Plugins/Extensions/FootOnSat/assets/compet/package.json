@@ -941,15 +941,11 @@
             "banner": "english women's premier 15s"
         },
         {
-            "label": "english womens league cup",
-            "banner": "english womens league cup"
-        },
-        {
             "label": "english womens national league cup",
             "banner": "english womens national league cup"
         },
 	{
-            "label": "english w/league cup",
+            "label": "english womens league cup",
             "banner": "english wleague cup"
         },
 	{
@@ -1449,12 +1445,8 @@
             "banner": "Italian Womens Super Cup"
         },
 	{
-            "label": "italian w/cup (coppa italia)",
-            "banner": "italian wcup (coppa italia)"
-        },
-        {
             "label": "italian womens cup",
-            "banner": "italian womens cup"
+            "banner": "italian wcup (coppa italia)"
         },
 	{
             "label": "italian w/serie a",
@@ -2247,10 +2239,6 @@
 	{
             "label": "spanish w/copa de la reina",
             "banner": "spanish wcopa de la reina"
-        },
-	{
-            "label": "spanish womens super cup",
-            "banner": "spanish womens super cup"
         },
 	{
             "label": "spanish womens super cup",
