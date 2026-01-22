@@ -1396,7 +1396,7 @@ class FootOnSat(Screen):
 									}
 
 						if best_sim >= THRESHOLD and best_live:
-							if config.plugins.FootOnSat.livescore.value == "3":
+							if config.plugins.FootOnSat.livescore.value == "2":
 								match[5] = compat_str(best_live["team1_score"]).strip()
 								match[6] = compat_str(best_live["team2_score"]).strip()
 								match[7] = compat_str(best_live["match_status"]).strip()
@@ -1535,42 +1535,50 @@ class FootOnSat(Screen):
 							match.get('event_id', '')
 						]
 
-						# Direct move to end history if match is finished, canceled, or postponed
-						if match_status in ['FINISHED', 'CANCELED', 'POSTPONED']:
-							self.manageHistory(match_data)
+						# Logic for moving matches between sections (Row visibility)
+						is_really_finished = now > (match_date_adjusted + timedelta(minutes=100))
+						is_terminated = any(x in str(match_status).upper() for x in ['FINISHED', 'FT', 'CANCELED', 'POSTPONED'])
+						should_move_to_end = is_terminated or is_really_finished
+						show_match_row = True
+						if self.link == "live":
+							show_match_row = False if should_move_to_end else True
+						elif self.link == "end":
+							show_match_row = True if should_move_to_end else False
+						elif self.link == "today":
+							show_match_row = True if is_upcoming else False
+						if not show_match_row:
+							continue
 
-						append_match = False
-
+						show_scores_status = False
 						if is_upcoming:
-							# Today shows only matches that have NOT started yet
-							# Live does not show upcoming matches
-							append_match = False if self.link in ["live", "end"] else True
+							show_scores_status = False if self.link in ["live", "end"] else True
 							team1_score = "" 
 							team2_score = ""
 						elif is_live:
-							# Calculate if match is truly finished (90 mins + halftime + injury time)
-							# This creates a "Virtual Whistle" to move matches from Live to End
-							is_really_finished = now > (match_date_adjusted + timedelta(minutes=115))
+							# Keep live matches not visible in today sections
 							if self.link == "today":
-								# Today section only shows upcoming games
-								append_match = False
-							elif self.link == "end":
-								# End section shows matches only after the 115-minute whistle
-								append_match = True if is_really_finished else False
-							elif self.link == "live":
-								# Live section removes matches immediately after 115 minutes
-								append_match = False if is_really_finished else True
+								show_scores_status = False
+							# Keep live matches visible in live and end sections
+							elif self.link in ["live", "end"]:
+								show_scores_status = True
 							else:
 								# Keep live matches visible in specific league sections
-								if config.plugins.FootOnSat.livescore.value in ["2", "3"]:
-									append_match = True
+								if config.plugins.FootOnSat.livescore.value == "2":
+									show_scores_status = True
 						else:
-							# Match is physically finished (not upcoming, not in live duration)
 							# We allow it for both 'live' and 'end' sections here
 							if self.link in ["live", "end"]:
-								append_match = True
+								show_scores_status = True
 							else:
-								append_match = False
+								show_scores_status = False
+
+						# Final check: if show_scores_status is False, we clear scores but status remains based on config
+						if not show_scores_status:
+							team1_score = ""
+							team2_score = ""
+							# If user chose "1" (No live Score + Status), clear status too
+							if config.plugins.FootOnSat.livescore.value == "1":
+								match_status = ""
 
 						# This code to correction the names
 						match_name = match['match'] \
@@ -1599,8 +1607,9 @@ class FootOnSat(Screen):
 
 			self.matches = list
 
-			# Only fetch live results for live/finished matches if livescore is set to "3"
-			if config.plugins.FootOnSat.livescore.value == "3":
+			#logdata("DEBUG_VALUE", "Value is: %s | Link is: %s" % (str(config.plugins.FootOnSat.livescore.value), str(self.link)))
+			# Only fetch live results for live/finished matches if livescore is set to "3"					
+			if config.plugins.FootOnSat.livescore.value == "2":
 				# Added 'and self.link != "today"' to block scores for the today section
 				if config.plugins.FootOnSat.livescoresections.value == "1" and self.link != "today":
 					self.fetch_live_results()

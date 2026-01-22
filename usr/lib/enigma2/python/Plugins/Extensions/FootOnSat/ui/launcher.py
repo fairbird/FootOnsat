@@ -90,11 +90,12 @@ class FootOnsatLauncher(Screen):
 		"belgianpro", "eredivisie", "laliga2", "liganos", "basketball", "nba", "hockey", "nfl", "formula1"]
 
 		# Ensure "live" is always present even if not in JSON
-		compet = list(compet)
-		if "live" not in compet:
-			compet.append("live")
-		if "end" not in compet:
-			compet.append("end")
+		if config.plugins.FootOnSat.livescore.value == "2":
+			compet = list(compet)
+			if "live" not in compet:
+				compet.append("live")
+			if "end" not in compet:
+				compet.append("end")
 		# Keep only items in ordering, then sort according to ordering
 		# filtered_compet = [c for c in ordering if c in compet]
 		# self.menuList = self.custom_sort(ordering, filtered_compet)

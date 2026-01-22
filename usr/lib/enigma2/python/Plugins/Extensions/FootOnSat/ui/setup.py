@@ -128,13 +128,13 @@ config.plugins.FootOnSat.finished = ConfigSelection(default = "3", choices = [
 	("8", _("8 hours")),
 	("9999", _("Disable (Always keep)"))
 	])
-config.plugins.FootOnSat.livescoresections = ConfigSelection(default = "1", choices = [
-	("1", _("All Sections")),
-	("2", _("Live and Match End sections only")),
-	])
 config.plugins.FootOnSat.livescore = ConfigSelection(default = "2", choices = [
 	("1", _("No live Score + Status")),
 	("2", _("Live Score + Status"))
+	])
+config.plugins.FootOnSat.livescoresections = ConfigSelection(default = "1", choices = [
+	("1", _("All Sections")),
+	("2", _("Live and Match End sections only")),
 	])
 config.plugins.FootOnSat.notify_zap = ConfigSelection(default = "1", choices = [
 	("1", _("sound + Notifications + Zap")),
