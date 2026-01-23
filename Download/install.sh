@@ -176,7 +176,7 @@ if grep -q 'ffmpeg' "$STATUS"; then
     ffmpeg='Installed'
 fi
 
-if grep -q 'plugin-systemplugins-serviceapp' "$STATUS"; then
+if grep -q 'enigma2-plugin-systemplugins-serviceapp' "$STATUS"; then
     serviceapp='Installed'
 fi
 
@@ -249,7 +249,7 @@ if [ "$OS" != "DreamOS" ]; then
 		echo ""
 		echo " Downloading serviceapp + exteplayer3 ......"
 		opkg update
-		opkg install plugin-systemplugins-serviceapp
+		opkg install enigma2-plugin-systemplugins-serviceapp
 		opkg install exteplayer3
 	fi
 fi
@@ -372,11 +372,11 @@ else
 	exit 1
 fi
 
-if ! grep -q 'plugin-systemplugins-serviceapp' "$STATUS"; then
+if ! grep -q 'enigma2-plugin-systemplugins-serviceapp' "$STATUS"; then
 	: # Null command (do nothing, but satisfy the shell syntax)
 else
 	echo "#########################################################"
-	echo "#   plugin-systemplugins-serviceapp Not found in feed   #"
+	echo "#      systemplugins-serviceapp Not found in feed       #"
 	echo "#########################################################"
 	exit 1
 fi
