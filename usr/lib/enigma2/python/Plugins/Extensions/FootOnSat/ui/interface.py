@@ -948,8 +948,7 @@ class FootOnSat(Screen):
 		
 		# === URL Setup ===
 		today_iso = date.today().isoformat()
-		url1 = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}/'.format(today_iso)
-		url2 = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}/inverse'.format(today_iso)
+		url = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}'.format(today_iso)
 
 		# === Headers/Agent (Minimal and robust headers) ===
 		AGENT = b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
@@ -990,161 +989,63 @@ class FootOnSat(Screen):
 				b'Cache-Control': [b'no-cache'],
 			}
 
-			# === SMART DYNAMIC FETCH ===
-			# On Saturday/Sunday → url2 = 30 MB = DEATH
-			# So we check day: if weekend → SKIP url2 completely
-			weekday = date.today().weekday()  # 5 = Saturday, 6 = Sunday
-			is_weekend = weekday >= 5
-			#fetch_url2 = not is_weekend  # ONLY try url2 on Mon–Fri
-			fetch_url2 = True
+			d = getPage(str.encode(url), contextFactory=sniFactory, timeout=25, headers=twisted_live_headers)
 
-			#logdata("fetch_live_results", "Today is %s → fetch_url2 = %s" % (
-			#	"SAT/SUN (BUSY)" if is_weekend else "Mon–Fri (quiet)", 
-			#	"NO (safe)" if not fetch_url2 else "YES (trying)"
-			#))
-
-			# Always fetch url1 (main clean data)
-			d1 = getPage(str.encode(url1), contextFactory=sniFactory, timeout=25, headers=twisted_live_headers)
-			deferred_list.append(d1)
-
-			# Conditionally fetch url2 (only on safe days)
-			d2 = None
-			if fetch_url2:
-				def safe_url2():
-					try:
-						# Aggressive anti-block headers
-						headers2 = twisted_live_headers.copy()
-						headers2[b'User-Agent'] = [b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/129.0 Safari/537.36']
-						headers2[b'Accept-Encoding'] = [b'identity']
-						return getPage(str.encode(url2), contextFactory=sniFactory, timeout=20, headers=headers2)
-					except:
-						return defer.succeed(None)
-				d2 = safe_url2()
-				deferred_list.append(d2)
-			else:
-				# Weekend: inject None so gatherResults keeps order
-				deferred_list.append(defer.succeed(None))
-
-			d = defer.gatherResults(deferred_list, consumeErrors=True)
-
-			def process_results(results):
-				raw1, raw2 = results
-
-				# Log url1
-				#if isinstance(raw1, Failure):
-				#	logdata("fetch_live_results", "DEBUG URL1 FAILED: %s" % raw1.getErrorMessage())
-				#else:
-				#	logdata("fetch_live_results", "DEBUG URL1 OK (Bytes: %d)" % len(raw1))
-
-				# Log url2
-				#if not fetch_url2:
-				#	logdata("fetch_live_results", "DEBUG URL2 SKIPPED (weekend protection active)")
-				#elif raw2 is None:
-				#	logdata("fetch_live_results", "DEBUG URL2 SKIPPED (setup failed)")
-				#elif isinstance(raw2, Failure):
-				#	logdata("fetch_live_results", "DEBUG URL2 FAILED → SKIPPED SAFELY")
-				#else:
-				#	logdata("fetch_live_results", "DEBUG URL2 OK (Bytes: %d) → using extra data" % len(raw2))
-
-				# Return only valid data
+			def process_results(raw):
 				valid = []
-				if raw1 and not isinstance(raw1, Failure):
-					valid.append(raw1)
-				if raw2 and not isinstance(raw2, Failure) and fetch_url2:
-					valid.append(raw2)
-
-				# Fallback if both fail
-				if not valid:
-					valid = [b'{"events":[]}']
-
-				return valid
-
+				if raw and not isinstance(raw, Failure):
+					valid.append(raw)
+				return valid or [b'{"events":[]}']
 			d.addCallback(process_results)
 
 		else:
-			# PY2 version — same logic
+			# PY2 version — Single URL logic
 			def _fetch_smart():
 				results = []
-				weekday = date.today().weekday()
-				is_weekend = weekday >= 5
-				fetch_url2 = not is_weekend
-
-				# url1 always
 				try:
-					r = requests.get(url1, headers=headers2, timeout=20)
+					r = requests.get(url, headers=headers2, timeout=20)
 					r.raise_for_status()
 					results.append(r.content)
-					#logdata("fetch_live_results", "DEBUG URL1 (Py2) OK (%d KB)" % (len(r.content)//1024))
 				except Exception as e:
-					logdata("fetch_live_results", "DEBUG URL1 (Py2) FAILED: %s" % str(e))
+					logdata("fetch_live_results", "DEBUG URL (Py2) FAILED: %s" % str(e))
 					results.append(None)
-
-				# url2 only if safe
-				if fetch_url2:
-					try:
-						h2 = headers2.copy()
-						h2['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/129.0 Safari/537.36'
-						r2 = requests.get(url2, headers=h2, timeout=15)
-						r2.raise_for_status()
-						results.append(r2.content)
-						#logdata("fetch_live_results", "DEBUG URL2 (Py2) OK (%d MB) → extra data" % (len(r2.content)//1024//1024))
-					except Exception as e:
-						logdata("fetch_live_results", "DEBUG URL2 (Py2) FAILED → SKIPPED")
-						results.append(None)
-				else:
-					#logdata("fetch_live_results", "DEBUG URL2 (Py2) SKIPPED (weekend mode)")
-					results.append(None)
-
 				valid = [r for r in results if r is not None]
 				return valid or [b'{"events":[]}']
-
 			d = deferToThread(_fetch_smart)
 		
 		# === _process_response (Twisted Callback from network fetch) ===
-		def _process_response(raw_list): # <--- Argument changed from 'raw' to 'raw_list'
+		def _process_response(raw_list):
 			process_start = time.time()
-			#logdata("FootOnSat-LIVESCORE", "Received SofaScore response. Starting processing.")
 			all_events = []
-			# Decode and JSON Load
 			for idx, raw in enumerate(raw_list):
-				if raw is None: # Skip if fetch failed (non-PY3 path)
+				if raw is None:
 					continue
-				# Decode and JSON Load
 				try:
 					data_str = raw.decode('utf-8', errors='ignore')
 					data = json.loads(data_str)
-					# === DEBUG: Save SofaScore JSON to /tmp (Pretty Print) ===
-#					try:
-#						sofa_debug_path = "/tmp/sofascore_data_%d.json" % idx
-#						events = data.get('events', [])
-#						formatted_data_str = json.dumps(events, indent=4, ensure_ascii=False)
-#						with codecs.open(sofa_debug_path, "w", encoding="utf-8") as f:
-#							f.write(formatted_data_str)
-#						logdata("FootOnSat-DEBUG", "Saved PRETTY-PRINTED SofaScore EVENTS to %s" % sofa_debug_path)
-#					except Exception as e:
-#						logdata("FootOnSat-DEBUG-ERROR", "Failed to save SofaScore JSON: %s" % str(e))
-					# === END DEBUG ===
-					events = data.get('events', [])
-					all_events.extend(events)
+					events_data = data.get('events', [])
+					for ev in events_data:
+						status_type = str(ev.get('status', {}).get('type', '')).lower()
+						if status_type == 'notstarted':
+							continue
+						if self.link == "end":
+							if status_type not in ['finished', 'canceled', 'postponed']:
+								continue
+						all_events.append(ev)
 				except ValueError as e:
-					# Log the actual JSON parsing error
 					logdata("fetch_live_results", "JSON parse error (ValueError): %s" % str(e))
-					# Log the beginning of the raw data that caused the crash (first 256 characters)
 					logdata("fetch_live_results", "Corrupt Data Snippet: %s..." % data_str[:256].replace('\n', ' '))
-					continue # Continue to the next response in the list
+					continue
 				except Exception as e:
-					# Log any other unexpected decode/general error
 					logdata("fetch_live_results", "Decode/General error: %s" % str(e))
-					continue # Continue to the next response in the list
-
+					continue
 			if not all_events:
 				self.matches = [list(m) for m in self.matches]
 				try:
 					self.iniMenu()
-				except Exception as e:
+				except:
 					pass
 				return
-
 			events = all_events
 
 			# === STEP 1: EVENT BUILDING & STRICT FILTERING (Main thread) ===
@@ -1437,7 +1338,7 @@ class FootOnSat(Screen):
 				self.matches = final_list
 				if changed and self.link == "live":
 					try:
-						with open(cache_file, 'w') as f: json.dump(terminated_cache, f)
+						with open(cache_file, 'w') as f: json.dump(terminated_cache, f, ensure_ascii=False)
 					except: pass
 				try: self.iniMenu()
 				except: pass
@@ -1638,7 +1539,7 @@ class FootOnSat(Screen):
 
 			if cache_changed:
 				try:
-					with open(cache_file, 'w') as f: json.dump(terminated_cache, f)
+					with open(cache_file, 'w') as f: json.dump(terminated_cache, f, ensure_ascii=False)
 				except: pass
 
 			#logdata("DEBUG_VALUE", "Value is: %s | Link is: %s" % (str(config.plugins.FootOnSat.livescore.value), str(self.link)))
@@ -2047,18 +1948,46 @@ class MatchDetailsScreen(Screen):
 		self["details_list"].down()
 
 	def fetch_details(self):
-		def _get_data(eid):
-			headers = {'User-Agent': 'Mozilla/5.0'}
-			try:
-				url_i = "https://api.sofascore.com/api/v1/event/{}/incidents".format(eid)
-				url_e = "https://api.sofascore.com/api/v1/event/{}".format(eid)
-				res_i = requests.get(url_i, headers=headers, timeout=10).json()
-				res_e = requests.get(url_e, headers=headers, timeout=10).json()
-				return res_i, res_e
-			except:
-				return None, None
-		d = deferToThread(_get_data, self.event_id)
-		d.addCallback(self.process_data)
+		if sys.version_info[:2] == (3, 9): # Python 3.9
+			def _get_data(eid):
+				try:
+					urls = ["https://api.sofascore.com/api/v1/event/{}/incidents".format(eid),
+							"https://api.sofascore.com/api/v1/event/{}".format(eid)]
+					sni = WebClientContextFactory()
+					hdrs = {b'User-Agent':[b'Mozilla/5.0 (X11; Linux x86_64)'],
+							b'Connection':[b'close'],
+							b'Accept':[b'application/json, text/plain, */*'],
+							b'Referer':[b'https://www.sofascore.com/'],
+							b'Origin':[b'https://www.sofascore.com'],
+							b'Cache-Control':[b'no-cache']}
+					from twisted.internet import defer
+					return defer.gatherResults([getPage(str.encode(u), contextFactory=sni, timeout=25, headers=hdrs) for u in urls])
+				except Exception as e:
+					logdata("MatchDetails", "Exception: %s" % str(e))
+					return None, None
+			def _done(raw):
+				try:
+					return [json.loads(r.decode() if r else b'{}') for r in raw]
+				except Exception as e:
+					logdata("MatchDetails", "Exception: %s" % str(e))
+					return None, None
+
+			d = deferToThread(_get_data, self.event_id)
+			d.addCallback(lambda r: r.addCallback(_done))
+			d.addCallback(self.process_data)
+		else:  # Python 2 and other 3.x without 3.9
+			def _get_data(eid):
+				headers = {'User-Agent': 'Mozilla/5.0'}
+				try:
+					url_i = "https://api.sofascore.com/api/v1/event/{}/incidents".format(eid)
+					url_e = "https://api.sofascore.com/api/v1/event/{}".format(eid)
+					res_i = requests.get(url_i, headers=headers, timeout=10).json()
+					res_e = requests.get(url_e, headers=headers, timeout=10).json()
+					return res_i, res_e
+				except:
+					return None, None
+			d = deferToThread(_get_data, self.event_id)
+			d.addCallback(self.process_data)
 
 	def process_data(self, data):
 		inc_js, ev_js = data
@@ -2209,15 +2138,40 @@ class MatchStatisticsScreen(Screen):
 		self["stats_list"].down()
 
 	def fetch_stats(self):
-		def _get_stats(eid):
-			headers = {'User-Agent': 'Mozilla/5.0'}
-			try:
-				url = "https://api.sofascore.com/api/v1/event/{}/statistics".format(eid)
-				return requests.get(url, headers=headers, timeout=10).json()
-			except:
-				return None
-		d = deferToThread(_get_stats, self.event_id)
-		d.addCallback(self.process_stats)
+		if sys.version_info[:2] == (3, 9):
+			def _get_stats(eid):
+				try:
+					url = "https://api.sofascore.com/api/v1/event/{}/statistics".format(eid)
+					sni = WebClientContextFactory()
+					hdrs = {
+						b'User-Agent': [b'Mozilla/5.0 (X11; Linux x86_64)'],
+						b'Connection': [b'close'],
+						b'Accept': [b'application/json, text/plain, */*'],
+						b'Referer': [b'https://www.sofascore.com/'],
+						b'Origin': [b'https://www.sofascore.com'],
+					}
+					return getPage(str.encode(url), contextFactory=sni, timeout=25, headers=hdrs)
+				except Exception as e:
+					logdata("MatchStats", "Exception: %s" % str(e))
+					return None
+			def _done(raw):
+				try:
+					return json.loads(raw.decode()) if raw else None
+				except:
+					return None
+			d = _get_stats(self.event_id)
+			d.addCallback(_done)
+			d.addCallback(self.process_stats)
+		else:
+			def _get_stats(eid):
+				headers = {'User-Agent': 'Mozilla/5.0'}
+				try:
+					url = "https://api.sofascore.com/api/v1/event/{}/statistics".format(eid)
+					return requests.get(url, headers=headers, timeout=10).json()
+				except:
+					return None
+			d = deferToThread(_get_stats, self.event_id)
+			d.addCallback(self.process_stats)
 
 	def process_stats(self, data):
 		gList = []
@@ -2335,15 +2289,40 @@ class MatchMediaScreen(Screen):
 			self.close()
 
 	def fetch_media(self):
-		def _get_media(eid):
-			headers = {'User-Agent': 'Mozilla/5.0'}
-			try:
-				url = "https://api.sofascore.com/api/v1/event/{}/media".format(eid)
-				return requests.get(url, headers=headers, timeout=10).json()
-			except:
-				return None
-		d = deferToThread(_get_media, self.event_id)
-		d.addCallback(self.process_media)
+		if sys.version_info[:2] == (3, 9):
+			def _get_media(eid):
+				try:
+					url = "https://api.sofascore.com/api/v1/event/{}/media".format(eid)
+					sni = WebClientContextFactory()
+					hdrs = {
+						b'User-Agent': [b'Mozilla/5.0 (X11; Linux x86_64)'],
+						b'Connection': [b'close'],
+						b'Accept': [b'application/json, text/plain, */*'],
+						b'Referer': [b'https://www.sofascore.com/'],
+						b'Origin': [b'https://www.sofascore.com'],
+					}
+					return getPage(str.encode(url), contextFactory=sni, timeout=25, headers=hdrs)
+				except Exception as e:
+					logdata("MatchMedia", "Exception: %s" % str(e))
+					return None
+			def _done(raw):
+				try:
+					return json.loads(raw.decode()) if raw else None
+				except:
+					return None
+			d = _get_media(self.event_id)
+			d.addCallback(_done)
+			d.addCallback(self.process_media)
+		else:
+			def _get_media(eid):
+				headers = {'User-Agent': 'Mozilla/5.0'}
+				try:
+					url = "https://api.sofascore.com/api/v1/event/{}/media".format(eid)
+					return requests.get(url, headers=headers, timeout=10).json()
+				except:
+					return None
+			d = deferToThread(_get_media, self.event_id)
+			d.addCallback(self.process_media)
 
 	def process_media(self, data):
 		gList = []
