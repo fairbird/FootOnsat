@@ -696,7 +696,7 @@ class FootOnSat(Screen):
 				cur.execute('CREATE TABLE IF NOT EXISTS LIVE_NOTIF (MATCH TEXT primary key , COMPET TEXT , DATE TEXT , TEAM1_FLAG TEXT , TEAM2_FLAG TEXT , FIRST_NOTIF TEXT , FIRST_NOTIF_STATUS TEXT , LIVE_NOTIF_STATUS TEXT,MESSAGE TEXT)')
 		except DatabaseError:
 			# If the file is corrupted, delete it and try again.
-			if os.path.exists(DB_PATH):
+			if exists(DB_PATH):
 				os.remove(DB_PATH)
 			with connect(DB_PATH) as conn:
 				cur = conn.cursor()
@@ -929,7 +929,7 @@ class FootOnSat(Screen):
 		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
             # This code only for test locale json files
 #		from twisted.internet import reactor
-#		json_file_path = '/tmp/today.json'
+#		json_file_path = '/media/hdd/today.json'
 #		with open(json_file_path, 'r') as f:
 #			json_data = f.read()
 #		reactor.callLater(0.1, self.getData, json_data)
@@ -995,7 +995,8 @@ class FootOnSat(Screen):
 			# So we check day: if weekend → SKIP url2 completely
 			weekday = date.today().weekday()  # 5 = Saturday, 6 = Sunday
 			is_weekend = weekday >= 5
-			fetch_url2 = not is_weekend  # ONLY try url2 on Mon–Fri
+			#fetch_url2 = not is_weekend  # ONLY try url2 on Mon–Fri
+			fetch_url2 = True
 
 			#logdata("fetch_live_results", "Today is %s → fetch_url2 = %s" % (
 			#	"SAT/SUN (BUSY)" if is_weekend else "Mon–Fri (quiet)", 
@@ -1015,7 +1016,7 @@ class FootOnSat(Screen):
 						headers2 = twisted_live_headers.copy()
 						headers2[b'User-Agent'] = [b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/129.0 Safari/537.36']
 						headers2[b'Accept-Encoding'] = [b'identity']
-						return getPage(str.encode(url2), contextFactory=sniFactory, timeout=15, headers=headers2)
+						return getPage(str.encode(url2), contextFactory=sniFactory, timeout=20, headers=headers2)
 					except:
 						return defer.succeed(None)
 				d2 = safe_url2()
@@ -1083,7 +1084,7 @@ class FootOnSat(Screen):
 					try:
 						h2 = headers2.copy()
 						h2['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/129.0 Safari/537.36'
-						r2 = requests.get(url2, headers=h2, timeout=12)
+						r2 = requests.get(url2, headers=h2, timeout=15)
 						r2.raise_for_status()
 						results.append(r2.content)
 						#logdata("fetch_live_results", "DEBUG URL2 (Py2) OK (%d MB) → extra data" % (len(r2.content)//1024//1024))
@@ -1416,12 +1417,30 @@ class FootOnSat(Screen):
 				return matches_list
 
 			def _matching_complete(updated_matches_list):
-				match_complete_time = time.time()
-				self.matches = updated_matches_list
+				cache_file, terminated_cache, changed, final_list = "/tmp/terminated_matches.json", [], False, []
 				try:
-					self.iniMenu()
-				except Exception as e:
-					pass
+					if exists(cache_file):
+						with open(cache_file, 'r') as f: terminated_cache = json.load(f)
+				except: pass
+				for m in updated_matches_list:
+					m_name, m_status = str(m[0]), str(m[7]).upper()
+					is_term = any(x in m_status for x in ['FINISHED', 'CANCELED', 'POSTPONED'])
+					in_cache = m_name in terminated_cache
+					if self.link == "live":
+						if is_term and not in_cache:
+							terminated_cache.append(m_name)
+							changed = True
+						if is_term or in_cache: continue
+					elif self.link == "end":
+						if not (is_term or in_cache): continue
+					final_list.append(m)
+				self.matches = final_list
+				if changed and self.link == "live":
+					try:
+						with open(cache_file, 'w') as f: json.dump(terminated_cache, f)
+					except: pass
+				try: self.iniMenu()
+				except: pass
 				#logdata("FootOnSat-PERF", "LIVESCORE: Final UI updated with scores. Total processing time: %.3f s." % (time.time() - process_start))
 
 			d_match = deferToThread(_do_fuzzy_matching, matches_list, live_matches, now_adj)
@@ -1457,6 +1476,14 @@ class FootOnSat(Screen):
 #		except Exception as e:
 #			logdata("FootOnSat-DEBUG-ERROR", "Failed to save LiveOnSat JSON: %s" % str(e))
 		# === END DEBUG ===
+
+		cache_file = "/tmp/terminated_matches.json"
+		terminated_cache = []
+		cache_changed = False
+		try:
+			if exists(cache_file):
+				with open(cache_file, 'r') as f: terminated_cache = json.load(f)
+		except: pass
 
 		ignored_competitions = []
 		try:
@@ -1535,15 +1562,22 @@ class FootOnSat(Screen):
 							match.get('event_id', '')
 						]
 
+						# This code to correction the names
+						match_name = match['match'] \
+							.replace("Bodø/Glimt", "Bodø Glimt") \
+							.replace("Preston N.E.", "Preston N.E")
+
 						# Logic for moving matches between sections (Row visibility)
-						is_really_finished = now > (match_date_adjusted + timedelta(minutes=100))
-						is_terminated = any(x in str(match_status).upper() for x in ['FINISHED', 'FT', 'CANCELED', 'POSTPONED'])
-						should_move_to_end = is_terminated or is_really_finished
-						show_match_row = True
+						is_really_finished = now > (match_date_adjusted + timedelta(minutes=150))
+						is_terminated = any(x in str(match_status).upper() for x in ['FINISHED', 'CANCELED', 'POSTPONED'])
+						in_cache = match_name in terminated_cache
 						if self.link == "live":
-							show_match_row = False if should_move_to_end else True
+							if is_really_finished and in_cache:
+								terminated_cache.remove(match_name)
+								cache_changed, in_cache = True, False
+							show_match_row = False if (is_terminated or in_cache or is_really_finished) else True
 						elif self.link == "end":
-							show_match_row = True if should_move_to_end else False
+							show_match_row = True if (is_terminated or in_cache or is_really_finished) else False
 						elif self.link == "today":
 							show_match_row = True if is_upcoming else False
 						if not show_match_row:
@@ -1580,12 +1614,7 @@ class FootOnSat(Screen):
 							if config.plugins.FootOnSat.livescore.value == "1":
 								match_status = ""
 
-						# This code to correction the names
-						match_name = match['match'] \
-							.replace("Bodø/Glimt", "Bodø Glimt") \
-							.replace("Preston N.E.", "Preston N.E")
-
-						if append_match:
+						if show_scores_status:
 							if self.link == "end":
 								if now > (match_date_adjusted + timedelta(hours=HOUR)):
 									continue
@@ -1606,6 +1635,11 @@ class FootOnSat(Screen):
 					pass
 
 			self.matches = list
+
+			if cache_changed:
+				try:
+					with open(cache_file, 'w') as f: json.dump(terminated_cache, f)
+				except: pass
 
 			#logdata("DEBUG_VALUE", "Value is: %s | Link is: %s" % (str(config.plugins.FootOnSat.livescore.value), str(self.link)))
 			# Only fetch live results for live/finished matches if livescore is set to "3"					
@@ -1754,7 +1788,7 @@ class FootOnSat(Screen):
 		# Create ignore directory if it doesn't exist
 		from .launcher import get_ignore_paths
 		ignore_dir, ignore_file = get_ignore_paths()
-		if not os.path.exists(ignore_dir):
+		if not exists(ignore_dir):
 			try:
 				os.makedirs(ignore_dir, 0o755)
 				# logdata("manageIgnoreFile", "Created ignore directory: " + ignore_dir)
@@ -1783,7 +1817,7 @@ class FootOnSat(Screen):
 				return []
 		# Load or initialize ignored competitions
 		ignored = []
-		if os.path.exists(ignore_file):
+		if exists(ignore_file):
 			try:
 				with fopen(ignore_file, 'r') as f:
 					data = json.load(f)
@@ -2424,13 +2458,13 @@ class MatchMediaScreen(Screen):
 				user_agent = user_agent.split("&Referer=")[0]
 		is_yt = "youtube.com" in pure_url.lower() or "youtu.be" in pure_url.lower() or "googlevideo.com" in pure_url.lower()
 		has_exteplayer = exists("/usr/bin/exteplayer3")
-		logdata("DASH_DEBUG", "is_yt: %s | has_exteplayer: %s | UseDash: %s" % (str(is_yt), str(has_exteplayer), str(config.plugins.FootOnSat.useDashMP4.value)))
+		#logdata("DASH_DEBUG", "is_yt: %s | has_exteplayer: %s | UseDash: %s" % (str(is_yt), str(has_exteplayer), str(config.plugins.FootOnSat.useDashMP4.value)))
 		if is_yt and config.plugins.FootOnSat.useDashMP4.value and not has_exteplayer:
-			logdata("DASH_START", "Entering DASH logic...")
-			logdata("DASH_DEBUG_URL", "Full video_url: %s" % str(video_url))
+			#logdata("DASH_START", "Entering DASH logic...")
+			#logdata("DASH_DEBUG_URL", "Full video_url: %s" % str(video_url))
 			separator = '#EXT-X-STREAM-INF:AUDIO=' if '#EXT-X-STREAM-INF:AUDIO=' in video_url else SUBURI
 			if separator in video_url:
-				logdata("DASH_READY", "Audio stream found via %s. Preparing download..." % separator)
+				#logdata("DASH_READY", "Audio stream found via %s. Preparing download..." % separator)
 				try:
 					v_url = pure_url
 					a_url = video_url.split(separator)[-1].replace('"', '').strip()
@@ -2438,10 +2472,10 @@ class MatchMediaScreen(Screen):
 					a_tmp = "/tmp/a.mp4"
 					ua = str(user_agent) if user_agent else "Mozilla/5.0"
 					down_a = 'wget --no-check-certificate -U "%s" -O %s "%s"' % (ua, a_tmp, a_url)
-					logdata("DASH_DL", "Downloading audio: %s" % down_a)
+					#logdata("DASH_DL", "Downloading audio: %s" % down_a)
 					gst_cmd = "gst-launch-1.0 filesrc location=%s ! decodebin ! audioconvert ! audioresample ! alsasink" % a_tmp
 					self.dash_process = subprocess.Popen('%s && %s' % (down_a, gst_cmd), shell=True, preexec_fn=os.setsid)
-					logdata("DASH_GST", "Audio download and background playback started.")
+					#logdata("DASH_GST", "Audio download and background playback started.")
 				except Exception as e:
 					logdata("DASH_FATAL", "Error: %s" % str(e))
 		try:
@@ -2728,9 +2762,9 @@ class FootOnsatNotifScreen(Screen):
 		"""Plays the notification tone."""
 		from .launcher import MenuFootOnSat
 		tone_file = MenuFootOnSat.getToneFile()
-		if os.path.exists("/usr/bin/aplay"):
+		if exists("/usr/bin/aplay"):
 			os.system('aplay "{}" &'.format(tone_file))
-		elif os.path.exists("/usr/bin/gst-launch-1.0"):
+		elif exists("/usr/bin/gst-launch-1.0"):
 			os.system('(gst-launch-1.0 -q --no-fault filesrc location="{}" ! wavparse ! audioconvert ! audioresample ! alsasink > /dev/null 2>&1 &) &'.format(tone_file))
 		else:
 			logdata("FootOnSatNotif", "No supported sound player found (aplay/gst-launch).")
@@ -3261,16 +3295,16 @@ class StandingsScreen(Screen):
 			filename_png = resolveFilename(SCOPE_PLUGINS,"Extensions/FootOnSat/assets/standings/{}.png".format(team_filename))
 
 			# Check if PNG version exists
-			if os.path.exists(filename_png):
+			if exists(filename_png):
 				return True
 
 			# Determine file extension from URL (used for temp filename)
 			ext = ".gif" if logo_url.lower().endswith(".gif") else (".png" if logo_url.lower().endswith(".png") else ".jpg")
 			
 			# Temporary file path for raw download (using .temp_raw for safety)
-			temp_file = os.path.join("/tmp", "{}.temp_raw".format(team_filename))
+			temp_file = join("/tmp", "{}.temp_raw".format(team_filename))
 			# Temporary path for PIL output
-			final_temp_png = os.path.join("/tmp", "{}.temp_png".format(team_filename))
+			final_temp_png = join("/tmp", "{}.temp_png".format(team_filename))
 			
 			success = False
 			temp_files_to_clean = [temp_file, final_temp_png] # List all files to clean up
@@ -3353,7 +3387,7 @@ class StandingsScreen(Screen):
 					success = True
 
 				# Clean up the temporary file
-				if os.path.exists(temp_file):
+				if exists(temp_file):
 					os.remove(temp_file)
 
 				return success
@@ -3364,13 +3398,13 @@ class StandingsScreen(Screen):
 				return False
 			finally:
 				# Ensure cleanup regardless of success/failure
-				if os.path.exists(temp_file):
+				if exists(temp_file):
 					os.remove(temp_file)
 		#logdata("Logos", "Starting check for league: %s" % self.league)
 
 		# Ensure standings folder exists
 		standings_dir = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/standings/")
-		if not os.path.exists(standings_dir):
+		if not exists(standings_dir):
 			try:
 				os.makedirs(standings_dir)
 				#logdata("Logos", "Created standings folder: %s" % standings_dir)
@@ -3411,7 +3445,7 @@ class StandingsScreen(Screen):
 			filename_png = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/standings/{}.png".format(team_filename))
 			
 			# Check if a PNG already exists
-			if os.path.exists(filename_png):
+			if exists(filename_png):
 				team_info["found"] = True
 				logos_found += 1
 				continue
@@ -3582,7 +3616,7 @@ class StandingsScreen(Screen):
 			flagteam_png = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/standings/{}.png".format(sanitize_team_name(team)))
 			if self.league in ("basketball", "nba", "nfl"): # This for basketball, nba and nfl option codes only
 				if isFHD():
-					if os.path.exists(flagteam_png):
+					if exists(flagteam_png):
 						if PY3:
 							res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
 													png=loadPNG(flagteam_png), flags=BT_SCALE))
@@ -3611,7 +3645,7 @@ class StandingsScreen(Screen):
 					res.append(MultiContentEntryText(pos=(1570, 0), size=(80, ITEM_HEIGHT), font=0,
 											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(pct or "")))
 				else: # UHD skins (2560)
-					if os.path.exists(flagteam_png):
+					if exists(flagteam_png):
 						if PY3:
 							res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
 												png=loadPNG(flagteam_png), flags=BT_SCALE))
@@ -3641,7 +3675,7 @@ class StandingsScreen(Screen):
 											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(pct or "")))
 			else:
 				if isFHD():
-					if os.path.exists(flagteam_png):
+					if exists(flagteam_png):
 						if PY3:
 							res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
 													png=loadPNG(flagteam_png), flags=BT_SCALE))
@@ -3676,7 +3710,7 @@ class StandingsScreen(Screen):
 					res.append(MultiContentEntryText(pos=(1680, 0), size=(80, ITEM_HEIGHT), font=0,
 											flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(goal_diff or "")))
 				else: # UHD skins (2560)
-					if os.path.exists(flagteam_png):
+					if exists(flagteam_png):
 						if PY3:
 							res.append(MultiContentEntryPixmapAlphaBlend(pos=(LOGO_X_POS, LOGO_Y_POS), size=(LOGO_SIZE_H, LOGO_SIZE_H),
 				                                                       png=loadPNG(flagteam_png), flags=BT_SCALE))
