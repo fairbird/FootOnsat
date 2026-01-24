@@ -781,8 +781,9 @@ class FootOnSat(Screen):
 			return
 
 		index = self['list1'].getSelectionIndex()
-		
-		if self.link == "live" or self.link == "end":
+		current_match = self.matches[index]
+
+		if (self.link == "live" or self.link == "end" or self.link in FOOTBALL) and len(current_match) > 8 and current_match[8]:
 			current_match = self.matches[index]
 			if len(current_match) > 8 and current_match[8]:
 				event_id = current_match[8]
@@ -1333,7 +1334,10 @@ class FootOnSat(Screen):
 							changed = True
 						if is_term or in_cache: continue
 					elif self.link == "end":
-						if not (is_term or in_cache): continue
+						if not (is_term or in_cache):
+							continue
+					elif self.link not in ["live", "end", "today"]:
+						pass
 					final_list.append(m)
 				self.matches = final_list
 				if changed and self.link == "live":
@@ -1481,6 +1485,8 @@ class FootOnSat(Screen):
 							show_match_row = True if (is_terminated or in_cache or is_really_finished) else False
 						elif self.link == "today":
 							show_match_row = True if is_upcoming else False
+						else:
+							show_match_row = True
 						if not show_match_row:
 							continue
 
