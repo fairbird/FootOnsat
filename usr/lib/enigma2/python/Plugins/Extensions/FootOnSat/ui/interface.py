@@ -949,7 +949,8 @@ class FootOnSat(Screen):
 		
 		# === URL Setup ===
 		today_iso = date.today().isoformat()
-		url = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}'.format(today_iso)
+		url1 = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}/'.format(today_iso)
+		url2 = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}/inverse'.format(today_iso)
 
 		# === Headers/Agent (Minimal and robust headers) ===
 		AGENT = b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
@@ -969,6 +970,17 @@ class FootOnSat(Screen):
 		}
 
 		#logdata("FootOnSat-LIVESCORE", "Sending request to SofaScore API.")
+
+		# === SMART DYNAMIC FETCH ===
+		# On Saturday/Sunday → url2 = 30 MB = DEATH
+		# So we check day: if weekend → SKIP url2 completely
+		weekday = date.today().weekday()  # 5 = Saturday, 6 = Sunday
+		is_weekend = weekday >= 5
+		fetch_url2 = True  # Always fetch url2, optimized with timeout for large responses
+		if config.plugins.FootOnSat.extrafetch.value:
+			fetch_url2 = True  # Always fetch url2, optimized with timeout for large responses
+		else:
+			fetch_url2 = not is_weekend  # ONLY try url2 on Mon–Fri
 
 		# === Twisted HTTP Request Handling (with Py3 compatibility) ===
 		deferred_list = []
@@ -990,64 +1002,146 @@ class FootOnSat(Screen):
 				b'Cache-Control': [b'no-cache'],
 			}
 
-			d = getPage(str.encode(url), contextFactory=sniFactory, timeout=25, headers=twisted_live_headers)
+			# Always fetch url1 (main clean data)
+			d1 = getPage(str.encode(url1), contextFactory=sniFactory, timeout=25, headers=twisted_live_headers)
+			deferred_list.append(d1)
 
-			def process_results(raw):
+			# Conditionally fetch url2 (only on safe days)
+			d2 = None
+			if fetch_url2:
+				def safe_url2():
+					try:
+						# Aggressive anti-block headers
+						headers2 = twisted_live_headers.copy()
+						headers2[b'User-Agent'] = [b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/129.0 Safari/537.36']
+						headers2[b'Accept-Encoding'] = [b'identity']
+						return getPage(str.encode(url2), contextFactory=sniFactory, timeout=25, headers=headers2)
+					except:
+						return defer.succeed(None)
+				d2 = safe_url2()
+				deferred_list.append(d2)
+			else:
+				# Weekend: inject None so gatherResults keeps order
+				deferred_list.append(defer.succeed(None))
+
+			d = defer.gatherResults(deferred_list, consumeErrors=True)
+
+			def process_results(results):
+				raw1, raw2 = results
+
+				# Log url1
+				#if isinstance(raw1, Failure):
+				#	logdata("fetch_live_results", "DEBUG URL1 FAILED: %s" % raw1.getErrorMessage())
+				#else:
+				#	logdata("fetch_live_results", "DEBUG URL1 OK (Bytes: %d)" % len(raw1))
+
+				# Log url2
+				#if not fetch_url2:
+				#	logdata("fetch_live_results", "DEBUG URL2 SKIPPED (weekend protection active)")
+				#elif raw2 is None:
+				#	logdata("fetch_live_results", "DEBUG URL2 SKIPPED (setup failed)")
+				#elif isinstance(raw2, Failure):
+				#	logdata("fetch_live_results", "DEBUG URL2 FAILED → SKIPPED SAFELY")
+				#else:
+				#	logdata("fetch_live_results", "DEBUG URL2 OK (Bytes: %d) → using extra data" % len(raw2))
+
+				# Return only valid data
 				valid = []
-				if raw and not isinstance(raw, Failure):
-					valid.append(raw)
-				return valid or [b'{"events":[]}']
+				if raw1 and not isinstance(raw1, Failure):
+					valid.append(raw1)
+				if raw2 and not isinstance(raw2, Failure) and fetch_url2:
+					valid.append(raw2)
+
+				# Fallback if both fail
+				if not valid:
+					valid = [b'{"events":[]}']
+
+				return valid
+
 			d.addCallback(process_results)
 
 		else:
-			# PY2 version — Single URL logic
+			# PY2 version — same logic
 			def _fetch_smart():
 				results = []
+				# url1 always
 				try:
-					r = requests.get(url, headers=headers2, timeout=20)
+					r = requests.get(url1, headers=headers2, timeout=20)
 					r.raise_for_status()
 					results.append(r.content)
+					#logdata("fetch_live_results", "DEBUG URL1 (Py2) OK (%d KB)" % (len(r.content)//1024))
 				except Exception as e:
-					logdata("fetch_live_results", "DEBUG URL (Py2) FAILED: %s" % str(e))
+					logdata("fetch_live_results", "DEBUG URL1 (Py2) FAILED: %s" % str(e))
 					results.append(None)
+
+				# url2 only if safe
+				if fetch_url2:
+					try:
+						h2 = headers2.copy()
+						h2['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/129.0 Safari/537.36'
+						r2 = requests.get(url2, headers=h2, timeout=20)
+						r2.raise_for_status()
+						results.append(r2.content)
+						#logdata("fetch_live_results", "DEBUG URL2 (Py2) OK (%d MB) → extra data" % (len(r2.content)//1024//1024))
+					except Exception as e:
+						logdata("fetch_live_results", "DEBUG URL2 (Py2) FAILED → SKIPPED")
+						results.append(None)
+				else:
+					#logdata("fetch_live_results", "DEBUG URL2 (Py2) SKIPPED (weekend mode)")
+					results.append(None)
+
 				valid = [r for r in results if r is not None]
 				return valid or [b'{"events":[]}']
+
 			d = deferToThread(_fetch_smart)
 		
 		# === _process_response (Twisted Callback from network fetch) ===
-		def _process_response(raw_list):
+		def _process_response(raw_list): # <--- Argument changed from 'raw' to 'raw_list'
 			process_start = time.time()
+			#logdata("FootOnSat-LIVESCORE", "Received SofaScore response. Starting processing.")
 			all_events = []
+			# Decode and JSON Load
 			for idx, raw in enumerate(raw_list):
-				if raw is None:
+				if raw is None: # Skip if fetch failed (non-PY3 path)
 					continue
+				# Decode and JSON Load
 				try:
 					data_str = raw.decode('utf-8', errors='ignore')
 					data = json.loads(data_str)
-					events_data = data.get('events', [])
-					for ev in events_data:
-						status_type = str(ev.get('status', {}).get('type', '')).lower()
-						if status_type == 'notstarted':
-							continue
-						if self.link == "end":
-							if status_type not in ['finished', 'canceled', 'postponed']:
-								continue
-						all_events.append(ev)
+					# === DEBUG: Save SofaScore JSON to /tmp (Pretty Print) ===
+#					try:
+#						sofa_debug_path = "/tmp/sofascore_data_%d.json" % idx
+#						events = data.get('events', [])
+#						formatted_data_str = json.dumps(events, indent=4, ensure_ascii=False)
+#						with codecs.open(sofa_debug_path, "w", encoding="utf-8") as f:
+#							f.write(formatted_data_str)
+#						logdata("FootOnSat-DEBUG", "Saved PRETTY-PRINTED SofaScore EVENTS to %s" % sofa_debug_path)
+#					except Exception as e:
+#						logdata("FootOnSat-DEBUG-ERROR", "Failed to save SofaScore JSON: %s" % str(e))
+					# === END DEBUG ===
+					events = data.get('events', [])
+					all_events.extend(events)
 				except ValueError as e:
+					# Log the actual JSON parsing error
 					logdata("fetch_live_results", "JSON parse error (ValueError): %s" % str(e))
+					# Log the beginning of the raw data that caused the crash (first 256 characters)
 					logdata("fetch_live_results", "Corrupt Data Snippet: %s..." % data_str[:256].replace('\n', ' '))
-					continue
+					continue # Continue to the next response in the list
 				except Exception as e:
+					# Log any other unexpected decode/general error
 					logdata("fetch_live_results", "Decode/General error: %s" % str(e))
-					continue
+					continue # Continue to the next response in the list
+
 			if not all_events:
 				self.matches = [list(m) for m in self.matches]
 				try:
 					self.iniMenu()
-				except:
+				except Exception as e:
 					pass
 				return
+
 			events = all_events
+
 
 			# === STEP 1: EVENT BUILDING & STRICT FILTERING (Main thread) ===
 			now = datetime.now()
@@ -1160,6 +1254,7 @@ class FootOnSat(Screen):
 				pass
 
 			def _clean_name(name):
+				#logdata("FuzzyDebug", "RAW NAME    : %s" % repr(name))
 				if not PY3 and isinstance(name, str):
 					name = name.decode('ascii', 'ignore')
 				try:
@@ -1170,10 +1265,12 @@ class FootOnSat(Screen):
 				except:
 					pass
 				name = compat_str(name).strip().lower()
-				name = re.sub(r'[^a-z\s]', ' ', name, flags=re.IGNORECASE) 
+				name = name.replace("johor darul ta zim", "jdt").replace("pdrm fc", "pdrm")
+				name = re.sub(r'[^a-z\s]', ' ', name, flags=re.IGNORECASE)
 				NOISE = r'\b(nk|afc|fc|cf|as|ac|sk|fk|tsv|national|squad|sport|calcio|ploie[șs]ti|ploiești|ploieshti|aif|ifk|goteborg|göteborg|kf|ks|af|seinajoki|peshkopi)\b'
 				name = re.sub(NOISE, ' ', name, flags=re.IGNORECASE)
 				name = re.sub(r'\s+', ' ', name).strip()
+				#logdata("FuzzyDebug", "CLEANED NAME: %s" % repr(name))
 				return name
 
 			def _do_fuzzy_matching(matches_list, live_matches, now_adj):
@@ -1269,6 +1366,10 @@ class FootOnSat(Screen):
 
 							if not (straight_possible or swap_possible):
 								continue	
+
+							#logdata("FuzzyDebug","COMPARE | SCHED: '%s' vs '%s' | LIVE: '%s' vs '%s'" % (
+							#	l_t1_clean, l_t2_clean,
+							#	s_t1_clean, s_t2_clean))
 
 							sim1 = SequenceMatcher(None, l_t1_clean, s_t1_clean).ratio()
 							sim2 = SequenceMatcher(None, l_t2_clean, s_t2_clean).ratio()

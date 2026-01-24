@@ -108,6 +108,12 @@ config.plugins.FootOnSat.enableflag = ConfigYesNo(default=True)
 config.plugins.FootOnSat.notiftime = ConfigInteger(default=6, limits=(6, 20))
 config.plugins.FootOnSat.notiffile = ConfigText(default="notif1", visible_width = 250, fixed_size = False)
 config.plugins.FootOnSat.useDashMP4 = ConfigYesNo(default=True)
+config.plugins.FootOnSat.extrafetch = ConfigYesNo(default=False)
+config.plugins.FootOnSat.pluginicon = ConfigSelection(default = "logo1", choices = [
+	("logo1", _("logo 1")),
+	("logo2", _("logo 2")),
+	("logo3", _("logo 3"))
+	])
 config.plugins.FootOnSat.maxResolution = ConfigSelection(default='22', choices=[
 	('38', '4096x3072'), ('37', '1920x1080'), ('22', '1280x720'),
 	('35', '854x480'), ('18', '640x360'), ('5', '400x240'), ('17', '176x144')
@@ -194,6 +200,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self["help"] = StaticText()
 		self.old_notiffile = config.plugins.FootOnSat.notiffile.value
 		self.icons_value = config.plugins.FootOnSat.icons.value
+		self.pluginicon = config.plugins.FootOnSat.pluginicon.value
 		self.getToneFile()
 		self.createSetup()
 
@@ -201,18 +208,24 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.configChanged = True
 		self.list = []
 		self.list.append(getConfigListEntry(_("Show Plugin #press OK to change"), config.plugins.FootOnSat.showplugin, _("This option to show Plugin in any where you like")))
+		self.list.append(getConfigListEntry(_("Choose the icon of plugin"), config.plugins.FootOnSat.pluginicon, _("This option to allows you to select the icon of plugin")))
 		self.list.append(getConfigListEntry(_("Enable checking for Online Update"), config.plugins.FootOnSat.updateonline, _("This option to Enable or Disable checking for Online Update")))
+		self.list.append(getConfigListEntry("___________________________________________________________________________________"))
 		self.list.append(getConfigListEntry(_("Enable flags of teams"), config.plugins.FootOnSat.enableflag, _("This option to Enable or Disable flags of teams with logo")))
+		self.list.append(getConfigListEntry(_("Path to store ignore file"), config.plugins.FootOnSat.devicepath, _("This option to set the path of save file for ignore matches")))
+		self.list.append(getConfigListEntry("___________________________________________________________________________________"))
 		self.list.append(getConfigListEntry(_("Enable Live score + status"), config.plugins.FootOnSat.livescore, _("This feature allows you to show or hide the matches with or without result + status")))
 		if config.plugins.FootOnSat.livescore.value in ["2"]:
 			self.list.append(getConfigListEntry(_("Select appear live + score of match in"), config.plugins.FootOnSat.livescoresections, _("This feature allows you to show matches live with result in sections")))
 			self.list.append(getConfigListEntry(_("Time to keep finished matches"), config.plugins.FootOnSat.finished, _("This option specifies how long finished matches remain in the 'Match End' section before they disappear")))
 			self.list.append(getConfigListEntry(_("Color of score and status"), config.plugins.FootOnSat.livecolor, _("This option allows you to choose the color of score and status.")))
-		self.list.append(getConfigListEntry(_("Path to store ignore file"), config.plugins.FootOnSat.devicepath, _("This option to set the path of save file for ignore matches")))
+			self.list.append(getConfigListEntry(_("Activate an additional url"), config.plugins.FootOnSat.extrafetch, _("This option allows you to activate an additional URL link to download data..\nActivating this will take longer for the fetch process.")))
+		self.list.append(getConfigListEntry("___________________________________________________________________________________"))
 		self.list.append(getConfigListEntry(_("Choose time for notifications"), config.plugins.FootOnSat.notiftime, _("This feature allows you to choose the number of seconds for notifications to appear.\nMove <Left | Right> to change seconds from (6 - 20)")))
 		self.list.append(getConfigListEntry(_("Choose to notifications and Zap"), config.plugins.FootOnSat.notify_zap, _("This feature allows you to specify the notifications and Zap to selected channel")))
 		self.list.append(getConfigListEntry(_("Choose to display notifications"), config.plugins.FootOnSat.notify, _("This feature allows you to specify the times for notifications to appear when matches start")))
 		self.list.append(getConfigListEntry(_("Choose tone of notifications #press OK to change"), config.plugins.FootOnSat.notiffile, _("This feature allows you to select a notification tone when matches start")))
+		self.list.append(getConfigListEntry("___________________________________________________________________________________"))
 		self.list.append(getConfigListEntry(_("Use DASH MP4 format"), config.plugins.FootOnSat.useDashMP4, _("Specify or you want to use DASH MP4 format streams if available.\nThis requires playing two streams together and may cause problems for some receivers.")))
 		self.list.append(getConfigListEntry(_("Maximum video resolution"), config.plugins.FootOnSat.maxResolution, _("What maximum resolution used when playing video, if available.\nIf you have a slow Internet connection, you can use a lower resolution.")))
 		if DreamOS():
@@ -321,6 +334,12 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/icons_renkli.png')
 			elif index == "icons_italia2012":
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/icons_italia2012.png')
+			elif index == "logo1":
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo1.png')
+			elif index == "logo2":
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo2.png')
+			elif index == "logo3":
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo3.png')
 			if pic and self['Picture'].instance and exists(pic):
 				self['Picture'].instance.setPixmapFromFile(pic)
 				self['Picture'].show()
@@ -373,14 +392,15 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 
 	def cancel(self):
 		for x in self["config"].list:
-			x[1].cancel()
+			if len(x) > 1:
+				x[1].cancel()
 		self.close()
 
 	def save(self):
 		changed = False
 		icons_changed = False # New flag
 
-		# 1. Check for general config changes
+		# Check for general config changes
 		for x in self["config"].list:
 			if len(x) > 1:
 				config_item = x[1]
@@ -388,11 +408,15 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 					changed = True
 					break
 		
-		# 2. Check if notiffile has actually changed
+		# Check if notiffile has actually changed
 		if self.old_notiffile != config.plugins.FootOnSat.notiffile.value:
 			changed = True
-			
-		# 3. Handle icons download and set icons_changed flag
+
+		# Check if plugin icon has actually changed
+		if self.pluginicon != config.plugins.FootOnSat.pluginicon.value:
+			icons_changed = True
+
+		# Handle icons download and set icons_changed flag
 		if self.icons_value != config.plugins.FootOnSat.icons.value:
 			changed = True # General changed flag also set for safety/consistency
 			icons_changed = True # Set the specific flag for restart prompt

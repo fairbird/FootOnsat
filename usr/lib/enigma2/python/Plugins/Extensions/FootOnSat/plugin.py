@@ -40,6 +40,13 @@ def sessionstart(reason, **kwargs):
 
 description = _("FootOnSat")
 
+if config.plugins.FootOnSat.pluginicon.value == "logo1":
+	ICON = "logo1.png"
+elif config.plugins.FootOnSat.pluginicon.value == "logo2":
+	ICON = "logo2.png"
+else:
+	ICON = "logo3.png"
+
 def Plugins(**kwargs):
 	result = [
 		PluginDescriptor(
@@ -50,7 +57,7 @@ def Plugins(**kwargs):
 			name=_("FootOnSat"),
 			description = _("Football Fixtures"),
 			where = PluginDescriptor.WHERE_PLUGINMENU,
-			icon = 'logo.png',
+			icon = ICON,
 			fnc = main
 		),
 	]
