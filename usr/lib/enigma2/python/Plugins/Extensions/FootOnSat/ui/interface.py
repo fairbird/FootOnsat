@@ -952,7 +952,18 @@ class FootOnSat(Screen):
 		#logdata("FootOnSat-LIVESCORE", "fetch_live_results initiated.")
 		
 		# === URL Setup ===
-		today_iso = date.today().isoformat()
+		link_val = str(getattr(self, 'link', '')).lower()
+		football_lower = {x.lower() for x in FOOTBALL}
+		if link_val in ["live", "end"] or link_val in football_lower:
+			if datetime.now().hour < 2:
+				today_iso = (date.today() - timedelta(days=1)).isoformat()
+				#logdata("FootOnSat-LIVESCORE", "!!! BEFORE 2AM MODE: Fetching Yesterday [%s]" % today_iso)
+			else:
+				today_iso = date.today().isoformat()
+				#logdata("FootOnSat-LIVESCORE", "!!! AFTER 2AM MODE: Fetching Today [%s]" % today_iso)
+		else:
+			today_iso = date.today().isoformat()
+			#logdata("FootOnSat-LIVESCORE", "!!! NORMAL MODE: Fetching Today [%s] - Link: %s" % (today_iso, link_val))
 		url1 = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}/'.format(today_iso)
 		url2 = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}/inverse'.format(today_iso)
 
@@ -1006,7 +1017,7 @@ class FootOnSat(Screen):
 			}
 
 			# Always fetch url1 (main clean data)
-			d1 = getPage(str.encode(url1), contextFactory=sniFactory, timeout=35, headers=twisted_live_headers)
+			d1 = getPage(str.encode(url1), contextFactory=sniFactory, timeout=20, headers=twisted_live_headers)
 			deferred_list.append(d1)
 
 			# Conditionally fetch url2 (only on safe days)
@@ -1018,7 +1029,7 @@ class FootOnSat(Screen):
 						headers2 = twisted_live_headers.copy()
 						headers2[b'User-Agent'] = [b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/129.0 Safari/537.36']
 						headers2[b'Accept-Encoding'] = [b'identity']
-						return getPage(str.encode(url2), contextFactory=sniFactory, timeout=35, headers=headers2)
+						return getPage(str.encode(url2), contextFactory=sniFactory, timeout=120, headers=headers2)
 					except:
 						return defer.succeed(None)
 				d2 = safe_url2()
@@ -1069,7 +1080,7 @@ class FootOnSat(Screen):
 				results = []
 				# url1 always
 				try:
-					r = requests.get(url1, headers=headers2, timeout=35)
+					r = requests.get(url1, headers=headers2, timeout=20)
 					r.raise_for_status()
 					results.append(r.content)
 					#logdata("fetch_live_results", "DEBUG URL1 (Py2) OK (%d KB)" % (len(r.content)//1024))
@@ -1082,7 +1093,7 @@ class FootOnSat(Screen):
 					try:
 						h2 = headers2.copy()
 						h2['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/129.0 Safari/537.36'
-						r2 = requests.get(url2, headers=h2, timeout=35)
+						r2 = requests.get(url2, headers=h2, timeout=120)
 						r2.raise_for_status()
 						results.append(r2.content)
 						#logdata("fetch_live_results", "DEBUG URL2 (Py2) OK (%d MB) → extra data" % (len(r2.content)//1024//1024))
