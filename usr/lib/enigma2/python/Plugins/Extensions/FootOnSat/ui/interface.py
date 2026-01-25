@@ -976,7 +976,6 @@ class FootOnSat(Screen):
 		# So we check day: if weekend → SKIP url2 completely
 		weekday = date.today().weekday()  # 5 = Saturday, 6 = Sunday
 		is_weekend = weekday >= 5
-		fetch_url2 = True  # Always fetch url2, optimized with timeout for large responses
 		if config.plugins.FootOnSat.extrafetch.value:
 			fetch_url2 = True  # Always fetch url2, optimized with timeout for large responses
 		else:
@@ -1003,7 +1002,7 @@ class FootOnSat(Screen):
 			}
 
 			# Always fetch url1 (main clean data)
-			d1 = getPage(str.encode(url1), contextFactory=sniFactory, timeout=25, headers=twisted_live_headers)
+			d1 = getPage(str.encode(url1), contextFactory=sniFactory, timeout=35, headers=twisted_live_headers)
 			deferred_list.append(d1)
 
 			# Conditionally fetch url2 (only on safe days)
@@ -1015,7 +1014,7 @@ class FootOnSat(Screen):
 						headers2 = twisted_live_headers.copy()
 						headers2[b'User-Agent'] = [b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/129.0 Safari/537.36']
 						headers2[b'Accept-Encoding'] = [b'identity']
-						return getPage(str.encode(url2), contextFactory=sniFactory, timeout=25, headers=headers2)
+						return getPage(str.encode(url2), contextFactory=sniFactory, timeout=35, headers=headers2)
 					except:
 						return defer.succeed(None)
 				d2 = safe_url2()
@@ -1066,7 +1065,7 @@ class FootOnSat(Screen):
 				results = []
 				# url1 always
 				try:
-					r = requests.get(url1, headers=headers2, timeout=20)
+					r = requests.get(url1, headers=headers2, timeout=35)
 					r.raise_for_status()
 					results.append(r.content)
 					#logdata("fetch_live_results", "DEBUG URL1 (Py2) OK (%d KB)" % (len(r.content)//1024))
@@ -1079,7 +1078,7 @@ class FootOnSat(Screen):
 					try:
 						h2 = headers2.copy()
 						h2['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/129.0 Safari/537.36'
-						r2 = requests.get(url2, headers=h2, timeout=20)
+						r2 = requests.get(url2, headers=h2, timeout=35)
 						r2.raise_for_status()
 						results.append(r2.content)
 						#logdata("fetch_live_results", "DEBUG URL2 (Py2) OK (%d MB) → extra data" % (len(r2.content)//1024//1024))
@@ -1141,7 +1140,6 @@ class FootOnSat(Screen):
 				return
 
 			events = all_events
-
 
 			# === STEP 1: EVENT BUILDING & STRICT FILTERING (Main thread) ===
 			now = datetime.now()
@@ -1265,8 +1263,7 @@ class FootOnSat(Screen):
 				except:
 					pass
 				name = compat_str(name).strip().lower()
-				name = name.replace("johor darul ta zim", "jdt").replace("pdrm fc", "pdrm")
-				name = re.sub(r'[^a-z\s]', ' ', name, flags=re.IGNORECASE)
+				name = re.sub(r'[^a-z\s]', ' ', name, flags=re.IGNORECASE) 
 				NOISE = r'\b(nk|afc|fc|cf|as|ac|sk|fk|tsv|national|squad|sport|calcio|ploie[șs]ti|ploiești|ploieshti|aif|ifk|goteborg|göteborg|kf|ks|af|seinajoki|peshkopi)\b'
 				name = re.sub(NOISE, ' ', name, flags=re.IGNORECASE)
 				name = re.sub(r'\s+', ' ', name).strip()
@@ -1429,15 +1426,15 @@ class FootOnSat(Screen):
 					m_name, m_status = str(m[0]), str(m[7]).upper()
 					is_term = any(x in m_status for x in ['FINISHED', 'CANCELED', 'POSTPONED'])
 					in_cache = m_name in terminated_cache
-					if self.link == "live":
+					if getattr(self, 'link', None) == "live":
 						if is_term and not in_cache:
 							terminated_cache.append(m_name)
 							changed = True
 						if is_term or in_cache: continue
-					elif self.link == "end":
+					elif getattr(self, 'link', None) == "end":
 						if not (is_term or in_cache):
 							continue
-					elif self.link not in ["live", "end", "today"]:
+					elif getattr(self, 'link', None) not in ["live", "end", "today"]:
 						pass
 					final_list.append(m)
 				self.matches = final_list
@@ -1556,18 +1553,6 @@ class FootOnSat(Screen):
 						elif stype == 'finished': match_status = 'FINISHED'
 						elif stype == 'postponed': match_status = 'POSTPONED'
 
-						match_data = [
-							str(match['match']).replace("Bodø/Glimt", "Bodø Glimt").replace("Preston N.E.", "Preston N.E"),
-							str(match['time']) + ' - ' + str(match['date']),
-							str(match['compet']),
-							str(match['flags']['team1']),
-							str(match['flags']['team2']),
-							team1_score,
-							team2_score,
-							match_status,
-							match.get('event_id', '')
-						]
-
 						# This code to correction the names
 						match_name = match['match'] \
 							.replace("Bodø/Glimt", "Bodø Glimt") \
@@ -1577,14 +1562,14 @@ class FootOnSat(Screen):
 						is_really_finished = now > (match_date_adjusted + timedelta(minutes=150))
 						is_terminated = any(x in str(match_status).upper() for x in ['FINISHED', 'CANCELED', 'POSTPONED'])
 						in_cache = match_name in terminated_cache
-						if self.link == "live":
+						if getattr(self, 'link', None) == "live":
 							if is_really_finished and in_cache:
 								terminated_cache.remove(match_name)
 								cache_changed, in_cache = True, False
 							show_match_row = False if (is_terminated or in_cache or is_really_finished) else True
-						elif self.link == "end":
+						elif getattr(self, 'link', None) == "end":
 							show_match_row = True if (is_terminated or in_cache or is_really_finished) else False
-						elif self.link == "today":
+						elif getattr(self, 'link', None) == "today":
 							show_match_row = True if is_upcoming else False
 						else:
 							show_match_row = True
@@ -1593,15 +1578,15 @@ class FootOnSat(Screen):
 
 						show_scores_status = False
 						if is_upcoming:
-							show_scores_status = False if self.link in ["live", "end"] else True
+							show_scores_status = False if getattr(self, 'link', None) in ["live", "end"] else True
 							team1_score = "" 
 							team2_score = ""
 						elif is_live:
 							# Keep live matches not visible in today sections
-							if self.link == "today":
+							if getattr(self, 'link', None) == "today":
 								show_scores_status = False
 							# Keep live matches visible in live and end sections
-							elif self.link in ["live", "end"]:
+							elif getattr(self, 'link', None) in ["live", "end"]:
 								show_scores_status = True
 							else:
 								# Keep live matches visible in specific league sections
@@ -1609,7 +1594,7 @@ class FootOnSat(Screen):
 									show_scores_status = True
 						else:
 							# We allow it for both 'live' and 'end' sections here
-							if self.link in ["live", "end"]:
+							if getattr(self, 'link', None) in ["live", "end"]:
 								show_scores_status = True
 							else:
 								show_scores_status = False
@@ -1623,7 +1608,7 @@ class FootOnSat(Screen):
 								match_status = ""
 
 						if show_scores_status:
-							if self.link == "end":
+							if getattr(self, 'link', None) == "end":
 								if now > (match_date_adjusted + timedelta(hours=HOUR)):
 									continue
 
@@ -1635,7 +1620,8 @@ class FootOnSat(Screen):
 									str(match['flags']['team2']),
 									team1_score,
 									team2_score,
-									match_status])
+									match_status,
+									match.get('event_id', '')])
 					#else:
 						#logdata("getData", "Ignored competition: " + str(match['match']) + ", Compet: " + compet)
 				except KeyError:
@@ -2519,8 +2505,9 @@ class MatchMediaScreen(Screen):
 					result = ytdl.extract(v_id)
 					return str(result) if result else ""
 				except Exception as e:
-					logdata("EXTRACT_ERROR_THREAD_FUNC", str(e))
-					return ""
+					err_text = str(e)
+					#logdata("EXTRACT_ERROR_THREAD_FUNC", err_text)
+					return "ERROR:" + err_text
 			deferToThread(safe_extract, url).addCallback(self.playAfterExtract).addErrback(self.playback_error)
 		elif is_twitter:
 			self.wait_dialog = self.session.open(MessageBox, _("Please wait while extracting video stream..."), MessageBox.TYPE_INFO, enable_input=False)
@@ -2530,11 +2517,31 @@ class MatchMediaScreen(Screen):
 			self.playAfterExtract(str(url))
 
 	def playAfterExtract(self, video_url):
-		video_url = video_url or ""		
+		video_url = video_url or ""
 		if hasattr(self, 'wait_dialog') and self.wait_dialog:
 			self.wait_dialog.close()
-		if not video_url or not isinstance(video_url, (str, compat_str)) or not video_url.startswith("http"):
-			self.session.open(MessageBox, _("Failed to extract video stream or link is broken."), MessageBox.TYPE_ERROR)
+		video_url_str = str(video_url)
+		if "ERROR:" in video_url_str:
+			err_msg = video_url_str.split("ERROR:", 1)[1].lstrip()
+			lower_err = err_msg.lower()
+			#logdata("playAfterExtract_lower", lower_err)
+			if "country" in lower_err or "available" in lower_err:
+				msg = _("This video is not available in your country or is private.")
+				self.error_timer = eTimer()
+				if DreamOS():
+					self.error_timer_conn = self.error_timer.timeout.connect(lambda: self.session.open(MessageBox, msg, MessageBox.TYPE_ERROR, timeout=10))
+				else:
+					self.error_timer.callback.append(lambda: self.session.open(MessageBox, msg, MessageBox.TYPE_ERROR, timeout=10))
+				self.error_timer.start(250, True)
+				return
+		if not video_url_str.startswith("http"):
+			msg = _("Failed to extract video stream or link is broken.")
+			self.error_timer = eTimer()
+			if DreamOS():
+				self.error_timer_conn = self.error_timer.timeout.connect(lambda: self.session.open(MessageBox, msg, MessageBox.TYPE_ERROR, timeout=10))
+			else:
+				self.error_timer.callback.append(lambda: self.session.open(MessageBox, msg, MessageBox.TYPE_ERROR, timeout=10))
+			self.error_timer.start(250, True)
 			return
 		pure_url = video_url
 		user_agent = None
@@ -2574,7 +2581,7 @@ class MatchMediaScreen(Screen):
 			if code not in (200, 206): raise Exception("HTTP_%s" % code)
 		except Exception as e:
 			if "403" not in str(e):
-				self.session.open(MessageBox, _("Failed to extract video stream or link is broken."), MessageBox.TYPE_ERROR)
+				self.session.open(MessageBox, _("Failed to extract video stream or link is broken."), MessageBox.TYPE_ERROR, timeout=10)
 				return
 		name = str(self["title"].getText())
 		stype = int(config.plugins.FootOnSat.player.value)
@@ -2634,10 +2641,8 @@ class MatchMediaScreen(Screen):
 	def playback_error(self, failure):
 		if hasattr(self, 'wait_dialog') and self.wait_dialog:
 			self.wait_dialog.close()
-		if failure == "missing_ytdlp":
-			msg = _("python of yt-dlp is missing!")
-		else:
-			msg = _("Failed to extract video stream or link is broken.")
+		logdata("playback_error_raw", str(failure))
+		msg = _("Failed to extract video stream or link is broken.")
 		self.error_timer = eTimer()
 		if DreamOS():
 			self.error_timer_conn = self.error_timer.timeout.connect(lambda: self.session.open(MessageBox, msg, MessageBox.TYPE_ERROR, timeout=10))
