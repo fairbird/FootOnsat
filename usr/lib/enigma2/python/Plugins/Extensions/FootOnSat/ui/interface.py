@@ -782,19 +782,22 @@ class FootOnSat(Screen):
 
 		index = self['list1'].getSelectionIndex()
 		current_match = self.matches[index]
+		if PY3:
+			match_date = self.getTime(current_match[1])
+		else:
+			match_date = self.getTime(current_match[1].decode('utf8'))
 
-		if (self.link == "live" or self.link == "end" or self.link in FOOTBALL) and len(current_match) > 8 and current_match[8]:
-			current_match = self.matches[index]
+		is_live_or_end = self.link == "live" or self.link == "end"
+		match_in_past = datetime.strptime(match_date, "%H:%M - %Y-%m-%d") < datetime.now()
+
+		if (is_live_or_end or self.link in FOOTBALL or match_in_past):
 			if len(current_match) > 8 and current_match[8]:
+				logdata("ok_debug", "ID found, opening MatchDetailsScreen")
 				event_id = current_match[8]
-				
-				# match[0] usually contains "Team A vs Team B"
 				match_str = current_match[0]
 				parts = re.split(r'\s+v[s]?\s+', match_str, 1, flags=re.IGNORECASE)
 				home_full = parts[0].strip() if len(parts) > 1 else "Home"
 				away_full = parts[1].strip() if len(parts) > 1 else "Away"
-
-				# Open the screen with ALL parameters
 				self.session.open(MatchDetailsScreen, 
 					event_id, 
 					current_match[2], # Competition (Title)
@@ -802,7 +805,8 @@ class FootOnSat(Screen):
 					away_full,        # Full Name (Diosgyor)
 					current_match[3], # Country (Norway)
 					current_match[4]) # Country (Hungary)
-			else:
+				return
+			elif is_live_or_end or match_in_past:
 				self.session.open(MessageBox, _("Please wait a few seconds to get live data..."), MessageBox.TYPE_INFO, timeout=3)
 				return
 
@@ -830,8 +834,8 @@ class FootOnSat(Screen):
 					first_notif, message = self.setFirstNotifTime(match_date)
 					cur.execute("INSERT INTO LIVE_NOTIF(MATCH,COMPET,DATE,TEAM1_FLAG,TEAM2_FLAG,FIRST_NOTIF,FIRST_NOTIF_STATUS,LIVE_NOTIF_STATUS,MESSAGE) values (?,?,?,?,?,?,?,?,?)", (
 						match, compet, match_date, flag1, flag2, first_notif, "Waiting", "Waiting", message,))
-
 		self.iniMenu()
+
 
 	def setFirstNotifTime(self, dt):
 		dt_obj = datetime.strptime(dt, "%H:%M - %Y-%m-%d")
