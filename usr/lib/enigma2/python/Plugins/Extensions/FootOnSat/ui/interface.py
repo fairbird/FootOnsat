@@ -1140,6 +1140,7 @@ class FootOnSat(Screen):
 				return
 
 			events = all_events
+			gc.collect() # Force garbage collection to free memory after processing large JSON data
 
 			# === STEP 1: EVENT BUILDING & STRICT FILTERING (Main thread) ===
 			now = datetime.now()
@@ -2067,7 +2068,7 @@ class MatchDetailsScreen(Screen):
 
 			d = deferToThread(_get_data, self.event_id)
 			d.addCallback(lambda r: r.addCallback(_done))
-			d.addCallback(self.process_data)
+			d.addCallbacks(self.process_data, lambda _: self.process_data(None))
 		else:  # Python 2 and other 3.x without 3.9
 			def _get_data(eid):
 				headers = {'User-Agent': 'Mozilla/5.0'}
@@ -2254,7 +2255,7 @@ class MatchStatisticsScreen(Screen):
 					return None
 			d = _get_stats(self.event_id)
 			d.addCallback(_done)
-			d.addCallback(self.process_stats)
+			d.addCallbacks(self.process_stats, lambda _: self.process_stats(None))
 		else:
 			def _get_stats(eid):
 				headers = {'User-Agent': 'Mozilla/5.0'}
@@ -2405,7 +2406,7 @@ class MatchMediaScreen(Screen):
 					return None
 			d = _get_media(self.event_id)
 			d.addCallback(_done)
-			d.addCallback(self.process_media)
+			d.addCallbacks(self.process_media, lambda _: self.process_media(None))
 		else:
 			def _get_media(eid):
 				headers = {'User-Agent': 'Mozilla/5.0'}
@@ -2550,9 +2551,10 @@ class MatchMediaScreen(Screen):
 			if "&Referer=" in user_agent:
 				user_agent = user_agent.split("&Referer=")[0]
 		is_yt = "youtube.com" in pure_url.lower() or "youtu.be" in pure_url.lower() or "googlevideo.com" in pure_url.lower()
+		stype = int(config.plugins.FootOnSat.player.value)
 		has_exteplayer = exists("/usr/bin/exteplayer3")
 		#logdata("DASH_DEBUG", "is_yt: %s | has_exteplayer: %s | UseDash: %s" % (str(is_yt), str(has_exteplayer), str(config.plugins.FootOnSat.useDashMP4.value)))
-		if is_yt and config.plugins.FootOnSat.useDashMP4.value and not has_exteplayer:
+		if is_yt and config.plugins.FootOnSat.useDashMP4.value and (not has_exteplayer or stype == 4097):
 			#logdata("DASH_START", "Entering DASH logic...")
 			#logdata("DASH_DEBUG_URL", "Full video_url: %s" % str(video_url))
 			separator = '#EXT-X-STREAM-INF:AUDIO=' if '#EXT-X-STREAM-INF:AUDIO=' in video_url else SUBURI
@@ -2584,7 +2586,6 @@ class MatchMediaScreen(Screen):
 				self.session.open(MessageBox, _("Failed to extract video stream or link is broken."), MessageBox.TYPE_ERROR, timeout=10)
 				return
 		name = str(self["title"].getText())
-		stype = int(config.plugins.FootOnSat.player.value)
 		ref_str = "%d:0:1:0:0:0:0:0:0:0::%s" % (stype, compat_quote(name))
 		ref = eServiceReference(ref_str)
 		if user_agent:
@@ -2608,8 +2609,9 @@ class MatchMediaScreen(Screen):
 		if hasattr(self, 'dash_process') and self.dash_process:
 			try:
 				os.killpg(os.getpgid(self.dash_process.pid), signal.SIGTERM)
-				logdata("DASH_STOP", "Audio process killed.")
+				#logdata("DASH_STOP", "Audio process killed.")
 				del self.dash_process
+				if exists("/tmp/a.mp4"): os.remove("/tmp/a.mp4")
 			except:
 				pass
 
