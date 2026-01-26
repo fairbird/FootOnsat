@@ -42,10 +42,7 @@ OPENBH="/usr/lib/enigma2/python/Screens/BpBlue.py"
 OPENBH2="/usr/lib/enigma2/python/Screens/BpBlue.pyc"
 OPENVIX="/usr/lib/enigma2/python/Plugins/SystemPlugins/ViX"
 
-try:
-	from urllib.parse import urlparse, urljoin
-except ImportError:
-	from urlparse import urlparse, urljoin
+PLUGINPATH="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
 
 # Check for PIL availability first, and import if found
 try:
@@ -72,8 +69,6 @@ if isUHD():
         from Plugins.Extensions.FootOnSat.assets.skin.skinUHD import *
 else:
         from Plugins.Extensions.FootOnSat.assets.skin.skinFHD import *
-
-DB_PATH = '/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/db/footonsat.db'
 
 ## url for Standings table
 json_urls = {
@@ -185,7 +180,7 @@ def sanitize_team_name(team):
 # The CRITICAL class for TLS SNI support
 class WebClientContextFactory(ClientContextFactory):
 	def __init__(self, url=None):
-		domain = urlparse(url).netloc
+		domain = compat_urlparse(url).netloc
 		self.hostname = domain
 	
 	def getContext(self, hostname=None, port=None):
@@ -271,7 +266,7 @@ class FootOnSat(Screen):
 					if not PY3:
 						key = key.decode('utf-8') if isinstance(key, str) else key
 					try:
-						with connect(DB_PATH) as conn: # <-- FIX: Use 'with' statement for guaranteed closing
+						with connect(join(PLUGINPATH, "db/footonsat.db")) as conn: # <-- FIX: Use 'with' statement for guaranteed closing
 							c = conn.cursor()
 							c.execute("SELECT ref FROM zap_channels WHERE match = ?", (key,))
 							z = c.fetchone()
@@ -644,7 +639,7 @@ class FootOnSat(Screen):
 					if not PY3:
 						key = key.decode('utf-8') if isinstance(key, str) else key
 					try:
-						with connect(DB_PATH) as conn: # <-- FIX: Use 'with' statement for guaranteed closing
+						with connect(join(PLUGINPATH, "db/footonsat.db")) as conn: # <-- FIX: Use 'with' statement for guaranteed closing
 							c = conn.cursor()
 							c.execute("SELECT ref FROM zap_channels WHERE match = ?", (key,))
 							z = c.fetchone()
@@ -691,14 +686,14 @@ class FootOnSat(Screen):
 
 	def create_table(self):
 		try:
-			with connect(DB_PATH) as conn:
+			with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
 				cur = conn.cursor()
 				cur.execute('CREATE TABLE IF NOT EXISTS LIVE_NOTIF (MATCH TEXT primary key , COMPET TEXT , DATE TEXT , TEAM1_FLAG TEXT , TEAM2_FLAG TEXT , FIRST_NOTIF TEXT , FIRST_NOTIF_STATUS TEXT , LIVE_NOTIF_STATUS TEXT,MESSAGE TEXT)')
 		except DatabaseError:
 			# If the file is corrupted, delete it and try again.
-			if exists(DB_PATH):
-				os.remove(DB_PATH)
-			with connect(DB_PATH) as conn:
+			if exists(join(PLUGINPATH, "db/footonsat.db")):
+				os.remove(join(PLUGINPATH, "db/footonsat.db"))
+			with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
 				cur = conn.cursor()
 				cur.execute('CREATE TABLE IF NOT EXISTS LIVE_NOTIF (MATCH TEXT primary key , COMPET TEXT , DATE TEXT , TEAM1_FLAG TEXT , TEAM2_FLAG TEXT , FIRST_NOTIF TEXT , FIRST_NOTIF_STATUS TEXT , LIVE_NOTIF_STATUS TEXT,MESSAGE TEXT)')
 
@@ -757,7 +752,7 @@ class FootOnSat(Screen):
 		logdata("ZAP_DEBUG", "SAVING ZAP REF → '%s' → %s (%s)" % (normalized_match, channel_name, ref_string))
 
 		try:
-			with connect(DB_PATH) as conn: # <-- FIX: Use 'with' for transaction safety and guaranteed close
+			with connect(join(PLUGINPATH, "db/footonsat.db")) as conn: # <-- FIX: Use 'with' for transaction safety and guaranteed close
 				c = conn.cursor()
 				c.execute('CREATE TABLE IF NOT EXISTS zap_channels (match TEXT primary key, ref TEXT)''')
 				# Insert using the fully normalized key (which has no spaces)
@@ -823,7 +818,7 @@ class FootOnSat(Screen):
 			flag2 = self.matches[index][4].decode('utf8')
 
 		if datetime.strptime(match_date, "%H:%M - %Y-%m-%d") > datetime.now():
-			with connect(DB_PATH) as conn:
+			with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
 				cur = conn.cursor()
 				cur.execute("CREATE TABLE IF NOT EXISTS zap_channels (match TEXT primary key, ref TEXT)")
 				if self.checkIfexist(match):
@@ -862,7 +857,7 @@ class FootOnSat(Screen):
 		return [first_notif_str, message]
 
 	def sameDate(self, dt):
-		with connect(DB_PATH) as conn:
+		with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
 			cur = conn.cursor()
 			cur.execute("SELECT DATE FROM LIVE_NOTIF WHERE DATE = ?", (dt,))
 			data = cur.fetchone()
@@ -878,7 +873,7 @@ class FootOnSat(Screen):
 			match_key = match.decode('utf-8')
 		
 		# Connection 1: Using 'with' (Good)
-		with connect(DB_PATH) as conn:
+		with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
 			cur = conn.cursor()
 			cur.execute("SELECT MATCH FROM LIVE_NOTIF WHERE MATCH = ?", (match_key,))
 			data = cur.fetchone()
@@ -890,7 +885,7 @@ class FootOnSat(Screen):
 			key = key.decode('utf-8') if isinstance(key, str) else key
 		try:
 			# Connection 2: FIX! Use 'with' here to ensure the connection is closed
-			with connect(DB_PATH) as conn:
+			with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
 				c = conn.cursor()
 				c.execute("SELECT ref FROM zap_channels WHERE match = ?", (key,))
 				z = c.fetchone()
@@ -1432,7 +1427,7 @@ class FootOnSat(Screen):
 				return matches_list
 
 			def _matching_complete(updated_matches_list):
-				cache_file, terminated_cache, changed, final_list = "/tmp/terminated_matches.json", [], False, []
+				cache_file, terminated_cache, changed, final_list = join(PLUGINPATH, "db/terminated_matches.json"), [], False, []
 				try:
 					if exists(cache_file):
 						with open(cache_file, 'r') as f: terminated_cache = json.load(f)
@@ -1495,7 +1490,7 @@ class FootOnSat(Screen):
 #			logdata("FootOnSat-DEBUG-ERROR", "Failed to save LiveOnSat JSON: %s" % str(e))
 		# === END DEBUG ===
 
-		cache_file = "/tmp/terminated_matches.json"
+		cache_file = join(PLUGINPATH, "db/terminated_matches.json")
 		terminated_cache = []
 		cache_changed = False
 		try:
@@ -2507,6 +2502,8 @@ class MatchMediaScreen(Screen):
 		self.error_timer_conn = None
 		is_youtube = "youtube.com" in url.lower() or "youtu.be" in url.lower()
 		is_twitter = "twitter.com" in url.lower() or "x.com" in url.lower()
+		#if is_youtube: logdata("FootOnSat-YOUTUBE", "Start Play: %s" % url)
+		if is_twitter: logdata("FootOnSat-TWITTER", "Start Play: %s" % url)
 		if is_youtube:
 			self.wait_dialog = self.session.open(MessageBox, _("Please wait while extracting video stream..."), MessageBox.TYPE_INFO, enable_input=False)
 			from twisted.internet.threads import deferToThread
@@ -2613,6 +2610,8 @@ class MatchMediaScreen(Screen):
 			ref.setPath(str(pure_url))
 		ref.setName(name)
 		self.play_timer = eTimer()
+		#logdata("[FootOnSat-DEBUG] URL: %s" % str(pure_url))
+		#logdata("[FootOnSat-DEBUG] SREF: %s" % ref.toString())
 		if DreamOS():
 			self.play_timer_conn = self.play_timer.timeout.connect(lambda: self.session.openWithCallback(self.stopDashAudio, MoviePlayer, ref))
 		else:
@@ -2637,8 +2636,10 @@ class MatchMediaScreen(Screen):
 		try:
 			t_id = url.split('/')[-1].split('?')[0]
 			api_url = "https://api.fxtwitter.com/i/status/%s" % t_id
+			#logdata("FootOnSat-TWITTER", "API URL: %s" % api_url)
 			headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
 			r = requests.get(api_url, headers=headers, timeout=15, verify=False)
+			#logdata("FootOnSat-TWITTER", "Status Code: %d" % r.status_code)
 			if r.status_code == 200:
 				data = r.json()
 				tweet = data.get('tweet', {})
@@ -2646,18 +2647,21 @@ class MatchMediaScreen(Screen):
 				videos = media.get('videos', [])
 				if videos:
 					video_url = videos[0].get('url')
+					#logdata("FootOnSat-TWITTER", "Stream Found: %s" % str(video_url))
 					if not isinstance(video_url, str):
 						video_url = video_url.encode('utf-8')
 					return video_url
+				else:
+					logdata("FootOnSat-TWITTER", "No videos in media")
 			return None
 		except Exception as e:
-			logdata("Twitter Exception", str(e))
+			logdata("FootOnSat-TWITTER", "Exception: %s" % str(e))
 			return None
 
 	def playback_error(self, failure):
 		if hasattr(self, 'wait_dialog') and self.wait_dialog:
 			self.wait_dialog.close()
-		logdata("playback_error_raw", str(failure))
+		#logdata("playback_error_raw", str(failure))
 		msg = _("Failed to extract video stream or link is broken.")
 		self.error_timer = eTimer()
 		if DreamOS():
@@ -2735,7 +2739,7 @@ class FootOnsatNotifScreen(Screen):
 		if zap_allowed:
 			try:
 				# FIX! Use 'with' here to ensure the connection is closed
-				with connect(DB_PATH) as conn:
+				with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
 					c = conn.cursor()
 					
 					# Search for the fully normalized key (which has no spaces)
@@ -2895,9 +2899,9 @@ class FootOnsatNotifScreen(Screen):
 		self.is_checking = True
 
 		try:
-			if fileExists(DB_PATH):
+			if fileExists(join(PLUGINPATH, "db/footonsat.db")):
 				self.deloldRecords()
-				with connect(DB_PATH) as conn:
+				with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
 					cur = conn.cursor()
 					rows = cur.execute("select * from LIVE_NOTIF")
 					rows = rows.fetchall()
@@ -2997,10 +3001,10 @@ class FootOnsatNotifScreen(Screen):
 			self.is_checking = False # Reset the lock ensures it can run again later
 
 	def deloldRecords(self):
-		if not fileExists(DB_PATH):
+		if not fileExists(join(PLUGINPATH, "db/footonsat.db")):
 			return
 			
-		with connect(DB_PATH) as conn:
+		with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
 			cur = conn.cursor()
 			# row[0]=MATCH, row[1]=COMPET, row[2]=DATE
 			rows = cur.execute("select * from LIVE_NOTIF")
@@ -3133,7 +3137,7 @@ class StandingsScreen(Screen):
 		if not isinstance(url_to_parse, compat_str):
 			url_to_parse = str(url_to_parse)
 
-		parsed_url = urlparse(url_to_parse)
+		parsed_url = compat_urlparse(url_to_parse)
 		path_parts = [p for p in parsed_url.path.split('/') if p]
 
 		tournament_id = None
@@ -3627,7 +3631,7 @@ class StandingsScreen(Screen):
 								if img_tag:
 									# Worldfootball uses relative paths, so join with the base URL
 									logo_src = img_tag.get("src").split("?")[0]
-									logo_url = urljoin(primary_backup_url, logo_src)
+									logo_url = compat_urljoin(primary_backup_url, logo_src)
 									
 									# Use the original name for logging and saving
 									if download_and_save_logo(team_info["original_name"], logo_url, headers, self.league):
