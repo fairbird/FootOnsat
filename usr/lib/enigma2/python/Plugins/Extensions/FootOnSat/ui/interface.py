@@ -792,7 +792,6 @@ class FootOnSat(Screen):
 
 		if (is_live_or_end or self.link in FOOTBALL or match_in_past):
 			if len(current_match) > 8 and current_match[8]:
-				logdata("ok_debug", "ID found, opening MatchDetailsScreen")
 				event_id = current_match[8]
 				match_str = current_match[0]
 				parts = re.split(r'\s+v[s]?\s+', match_str, 1, flags=re.IGNORECASE)
