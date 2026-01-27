@@ -944,20 +944,8 @@ class FootOnSat(Screen):
 		
 		live_start_time = time.time()
 		#logdata("FootOnSat-LIVESCORE", "fetch_live_results initiated.")
-		
-		# === URL Setup ===
-		link_val = str(getattr(self, 'link', '')).lower()
-		football_lower = {x.lower() for x in FOOTBALL}
-		if link_val in ["live", "end"] or link_val in football_lower:
-			if datetime.now().hour < 2:
-				today_iso = (date.today() - timedelta(days=1)).isoformat()
-				#logdata("FootOnSat-LIVESCORE", "!!! BEFORE 2AM MODE: Fetching Yesterday [%s]" % today_iso)
-			else:
-				today_iso = date.today().isoformat()
-				#logdata("FootOnSat-LIVESCORE", "!!! AFTER 2AM MODE: Fetching Today [%s]" % today_iso)
-		else:
-			today_iso = date.today().isoformat()
-			#logdata("FootOnSat-LIVESCORE", "!!! NORMAL MODE: Fetching Today [%s] - Link: %s" % (today_iso, link_val))
+
+		today_iso = date.today().isoformat()
 		url1 = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}/'.format(today_iso)
 		url2 = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}/inverse'.format(today_iso)
 
