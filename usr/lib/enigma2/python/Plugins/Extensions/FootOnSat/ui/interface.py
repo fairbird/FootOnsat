@@ -507,14 +507,25 @@ class FootOnSat(Screen):
 				gList.append(res)
 				res = []
 			self["list1"].setList(gList)
-			if self.link in ["today"]:
+			if self.link == "today":
 				self['key_red'].show()
 				self['key_yellow'].show()
 				self['key_green'].hide()
+			elif self.link == "end":
+				self['key_yellow'].hide()
+				if getattr(self, 'is_yesterday', False):
+					self['key_red'].show()
+					self['key_red'].setText(_("Close"))
+					self['key_green'].hide()
+				else:
+					self['key_red'].hide()
+					self['key_green'].show()
+					self['key_green'].setText(_("Yesterday Matches"))
 			elif self.link in json_urls:
 				self['key_red'].hide()
 				self['key_yellow'].hide()
 				self['key_green'].show()
+				self['key_green'].setText(_("Standings Table"))
 			else:
 				self['key_red'].hide()
 				self['key_yellow'].hide()
@@ -554,10 +565,16 @@ class FootOnSat(Screen):
 			self['key_red'].hide()
 			self['key_yellow'].hide()
 			self['key_blue'].hide()
-			if self.link in ["today", "live", "end"]:
+			if self.link in ["today", "live"]:
 				self['key_green'].hide()
-			else:
+			elif self.link == "end":
 				self['key_green'].show()
+				self['key_green'].setText(_("Yesterday Matches"))
+			elif self.link in json_urls:
+				self['key_green'].show()
+				self['key_green'].setText(_("Standings Table"))
+			else:
+				self['key_green'].hide()
 			self["counter"].setText("0/0")
 			self["channel"].setText("")
 			self["sat"].setText("")
@@ -920,9 +937,13 @@ class FootOnSat(Screen):
 		banner = random.choice(['default', 'default1', 'default2', 'default3'])
 		return resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/default/FHD/{}.png".format(banner))
 
-	def callAPI(self):
-		#logdata("FootOnSat-API", "Starting callAPI to fetch main schedule: %s" % self.link)
-		url_link = "today" if self.link in ["live", "end"] else self.link
+	def callAPI(self, yesterday=False):
+		self.is_yesterday = yesterday
+		# logdata("FootOnSat-API", "Fetching URL with is_yesterday=%s" % self.is_yesterday)
+		if yesterday:
+			url_link = "yesterday"
+		else:
+			url_link = "today" if self.link in ["live", "end"] else self.link
 		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/{}.json'.format(url_link)
 		sniFactory = WebClientContextFactory(url)
 		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
@@ -935,7 +956,12 @@ class FootOnSat(Screen):
 
 	def error(self, error=None):
 		if error:
-			self.session.openWithCallback(self.exit, MessageBox, _('An Unexpected HTTP Error Occurred During The API Request !!'), MessageBox.TYPE_ERROR, timeout=10)
+			# logdata("FootOnSat-Error", "HTTP Error: " + str(error))
+			if getattr(self, 'is_yesterday', False):
+				error_msg = _('Yesterday JSON file is missing or server error!')
+			else:
+				error_msg = _('An Unexpected HTTP Error Occurred During The API Request !!')
+			self.session.openWithCallback(self.exit, MessageBox, error_msg, MessageBox.TYPE_ERROR, timeout=10)
 
 	def fetch_live_results(self):
 		# Define the fixed time windows
@@ -1459,13 +1485,21 @@ class FootOnSat(Screen):
 	def getData(self, data):
 		list = []
 		try:
+			# Ensure data is string/unicode for json.loads
+			if not PY3 and isinstance(data, str):
+				data = data.decode("utf-8", "ignore")
 			self.js = json.loads(data)
 #			data_str = data.decode('utf-8', 'ignore')
 #			self.js = json.loads(data_str) # Use the decoded string
+			if getattr(self, 'is_yesterday', False) and self.link == "end":
+				self['key_red'].show()
+				self['key_red'].setText(_("Close"))
+				self['key_green'].hide()
 		except Exception as e:
-			self.session.openWithCallback(self.exit, MessageBox, _('Invalid API data! Check logs.'), MessageBox.TYPE_ERROR, timeout=10)
+			# This is where the missing/corrupted message is triggered
+			error_msg = _('Yesterday JSON file is missing or corrupted!') if getattr(self, 'is_yesterday', False) else _('Invalid API data! Check logs.')
+			self.session.openWithCallback(self.exit, MessageBox, error_msg, MessageBox.TYPE_ERROR, timeout=10)
 			return
-
 		# === DEBUG: Save LiveOnSat/GitHub JSON to /tmp (Pretty Print) ===
 #		try:
 #			liveonsat_debug_path = "/tmp/liveonsat_data.json"
@@ -1703,7 +1737,11 @@ class FootOnSat(Screen):
 		self.canScan = False
 
 	def keyGreen(self):
-		if self.link in json_urls:
+		if self.link == "end":
+			if getattr(self, 'is_yesterday', False):
+				return
+			self.callAPI(yesterday=True)
+		elif self.link in json_urls:
 			self.session.open(StandingsScreen, self.link, json_urls[self.link])
 
 	def keyBlue(self):
@@ -1887,6 +1925,11 @@ class FootOnSat(Screen):
 		self.callAPI()
 
 	def keyRed(self):
+		if getattr(self, 'is_yesterday', False) and self.link == "end":
+			self.is_yesterday = False
+			self['key_red'].hide()
+			self.close()
+			return
 		from .launcher import get_ignore_paths
 		ignore_dir_path, ignore_file_path = get_ignore_paths()
 		
