@@ -349,6 +349,9 @@ class FootOnSat(Screen):
 				elif clean_status == 'HALFTIME': # Using the exact clean status 'HALFTIME' from the scraper logic
 					status_text = "Half Time"
 					display_prefix = "Live: " # Typically, Half Time is still considered a "Live" state
+				elif clean_status in ('DELAYED', 'DELAY'):
+					status_text = "Delayed"
+					display_prefix = "Live: "
 				elif clean_status.isdigit() or re.search(r'^\d+[\'+]*\+?\d*$', clean_status):
 					# Covers minutes like '51', '77', '90+', etc.
 					status_text = "%s min" % display_status 
@@ -1222,6 +1225,8 @@ class FootOnSat(Screen):
 							status = 'PEN'
 						elif descr.lower() in ['half time', 'halftime']:
 							status = 'HALFTIME'
+						elif 'delayed' in descr.lower():
+							status = 'DELAYED'
 						else:
 							try:
 								status_time_ts = ev.get('statusTime', {}).get('timestamp')
@@ -2546,9 +2551,9 @@ class MatchMediaScreen(Screen):
 		#if is_youtube: logdata("FootOnSat-YOUTUBE", "Start Play: %s" % url)
 		#if is_twitter: logdata("FootOnSat-TWITTER", "Start Play: %s" % url)
 		#if is_vsports: logdata("FootOnSat-VSPORTS", "Start Play: %s" % url)
+		msg = _("Please wait while extracting video stream...")
 		if is_youtube:
-			self.wait_dialog = self.session.open(MessageBox, _("Please wait while extracting video stream..."), MessageBox.TYPE_INFO, enable_input=False)
-			from twisted.internet.threads import deferToThread
+			self.wait_dialog = self.session.open(MessageBox, msg, MessageBox.TYPE_INFO, enable_input=False)
 			def safe_extract(video_url):
 				try:
 					v_id = video_url
@@ -2564,12 +2569,10 @@ class MatchMediaScreen(Screen):
 					return "ERROR:" + err_text
 			deferToThread(safe_extract, url).addCallback(self.playAfterExtract).addErrback(self.playback_error)
 		elif is_twitter:
-			self.wait_dialog = self.session.open(MessageBox, _("Please wait while extracting video stream..."), MessageBox.TYPE_INFO, enable_input=False)
-			from twisted.internet.threads import deferToThread
+			self.wait_dialog = self.session.open(MessageBox, msg, MessageBox.TYPE_INFO, enable_input=False)
 			deferToThread(self.extract_twitter_stream, url).addCallback(self.playAfterExtract).addErrback(self.playback_error)
 		elif is_vsports:
-			self.wait_dialog = self.session.open(MessageBox, _("Please wait while extracting video stream..."), MessageBox.TYPE_INFO, enable_input=False)
-			from twisted.internet.threads import deferToThread
+			self.wait_dialog = self.session.open(MessageBox, msg, MessageBox.TYPE_INFO, enable_input=False)
 			deferToThread(self.extract_vsports_stream, url).addCallback(self.playAfterExtract).addErrback(self.playback_error)
 		else:
 			#self.playAfterExtract(str(url))
@@ -2819,7 +2822,6 @@ class FootOnsatNotifScreen(Screen):
 				# 'conn.close()' is now called automatically
 				
 				if row and row[0]:
-					from enigma import eServiceReference
 					zap_ref = eServiceReference(str(row[0]))
 					logdata("ZAP_DEBUG", "ZAP BY REFERENCE FOUND → %s (%s)" % (zap_ref.getName(), row[0]))
 				else:
