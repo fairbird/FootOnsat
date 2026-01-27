@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os, io, re, gc, sys, json, math, codecs, random, time, shutil, difflib, requests, subprocess, signal
+import os, io, re, gc, sys, math, codecs, random, time, shutil, difflib, requests, subprocess, signal
 from time import strftime
 from sqlite3 import connect
 from bs4 import BeautifulSoup
@@ -36,6 +36,11 @@ from twisted.web.client import getPage, downloadPage
 from .YouTubeVideoUrl import YouTubeVideoUrl
 from .compat import *
 from .setup import *
+
+try:
+	import ujson as json
+except ImportError:
+	import json
 
 ### images path
 OPENBH="/usr/lib/enigma2/python/Screens/BpBlue.py"

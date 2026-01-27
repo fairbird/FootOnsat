@@ -112,6 +112,7 @@ if python --version 2>&1 | grep -q '^Python 3\.'; then
    PLI='python3-pillow'
    REQUESTES='python3-requests'
    JSON='python3-json'
+   UJSON='python3-ujson'
    IO='python3-io'
    EMAIL='python3-email'
    DATETIME='python3-datetime'
@@ -126,6 +127,7 @@ else
    PLI='python-imaging'
    REQUESTES='python-requests'
    JSON='python-json'
+   UJSON='python-ujson'
    IO='python-io'
    EMAIL='python-email'
    DATETIME='python-datetime'
@@ -163,6 +165,10 @@ if grep -q "$JSON" "$STATUS"; then
     json='Installed'
 fi
 
+if grep -q "$UJSON" "$STATUS"; then
+    ujson='Installed'
+fi
+
 if grep -q "$IO" "$STATUS"; then
     io='Installed'
 fi
@@ -193,7 +199,7 @@ fi
 
 if [ "$sqlite" = "Installed" -a "$six" = "Installed" -a "$aplay" = "Installed" -a "$beautifulsoup4" = "Installed" -a \
       "$difflib" = "Installed" -a "$threading" = "Installed" -a "$pil" = "Installed" -a "$requestes" = "Installed" -a \
-      "$json" = "Installed" -a "$io" = "Installed" -a "$email" = "Installed" -a "$datetime" = "Installed" -a \
+      "$json" = "Installed" -a "$ujson" = "Installed" -a "$io" = "Installed" -a "$email" = "Installed" -a "$datetime" = "Installed" -a \
       "$ffmpeg" = "Installed" ]; then
      echo ""
 else
@@ -219,6 +225,7 @@ else
         opkg install $PLI
         opkg install $REQUESTES
         opkg install $JSON
+        opkg install $UJSON
         opkg install $IO
         opkg install $EMAIL
         opkg install $DATETIME
@@ -244,6 +251,7 @@ else
         apt-get install $PLI -y
         apt-get install $REQUESTES -y
         apt-get install $JSON -y
+        apt-get install $UJSON -y
         apt-get install $IO -y
         apt-get install $EMAIL -y
         apt-get install $DATETIME -y
@@ -348,6 +356,15 @@ if grep -q "$JSON" "$STATUS"; then
 else
 	echo "#########################################################"
 	echo "#            $JSON Not found in feed                    #"
+	echo "#########################################################"
+	exit 1
+fi
+
+if grep -q "$UJSON" "$STATUS"; then
+	: # Null command (do nothing, but satisfy the shell syntax)
+else
+	echo "#########################################################"
+	echo "#            $UJSON Not found in feed                   #"
 	echo "#########################################################"
 	exit 1
 fi
