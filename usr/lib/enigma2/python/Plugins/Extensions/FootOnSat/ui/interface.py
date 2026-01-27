@@ -2451,9 +2451,11 @@ class MatchMediaScreen(Screen):
 		if isUHD():
 			icon_yt = path + "youtube_iconUHD.png"
 			icon_tw = path + "twitter_iconUHD.png"
+			icon_vs = path + "vsports_iconUHD.png"
 		else:
 			icon_yt = path + "youtube_icon.png"
 			icon_tw = path + "twitter_icon.png"
+			icon_vs = path + "vsports_icon.png"
 
 		if data and 'media' in data:
 			for item in data['media']:
@@ -2473,6 +2475,8 @@ class MatchMediaScreen(Screen):
 					icon_path = icon_yt
 				elif "twitter.com" in v_url.lower() or "x.com" in v_url.lower():
 					icon_path = icon_tw
+				elif "vsports.pt" in v_url.lower():
+					icon_path = icon_vs
 
 				if icon_path and exists(icon_path):
 					# info: Use LoadPixmap with size to force auto-scaling of the PNG file
@@ -2502,8 +2506,10 @@ class MatchMediaScreen(Screen):
 		self.error_timer_conn = None
 		is_youtube = "youtube.com" in url.lower() or "youtu.be" in url.lower()
 		is_twitter = "twitter.com" in url.lower() or "x.com" in url.lower()
+		is_vsports = "vsports.pt" in url.lower() # Add this line
 		#if is_youtube: logdata("FootOnSat-YOUTUBE", "Start Play: %s" % url)
-		if is_twitter: logdata("FootOnSat-TWITTER", "Start Play: %s" % url)
+		#if is_twitter: logdata("FootOnSat-TWITTER", "Start Play: %s" % url)
+		#if is_vsports: logdata("FootOnSat-VSPORTS", "Start Play: %s" % url)
 		if is_youtube:
 			self.wait_dialog = self.session.open(MessageBox, _("Please wait while extracting video stream..."), MessageBox.TYPE_INFO, enable_input=False)
 			from twisted.internet.threads import deferToThread
@@ -2525,8 +2531,16 @@ class MatchMediaScreen(Screen):
 			self.wait_dialog = self.session.open(MessageBox, _("Please wait while extracting video stream..."), MessageBox.TYPE_INFO, enable_input=False)
 			from twisted.internet.threads import deferToThread
 			deferToThread(self.extract_twitter_stream, url).addCallback(self.playAfterExtract).addErrback(self.playback_error)
+		elif is_vsports:
+			self.wait_dialog = self.session.open(MessageBox, _("Please wait while extracting video stream..."), MessageBox.TYPE_INFO, enable_input=False)
+			from twisted.internet.threads import deferToThread
+			deferToThread(self.extract_vsports_stream, url).addCallback(self.playAfterExtract).addErrback(self.playback_error)
 		else:
-			self.playAfterExtract(str(url))
+			#self.playAfterExtract(str(url))
+			# Fallback for unsupported URLs
+			logdata("[FootOnSat-ERROR] Unsupported URL/Video: %s" % str(url))
+			msg = _("This video source is not supported yet\n\nSend /tmp/FootOnSat.log to support.")
+			self.session.open(MessageBox, msg, MessageBox.TYPE_INFO, timeout=10)
 
 	def playAfterExtract(self, video_url):
 		video_url = video_url or ""
@@ -2627,6 +2641,27 @@ class MatchMediaScreen(Screen):
 				if exists("/tmp/a.mp4"): os.remove("/tmp/a.mp4")
 			except:
 				pass
+
+	def extract_vsports_stream(self, url):
+		try:
+			headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)','Referer': 'https://vsports.pt/'}
+			r = requests.get(url, headers=headers, timeout=15)
+			if r.status_code == 200:
+				import re
+				# Finding the embed ID from the VOD page
+				match = re.search(r'https://vsports.pt/[^/]+/embd/([^"\'>\s?]+)', r.text)
+				if match:
+					embed_url = match.group(0)
+					r_emb = requests.get(embed_url, headers=headers, timeout=15)
+					if r_emb.status_code == 200:
+						# Finding the raw video source link
+						source_match = re.search(r'(https?://[^"\']+\.(?:mp4|m3u8)(?:\?[^"\']+)?)', r_emb.text)
+						if source_match:
+							return source_match.group(1)
+			return None
+		except Exception as e:
+			logdata("FootOnSat-VSPORTS", "Exception: %s" % str(e))
+			return None
 
 	def extract_twitter_stream(self, url):
 		try:
