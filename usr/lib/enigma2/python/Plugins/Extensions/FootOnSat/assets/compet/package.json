@@ -1028,9 +1028,17 @@
             "label": "fifa womens world cup 2027",
             "banner": "fifa womens world cup 2027"
         },
+	{            
+            "label": "fifa womens champions cup",
+            "banner": "fifa womens champions cup"
+        },
 	{
             "label": "fifa world cup 2026",
             "banner": "fifa world cup 2026"
+        },
+	{
+            "label": "fifa/uefa world cup play-offs",
+            "banner": "fifa-uefa world cup play-offs"
         },
 	{
             "label": "fifa/conmebol wc 2026 qualifiers",
