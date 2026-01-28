@@ -1451,25 +1451,37 @@ class FootOnSat(Screen):
 				return matches_list
 
 			def _matching_complete(updated_matches_list):
-				cache_file, terminated_cache, changed, final_list = join(PLUGINPATH, "db/terminated_matches.json"), [], False, []
+				cache_file, terminated_cache, changed, final_list = join(PLUGINPATH, "db/terminated_matches.json"), {}, False, []
 				try:
 					if exists(cache_file):
-						with open(cache_file, 'r') as f: terminated_cache = json.load(f)
+						with open(cache_file, 'r') as f:
+							data = json.load(f)
+							terminated_cache = data if isinstance(data, dict) else {name: datetime.now().strftime("%H:%M - %Y-%m-%d") for name in data}
 				except: pass
+				now_dt = datetime.now()
+				cleaned_cache = {}
+				for name, ts in terminated_cache.items():
+					try:
+						# Match your getTime format: '%H:%M - %Y-%m-%d'
+						record_dt = datetime.strptime(ts, "%H:%M - %Y-%m-%d")
+						if record_dt.date() == now_dt.date() or (now_dt - record_dt < timedelta(hours=4)):
+							cleaned_cache[name] = ts
+						else: changed = True
+					except: changed = True
+				terminated_cache = cleaned_cache
 				for m in updated_matches_list:
 					m_name, m_status = str(m[0]), str(m[7]).upper()
-					is_term = any(x in m_status for x in ['FINISHED', 'CANCELED', 'POSTPONED'])
+					# Apply getTime to match what user sees on screen
+					m_time_str = self.getTime(str(m[1]))
+					is_term = any(x in m_status for x in ('FINISHED', 'CANCELED', 'POSTPONED'))
 					in_cache = m_name in terminated_cache
 					if getattr(self, 'link', None) == "live":
 						if is_term and not in_cache:
-							terminated_cache.append(m_name)
+							terminated_cache[m_name] = m_time_str
 							changed = True
 						if is_term or in_cache: continue
 					elif getattr(self, 'link', None) == "end":
-						if not (is_term or in_cache):
-							continue
-					elif getattr(self, 'link', None) not in ["live", "end", "today"]:
-						pass
+						if not (is_term or in_cache): continue
 					final_list.append(m)
 				self.matches = final_list
 				if changed and self.link == "live":
@@ -1606,7 +1618,7 @@ class FootOnSat(Screen):
 						in_cache = match_name in terminated_cache
 						if getattr(self, 'link', None) == "live":
 							if is_really_finished and in_cache:
-								terminated_cache.remove(match_name)
+								terminated_cache.pop(match_name, None)
 								cache_changed, in_cache = True, False
 							show_match_row = False if (is_terminated or in_cache or is_really_finished) else True
 						elif getattr(self, 'link', None) == "end":
