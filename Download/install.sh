@@ -181,8 +181,12 @@ if grep -q "$DATETIME" "$STATUS"; then
     datetime='Installed'
 fi
 
-if grep -q 'alsa-utils-aplay' "$STATUS"; then
-    aplay='Installed'
+if [ "$OS" = "Opensource" ] || [ "$DEVICE" = "arm64" ]; then
+	if grep -q 'alsa-utils-aplay' "$STATUS"; then
+		aplay='Installed'
+	fi
+else
+	aplay='Installed'
 fi
 
 if grep -q 'ffmpeg' "$STATUS"; then
@@ -240,7 +244,7 @@ else
         echo "========================================================================"
         echo " Downloading packages depend ......"
         apt-get install ffmpeg -y
-        apt-get install alsa-utils-aplay -y
+        #apt-get install alsa-utils-aplay -y
         echo "========================================================================"
         echo "========================================================================"
         apt-get install $SQLITE3 -y
@@ -270,7 +274,7 @@ if [ "$OS" != "DreamOS" ]; then
 fi
 
 if ! grep -q 'ffmpeg' "$STATUS" || ! grep -q 'alsa-utils-aplay' "$STATUS"; then
-	if [ "$DEVICE" = "arm64" ]; then
+	if [ "$OS" = "DreamOS" ] && [ "$DEVICE" = "arm64" ]; then
 		cd /tmp
 		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/arm64/alsa-utils-aplay.deb"
 		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/arm64/alsa-utils-amixer.deb"
@@ -281,136 +285,46 @@ if ! grep -q 'ffmpeg' "$STATUS" || ! grep -q 'alsa-utils-aplay' "$STATUS"; then
 	fi
 fi
 
-if ! grep -q 'ffmpeg' "$STATUS" || ! grep -q 'alsa-utils-aplay' "$STATUS"; then
-    echo "#########################################################"
-    echo "#   ffmpeg and/or alsa-utils-aplay Not found in feed    #"
-    echo "#  Notification sound will not work without alsa aplay  #"
-    echo "#########################################################"
+if [ "$OS" = "DreamOS" ] && ! grep -q "$UJSON" "$STATUS"; then
+	cd /tmp
+	if [ "$DEVICE" = "arm" ]; then
+		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-ujson_1.35-r0.0_armhf.deb"
+	elif [ "$DEVICE" = "mips" ]; then
+		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-ujson_1.35-r0.0_mipsel.deb"
+	elif [ "$DEVICE" = "arm64" ]; then
+		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-ujson_1.35-r0.0_arrch664.deb"
+	fi
+	dpkg -i --force-overwrite *.deb
+	apt-get install -f -y
+	cd ..
 fi
 
-if grep -q "$SQLITE3" "$STATUS"; then
-	: # Null command (do nothing, but satisfy the shell syntax)
-else
+MISSING_PKGS=""
+check_pkg() {
+if ! grep -q "$1" "$STATUS"; then
 	echo "#########################################################"
-	echo "#       $SQLITE3 Not found in feed                      #"
+	echo "#       $1 Not found in feed       #"
 	echo "#########################################################"
-	exit 1
+	MISSING_PKGS="true"
 fi
-
-if grep -q "$PYSIX" "$STATUS"; then
-	: # Null command (do nothing, but satisfy the shell syntax)
-else
-	echo "#########################################################"
-	echo "#       $PYSIX Not found in feed                        #"
-	echo "#########################################################"
-	exit 1
+}
+check_pkg "$SQLITE3"
+check_pkg "$PYSIX"
+check_pkg "$SOUP4"
+check_pkg "$DIFFLIB"
+check_pkg "$THREADING"
+check_pkg "$PLI"
+check_pkg "$REQUESTES"
+check_pkg "$JSON"
+check_pkg "$UJSON"
+check_pkg "$IO"
+check_pkg "$EMAIL"
+check_pkg "$DATETIME"
+if [ "$OS" = "DreamOS" ]; then
+	check_pkg "enigma2-plugin-systemplugins-serviceapp"
+	check_pkg "exteplayer3"
 fi
-
-if grep -q "$SOUP4" "$STATUS"; then
-	: # Null command (do nothing, but satisfy the shell syntax)
-else
-	echo "#########################################################"
-	echo "#       $SOUP4 Not found in feed                        #"
-	echo "#########################################################"
-	exit 1
-fi
-
-if grep -q "$DIFFLIB" "$STATUS"; then
-	: # Null command (do nothing, but satisfy the shell syntax)
-else
-	echo "#########################################################"
-	echo "#       $DIFFLIB Not found in feed                      #"
-	echo "#########################################################"
-	exit 1
-fi
-
-if grep -q "$THREADING" "$STATUS"; then
-	: # Null command (do nothing, but satisfy the shell syntax)
-else
-	echo "#########################################################"
-	echo "#       $THREADING Not found in feed                    #"
-	echo "#########################################################"
-	exit 1
-fi
-
-if grep -q "$PLI" "$STATUS"; then
-	: # Null command (do nothing, but satisfy the shell syntax)
-else
-	echo "#########################################################"
-	echo "#       $PLI Not found in feed                          #"
-	echo "#########################################################"
-	exit 1
-fi
-
-if grep -q "$REQUESTES" "$STATUS"; then
-	: # Null command (do nothing, but satisfy the shell syntax)
-else
-	echo "#########################################################"
-	echo "#       $REQUESTES Not found in feed                    #"
-	echo "#########################################################"
-	exit 1
-fi
-
-if grep -q "$JSON" "$STATUS"; then
-	: # Null command (do nothing, but satisfy the shell syntax)
-else
-	echo "#########################################################"
-	echo "#            $JSON Not found in feed                    #"
-	echo "#########################################################"
-	exit 1
-fi
-
-if grep -q "$UJSON" "$STATUS"; then
-	: # Null command (do nothing, but satisfy the shell syntax)
-else
-	echo "#########################################################"
-	echo "#            $UJSON Not found in feed                   #"
-	echo "#########################################################"
-	exit 1
-fi
-
-if grep -q "$IO" "$STATUS"; then
-	: # Null command (do nothing, but satisfy the shell syntax)
-else
-	echo "#########################################################"
-	echo "#       	   $IO Not found in feed                    #"
-	echo "#########################################################"
-	exit 1
-fi
-
-if grep -q "$EMAIL" "$STATUS"; then
-	: # Null command (do nothing, but satisfy the shell syntax)
-else
-	echo "#########################################################"
-	echo "#           $EMAIL Not found in feed                    #"
-	echo "#########################################################"
-	exit 1
-fi
-
-if grep -q "$DATETIME" "$STATUS"; then
-	: # Null command (do nothing, but satisfy the shell syntax)
-else
-	echo "#########################################################"
-	echo "#        $DATETIME Not found in feed                    #"
-	echo "#########################################################"
-	exit 1
-fi
-
-if ! grep -q 'enigma2-plugin-systemplugins-serviceapp' "$STATUS"; then
-	: # Null command (do nothing, but satisfy the shell syntax)
-else
-	echo "#########################################################"
-	echo "#      systemplugins-serviceapp Not found in feed       #"
-	echo "#########################################################"
-	exit 1
-fi
-
-if ! grep -q 'exteplayer3' "$STATUS"; then
-	: # Null command (do nothing, but satisfy the shell syntax)
-else
-	echo "#########################################################"
-	echo "#        exteplayer3 Not found in feed                  #"
-	echo "#########################################################"
+if [ "$MISSING_PKGS" = "true" ]; then
 	exit 1
 fi
 

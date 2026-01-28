@@ -1613,7 +1613,7 @@ class FootOnSat(Screen):
 							.replace("Preston N.E.", "Preston N.E")
 
 						# Logic for moving matches between sections (Row visibility)
-						is_really_finished = now > (match_date_adjusted + timedelta(minutes=150))
+						is_really_finished = now > (match_date_adjusted + timedelta(minutes=180))
 						is_terminated = any(x in str(match_status).upper() for x in ['FINISHED', 'CANCELED', 'POSTPONED'])
 						in_cache = match_name in terminated_cache
 						if getattr(self, 'link', None) == "live":
