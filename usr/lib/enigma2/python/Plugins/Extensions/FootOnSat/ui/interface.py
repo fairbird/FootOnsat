@@ -1762,6 +1762,7 @@ class FootOnSat(Screen):
 		if self.link == "end":
 			if getattr(self, 'is_yesterday', False):
 				return
+			self['key_green'].setText(_("Wait..."))
 			self.callAPI(yesterday=True)
 		elif self.link in json_urls:
 			self.session.open(StandingsScreen, self.link, json_urls[self.link])
@@ -2706,9 +2707,14 @@ class MatchMediaScreen(Screen):
 					r_emb = requests.get(embed_url, headers=headers, timeout=15)
 					if r_emb.status_code == 200:
 						# Finding the raw video source link
-						source_match = re.search(r'(https?://[^"\']+\.(?:mp4|m3u8)(?:\?[^"\']+)?)', r_emb.text)
-						if source_match:
-							return source_match.group(1)
+						sources = re.findall(r'(https?://[^"\']+\.(?:mp4|m3u8)(?:\?[^"\']+)?)', r_emb.text)
+						if sources:
+							res_tag = config.plugins.FootOnSat.maxResolution.value
+							res_keywords = {'37': '1080', '22': '720', '35': '480', '18': '360'}
+							target = res_keywords.get(res_tag, '720')
+							for s in sources:
+								if target in s: return s
+							return sources[0]
 			return None
 		except Exception as e:
 			logdata("FootOnSat-VSPORTS", "Exception: %s" % str(e))
@@ -2732,11 +2738,20 @@ class MatchMediaScreen(Screen):
 				media = tweet.get('media', {})
 				videos = media.get('videos', [])
 				if videos:
-					video_url = videos[0].get('url')
-					#logdata("FootOnSat-TWITTER", "Stream Found: %s" % str(video_url))
-					if not isinstance(video_url, str):
-						video_url = video_url.encode('utf-8')
-					return video_url
+					res_map = {'38': 4096, '37': 1920, '22': 1280, '35': 854, '18': 640, '5': 400, '17': 176}
+					target_width = res_map.get(config.plugins.FootOnSat.maxResolution.value, 1280)
+					best_link = videos[0].get('url')
+					current_best_diff = float('inf')
+					for v in videos:
+						v_url, v_width = v.get('url'), v.get('width', 0)
+						if v_width <= target_width:
+							diff = target_width - v_width
+							if diff < current_best_diff:
+								current_best_diff, best_link = diff, v_url
+					#logdata("FootOnSat-TWITTER", "Stream Found: %s" % str(best_link))
+					if not isinstance(best_link, str):
+						best_link = best_link.encode('utf-8')
+					return best_link
 				else:
 					logdata("FootOnSat-TWITTER", "No videos in media")
 			return None

@@ -170,7 +170,7 @@ if DreamOS():
 else:
 	config.plugins.FootOnSat.player = ConfigSelection(default='5002', choices=[
 		('4097', _('Default (4097)')),
-		('5002', _('ExtePlayer (5002)'))
+		('5002', _('ExtePlayer'))
 	])
 
 class MenuFootOnSat(ConfigListScreen, Screen):
@@ -228,7 +228,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.list.append(getConfigListEntry(_("Choose to display notifications"), config.plugins.FootOnSat.notify, _("This feature allows you to specify the times for notifications to appear when matches start")))
 		self.list.append(getConfigListEntry(_("Choose tone of notifications #press OK to change"), config.plugins.FootOnSat.notiffile, _("This feature allows you to select a notification tone when matches start")))
 		self.list.append(getConfigListEntry("_______________________________礑 Media 礑__________________________________________"))
-		self.list.append(getConfigListEntry(_("Use DASH MP4 format"), config.plugins.FootOnSat.useDashMP4, _("Specify or you want to use DASH MP4 format streams if available.\n\nThis requires playing two streams together and may cause problems for some receivers.")))
+		self.list.append(getConfigListEntry(_("Use DASH MP4 format (YouTube)"), config.plugins.FootOnSat.useDashMP4, _("Specify or you want to use DASH MP4 format streams if available.\n\nThis requires playing two streams together and may cause problems for some receivers.\n\nFor YouTube Only")))
 		self.list.append(getConfigListEntry(_("Maximum video resolution"), config.plugins.FootOnSat.maxResolution, _("What maximum resolution used when playing video, if available.\n\nIf you have a slow Internet connection, you can use a lower resolution.")))
 		if DreamOS():
 			self.list.append((_('Media Player:'), config.plugins.FootOnSat.player, _('Specify the player which will be used for media playback.'))) 
