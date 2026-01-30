@@ -463,7 +463,7 @@ class FootOnSat(Screen):
 					except TypeError:
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(65, 6), size=(320, 163), png=loadPNG(banner)))
 				# Notification icon
-				if self.link != "live" and self.link != "end":
+				if self.link not in ["live", "end", "yesterday"]:
 					res.append(MultiContentEntryPixmapAlphaBlend(pos=(-20, 63), size=(70, 50), png=loadPNG(notif)))
 				# Match name
 				if isUHD():
@@ -519,14 +519,12 @@ class FootOnSat(Screen):
 				self['key_red'].show()
 				self['key_yellow'].show()
 				self['key_green'].hide()
-			elif self.link == "end":
-				self['key_yellow'].hide()
+			elif self.link in ["end", "yesterday"]:
 				if getattr(self, 'is_yesterday', False):
 					self['key_red'].show()
 					self['key_red'].setText(_("Close"))
 					self['key_green'].hide()
 				else:
-					self['key_red'].hide()
 					self['key_green'].show()
 					self['key_green'].setText(_("Yesterday Matches"))
 			elif self.link in json_urls:
@@ -547,6 +545,8 @@ class FootOnSat(Screen):
 				no_schedules_text = _('No Live matches at this time')
 			elif self.link == "end":
 				no_schedules_text = _('No Finished matches at this time')
+			elif self.link == "yesterday":
+				no_schedules_text = _('Wite to bring list of yesterday matches')
 			else:
 				no_schedules_text = _('No schedules in this section at this time')
 			# Set font and height (mirroring the 'if' block setup)
@@ -575,9 +575,12 @@ class FootOnSat(Screen):
 			self['key_blue'].hide()
 			if self.link in ["today", "live"]:
 				self['key_green'].hide()
-			elif self.link == "end":
-				self['key_green'].show()
-				self['key_green'].setText(_("Yesterday Matches"))
+			elif self.link in ["end", "yesterday"]:
+				if getattr(self, "is_yesterday", False):
+					self['key_green'].hide()
+				else:
+					self['key_green'].show()
+					self['key_green'].setText(_("Yesterday Matches"))
 			elif self.link in json_urls:
 				self['key_green'].show()
 				self['key_green'].setText(_("Standings Table"))
@@ -723,7 +726,7 @@ class FootOnSat(Screen):
 				cur.execute('CREATE TABLE IF NOT EXISTS LIVE_NOTIF (MATCH TEXT primary key , COMPET TEXT , DATE TEXT , TEAM1_FLAG TEXT , TEAM2_FLAG TEXT , FIRST_NOTIF TEXT , FIRST_NOTIF_STATUS TEXT , LIVE_NOTIF_STATUS TEXT,MESSAGE TEXT)')
 
 	def menu(self):
-		if self.link != "live" and self.link != "end":
+		if self.link not in ["live", "end", "yesterday"]:
 			if self.selectedList != self["list1"] or len(self.matches) == 0:
 				return
 
@@ -807,7 +810,7 @@ class FootOnSat(Screen):
 		else:
 			match_date = self.getTime(current_match[1].decode('utf8'))
 
-		is_live_or_end = self.link == "live" or self.link == "end"
+		is_live_or_end = self.link in ["live", "end", "yesterday"]
 		match_in_past = datetime.strptime(match_date, "%H:%M - %Y-%m-%d") < datetime.now()
 
 		if (is_live_or_end or self.link in FOOTBALL or match_in_past):
@@ -950,6 +953,7 @@ class FootOnSat(Screen):
 		# logdata("FootOnSat-API", "Fetching URL with is_yesterday=%s" % self.is_yesterday)
 		if yesterday:
 			url_link = "yesterday"
+			self.link = "yesterday"
 		else:
 			url_link = "today" if self.link in ["live", "end"] else self.link
 		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/{}.json'.format(url_link)
@@ -979,9 +983,16 @@ class FootOnSat(Screen):
 		live_start_time = time.time()
 		#logdata("FootOnSat-LIVESCORE", "fetch_live_results initiated.")
 
-		today_iso = date.today().isoformat()
-		url1 = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}/'.format(today_iso)
-		url2 = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}/inverse'.format(today_iso)
+		index = self['list1'].getSelectionIndex()
+		current_match = self.matches[index]
+		if self.link == "yesterday":
+			selected_date = current_match[1].split(' - ')[1]
+		else:
+			selected_date = date.today().isoformat()
+		#logdata("FootOnSat-API", "Current Link: %s" % self.link)
+		#logdata("FootOnSat-API", "Selected Date: %s" % selected_date)
+		url1 = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}/'.format(selected_date)
+		url2 = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}/inverse'.format(selected_date)
 
 		# === Headers/Agent (Minimal and robust headers) ===
 		AGENT = b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
@@ -1762,10 +1773,24 @@ class FootOnSat(Screen):
 		if self.link == "end":
 			if getattr(self, 'is_yesterday', False):
 				return
+			self.is_yesterday = True
+			self.link = "yesterday"
+			self.matches = []
 			self['key_green'].setText(_("Wait..."))
 			self.callAPI(yesterday=True)
 		elif self.link in json_urls:
 			self.session.open(StandingsScreen, self.link, json_urls[self.link])
+
+	def callAPI(self, yesterday=False):
+		self.is_yesterday = yesterday
+		if yesterday:
+			url_link = "yesterday"
+			self.link = "yesterday"
+		else:
+			url_link = "today" if self.link in ["live", "end"] else self.link
+		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/{}.json'.format(url_link)
+		sniFactory = WebClientContextFactory(url)
+		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
 
 	def keyBlue(self):
 		if self.canScan:
