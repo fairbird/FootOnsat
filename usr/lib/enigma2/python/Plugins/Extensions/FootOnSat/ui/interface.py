@@ -49,6 +49,16 @@ OPENVIX="/usr/lib/enigma2/python/Plugins/SystemPlugins/ViX"
 
 PLUGINPATH="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
 
+# debug
+debug_Notif = config.plugins.FootOnSat.debug_Notif.value
+debug_Standings = config.plugins.FootOnSat.debug_Standings.value
+debug_MatchMedia = config.plugins.FootOnSat.debug_MatchMedia.value
+debug_MatchStatistics = config.plugins.FootOnSat.debug_MatchStatistics.value
+debug_MatchDetails = config.plugins.FootOnSat.debug_MatchDetails.value
+debug_ZAP = config.plugins.FootOnSat.debug_ZAP.value
+debug_Fetch_Live = config.plugins.FootOnSat.debug_Fetch_Live.value
+debug_Ignore = config.plugins.FootOnSat.debug_Ignore.value
+
 # Check for PIL availability first, and import if found
 try:
 	from PIL import Image
@@ -56,7 +66,7 @@ try:
 except ImportError:
 	PIL_AVAILABLE = False
 	# Log a warning if PIL is not available, as conversion will fail
-	logdata("Logos", "WARNING: PIL/Pillow library not found. Non-PNG logo conversion will fail.")
+	if debug_Standings: logdata("Logos", "WARNING: PIL/Pillow library not found. Non-PNG logo conversion will fail.")
 
 try:
 	from enigma import BT_SCALE, RT_VALIGN_CENTER, RT_HALIGN_LEFT
@@ -197,11 +207,15 @@ class WebClientContextFactory(ClientContextFactory):
 
 class FootOnSat(Screen):
 	def __init__(self, session, link, *args):
-		#logdata("FootOnSat-INIT", "Plugin initialization started.")
+		#logdata("FootOnSat", "Plugin initialization started.")
 		self.session = session
 		Screen.__init__(self, session)
-		self.MENUTEXT = "Press Menu to select zap channel"
-		self.execing = False # FIX: Prevents AttributeError in base class's close() method
+		self.link = link
+		if self.link not in ["live", "end", "yesterday"]:
+			self.MENUTEXT = _("Press (Ok) on any match to add notification")
+		else:
+			self.MENUTEXT = ""
+		self.execing = False
 		self.skin = SKIN_interface
 		self["setupActions"] = ActionMap(["FootOnsatActions", "ColorActions"],
 		{
@@ -219,7 +233,6 @@ class FootOnSat(Screen):
 			"Forward": self.forward,
 			"Backward": self.backward,
 		}, -1)
-		self.link = link
 		self["counter"] = Label()
 		self["channel"] = Label()
 		self["sat"] = Label()
@@ -266,7 +279,7 @@ class FootOnSat(Screen):
 			if sel >= 0 and sel < len(self.matches):
 				match = self.matches[sel][0] 
 				if self.checkIfexist(match):
-					self["menu"].setText(self.MENUTEXT)
+					self["menu"].setText("\\c00ff0000" + _("Press (Menu) to select zap channel"))
 					key = re.sub(r'\s+', '', match)
 					if not PY3:
 						key = key.decode('utf-8') if isinstance(key, str) else key
@@ -277,28 +290,28 @@ class FootOnSat(Screen):
 							z = c.fetchone()
 						if z:
 							service_ref_string = z[0]
-							#logdata("ZAP_DEBUG", "Raw zap ref from DB: '%s' (type: %s)" % (service_ref_string, type(service_ref_string)))
+							if debug_ZAP: logdata("iniMenu ZAP_DEBUG", "Raw zap ref from DB: '%s' (type: %s)" % (service_ref_string, type(service_ref_string)))
 							if not PY3 and isinstance(service_ref_string, unicode):
 								service_ref_string = service_ref_string.encode('utf-8', 'ignore')
 							service_ref = eServiceReference(service_ref_string)
 							info = eServiceCenter.getInstance().info(service_ref)
 							channel_name = info.getName(service_ref) if info else ""
-							#logdata("ZAP_DEBUG", "Fetched channel name: '%s'" % channel_name)
+							if debug_ZAP: logdata("iniMenu ZAP_DEBUG", "Fetched channel name: '%s'" % channel_name)
 							if channel_name:
 								self["menu2"].setText("Will be Zap to >> " + channel_name)
 							else:
 								self["menu2"].setText("")
 						else:
-							#logdata("ZAP_DEBUG", "No zap ref found for match → '%s'" % key)
+							if debug_ZAP: logdata("iniMenu ZAP_DEBUG", "No zap ref found for match → '%s'" % key)
 							self["menu2"].setText("")
 					except Exception as e:
-						#logdata("ZAP_DEBUG", "Error fetching zap ref: %s" % str(e))
+						if debug_ZAP: logdata("iniMenu ZAP_DEBUG", "Error fetching zap ref: %s" % str(e))
 						self["menu2"].setText("")
 				else:
-					self["menu"].setText("")
+					self["menu"].setText(self.MENUTEXT)
 					self["menu2"].setText("")
 			else:
-				self["menu"].setText("")
+				self["menu"].setText(self.MENUTEXT)
 				self["menu2"].setText("")
 
 			if isUHD():
@@ -333,19 +346,19 @@ class FootOnSat(Screen):
 				# NOTE: Assuming display_status is the original status (e.g., 'Half Time', '90+', 'FINISHED')
 				if clean_status == 'CANCELED': # Using the exact clean status 'HALFTIME' from the scraper logic
 					status_text = "Canceled"
-					display_prefix = "Status: "
+					display_prefix = "Status : "
 				elif clean_status == 'FINISHED':
 					status_text = "Finished"
-					display_prefix = "Status: "
+					display_prefix = "Status : "
 				elif clean_status == 'FT':
 					status_text = "Full Time"
-					display_prefix = "Status: "
+					display_prefix = "Status : "
 				elif clean_status == 'AET':
 					status_text = "After Extra Time"
-					display_prefix = "Status: "
+					display_prefix = "Status : "
 				elif clean_status == 'PEN':
 					status_text = "Penalties"
-					display_prefix = "Status: "
+					display_prefix = "Status : "
 				elif clean_status == 'HALFTIME': # Using the exact clean status 'HALFTIME' from the scraper logic
 					status_text = "Half Time"
 					display_prefix = "Live: " # Typically, Half Time is still considered a "Live" state
@@ -478,7 +491,7 @@ class FootOnSat(Screen):
 						res.append(MultiContentEntryText(pos=(500, 66), size=(570, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
 				# status_text + match_status
 				if (team1_score != "" or match_status != "") and self.link not in SPORTS:
-					# If score or status exists, display the dynamic status/time (e.g., "Live: 70 min" or "Status: FT")
+					# If score or status exists, display the dynamic status/time (e.g., "Live: 70 min" or "Status : FT")
 					if isUHD():
 						if self.link in FOOTBALL:
 							res.append(MultiContentEntryText(pos=(430, 120), size=(400, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=LIVECOLORE))
@@ -491,16 +504,20 @@ class FootOnSat(Screen):
 							res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=LIVECOLORE))
 				else:
 					# Otherwise, display the scheduled Kick-off time
+					if self.link in ["end", "yesterday"]:
+						KICKOFF = "Status : .... Wait"
+					else:
+						KICKOFF = "Kick-off : %s" % match_date
 					if isUHD():
 						if self.link in (SPORTS | FOOTBALL):
-							res.append(MultiContentEntryText(pos=(430, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
+							res.append(MultiContentEntryText(pos=(430, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(KICKOFF)))
 						else:
-							res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
+							res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(KICKOFF)))
 					else:
 						if self.link in (SPORTS | FOOTBALL):
-							res.append(MultiContentEntryText(pos=(320, 120), size=(500, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
+							res.append(MultiContentEntryText(pos=(320, 120), size=(500, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(KICKOFF)))
 						else:
-							res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str("Kick-off : %s" % match_date)))
+							res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(KICKOFF)))
 				# Competition name
 				if isUHD():
 					if self.link in (SPORTS | FOOTBALL):
@@ -662,7 +679,7 @@ class FootOnSat(Screen):
 			if sel >= 0 and sel < len(self.matches):
 				match = self.matches[sel][0] 
 				if self.checkIfexist(match):
-					self["menu"].setText(self.MENUTEXT)
+					self["menu"].setText("\\c00ff0000" + _("Press (Menu) to select zap channel"))
 					key = re.sub(r'\s+', '', match)
 					if not PY3:
 						key = key.decode('utf-8') if isinstance(key, str) else key
@@ -673,28 +690,28 @@ class FootOnSat(Screen):
 							z = c.fetchone()
 						if z:
 							service_ref_string = z[0]
-							#logdata("ZAP_DEBUG", "Raw zap ref from DB: '%s' (type: %s)" % (service_ref_string, type(service_ref_string)))
+							if debug_ZAP: logdata("updateMenuWidgets ZAP_DEBUG", "Raw zap ref from DB: '%s' (type: %s)" % (service_ref_string, type(service_ref_string)))
 							if not PY3 and isinstance(service_ref_string, unicode):
 								service_ref_string = service_ref_string.encode('utf-8', 'ignore')
 							service_ref = eServiceReference(service_ref_string)
 							info = eServiceCenter.getInstance().info(service_ref)
 							channel_name = info.getName(service_ref) if info else ""
-							#logdata("ZAP_DEBUG", "Fetched channel name: '%s'" % channel_name)
+							if debug_ZAP: logdata("updateMenuWidgets ZAP_DEBUG", "Fetched channel name: '%s'" % channel_name)
 							if channel_name:
 								self["menu2"].setText("Will be Zap to >> " + channel_name)
 							else:
 								self["menu2"].setText("")
 						else:
-							#logdata("ZAP_DEBUG", "No zap ref found for match → '%s'" % key)
+							if debug_ZAP: logdata("updateMenuWidgets ZAP_DEBUG", "No zap ref found for match → '%s'" % key)
 							self["menu2"].setText("")
 					except Exception as e:
-						#logdata("ZAP_DEBUG", "Error fetching zap ref: %s" % str(e))
+						if debug_ZAP: logdata("updateMenuWidgets ZAP_DEBUG", "Error fetching zap ref: %s" % str(e))
 						self["menu2"].setText("")
 				else:
-					self["menu"].setText("")
+					self["menu"].setText(self.MENUTEXT)
 					self["menu2"].setText("")
 			else:
-				self["menu"].setText("")
+				self["menu"].setText(self.MENUTEXT)
 				self["menu2"].setText("")
 
 		if self.selectedList == self["list2"]:
@@ -717,13 +734,17 @@ class FootOnSat(Screen):
 			with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
 				cur = conn.cursor()
 				cur.execute('CREATE TABLE IF NOT EXISTS LIVE_NOTIF (MATCH TEXT primary key , COMPET TEXT , DATE TEXT , TEAM1_FLAG TEXT , TEAM2_FLAG TEXT , FIRST_NOTIF TEXT , FIRST_NOTIF_STATUS TEXT , LIVE_NOTIF_STATUS TEXT,MESSAGE TEXT)')
-		except DatabaseError:
+		except DatabaseError as e:
 			# If the file is corrupted, delete it and try again.
+			if debug_Notif: logdata("Database", "Corruption detected, re-creating: %s" % str(e))
 			if exists(join(PLUGINPATH, "db/footonsat.db")):
 				os.remove(join(PLUGINPATH, "db/footonsat.db"))
 			with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
 				cur = conn.cursor()
 				cur.execute('CREATE TABLE IF NOT EXISTS LIVE_NOTIF (MATCH TEXT primary key , COMPET TEXT , DATE TEXT , TEAM1_FLAG TEXT , TEAM2_FLAG TEXT , FIRST_NOTIF TEXT , FIRST_NOTIF_STATUS TEXT , LIVE_NOTIF_STATUS TEXT,MESSAGE TEXT)')
+		except Exception as e:
+			if debug_Notif: logdata("Database", "Fatal Error: %s" % str(e))
+			pass
 
 	def menu(self):
 		if self.link not in ["live", "end", "yesterday"]:
@@ -740,6 +761,7 @@ class FootOnSat(Screen):
 				return
 
 			self.current_selected_match = match
+			if debug_ZAP: logdata("ZAPMenu", "Opening channel selection for: %s" % str(match))
 
 			# YOUR ORIGINAL UNIVERSAL CODE — 100% UNCHANGED
 			try:
@@ -777,7 +799,7 @@ class FootOnSat(Screen):
 		normalized_match = normalized_match.replace(' ', '') # REMOVE ALL SPACES to match original SQL intent
 		# END FIX
 
-		logdata("ZAP_DEBUG", "SAVING ZAP REF → '%s' → %s (%s)" % (normalized_match, channel_name, ref_string))
+		if debug_ZAP: logdata("channelSelected ZAP_DEBUG", "SAVING ZAP REF → '%s' → %s (%s)" % (normalized_match, channel_name, ref_string))
 
 		try:
 			with connect(join(PLUGINPATH, "db/footonsat.db")) as conn: # <-- FIX: Use 'with' for transaction safety and guaranteed close
@@ -786,9 +808,10 @@ class FootOnSat(Screen):
 				# Insert using the fully normalized key (which has no spaces)
 				c.execute("INSERT OR REPLACE INTO zap_channels (match, ref) VALUES (?, ?)", (normalized_match, ref_string))
 				# conn.commit() is implicitly called if the 'with' block exits without error
-			logdata("ZAP_DEBUG", "ZAP REF SAVED SUCCESSFULLY → %s" % ref_string)
+			if debug_ZAP: logdata("channelSelected ZAP_DEBUG", "ZAP REF SAVED SUCCESSFULLY → %s" % ref_string)
 		except Exception as e:
-			logdata("ZAP_DEBUG", "SAVE ERROR: %s" % str(e))
+			if debug_ZAP: logdata("channelSelected ZAP_DEBUG", "SAVE ERROR: %s" % str(e))
+			pass
 
 		self.iniMenu()
 
@@ -810,25 +833,26 @@ class FootOnSat(Screen):
 		else:
 			match_date = self.getTime(current_match[1].decode('utf8'))
 
-		is_live_or_end = self.link in ["live", "end", "yesterday"]
-		match_in_past = datetime.strptime(match_date, "%H:%M - %Y-%m-%d") < datetime.now()
-
-		if (is_live_or_end or self.link in FOOTBALL or match_in_past):
+		match_time_obj = datetime.strptime(match_date, "%H:%M - %Y-%m-%d")
+		match_in_past = match_time_obj < datetime.now()
+		is_live_or_end = (self.link in ["live", "end", "yesterday"]) or (match_in_past)
+		if is_live_or_end:
 			if len(current_match) > 8 and current_match[8]:
 				event_id = current_match[8]
 				match_str = current_match[0]
+				if debug_MatchDetails: logdata("ok", "Opening Details for: %s (ID: %s)" % (str(match_str), str(event_id)))
 				parts = re.split(r'\s+v[s]?\s+', match_str, 1, flags=re.IGNORECASE)
 				home_full = parts[0].strip() if len(parts) > 1 else "Home"
 				away_full = parts[1].strip() if len(parts) > 1 else "Away"
 				self.session.open(MatchDetailsScreen, 
 					event_id, 
-					current_match[2], # Competition (Title)
-					home_full,        # Full Name (Bodo Glimt)
-					away_full,        # Full Name (Diosgyor)
-					current_match[3], # Country (Norway)
-					current_match[4]) # Country (Hungary)
+					current_match[2], 
+					home_full, 
+					away_full, 
+					current_match[3], 
+					current_match[4])
 				return
-			elif is_live_or_end or match_in_past:
+			else:
 				self.session.open(MessageBox, _("Please wait a few seconds to get live data..."), MessageBox.TYPE_INFO, timeout=3)
 				return
 
@@ -850,9 +874,11 @@ class FootOnSat(Screen):
 				cur = conn.cursor()
 				cur.execute("CREATE TABLE IF NOT EXISTS zap_channels (match TEXT primary key, ref TEXT)")
 				if self.checkIfexist(match):
+					if debug_Notif: logdata("Ok Database", "Removing match: %s" % str(match))
 					cur.execute("DELETE FROM LIVE_NOTIF WHERE MATCH = ?", (match,))
 					cur.execute("DELETE FROM zap_channels WHERE match = ?", (re.sub(r'\s+', '', match),))
 				else:
+					if debug_Notif: logdata("Ok Database", "Adding match to notifications: %s" % str(match))
 					first_notif, message = self.setFirstNotifTime(match_date)
 					cur.execute("INSERT INTO LIVE_NOTIF(MATCH,COMPET,DATE,TEAM1_FLAG,TEAM2_FLAG,FIRST_NOTIF,FIRST_NOTIF_STATUS,LIVE_NOTIF_STATUS,MESSAGE) values (?,?,?,?,?,?,?,?,?)", (
 						match, compet, match_date, flag1, flag2, first_notif, "Waiting", "Waiting", message,))
@@ -948,14 +974,8 @@ class FootOnSat(Screen):
 		banner = random.choice(['default', 'default1', 'default2', 'default3'])
 		return resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/default/FHD/{}.png".format(banner))
 
-	def callAPI(self, yesterday=False):
-		self.is_yesterday = yesterday
-		# logdata("FootOnSat-API", "Fetching URL with is_yesterday=%s" % self.is_yesterday)
-		if yesterday:
-			url_link = "yesterday"
-			self.link = "yesterday"
-		else:
-			url_link = "today" if self.link in ["live", "end"] else self.link
+	def callAPI(self):
+		url_link = "today" if self.link in ["live", "end"] else self.link
 		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/{}.json'.format(url_link)
 		sniFactory = WebClientContextFactory(url)
 		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
@@ -968,20 +988,20 @@ class FootOnSat(Screen):
 
 	def error(self, error=None):
 		if error:
-			# logdata("FootOnSat-Error", "HTTP Error: " + str(error))
-			if getattr(self, 'is_yesterday', False):
-				error_msg = _('Yesterday JSON file is missing or server error!')
-			else:
-				error_msg = _('An Unexpected HTTP Error Occurred During The API Request !!')
+			if debug_Fetch_Live: logdata("FootOnSat-Error", "HTTP Error: " + str(error))
+			error_msg = _('An Unexpected HTTP Error Occurred During The API Request !!')
 			self.session.openWithCallback(self.exit, MessageBox, error_msg, MessageBox.TYPE_ERROR, timeout=10)
 
 	def fetch_live_results(self):
+		if not self.matches:
+			self.onWindowShow()
+			return
 		# Define the fixed time windows
 		LIVE_DURATION = timedelta(hours=4) # 4 hours limit for finished matches
 		TIME_WINDOW = timedelta(hours=4) # Generous fuzzy matching time tolerance
 		
 		live_start_time = time.time()
-		#logdata("FootOnSat-LIVESCORE", "fetch_live_results initiated.")
+		if debug_Fetch_Live: logdata("fetch_live_results", "fetch_live_results initiated.")
 
 		index = self['list1'].getSelectionIndex()
 		current_match = self.matches[index]
@@ -989,8 +1009,8 @@ class FootOnSat(Screen):
 			selected_date = current_match[1].split(' - ')[1]
 		else:
 			selected_date = date.today().isoformat()
-		#logdata("FootOnSat-API", "Current Link: %s" % self.link)
-		#logdata("FootOnSat-API", "Selected Date: %s" % selected_date)
+		if debug_Fetch_Live: logdata("fetch_live_results", "Current Link: %s" % self.link)
+		if debug_Fetch_Live: logdata("fetch_live_results", "Selected Date: %s" % selected_date)
 		url1 = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}/'.format(selected_date)
 		url2 = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}/inverse'.format(selected_date)
 
@@ -1011,8 +1031,6 @@ class FootOnSat(Screen):
 			'Cache-Control': 'no-cache',
 		}
 
-		#logdata("FootOnSat-LIVESCORE", "Sending request to SofaScore API.")
-
 		# === SMART DYNAMIC FETCH ===
 		# On Saturday/Sunday → url2 = 30 MB = DEATH
 		# So we check day: if weekend → SKIP url2 completely
@@ -1029,7 +1047,7 @@ class FootOnSat(Screen):
 			try:
 				sniFactory = WebClientContextFactory()
 			except Exception as e:
-				logdata("fetch_live_results", "Failed to create WebClientContextFactory: %s" % str(e))
+				if debug_Fetch_Live: logdata("fetch_live_results", "Failed to create WebClientContextFactory: %s" % str(e))
 				self.matches = [list(m) for m in self.matches]
 				self.iniMenu()
 				return
@@ -1070,21 +1088,21 @@ class FootOnSat(Screen):
 			def process_results(results):
 				raw1, raw2 = results
 
-				# Log url1
-				#if isinstance(raw1, Failure):
-				#	logdata("fetch_live_results", "DEBUG URL1 FAILED: %s" % raw1.getErrorMessage())
-				#else:
-				#	logdata("fetch_live_results", "DEBUG URL1 OK (Bytes: %d)" % len(raw1))
-
-				# Log url2
-				#if not fetch_url2:
-				#	logdata("fetch_live_results", "DEBUG URL2 SKIPPED (weekend protection active)")
-				#elif raw2 is None:
-				#	logdata("fetch_live_results", "DEBUG URL2 SKIPPED (setup failed)")
-				#elif isinstance(raw2, Failure):
-				#	logdata("fetch_live_results", "DEBUG URL2 FAILED → SKIPPED SAFELY")
-				#else:
-				#	logdata("fetch_live_results", "DEBUG URL2 OK (Bytes: %d) → using extra data" % len(raw2))
+				if debug_Fetch_Live:
+					# Log url1
+					if isinstance(raw1, Failure):
+						logdata("fetch_live_results", "DEBUG URL1 FAILED: %s" % raw1.getErrorMessage())
+					else:
+						logdata("fetch_live_results", "DEBUG URL1 OK (Bytes: %d)" % len(raw1))
+					# Log url2
+					if not fetch_url2:
+						logdata("fetch_live_results", "DEBUG URL2 SKIPPED (weekend protection active)")
+					elif raw2 is None:
+						logdata("fetch_live_results", "DEBUG URL2 SKIPPED (setup failed)")
+					elif isinstance(raw2, Failure):
+						logdata("fetch_live_results", "DEBUG URL2 FAILED → SKIPPED SAFELY")
+					else:
+						logdata("fetch_live_results", "DEBUG URL2 OK (Bytes: %d) → using extra data" % len(raw2))
 
 				# Return only valid data
 				valid = []
@@ -1110,9 +1128,9 @@ class FootOnSat(Screen):
 					r = requests.get(url1, headers=headers2, timeout=20)
 					r.raise_for_status()
 					results.append(r.content)
-					#logdata("fetch_live_results", "DEBUG URL1 (Py2) OK (%d KB)" % (len(r.content)//1024))
+					if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG URL1 (Py2) OK (%d KB)" % (len(r.content)//1024))
 				except Exception as e:
-					logdata("fetch_live_results", "DEBUG URL1 (Py2) FAILED: %s" % str(e))
+					if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG URL1 (Py2) FAILED: %s" % str(e))
 					results.append(None)
 
 				# url2 only if safe
@@ -1123,12 +1141,12 @@ class FootOnSat(Screen):
 						r2 = requests.get(url2, headers=h2, timeout=120)
 						r2.raise_for_status()
 						results.append(r2.content)
-						#logdata("fetch_live_results", "DEBUG URL2 (Py2) OK (%d MB) → extra data" % (len(r2.content)//1024//1024))
+						if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG URL2 (Py2) OK (%d MB) → extra data" % (len(r2.content)//1024//1024))
 					except Exception as e:
-						logdata("fetch_live_results", "DEBUG URL2 (Py2) FAILED → SKIPPED")
+						if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG URL2 (Py2) FAILED → SKIPPED")
 						results.append(None)
 				else:
-					#logdata("fetch_live_results", "DEBUG URL2 (Py2) SKIPPED (weekend mode)")
+					if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG URL2 (Py2) SKIPPED (weekend mode)")
 					results.append(None)
 
 				valid = [r for r in results if r is not None]
@@ -1139,7 +1157,6 @@ class FootOnSat(Screen):
 		# === _process_response (Twisted Callback from network fetch) ===
 		def _process_response(raw_list): # <--- Argument changed from 'raw' to 'raw_list'
 			process_start = time.time()
-			#logdata("FootOnSat-LIVESCORE", "Received SofaScore response. Starting processing.")
 			all_events = []
 			# Decode and JSON Load
 			for idx, raw in enumerate(raw_list):
@@ -1156,21 +1173,21 @@ class FootOnSat(Screen):
 #						formatted_data_str = json.dumps(events, indent=4, ensure_ascii=False)
 #						with codecs.open(sofa_debug_path, "w", encoding="utf-8") as f:
 #							f.write(formatted_data_str)
-#						logdata("FootOnSat-DEBUG", "Saved PRETTY-PRINTED SofaScore EVENTS to %s" % sofa_debug_path)
+#						logdata("fetch_live_results", "Saved PRETTY-PRINTED SofaScore EVENTS to %s" % sofa_debug_path)
 #					except Exception as e:
-#						logdata("FootOnSat-DEBUG-ERROR", "Failed to save SofaScore JSON: %s" % str(e))
+#						logdata("fetch_live_results", "Failed to save SofaScore JSON: %s" % str(e))
 					# === END DEBUG ===
 					events = data.get('events', [])
 					all_events.extend(events)
 				except ValueError as e:
 					# Log the actual JSON parsing error
-					logdata("fetch_live_results", "JSON parse error (ValueError): %s" % str(e))
+					if debug_Fetch_Live: logdata("fetch_live_results", "JSON parse error (ValueError): %s" % str(e))
 					# Log the beginning of the raw data that caused the crash (first 256 characters)
-					logdata("fetch_live_results", "Corrupt Data Snippet: %s..." % data_str[:256].replace('\n', ' '))
+					if debug_Fetch_Live: logdata("fetch_live_results", "Corrupt Data Snippet: %s..." % data_str[:256].replace('\n', ' '))
 					continue # Continue to the next response in the list
 				except Exception as e:
 					# Log any other unexpected decode/general error
-					logdata("fetch_live_results", "Decode/General error: %s" % str(e))
+					if debug_Fetch_Live: logdata("fetch_live_results", "Decode/General error: %s" % str(e))
 					continue # Continue to the next response in the list
 
 			if not all_events:
@@ -1182,7 +1199,6 @@ class FootOnSat(Screen):
 				return
 
 			events = all_events
-			gc.collect() # Force garbage collection to free memory after processing large JSON data
 
 			# === STEP 1: EVENT BUILDING & STRICT FILTERING (Main thread) ===
 			now = datetime.now()
@@ -1200,7 +1216,7 @@ class FootOnSat(Screen):
 						if home == 'Unknown Home' or away == 'Unknown Away':
 							continue
 					except Exception as e:
-						logdata("FootOnSat-Sofa-ERROR", "Team name parse error: %s" % str(e))
+						if debug_Fetch_Live: logdata("fetch_live_results", "Team name parse error: %s" % str(e))
 						continue
 					match_name = "{0} vs {1}".format(home, away)
 
@@ -1282,10 +1298,8 @@ class FootOnSat(Screen):
 						"id": ev.get('id', '')
 					})
 				except Exception as e:
-					logdata("FootOnSat-Sofa-ERROR", "Error building live_matches for an event: %s" % str(e))
+					if debug_Fetch_Live: logdata("fetch_live_results", "Error building live_matches for an event: %s" % str(e))
 					continue
-			
-			#logdata("FootOnSat-PERF", "LIVESCORE: Data extraction/filtering completed on Main Thread in %.3f s." % (time.time() - build_start))
 
 			# === STEP 2: INSTANT UI DRAW ===
 			matches_list = [list(m) for m in self.matches]
@@ -1316,9 +1330,7 @@ class FootOnSat(Screen):
 				return name
 
 			def _do_fuzzy_matching(matches_list, live_matches, now_adj):
-				match_perf_start = time.time()
-				#logdata("FootOnSat-PERF", "LIVESCORE: Fuzzy Matching started on background thread.")
-				
+				match_perf_start = time.time()				
 				# --- FIX: THRESHOLD ADJUSTMENT for maximum accuracy ---
 				THRESHOLD = 0.50 # Lowered from 0.60 to 0.55 to ensure all challenging names match
 				TIME_WINDOW = timedelta(hours=4)
@@ -1409,9 +1421,9 @@ class FootOnSat(Screen):
 							if not (straight_possible or swap_possible):
 								continue	
 
-							#logdata("FuzzyDebug","COMPARE | SCHED: '%s' vs '%s' | LIVE: '%s' vs '%s'" % (
-							#	l_t1_clean, l_t2_clean,
-							#	s_t1_clean, s_t2_clean))
+							if debug_Fetch_Live: logdata("fetch_live_results FuzzyDebug","COMPARE | SCHED: '%s' vs '%s' | LIVE: '%s' vs '%s'" % (
+								l_t1_clean, l_t2_clean,
+								s_t1_clean, s_t2_clean))
 
 							sim1 = SequenceMatcher(None, l_t1_clean, s_t1_clean).ratio()
 							sim2 = SequenceMatcher(None, l_t2_clean, s_t2_clean).ratio()
@@ -1422,7 +1434,7 @@ class FootOnSat(Screen):
 							avg_swap = (sim1s + sim2s) / 2.0
 
 							cur_sim = max(avg_straight, avg_swap)
-							#logdata("FuzzyDebug", "Match '%s': sim=%.2f (straight=%.2f, swap=%.2f)" % (local_name, cur_sim, avg_straight, avg_swap))
+							if debug_Fetch_Live: logdata("fetch_live_results FuzzyDebug", "Match '%s': sim=%.2f (straight=%.2f, swap=%.2f)" % (local_name, cur_sim, avg_straight, avg_swap))
 
 							if cur_sim > best_sim:
 								best_sim = cur_sim
@@ -1458,7 +1470,6 @@ class FootOnSat(Screen):
 					except Exception as e:
 						continue
 
-				#logdata("FootOnSat-PERF", "LIVESCORE: Ultra-Optimized Fuzzy Matching finished in %.3f s." % (time.time() - match_perf_start))
 				return matches_list
 
 			def _matching_complete(updated_matches_list):
@@ -1501,14 +1512,14 @@ class FootOnSat(Screen):
 					except: pass
 				try: self.iniMenu()
 				except: pass
-				#logdata("FootOnSat-PERF", "LIVESCORE: Final UI updated with scores. Total processing time: %.3f s." % (time.time() - process_start))
 
 			d_match = deferToThread(_do_fuzzy_matching, matches_list, live_matches, now_adj)
 			d_match.addCallback(_matching_complete)
-			d_match.addErrback(lambda f: logdata("FootOnSat-Sofa-ERROR", "Fuzzy matching thread failed: %s" % f.getErrorMessage()))
+			d_match.addErrback(lambda f: logdata("fetch_live_results", "Fuzzy matching thread failed: %s" % f.getErrorMessage()))
 
 		def _error(failure):
-			logdata("FootOnSat-Sofa-ERROR", "Twisted Request failed: %s" % failure.getErrorMessage())
+			if debug_Fetch_Live: logdata("fetch_live_results", "Twisted Request failed: %s" % failure.getErrorMessage())
+			pass
 
 		d.addCallback(_process_response)
 		d.addErrback(_error)
@@ -1556,15 +1567,20 @@ class FootOnSat(Screen):
 		ignored_competitions = []
 		try:
 			ignored_competitions = self.manageIgnoreFile()
+			if debug_Ignore: logdata("getData", "Ignored competitions loaded: %s" % str(ignored_competitions))
 		except Exception as e:
-			#logdata("getData", "Failed to load ignored competitions: " + str(e))
+			if debug_Ignore: logdata("getData", "Failed to load ignored competitions: %s" % str(e))
 			pass
 
 		now = datetime.now()
 		# 1. UPDATED: Consider matches live for 2 hours
 		try:
 			# Check the configuration value for the "finished" duration
-			if config.plugins.FootOnSat.finished.value == "3":
+			# Skip expiration check if we are viewing yesterday's matches
+			if self.link == "yesterday":
+				HOUR = 9999
+			# Check the configuration value for the "finished" duration
+			elif config.plugins.FootOnSat.finished.value == "3":
 				HOUR = 3
 			elif config.plugins.FootOnSat.finished.value == "4":
 				HOUR = 4
@@ -1589,7 +1605,7 @@ class FootOnSat(Screen):
 		
 		# ... (rest of the fetching and parsing logic) ...
 
-		if self.js.get('footonsat') or self.link in ["live", "end"]:
+		if self.js.get('footonsat') or self.link in ["live", "end", "yesterday"]:
 			target_data = self.js.get('footonsat', [])
 			for match in target_data:
 				try:
@@ -1598,7 +1614,7 @@ class FootOnSat(Screen):
 						if suffix in compet:
 							compet = compet.split(suffix)[0].strip()
 
-					if compet not in ignored_competitions or self.link not in ["today", "live", "end"]:
+					if compet not in ignored_competitions or self.link not in ["today", "live", "end", "yesterday"]:
 						match_date = datetime.strptime(match['date'] + ' ' + match['time'], '%Y-%m-%d %H:%M')
 						match_date_adjusted = datetime.strptime(self.getTime(match['time'] + ' - ' + match['date']), '%H:%M - %Y-%m-%d')
 
@@ -1687,10 +1703,11 @@ class FootOnSat(Screen):
 									team2_score,
 									match_status,
 									match.get('event_id', '')])
-					#else:
-						#logdata("getData", "Ignored competition: " + str(match['match']) + ", Compet: " + compet)
+					else:
+						if debug_Fetch_Live: logdata("getData", "Ignored competition: " + str(match['match']) + ", Compet: " + compet)
+						pass
 				except KeyError:
-					#logdata("getData-error", "KeyError on match: " + str(match))
+					if debug_Fetch_Live: logdata("getData", "KeyError on match: " + str(match))
 					pass
 
 			self.matches = list
@@ -1773,24 +1790,32 @@ class FootOnSat(Screen):
 		if self.link == "end":
 			if getattr(self, 'is_yesterday', False):
 				return
+			if debug_Fetch_Live: logdata("keyGreen", "Switching to Yesterday matches")
 			self.is_yesterday = True
 			self.link = "yesterday"
 			self.matches = []
 			self['key_green'].setText(_("Wait..."))
-			self.callAPI(yesterday=True)
+			self.fetchYesterdayData(yesterday=True)
 		elif self.link in json_urls:
+			if debug_Standings: logdata("keyGreen", "Opening Standings for: %s" % str(self.link))
 			self.session.open(StandingsScreen, self.link, json_urls[self.link])
 
-	def callAPI(self, yesterday=False):
+	def fetchYesterdayData(self, yesterday=True):
 		self.is_yesterday = yesterday
-		if yesterday:
-			url_link = "yesterday"
-			self.link = "yesterday"
-		else:
-			url_link = "today" if self.link in ["live", "end"] else self.link
+		url_link = "yesterday"
+		self.link = "yesterday"
 		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/{}.json'.format(url_link)
+		if debug_Fetch_Live: logdata("fetchYesterday", "Requesting URL: %s" % url)
 		sniFactory = WebClientContextFactory(url)
-		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
+		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.Yesterdayerror)
+
+	def Yesterdayerror(self, failure):
+		if debug_Fetch_Live: logdata("API-Error", "Error: %s" % str(failure.getErrorMessage()))
+		if getattr(self, 'is_yesterday', False):
+			error_msg = _('Yesterday JSON file is missing or server error!')
+		else:
+			error_msg = _('An Unexpected HTTP Error Occurred During The API Request !!')
+		self.session.openWithCallback(self.exit, MessageBox, error_msg, MessageBox.TYPE_ERROR, timeout=10)
 
 	def keyBlue(self):
 		if self.canScan:
@@ -1818,7 +1843,8 @@ class FootOnSat(Screen):
 			try:
 				freq = int(float(freq))
 			except Exception as e:
-				logdata("scan_exception", "Failed to parse freq '{}': {}".format(freq, e))
+				if debug_Fetch_Live: logdata("scan_exception", "Failed to parse freq '{}': {}".format(freq, e))
+				pass
 			symbolrate = self.channelData[index][2].split(' ')[2]
 			pos = self.channelData[index][1].split(' ')[-1].replace('°', ' ').split(' ')
 			sat = self.getSat(pos)
@@ -1862,16 +1888,16 @@ class FootOnSat(Screen):
 		self.close()
 
 	def manageIgnoreFile(self, compet=None, reset=False, remove=None):
-		# logdata("manageIgnoreFile", "Called with compet={}, reset={}, remove={}".format(compet, reset, remove))
+		if debug_Ignore: logdata("manageIgnoreFile", "Called with compet={}, reset={}, remove={}".format(compet, reset, remove))
 		# Create ignore directory if it doesn't exist
 		from .launcher import get_ignore_paths
 		ignore_dir, ignore_file = get_ignore_paths()
 		if not exists(ignore_dir):
 			try:
 				os.makedirs(ignore_dir, 0o755)
-				# logdata("manageIgnoreFile", "Created ignore directory: " + ignore_dir)
+				if debug_Ignore: logdata("manageIgnoreFile", "Created ignore directory: " + ignore_dir)
 			except Exception as e:
-				logdata("manageIgnoreFile", "Failed to create ignore dir: " + str(e))
+				if debug_Ignore: logdata("manageIgnoreFile", "Failed to create ignore dir: " + str(e))
 				return []
 		# Determine file open function for Python 2 and 3
 		try:
@@ -1888,10 +1914,10 @@ class FootOnSat(Screen):
 			try:
 				with fopen(ignore_file, 'w') as f:
 					json.dump({"ignored_competitions": []}, f)
-				# logdata("manageIgnoreFile", "Reset ignore-match.json to empty")
+				if debug_Ignore: logdata("manageIgnoreFile", "Reset ignore-match.json to empty")
 				return []
 			except Exception as e:
-				logdata("manageIgnoreFile", "Failed to reset ignore file: " + str(e))
+				if debug_Ignore: logdata("manageIgnoreFile", "Failed to reset ignore file: " + str(e))
 				return []
 		# Load or initialize ignored competitions
 		ignored = []
@@ -1900,24 +1926,24 @@ class FootOnSat(Screen):
 				with fopen(ignore_file, 'r') as f:
 					data = json.load(f)
 					ignored = data.get("ignored_competitions", [])
-				# logdata("manageIgnoreFile", "Loaded ignored competitions: " + str(ignored))
+				if debug_Ignore: logdata("manageIgnoreFile", "Loaded ignored competitions: " + str(ignored))
 			except Exception as e:
-				logdata("manageIgnoreFile", "Failed to read ignore file: " + str(e))
+				if debug_Ignore: logdata("manageIgnoreFile", "Failed to read ignore file: " + str(e))
 				# Create empty file if reading fails
 				try:
 					with fopen(ignore_file, 'w') as f:
 						json.dump({"ignored_competitions": []}, f)
-					# logdata("manageIgnoreFile", "Created empty ignore-match.json after read failure")
+					if debug_Ignore: logdata("manageIgnoreFile", "Created empty ignore-match.json after read failure")
 				except Exception as e:
-					logdata("manageIgnoreFile", "Failed to create ignore file: " + str(e))
+					if debug_Ignore: logdata("manageIgnoreFile", "Failed to create ignore file: " + str(e))
 					return []
 		else:
 			try:
 				with fopen(ignore_file, 'w') as f:
 					json.dump({"ignored_competitions": []}, f)
-				# logdata("manageIgnoreFile", "Created empty ignore-match.json")
+				if debug_Ignore: logdata("manageIgnoreFile", "Created empty ignore-match.json")
 			except Exception as e:
-				logdata("manageIgnoreFile", "Failed to create ignore file: " + str(e))
+				if debug_Ignore: logdata("manageIgnoreFile", "Failed to create ignore file: " + str(e))
 				return []
 		# Remove competition if provided
 		if remove:
@@ -1925,18 +1951,19 @@ class FootOnSat(Screen):
 				compet_str = str(remove).strip()
 			except UnicodeEncodeError:
 				compet_str = unicode(remove).encode('utf-8').strip()  # Python 2 compatibility
-			# logdata("manageIgnoreFile", "Attempting to remove compet: " + (compet_str if compet_str else "None"))
+			if debug_Ignore: logdata("manageIgnoreFile", "Attempting to remove compet: " + (compet_str if compet_str else "None"))
 			if compet_str in ignored:
 				ignored.remove(compet_str)
 				try:
 					with fopen(ignore_file, 'w') as f:
 						json.dump({"ignored_competitions": ignored}, f)
-					# logdata("manageIgnoreFile", "Removed competition: " + compet_str + ", New list: " + str(ignored))
+					if debug_Ignore: logdata("manageIgnoreFile", "Removed competition: " + compet_str + ", New list: " + str(ignored))
 				except Exception as e:
-					logdata("manageIgnoreFile", "Failed to update ignore file after removing " + compet_str + ": " + str(e))
+					if debug_Ignore: logdata("manageIgnoreFile", "Failed to update ignore file after removing " + compet_str + ": " + str(e))
 					return ignored
-			#else:
-				#logdata("manageIgnoreFile", "Competition not removed: " + (compet_str if compet_str else "None") + " (not in ignore list)")
+			else:
+				if debug_Ignore: logdata("manageIgnoreFile", "Competition not removed: " + (compet_str if compet_str else "None") + " (not in ignore list)")
+				pass
 			return ignored
 		# Add competition if provided
 		if compet:
@@ -1944,19 +1971,20 @@ class FootOnSat(Screen):
 				compet_str = str(compet).strip()
 			except UnicodeEncodeError:
 				compet_str = unicode(compet).encode('utf-8').strip()  # Python 2 compatibility
-			# logdata("manageIgnoreFile", "Received compet: " + (compet_str if compet_str else "None"))
+			if debug_Ignore: logdata("manageIgnoreFile", "Received compet: " + (compet_str if compet_str else "None"))
 			if compet_str and compet_str not in ignored:
 				ignored.append(compet_str)
 				try:
 					with fopen(ignore_file, 'w') as f:
 						json.dump({"ignored_competitions": ignored}, f)
-					# logdata("manageIgnoreFile", "Added competition to ignore: " + compet_str + ", New list: " + str(ignored))
+					if debug_Ignore: logdata("manageIgnoreFile", "Added competition to ignore: " + compet_str + ", New list: " + str(ignored))
 					return ignored
 				except Exception as e:
-					logdata("manageIgnoreFile", "Failed to update ignore file with " + compet_str + ": " + str(e))
+					if debug_Ignore: logdata("manageIgnoreFile", "Failed to update ignore file with " + compet_str + ": " + str(e))
 					return ignored
-			#else:
-			#	logdata("manageIgnoreFile", "Competition not added: " + (compet_str if compet_str else "None") + " (already ignored or empty)")
+			else:
+				if debug_Ignore: logdata("manageIgnoreFile", "Competition not added: " + (compet_str if compet_str else "None") + " (already ignored or empty)")
+				pass
 		return ignored
 
 	def selectCompetitionToRemove(self, selected):
@@ -1964,7 +1992,7 @@ class FootOnSat(Screen):
 			self.session.open(MessageBox, _('No competition selected to remove'), MessageBox.TYPE_INFO, timeout=5)
 			return
 		compet = selected[1]
-		# logdata("selectCompetitionToRemove", "Removing competition: " + compet)
+		if debug_Ignore: logdata("selectCompetitionToRemove", "Removing competition: " + compet)
 		self.manageIgnoreFile(remove=compet)
 		self.session.open(MessageBox, _('Competition "%s" removed from ignore list') % compet, MessageBox.TYPE_INFO, timeout=5)
 		# Refresh the match list to include removed competition's matches
@@ -2005,15 +2033,16 @@ class FootOnSat(Screen):
 					path_info = ignore_file_path
 					msg = _('Competition "%s" added to ignore list.\n\nSave file on "%s"') % (compet, path_info)
 					self.session.open(MessageBox, msg, MessageBox.TYPE_INFO, timeout=5)
-				#else:
-				#	logdata("keyRed", "Competition " + compet + " not added (already ignored or failed)")
+				else:
+					if debug_Ignore: logdata("keyRed", "Competition " + compet + " not added (already ignored or failed)")
+					pass
 				
 				# Refresh the match list to exclude ignored competitions
 				self.matches = []
 				self["list1"].setList([])
 				self.callAPI()
 			except Exception as e:
-				logdata("keyRed", "Error ignoring competition: " + str(e))
+				if debug_Ignore: logdata("keyRed", "Error ignoring competition: " + str(e))
 				self.session.open(MessageBox, _('Error ignoring competition!'), MessageBox.TYPE_ERROR, timeout=5)
 
 	def keyYellow(self):
@@ -2023,7 +2052,7 @@ class FootOnSat(Screen):
 				if not ignored_list:
 					self.session.open(MessageBox, _('No competitions in the ignore list'), MessageBox.TYPE_INFO, timeout=5)
 					return
-				# logdata("keyYellow", "Ignored competitions: " + str(ignored_list))
+				if debug_Ignore: logdata("keyYellow", "Ignored competitions: " + str(ignored_list))
 				list = []
 				for comp in ignored_list:
 					# Ensure competition name is a string/byte string suitable for ChoiceBox in PY2 and PY3
@@ -2036,7 +2065,7 @@ class FootOnSat(Screen):
 						try:
 							comp_str = comp.encode('utf-8') if isinstance(comp, unicode) else comp
 						except Exception as e:
-							# logdata("keyYellow", "Error converting competition to byte string: " + str(e))
+							if debug_Ignore: logdata("keyYellow", "Error converting competition to byte string: " + str(e))
 							comp_str = str(comp) # Fallback
 					list.append((comp_str, comp_str))
 				# If the list is empty after processing, stop
@@ -2045,7 +2074,7 @@ class FootOnSat(Screen):
 					return
 				self.session.openWithCallback(self.selectCompetitionToRemove, ChoiceBox, _('Select the competition to remove from list'), list)
 			except Exception as e:
-				# logdata("keyYellow", "Error selecting competition to remove: " + str(e))
+				if debug_Ignore: logdata("keyYellow", "Error selecting competition to remove: " + str(e))
 				# This addresses the original error which likely occurred here due to string conversion failure
 				self.session.open(MessageBox, _('Error accessing ignore list!'), MessageBox.TYPE_ERROR, timeout=5)
 
@@ -2056,6 +2085,7 @@ class MatchDetailsScreen(Screen):
 		Screen.__init__(self, session)
 		self.skin = SKIN_MatchDetails
 		self.event_id = str(event_id)
+		if debug_MatchDetails: logdata("MatchDetails", "Initializing MatchDetails for event_id: %s, match_name: %s, home_full: %s, away_full: %s, home_country: %s, away_country: %s" % (event_id, match_name, home_full, away_full, home_country, away_country))
 		self["title"] = Label(str(match_name) + " - Details")
 		self["home_name_big"] = Label(str(home_full))
 		self["away_name_big"] = Label(str(away_full))
@@ -2131,6 +2161,7 @@ class MatchDetailsScreen(Screen):
 
 	def fetch_details(self):
 		if sys.version_info[:2] == (3, 9): # Python 3.9
+			if debug_MatchDetails: logdata("MatchStatistics", "Python 3.9")
 			def _get_data(eid):
 				try:
 					urls = ["https://api.sofascore.com/api/v1/event/{}/incidents".format(eid),
@@ -2145,19 +2176,20 @@ class MatchDetailsScreen(Screen):
 					from twisted.internet import defer
 					return defer.gatherResults([getPage(str.encode(u), contextFactory=sni, timeout=25, headers=hdrs) for u in urls])
 				except Exception as e:
-					logdata("MatchDetails", "Exception: %s" % str(e))
+					if debug_MatchDetails: logdata("MatchDetails", "Exception: %s" % str(e))
 					return None, None
+
 			def _done(raw):
 				try:
 					return [json.loads(r.decode() if r else b'{}') for r in raw]
 				except Exception as e:
-					logdata("MatchDetails", "Exception: %s" % str(e))
+					if debug_MatchDetails: logdata("MatchDetails", "Exception: %s" % str(e))
 					return None, None
-
 			d = deferToThread(_get_data, self.event_id)
 			d.addCallback(lambda r: r.addCallback(_done))
 			d.addCallbacks(self.process_data, lambda _: self.process_data(None))
 		else:  # Python 2 and other 3.x without 3.9
+			if debug_MatchDetails: logdata("MatchDetails", "Python 3.x and 2 without 3.9")
 			def _get_data(eid):
 				headers = {'User-Agent': 'Mozilla/5.0'}
 				try:
@@ -2166,7 +2198,8 @@ class MatchDetailsScreen(Screen):
 					res_i = requests.get(url_i, headers=headers, timeout=10).json()
 					res_e = requests.get(url_e, headers=headers, timeout=10).json()
 					return res_i, res_e
-				except:
+				except Exception as e:
+					if debug_MatchDetails: logdata("MatchDetails", "Exception: %s" % str(e))
 					return None, None
 			d = deferToThread(_get_data, self.event_id)
 			d.addCallback(self.process_data)
@@ -2282,6 +2315,7 @@ class MatchStatisticsScreen(Screen):
 		Screen.__init__(self, session)
 		self.skin = SKIN_MatchStatistics
 		self.event_id = event_id
+		if debug_MatchStatistics: logdata("MatchStatistics", "Initializing MatchStatistics for event_id: %s, match_name: %s, home_name: %s, away_name: %s" % (event_id, match_name, home_name, away_name))
 		self["title"] = Label(str(match_name) + " - Statistics")
 		self["home_team"] = Label(str(home_name))
 		self["away_team"] = Label(str(away_name))
@@ -2321,6 +2355,7 @@ class MatchStatisticsScreen(Screen):
 
 	def fetch_stats(self):
 		if sys.version_info[:2] == (3, 9):
+			if debug_MatchStatistics: logdata("MatchStatistics", "Python 3.9")
 			def _get_stats(eid):
 				try:
 					url = "https://api.sofascore.com/api/v1/event/{}/statistics".format(eid)
@@ -2334,23 +2369,27 @@ class MatchStatisticsScreen(Screen):
 					}
 					return getPage(str.encode(url), contextFactory=sni, timeout=25, headers=hdrs)
 				except Exception as e:
-					logdata("MatchStats", "Exception: %s" % str(e))
+					if debug_MatchStatistics: logdata("MatchStatistics", "Exception: %s" % str(e))
 					return None
+
 			def _done(raw):
 				try:
 					return json.loads(raw.decode()) if raw else None
 				except:
 					return None
+
 			d = _get_stats(self.event_id)
 			d.addCallback(_done)
 			d.addCallbacks(self.process_stats, lambda _: self.process_stats(None))
 		else:
+			if debug_MatchStatistics: logdata("MatchStatistics", "Python 3.x and 2 without 3.9")
 			def _get_stats(eid):
 				headers = {'User-Agent': 'Mozilla/5.0'}
 				try:
 					url = "https://api.sofascore.com/api/v1/event/{}/statistics".format(eid)
 					return requests.get(url, headers=headers, timeout=10).json()
-				except:
+				except Exception as e:
+					if debug_MatchStatistics: logdata("MatchStatistics", "Exception: %s" % str(e))
 					return None
 			d = deferToThread(_get_stats, self.event_id)
 			d.addCallback(self.process_stats)
@@ -2426,7 +2465,7 @@ class MatchMediaScreen(Screen):
 		Screen.__init__(self, session)
 		self.skin = SKIN_MatchMedia
 		self.event_id = event_id
-
+		if debug_MatchMedia: logdata("MatchMediaScreen", "Initializing MatchMediaScreen for event_id: %s, match_name: %s" % (event_id, match_name))
 		self["title"] = Label(str(match_name) + " - Media")
 		self["key_red"] = Label(_("Close"))
 		self["media_list"] = MenuList([], enableWrapAround=True, content=eListboxPythonMultiContent)
@@ -2472,6 +2511,7 @@ class MatchMediaScreen(Screen):
 
 	def fetch_media(self):
 		if sys.version_info[:2] == (3, 9):
+			if debug_MatchMedia: logdata("MatchMedia", "Python 3.9")
 			def _get_media(eid):
 				try:
 					url = "https://api.sofascore.com/api/v1/event/{}/media".format(eid)
@@ -2485,23 +2525,27 @@ class MatchMediaScreen(Screen):
 					}
 					return getPage(str.encode(url), contextFactory=sni, timeout=25, headers=hdrs)
 				except Exception as e:
-					logdata("MatchMedia", "Exception: %s" % str(e))
+					if debug_MatchMedia: logdata("MatchMedia", "Exception: %s" % str(e))
 					return None
+
 			def _done(raw):
 				try:
 					return json.loads(raw.decode()) if raw else None
 				except:
 					return None
+
 			d = _get_media(self.event_id)
 			d.addCallback(_done)
 			d.addCallbacks(self.process_media, lambda _: self.process_media(None))
 		else:
+			if debug_MatchMedia: logdata("MatchMedia", "Python 3.x and 2 without 3.9")
 			def _get_media(eid):
 				headers = {'User-Agent': 'Mozilla/5.0'}
 				try:
 					url = "https://api.sofascore.com/api/v1/event/{}/media".format(eid)
 					return requests.get(url, headers=headers, timeout=10).json()
-				except:
+				except Exception as e:
+					if debug_MatchMedia: logdata("MatchMedia", "Exception: %s" % str(e))
 					return None
 			d = deferToThread(_get_media, self.event_id)
 			d.addCallback(self.process_media)
@@ -2580,15 +2624,21 @@ class MatchMediaScreen(Screen):
 		if not cur or not cur[0]:
 			return
 		url = cur[0].strip()
-		#logdata("Processing URL", str(url))
+		if debug_MatchMedia: logdata("MatchMedia", "Processing URL: %s" % str(url))
 		self.play_timer_conn = None
 		self.error_timer_conn = None
 		is_youtube = "youtube.com" in url.lower() or "youtu.be" in url.lower()
 		is_twitter = "twitter.com" in url.lower() or "x.com" in url.lower()
 		is_vsports = "vsports.pt" in url.lower() # Add this line
-		#if is_youtube: logdata("FootOnSat-YOUTUBE", "Start Play: %s" % url)
-		#if is_twitter: logdata("FootOnSat-TWITTER", "Start Play: %s" % url)
-		#if is_vsports: logdata("FootOnSat-VSPORTS", "Start Play: %s" % url)
+		if is_youtube:
+			if debug_MatchMedia: logdata("MatchMedia-YOUTUBE", "Start Play: %s" % url)
+			pass
+		if is_twitter:
+			if debug_MatchMedia: logdata("MatchMedia-TWITTER", "Start Play: %s" % url)
+			pass
+		if is_vsports:
+			if debug_MatchMedia: logdata("MatchMedia-VSPORTS", "Start Play: %s" % url)
+			pass
 		msg = _("Please wait while extracting video stream...")
 		if is_youtube:
 			self.wait_dialog = self.session.open(MessageBox, msg, MessageBox.TYPE_INFO, enable_input=False)
@@ -2603,7 +2653,7 @@ class MatchMediaScreen(Screen):
 					return str(result) if result else ""
 				except Exception as e:
 					err_text = str(e)
-					#logdata("EXTRACT_ERROR_THREAD_FUNC", err_text)
+					#if debug_MatchMedia: logdata("EXTRACT_ERROR_THREAD_FUNC", err_text)
 					return "ERROR:" + err_text
 			deferToThread(safe_extract, url).addCallback(self.playAfterExtract).addErrback(self.playback_error)
 		elif is_twitter:
@@ -2615,7 +2665,7 @@ class MatchMediaScreen(Screen):
 		else:
 			#self.playAfterExtract(str(url))
 			# Fallback for unsupported URLs
-			logdata("[FootOnSat-ERROR] Unsupported URL/Video: %s" % str(url))
+			if debug_MatchMedia: logdata("MatchMedia", "Unsupported URL/Video: %s" % str(url))
 			msg = _("This video source is not supported yet\n\nSend /tmp/FootOnSat.log to support.")
 			self.session.open(MessageBox, msg, MessageBox.TYPE_INFO, timeout=10)
 
@@ -2627,7 +2677,7 @@ class MatchMediaScreen(Screen):
 		if "ERROR:" in video_url_str:
 			err_msg = video_url_str.split("ERROR:", 1)[1].lstrip()
 			lower_err = err_msg.lower()
-			#logdata("playAfterExtract_lower", lower_err)
+			if debug_MatchMedia: logdata("MatchMedia", "playAfterExtract_lower: %s" % lower_err)
 			if "country" in lower_err or "available" in lower_err:
 				msg = _("This video is not available in your country or is private.")
 				self.error_timer = eTimer()
@@ -2655,13 +2705,11 @@ class MatchMediaScreen(Screen):
 		is_yt = "youtube.com" in pure_url.lower() or "youtu.be" in pure_url.lower() or "googlevideo.com" in pure_url.lower()
 		stype = int(config.plugins.FootOnSat.player.value)
 		has_exteplayer = exists("/usr/bin/exteplayer3")
-		#logdata("DASH_DEBUG", "is_yt: %s | has_exteplayer: %s | UseDash: %s" % (str(is_yt), str(has_exteplayer), str(config.plugins.FootOnSat.useDashMP4.value)))
 		if is_yt and config.plugins.FootOnSat.useDashMP4.value and (not has_exteplayer or stype == 4097):
-			#logdata("DASH_START", "Entering DASH logic...")
-			#logdata("DASH_DEBUG_URL", "Full video_url: %s" % str(video_url))
+			if debug_MatchMedia: logdata("MatchMedia", "Full video_url: %s" % str(video_url))
 			separator = '#EXT-X-STREAM-INF:AUDIO=' if '#EXT-X-STREAM-INF:AUDIO=' in video_url else SUBURI
 			if separator in video_url:
-				#logdata("DASH_READY", "Audio stream found via %s. Preparing download..." % separator)
+				if debug_MatchMedia: logdata("MatchMedia", "Audio stream found via %s. Preparing download..." % separator)
 				try:
 					v_url = pure_url
 					a_url = video_url.split(separator)[-1].replace('"', '').strip()
@@ -2669,12 +2717,13 @@ class MatchMediaScreen(Screen):
 					a_tmp = "/tmp/a.mp4"
 					ua = str(user_agent) if user_agent else "Mozilla/5.0"
 					down_a = 'wget --no-check-certificate -U "%s" -O %s "%s"' % (ua, a_tmp, a_url)
-					#logdata("DASH_DL", "Downloading audio: %s" % down_a)
+					if debug_MatchMedia: logdata("MatchMedia", "Downloading audio: %s" % down_a)
 					gst_cmd = "gst-launch-1.0 filesrc location=%s ! decodebin ! audioconvert ! audioresample ! alsasink" % a_tmp
 					self.dash_process = subprocess.Popen('%s && %s' % (down_a, gst_cmd), shell=True, preexec_fn=os.setsid)
-					#logdata("DASH_GST", "Audio download and background playback started.")
+					if debug_MatchMedia: logdata("MatchMedia", "Audio download and background playback started.")
 				except Exception as e:
-					logdata("DASH_FATAL", "Error: %s" % str(e))
+					if debug_MatchMedia: logdata("MatchMedia", "Error: %s" % str(e))
+					pass
 		try:
 			req = compat_Request(pure_url)
 			if user_agent: req.add_header("User-Agent", user_agent)
@@ -2701,8 +2750,8 @@ class MatchMediaScreen(Screen):
 			ref.setPath(str(pure_url))
 		ref.setName(name)
 		self.play_timer = eTimer()
-		#logdata("[FootOnSat-DEBUG] URL: %s" % str(pure_url))
-		#logdata("[FootOnSat-DEBUG] SREF: %s" % ref.toString())
+		if debug_MatchMedia: logdata("MatchMedia", "pure_url: %s" % str(pure_url))
+		if debug_MatchMedia: logdata("MatchMedia", "SREF: %s" % ref.toString())
 		if DreamOS():
 			self.play_timer_conn = self.play_timer.timeout.connect(lambda: self.session.openWithCallback(self.stopDashAudio, MoviePlayer, ref))
 		else:
@@ -2713,7 +2762,7 @@ class MatchMediaScreen(Screen):
 		if hasattr(self, 'dash_process') and self.dash_process:
 			try:
 				os.killpg(os.getpgid(self.dash_process.pid), signal.SIGTERM)
-				#logdata("DASH_STOP", "Audio process killed.")
+				if debug_MatchMedia: logdata("MatchMedia", "Audio process killed.")
 				del self.dash_process
 				if exists("/tmp/a.mp4"): os.remove("/tmp/a.mp4")
 			except:
@@ -2742,7 +2791,7 @@ class MatchMediaScreen(Screen):
 							return sources[0]
 			return None
 		except Exception as e:
-			logdata("FootOnSat-VSPORTS", "Exception: %s" % str(e))
+			if debug_MatchMedia: logdata("MatchMedia", "Exception: %s" % str(e))
 			return None
 
 	def extract_twitter_stream(self, url):
@@ -2753,10 +2802,10 @@ class MatchMediaScreen(Screen):
 		try:
 			t_id = url.split('/')[-1].split('?')[0]
 			api_url = "https://api.fxtwitter.com/i/status/%s" % t_id
-			#logdata("FootOnSat-TWITTER", "API URL: %s" % api_url)
+			if debug_MatchMedia: logdata("MatchMedia", "API URL: %s" % api_url)
 			headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
 			r = requests.get(api_url, headers=headers, timeout=15, verify=False)
-			#logdata("FootOnSat-TWITTER", "Status Code: %d" % r.status_code)
+			if debug_MatchMedia: logdata("MatchMedia", "Status Code: %d" % r.status_code)
 			if r.status_code == 200:
 				data = r.json()
 				tweet = data.get('tweet', {})
@@ -2773,21 +2822,21 @@ class MatchMediaScreen(Screen):
 							diff = target_width - v_width
 							if diff < current_best_diff:
 								current_best_diff, best_link = diff, v_url
-					#logdata("FootOnSat-TWITTER", "Stream Found: %s" % str(best_link))
+					if debug_MatchMedia: logdata("MatchMedia", "Stream Found: %s" % str(best_link))
 					if not isinstance(best_link, str):
 						best_link = best_link.encode('utf-8')
 					return best_link
 				else:
-					logdata("FootOnSat-TWITTER", "No videos in media")
+					if debug_MatchMedia: logdata("MatchMedia", "No videos in media")
 			return None
 		except Exception as e:
-			logdata("FootOnSat-TWITTER", "Exception: %s" % str(e))
+			if debug_MatchMedia: logdata("MatchMedia", "Exception: %s" % str(e))
 			return None
 
 	def playback_error(self, failure):
 		if hasattr(self, 'wait_dialog') and self.wait_dialog:
 			self.wait_dialog.close()
-		#logdata("playback_error_raw", str(failure))
+		if debug_MatchMedia: logdata("MatchMedia", "playback_error_raw : %s" % str(failure))
 		msg = _("Failed to extract video stream or link is broken.")
 		self.error_timer = eTimer()
 		if DreamOS():
@@ -2797,412 +2846,12 @@ class MatchMediaScreen(Screen):
 		self.error_timer.start(250, True)
 
 
-class FootOnSatNotif:
-	def __init__(self):
-		self.dialog = None
-
-	def startNotif(self, session):
-		self.dialog = session.instantiateDialog(FootOnsatNotifScreen)
-
-FootOnSatNotifDialog = FootOnSatNotif()
-
-class FootOnsatNotifScreen(Screen):
-	def __init__(self, session):
-		Screen.__init__(self, session)
-		self.skin = SKIN_FootOnsatNotif
-		self['match'] = Label()
-		self['message'] = Label()
-		self['compet'] = Pixmap()
-		self['flag1'] = Pixmap()
-		self['flag2'] = Pixmap()
-		self['live'] = Pixmap()
-		self.container = eConsoleAppContainer()
-		self.FootOnsatTimer = eTimer()
-		try:
-			self.FootOnsatTimer.timeout.get().append(self.checkforNotif)
-		except:
-			self.FootOnsatTimer_conn = self.FootOnsatTimer.timeout.connect(self.checkforNotif)
-		#self.FootOnsatTimer.start(15000)
-		# CRITICAL FIX: Reduce check interval to 1 second for near-exact timing
-		self.FootOnsatTimer.start(1000)
-		self.onhideTimer = eTimer()
-		try:
-			# CRITICAL CHANGE: Handler now points to the queue processor
-			self.onhideTimer.timeout.get().append(self._display_next_in_queue)
-		except:
-			self.onhideTimer_conn = self.onhideTimer.timeout.connect(self._display_next_in_queue)
-			
-		# --- ADDED STATE FOR SEQUENTIAL DISPLAY AND BUG FIX ---
-		self.matches_queue = []
-		self.is_displaying = False
-		self.is_checking = False
-
-	def _update_display_only(self, match, compet, team1, team2, message=None, allow_zap=True):
-		if not self.instance:
-			return
-
-		logdata("ZAP_DEBUG", "=== NOTIFICATION START ===")
-		logdata("ZAP_DEBUG", "Match: '%s'" % match)
-		
-		# 1. Handle non-breaking space (Py2/3 safe)
-		try:
-			normalized_search_key = match.replace(u'\xa0', u' ')
-		except:
-			normalized_search_key = match.replace('\xa0', ' ')
-			
-		# 2. Collapse all sequences of whitespace to a single space, strip edges, then remove ALL spaces
-		normalized_search_key = re.sub(r'\s+', ' ', normalized_search_key).strip()
-		normalized_search_key = normalized_search_key.replace(' ', '') # REMOVE ALL SPACES to match the saved key
-		# END FIX
-		
-		# Initialize zap_ref outside try block for scope
-		zap_ref = None
-		
-		# Only perform lookup if Zap is enabled by config AND the stage allows it
-		zap_enabled_by_config = config.plugins.FootOnSat.notify_zap.value in ("1", "2")
-		zap_allowed = zap_enabled_by_config and allow_zap 
-
-		if zap_allowed:
-			try:
-				# FIX! Use 'with' here to ensure the connection is closed
-				with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
-					c = conn.cursor()
-					
-					# Search for the fully normalized key (which has no spaces)
-					c.execute("SELECT ref FROM zap_channels WHERE match = ?", (normalized_search_key,))
-					row = c.fetchone()
-				# 'conn.close()' is now called automatically
-				
-				if row and row[0]:
-					zap_ref = eServiceReference(str(row[0]))
-					logdata("ZAP_DEBUG", "ZAP BY REFERENCE FOUND → %s (%s)" % (zap_ref.getName(), row[0]))
-				else:
-					logdata("ZAP_DEBUG", "No zap ref found (Search key: '%s')" % normalized_search_key)
-					
-			except Exception as e:
-				logdata("ZAP_DEBUG", "ZAP LOOKUP ERROR: %s" % str(e))
-				zap_ref = None # Ensure it is None on error
-
-		# 🔥 CORRECTED FEATURE LOGIC START
-		
-		if config.plugins.FootOnSat.notify_zap.value == "2":
-			# Case: Zap Only mode. Must suppress notification by NOT calling _do_actual_display.
-			if zap_ref:
-				# Zap channel found: Execute Zap immediately with sound.
-				self._play_tone() 
-				time.sleep(2.0)
-				InfoBar.instance.session.nav.playService(zap_ref)
-				InfoBar.instance.servicelist.addToHistory(zap_ref)
-				logdata("ZAP_DEBUG", "playService called — channel switching...")
-			else:
-				# No Zap channel found: Do nothing. (NO ACTION, NO SOUND)
-				logdata("ZAP_DEBUG", "Zap only mode (Option 2) selected. No Zap channel found, skipping notification and zap.")
-			
-			# Notification is suppressed: Manually advance queue and RETURN
-			self._display_next_in_queue()
-			logdata("ZAP_DEBUG", "=== NOTIFICATION END ===\n")
-			return # Exit to prevent calling _do_actual_display
-		
-		# Default path (Option "1" or Zap disabled): Proceed to display the notification
-		self._do_actual_display(match, compet, team1, team2, message, zap_ref=zap_ref)
-
-	def _do_actual_display(self, match, compet, team1, team2, message=None, zap_ref=None):
-		"""Show notification popup and execute Zap AFTER a 2.0s delay if a channel is found."""
-		if not self.instance:
-			logdata("ZAP_DEBUG", "Cannot show popup – no instance")
-			return
-
-		logdata("ZAP_DEBUG", "SHOWING NOTIFICATION POPUP: %s" % match)
-		if message:
-			logdata("ZAP_DEBUG", "Message: %s" % message)
-
-		self['match'].setText(str(match))
-		if message:
-			self['live'].hide()
-			self['message'].setText(str(message))
-		else:
-			self['live'].show()
-			self['message'].setText("")
-
-		banner = FootOnSat.setCompet(compet.lower())
-		self['compet'].instance.setPixmapFromFile(banner)
-
-		flag1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/%s.png" % team1)
-		flag2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/%s.png" % team2)
-		default_flag = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/default.png")
-
-		self['flag1'].instance.setPixmapFromFile(str(flag1 if fileExists(flag1) else default_flag))
-		self['flag2'].instance.setPixmapFromFile(str(flag2 if fileExists(flag2) else default_flag))
-
-		# 🔥 Play sound now, tied to the notification display (Option "1")
-		self._play_tone() 
-
-		FootOnSatNotifDialog.dialog.show()
-		logdata("ZAP_DEBUG", "NOTIFICATION POPUP IS NOW VISIBLE")
-		
-		# 🔥 Perform the Zap and Delay HERE for option "1"
-		if zap_ref:
-			try:
-				# 👇 DELAY HERE to let the user see/hear the notification FIRST
-				time.sleep(2.0)
-				logdata("ZAP_DEBUG", "Delay finished, executing Zap.")
-				InfoBar.instance.session.nav.playService(zap_ref)
-				InfoBar.instance.servicelist.addToHistory(zap_ref)
-				logdata("ZAP_DEBUG", "playService called — channel switching...")
-
-			except Exception as e:
-				logdata("ZAP_DEBUG", "ZAP EXECUTION ERROR: %s" % str(e))
-		else:
-			logdata("ZAP_DEBUG", "Zap not required.")
-
-		logdata("ZAP_DEBUG", "=== NOTIFICATION END ===\n")
-
-	def _display_next_in_queue(self):
-		"""Pulls the next match from the queue, displays it, and schedules the next display or hides the dialog."""
-		
-		self.onhideTimer.stop() 
-		
-		if not self.matches_queue:
-			# Queue is empty: End of sequence, hide the dialog.
-			self.hideNotif() 
-			return
-
-		# Get the next match to display
-		match_data = self.matches_queue.pop(0)
-		allow_zap = match_data.get('allow_zap', True)
-
-		# Display the current match info 
-		self._update_display_only(
-			match_data['match'], 
-			match_data['compet'], 
-			match_data['team1'], 
-			match_data['team2'], 
-			match_data['message'],
-			allow_zap=allow_zap
-		)
-		
-		COMPENSATION_MS = 3000
-		notification_seconds = config.plugins.FootOnSat.notiftime.value
-		notification_milliseconds = notification_seconds * 1000
-		compensated_milliseconds = notification_milliseconds + COMPENSATION_MS
-		if compensated_milliseconds < 1000:
-			compensated_milliseconds = 1000
-		if self.matches_queue:
-			# Start timer with compensated value
-			self.onhideTimer.start(compensated_milliseconds)
-		else:
-			# Start final timer with compensated value
-			self.onhideTimer.start(compensated_milliseconds)
-
-	def _play_tone(self):
-		"""Plays the notification tone."""
-		from .launcher import MenuFootOnSat
-		tone_file = MenuFootOnSat.getToneFile()
-		if exists("/usr/bin/aplay"):
-			os.system('aplay "{}" &'.format(tone_file))
-		elif exists("/usr/bin/gst-launch-1.0"):
-			os.system('(gst-launch-1.0 -q --no-fault filesrc location="{}" ! wavparse ! audioconvert ! audioresample ! alsasink > /dev/null 2>&1 &) &'.format(tone_file))
-		else:
-			logdata("FootOnSatNotif", "No supported sound player found (aplay/gst-launch).")
-
-	def _start_sequential_display(self):
-		"""Starts the sequential display process if not already running."""
-		if self.is_displaying:
-			return
-
-		self.is_displaying = True
-		# Sound logic has been MOVED to _play_tone() and is called when action is confirmed.
-			
-		# Start the sequential timer to immediately process the first item
-		self.onhideTimer.start(10)
-
-	def checkforNotif(self):
-		
-		# --- CRITICAL FIX: Re-entry Lock ---
-		if self.is_checking:
-			return
-		self.is_checking = True
-
-		try:
-			if fileExists(join(PLUGINPATH, "db/footonsat.db")):
-				self.deloldRecords()
-				with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
-					cur = conn.cursor()
-					rows = cur.execute("select * from LIVE_NOTIF")
-					rows = rows.fetchall()
-					now = datetime.strptime(datetime.now().strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M")
-					
-					# Get the user's notification choice ONCE per timer tick
-					user_choice = config.plugins.FootOnSat.notify.value
-					
-					if len(rows) > 0:
-						for row in rows:
-							match_name = row[0]
-							first_notif_str = row[5]
-							first_notif_time = datetime.strptime(first_notif_str, "%H:%M - %Y-%m-%d")
-							match_time_obj = datetime.strptime(row[2], "%H:%M - %Y-%m-%d")
-
-							# --- Check if the current scheduled reminder time is NOW ---
-							if now == first_notif_time:
-								
-								time_diff_minutes = int((match_time_obj - first_notif_time).total_seconds() / 60)
-								
-								if time_diff_minutes == 30:
-									# --- Stage 1: 30 Minute Reminder ---
-									
-									# 1a. Trigger Notification if option includes 30 min (1, 4, 6, 7)
-									if user_choice in ("1", "4", "6", "7"):
-										# Zap NOT allowed here
-										self.notify(match_name.strip(), row[1], row[3], row[4], row[8], allow_zap=False)
-									
-									# 1b. Determine Next Notification Time & Message
-									if user_choice in ("1", "3", "5", "7"):
-										# Next notification should be 15 min
-										message_next = "Kick-off in 15 minutes"
-										notif_next_time = (match_time_obj - timedelta(minutes=15)).strftime("%H:%M - %Y-%m-%d")
-									elif user_choice in ("2", "6"):
-										# Next notification should be start time
-										message_next = "Kick-off is NOW"
-										notif_next_time = match_time_obj.strftime("%H:%M - %Y-%m-%d")
-									else:
-										# No more notifications required for this choice (e.g., choice 4: 30 min only)
-										message_next = "Notifications Done"
-										# Set next time to 1 minute after match start for guaranteed cleanup
-										notif_next_time = (match_time_obj + timedelta(minutes=1)).strftime("%H:%M - %Y-%m-%d")
-									
-									# 1c. Update Database for next stage
-									cur.execute("UPDATE LIVE_NOTIF set FIRST_NOTIF = ?, MESSAGE = ? WHERE MATCH = ?", (notif_next_time, message_next, match_name,))
-									#logdata("FootOnSatNotif", "TRIGGER: 30-min Notif for %s. Next: %s" % (match_name, message_next))
-									continue
-
-								elif time_diff_minutes == 15:
-									# --- Stage 2: 15 Minute Reminder ---
-									
-									# 2a. Trigger Notification if option includes 15 min (1, 3, 5, 7)
-									if user_choice in ("1", "3", "5", "7"):
-										# Zap NOT allowed here
-										self.notify(match_name.strip(), row[1], row[3], row[4], row[8], allow_zap=False)
-									
-									# 2b. Determine Next Notification Time & Message
-									if user_choice in ("1", "2", "5", "6"):
-										# Next notification should be start time
-										message_next = "Kick-off is NOW"
-										notif_next_time = match_time_obj.strftime("%H:%M - %Y-%m-%d")
-									else:
-										# No more notifications required for this choice (e.g., choice 3, 7)
-										message_next = "Notifications Done"
-										# Set next time to 1 minute after match start for guaranteed cleanup
-										notif_next_time = (match_time_obj + timedelta(minutes=1)).strftime("%H:%M - %Y-%m-%d")
-										
-									# 2c. Update Database for next stage
-									cur.execute("UPDATE LIVE_NOTIF set FIRST_NOTIF = ?, MESSAGE = ? WHERE MATCH = ?", (notif_next_time, message_next, match_name,))
-									#logdata("FootOnSatNotif", "TRIGGER: 15-min Notif for %s. Next: %s" % (match_name, message_next))
-									continue
-
-								elif time_diff_minutes <= 1:
-									# --- Stage 3: Match Start Notification ---
-									
-									# 3a. Trigger Notification if option includes Start (1, 2, 5, 6)
-									if user_choice in ("1", "2", "5", "6"):
-										# Zap IS allowed here
-										self.notify(match_name.strip(), row[1], row[3], row[4], allow_zap=True)
-										#logdata("FootOnSatNotif", "TRIGGER: Match Start Notif and DB delete for match: %s" % match_name)
-									else:
-										# Log deletion without triggering final notification
-										#logdata("FootOnSatNotif", "CLEANUP: Deleting record after final stage for match: %s (No Start Notif)" % match_name)
-										pass
-										
-									# 3b. Delete the record regardless of the notification choice
-									cur.execute("DELETE FROM LIVE_NOTIF WHERE MATCH = ?", (match_name,))
-									continue
-					conn.commit()
-
-		except Exception as e:
-			logdata("FootOnSatNotif", "ERROR in checkforNotif: %s" % str(e))
-		
-		finally:
-			if 'gc' in sys.modules and sys.version_info >= (3, 14):  # Checks if the 'gc' (Garbage Collector) module is available and loaded.
-				gc.collect()         # Forces immediate cleanup of unreferenced objects and file handles.
-			self.is_checking = False # Reset the lock ensures it can run again later
-
-	def deloldRecords(self):
-		if not fileExists(join(PLUGINPATH, "db/footonsat.db")):
-			return
-			
-		with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
-			cur = conn.cursor()
-			# row[0]=MATCH, row[1]=COMPET, row[2]=DATE
-			rows = cur.execute("select * from LIVE_NOTIF")
-			rows = rows.fetchall()
-			
-			# Note: All necessary modules (datetime, timedelta, re) are available globally
-			now = datetime.strptime(datetime.now().strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M") 
-			if len(rows) > 0:
-				for row in rows:
-					match_name = row[0] 
-					compet_name = row[1] # Reliable field 
-					date_string = row[2] # Reliable field
-					try:
-						# row[2] format: "HH:MM - YYYY-MM-DD"
-						record_date = datetime.strptime(date_string, "%H:%M - %Y-%m-%d")
-						cleanup_time = record_date + timedelta(minutes=1)
-						
-						if now > cleanup_time:
-							
-							# 1. Prepare the key for the ZAP_CHANNELS table (fully cleaned key)
-							# This uses the same logic used during the save/lookup
-							normalized_zap_key = match_name.replace(u'\xa0', u' ')
-							normalized_zap_key = re.sub(r'\s+', ' ', normalized_zap_key).strip()
-							normalized_zap_key = normalized_zap_key.replace(' ', '')
-							
-							# 2. CRITICAL FIX: Delete from LIVE_NOTIF using a reliable composite key (COMPET and DATE).
-							# This bypasses the unreliable MATCH primary key string lookup and guarantees deletion.
-							cur.execute("DELETE FROM LIVE_NOTIF WHERE COMPET = ? AND DATE = ?", (compet_name, date_string,))
-							
-							# 3. Delete from zap_channels using the cleaned key
-							cur.execute("DELETE FROM zap_channels WHERE match = ?", (normalized_zap_key,))
-							
-							logdata("FootOnSatNotif", "CLEANUP SUCCESSFUL: Deleted LIVE_NOTIF and zap_channels for match: %s" % match_name)
-
-					except Exception as e:
-						logdata("FootOnSatNotif", "Error during record cleanup (%s): %s" % (date_string, str(e)))
-			conn.commit()
-
-	def notify(self, match, compet, team1, team2, message=None, allow_zap=True):
-		"""
-		[USER REQUESTED CHANGE] Now queues the notification and starts a sequential display timer.
-		It respects the single-call nature of checkforNotif's loop but delivers the output sequentially.
-		"""
-		if self.instance and FootOnSatNotifDialog.dialog is not None:
-			# 1. Package the match details
-			match_data = {
-				'match': match.strip(), 
-				'compet': compet, 
-				'team1': team1, 
-				'team2': team2, 
-				'message': message,
-				'allow_zap': allow_zap,
-			}
-			
-			# 2. Add to queue
-			self.matches_queue.append(match_data)
-
-			# 3. Start the sequential display process if it's not already running
-			self._start_sequential_display()
-
-	def hideNotif(self):
-		"""Standard hide function used by the queue processor."""
-		self.is_displaying = False
-		FootOnSatNotifDialog.dialog.hide()
-
-
 class StandingsScreen(Screen):
 	def __init__(self, session, league, url):
 		self.session = session
 		Screen.__init__(self, session)
-		#logdata("StandingsScreen_init", "Initializing StandingsScreen for league: %s, url: %s" % (league, url))
+		if debug_Standings: logdata("StandingsScreen_init", "Initializing StandingsScreen for league: %s, url: %s" % (league, url))
 		self.league = str(league)
-		print("self.league: %s" % self.league)
 		self.url = str(url)
 		self.league = str(league).lower()
 		if self.league in ("basketball", "nba", "nfl"):
@@ -3278,11 +2927,12 @@ class StandingsScreen(Screen):
 				season_id = parsed_url.fragment.split(':')[-1]
 			
 		except Exception as e:
-			logdata("StandingsScreen", "ERROR during URL parsing: %s" % str(e))
+			if debug_Standings: logdata("StandingsScreen", "ERROR during URL parsing: %s" % str(e))
+			pass
 			#trace_error()
 			
 		if not tournament_id or not season_id or not tournament_id.isdigit() or not season_id.isdigit():
-			#logdata("StandingsScreen", "CRITICAL ERROR: Failed to extract numeric IDs. T-ID:'%s', S-ID:'%s'." % (tournament_id, season_id))
+			if debug_Standings: logdata("StandingsScreen", "CRITICAL ERROR: Failed to extract numeric IDs. T-ID:'%s', S-ID:'%s'." % (tournament_id, season_id))
 			self.standings_data = []
 			self.display_standings()
 			return
@@ -3297,7 +2947,7 @@ class StandingsScreen(Screen):
 				tournament_id, season_id
 			)
 			
-		#logdata("StandingsScreen", "Using SofaScore API URL: %s" % api_url)
+		if debug_Standings: logdata("StandingsScreen", "Using SofaScore API URL: %s" % api_url)
 		AGENT = b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
 
 		# =================================================================
@@ -3308,12 +2958,12 @@ class StandingsScreen(Screen):
 			try:
 				sniFactory = WebClientContextFactory(api_url)
 			except Exception as e:
-				#logdata("StandingsScreen", "Failed to create WebClientContextFactory: %s" % str(e))
+				if debug_Standings: logdata("StandingsScreen", "Failed to create WebClientContextFactory: %s" % str(e))
 				self.display_standings()
 				return
 
 			# DEBUG: Log the attempt
-			#logdata("StandingsScreen", "Attempting fetch (Twisted/SNI FIX) for API: %s" % api_url)
+			if debug_Standings: logdata("StandingsScreen", "Attempting fetch (Twisted/SNI FIX) for API: %s" % api_url)
 
 			# Fetch using Twisted's getPage
 			# Add headers for robust 403 prevention on older Twisted versions
@@ -3337,11 +2987,11 @@ class StandingsScreen(Screen):
 				import requests
 				import random
 			except ImportError as e:
-				#logdata("StandingsScreen", "CRITICAL ERROR: Python 2 requires 'requests' and 'deferToThread': %s" % str(e))
+				if debug_Standings: logdata("StandingsScreen", "CRITICAL ERROR: Python 2 requires 'requests' and 'deferToThread': %s" % str(e))
 				self.display_standings()
 				return None
 
-			#logdata("StandingsScreen", "Attempting fetch (Py2 Requests FIX) for API: %s" % api_url)
+			if debug_Standings: logdata("StandingsScreen", "Attempting fetch (Py2 Requests FIX) for API: %s" % api_url)
 			
 			# --- Headers/UA for Py2 consistency/403 bypass ---
 			USER_AGENTS = [
@@ -3366,7 +3016,7 @@ class StandingsScreen(Screen):
 					# Twisted expects a deferred result, which is the raw content
 					return r.content 
 				except Exception as e:
-					#logdata("StandingsScreen", "Python 2 Requests fetch failed: %s" % str(e))
+					if debug_Standings: logdata("StandingsScreen", "Python 2 Requests fetch failed: %s" % str(e))
 					# Raise to trigger the deferred errback
 					raise Exception("SofaScore fetch failed: %s" % str(e))
 
@@ -3384,10 +3034,9 @@ class StandingsScreen(Screen):
 			# Decode and parse JSON (raw_json_content is bytes from getPage)
 			json_data = raw_json_content.decode('utf-8', errors='ignore')
 			data = json.loads(json_data)
-			#logdata("StandingsScreen", "JSON data fetched and parsed successfully.")
 
 			if 'standings' not in data or not data['standings']:
-				#logdata("StandingsScreen", "No 'standings' data found in JSON response.")
+				if debug_Standings: logdata("StandingsScreen", "No 'standings' data found in JSON response.")
 				self.standings_data = []
 				self.display_standings()
 				return
@@ -3488,7 +3137,7 @@ class StandingsScreen(Screen):
 			self.display_standings()
 
 		except Exception as e:
-			logdata("StandingsScreen", "Failed to parse JSON for API %s: %s" % (api_url, str(e)))
+			if debug_Standings: logdata("StandingsScreen", "Failed to parse JSON for API %s: %s" % (api_url, str(e)))
 			#trace_error()
 			self.standings_data = []
 			self.display_standings()
@@ -3496,7 +3145,7 @@ class StandingsScreen(Screen):
 	def _standing_error_handler(self, failure, url):
 		# This handles errors from getPage (e.g., Timeout, 403, DNS errors)
 		error_message = failure.getErrorMessage()
-		#logdata("StandingsScreen", "Twisted Fetch Error on %s: %s" % (url, error_message))
+		if debug_Standings: logdata("StandingsScreen", "Twisted Fetch Error on %s: %s" % (url, error_message))
 		self.standings_data = []
 		self.display_standings() # Display empty standings
 
@@ -3568,7 +3217,7 @@ class StandingsScreen(Screen):
 						'Origin': 'https://www.sofascore.com',   # CRITICAL
 					}
 					# === PYTHON 2 FIX: Use Requests/deferToThread to bypass 403 ===
-					#logdata("Logos", "Starting Requests download for logo: %s (PY2 FIX)" % team_name)
+					#if debug_Standings: logdata("Logos", "Starting Requests download for logo: %s (PY2 FIX)" % team_name)
 					
 					# Use headers in Py2 format (single strings)
 					py2_headers = {
@@ -3585,7 +3234,7 @@ class StandingsScreen(Screen):
 					
 					# === CRITICAL FIX: Ensure it’s actually image data (not HTML 403 page) ===
 					if not (data.startswith(b'\x89PNG') or data.startswith(b'\xff\xd8') or data.startswith(b'GIF')):
-						#logdata("Logos", "ERROR: Downloaded content for '%s' is not an image (probably 403 HTML page)." % team_name)
+						if debug_Standings: logdata("Logos", "ERROR: Downloaded content for '%s' is not an image (probably 403 HTML page)." % team_name)
 						return False
 						
 					# Save the raw file content to the temporary location
@@ -3596,29 +3245,29 @@ class StandingsScreen(Screen):
 				if ext == ".png":
 					# If already PNG, just copy the file from /tmp to the final .png path
 					shutil.copyfile(temp_file, filename_png)
-					#logdata("Logos", "Successfully saved PNG logo for '%s'." % team_name)
+					if debug_Standings: logdata("Logos", "Successfully saved PNG logo for '%s'." % team_name)
 					success = True
 				elif PIL_AVAILABLE:
 					# --- PIL CONVERSION LOGIC ---
 					try:
 						img = Image.open(temp_file)
-						#logdata("img", "Downloading logo for '%s'" % img)
+						if debug_Standings: logdata("img", "Downloading logo for '%s'" % img)
 						# Handle potential transparent GIF/JPG by converting to RGBA
 						if img.mode not in ('RGB', 'RGBA'):
 							img = img.convert('RGBA')
 
 						img.save(filename_png, 'PNG')
-						#logdata("Logos", "Converted and saved %s logo for '%s' to PNG via PIL." % (ext[1:].upper(), team_name))
+						if debug_Standings: logdata("Logos", "Converted and saved %s logo for '%s' to PNG via PIL." % (ext[1:].upper(), team_name))
 						success = True
 					except Exception as e:
-						logdata("Logos", "PIL conversion FAILED for %s: %s" % (team_name, str(e)))
+						if debug_Standings: logdata("Logos", "PIL conversion FAILED for %s: %s" % (team_name, str(e)))
 						#trace_error() # Include trace for better debugging
 						# Fallback to simple copy if PIL fails (e.g., corrupted file)
 						shutil.copyfile(temp_file, filename_png)
 						success = True # Still logged as found
 				else:
 					# --- NO PIL FALLBACK (Will cause display error) ---
-					#logdata("Logos", "WARNING: PIL not available, saving raw %s data as PNG file for '%s'." % (ext[1:].upper(), team_name))
+					if debug_Standings: logdata("Logos", "WARNING: PIL not available, saving raw %s data as PNG file for '%s'." % (ext[1:].upper(), team_name))
 					shutil.copyfile(temp_file, filename_png)
 					success = True
 
@@ -3629,23 +3278,24 @@ class StandingsScreen(Screen):
 				return success
 					
 			except Exception as e:
-				logdata("Logos", "Failed to download/process logo for %s: %s" % (team_name, str(e)))
+				if debug_Standings: logdata("Logos", "Failed to download/process logo for %s: %s" % (team_name, str(e)))
 				#trace_error()
 				return False
 			finally:
 				# Ensure cleanup regardless of success/failure
 				if exists(temp_file):
 					os.remove(temp_file)
-		#logdata("Logos", "Starting check for league: %s" % self.league)
+
+		if debug_Standings: logdata("Logos", "Starting check for league: %s" % self.league)
 
 		# Ensure standings folder exists
 		standings_dir = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/standings/")
 		if not exists(standings_dir):
 			try:
 				os.makedirs(standings_dir)
-				#logdata("Logos", "Created standings folder: %s" % standings_dir)
+				if debug_Standings: logdata("Logos", "Created standings folder: %s" % standings_dir)
 			except Exception as e:
-				#logdata("Logos", "Failed to create standings folder %s: %s" % (standings_dir, str(e)))
+				if debug_Standings: logdata("Logos", "Failed to create standings folder %s: %s" % (standings_dir, str(e)))
 				return
 
 		# Get list of teams and their primary logo URLs from fetch_standings
@@ -3700,7 +3350,7 @@ class StandingsScreen(Screen):
 		if logos_found < total_teams:
 			primary_backup_url = log_urls.get(self.league)
 			if primary_backup_url:
-				#logdata("Logos", "Phase 2 (Worldfootball): Scraping primary backup site (%s) for missing logos..." % primary_backup_url)
+				if debug_Standings: logdata("Logos", "Phase 2 (Worldfootball): Scraping primary backup site (%s) for missing logos..." % primary_backup_url)
 				try:
 					missing_logos = any(not team["found"] for team in teams_to_process)
 					if missing_logos:
@@ -3746,7 +3396,7 @@ class StandingsScreen(Screen):
 							# Fuzzy match against the normalized scraped titles (STRICT CUTOFF = 0.90)
 							team_match = difflib.get_close_matches(team_to_search, normalized_targets, n=1, cutoff=0.90)
 							
-							#logdata("Logos", "Phase 2 Fuzzy Search for: '%s' (Normalized: '%s'). Match: %s" % (team_info["original_name"], team_to_search, team_match))
+							if debug_Standings: logdata("Logos", "Phase 2 Fuzzy Search for: '%s' (Normalized: '%s'). Match: %s" % (team_info["original_name"], team_to_search, team_match))
 
 							if team_match:
 								normalized_matched_title = team_match[0]
@@ -3762,18 +3412,19 @@ class StandingsScreen(Screen):
 									if download_and_save_logo(team_info["original_name"], logo_url, headers, self.league):
 										team_info["found"] = True
 										logos_found += 1 # Critical counter update
-										#logdata("Logos", "Found logo for '%s' using match to '%s' (worldfootball)." % (team_info["original_name"], original_title))
+										if debug_Standings: logdata("Logos", "Found logo for '%s' using match to '%s' (worldfootball)." % (team_info["original_name"], original_title))
 
 				except Exception as e:
-					#logdata("Logos", "Error fetching from primary backup site %s -> %s" % (primary_backup_url, str(e)))
+					if debug_Standings: logdata("Logos", "Error fetching from primary backup site %s -> %s" % (primary_backup_url, str(e)))
 					pass
 		
 		# Final log of any still missing teams
-		for team_info in teams_to_process:
-			if not team_info["found"]:
-				logdata("Logos", "MISSING FINAL logo for team: '%s'" % team_info["original_name"])
+		if debug_Standings:
+			for team_info in teams_to_process:
+				if not team_info["found"]:
+					logdata("Logos", "MISSING FINAL logo for team: '%s'" % team_info["original_name"])
 
-		#logdata("Logos", "Completed check_and_download_logos(), total logos found: %d" % logos_found)
+		#if debug_Standings: logdata("Logos", "Completed check_and_download_logos(), total logos found: %d" % logos_found)
 
 
 	def display_standings(self):
@@ -3989,3 +3640,399 @@ class StandingsScreen(Screen):
 		else:
 			#logdata("display_standings", "Displaying standings, total entries: %d" % len(gList))
 			pass
+
+
+class FootOnSatNotif:
+	def __init__(self):
+		self.dialog = None
+
+	def startNotif(self, session):
+		self.dialog = session.instantiateDialog(FootOnsatNotifScreen)
+
+FootOnSatNotifDialog = FootOnSatNotif()
+
+class FootOnsatNotifScreen(Screen):
+	def __init__(self, session):
+		Screen.__init__(self, session)
+		self.skin = SKIN_FootOnsatNotif
+		if debug_Notif: logdata("NotifScreen", "Initializing NotifScreen")
+		self['match'] = Label()
+		self['message'] = Label()
+		self['compet'] = Pixmap()
+		self['flag1'] = Pixmap()
+		self['flag2'] = Pixmap()
+		self['live'] = Pixmap()
+		self.container = eConsoleAppContainer()
+		self.FootOnsatTimer = eTimer()
+		try:
+			self.FootOnsatTimer.timeout.get().append(self.checkforNotif)
+		except:
+			self.FootOnsatTimer_conn = self.FootOnsatTimer.timeout.connect(self.checkforNotif)
+		#self.FootOnsatTimer.start(15000)
+		# CRITICAL FIX: Reduce check interval to 1 second for near-exact timing
+		self.FootOnsatTimer.start(1000)
+		self.onhideTimer = eTimer()
+		try:
+			# CRITICAL CHANGE: Handler now points to the queue processor
+			self.onhideTimer.timeout.get().append(self._display_next_in_queue)
+		except:
+			self.onhideTimer_conn = self.onhideTimer.timeout.connect(self._display_next_in_queue)
+			
+		# --- ADDED STATE FOR SEQUENTIAL DISPLAY AND BUG FIX ---
+		self.matches_queue = []
+		self.is_displaying = False
+		self.is_checking = False
+
+	def _update_display_only(self, match, compet, team1, team2, message=None, allow_zap=True):
+		if not self.instance:
+			return
+		
+		# 1. Handle non-breaking space (Py2/3 safe)
+		try:
+			normalized_search_key = match.replace(u'\xa0', u' ')
+		except:
+			normalized_search_key = match.replace('\xa0', ' ')
+			
+		# 2. Collapse all sequences of whitespace to a single space, strip edges, then remove ALL spaces
+		normalized_search_key = re.sub(r'\s+', ' ', normalized_search_key).strip()
+		normalized_search_key = normalized_search_key.replace(' ', '') # REMOVE ALL SPACES to match the saved key
+		# END FIX
+		
+		# Initialize zap_ref outside try block for scope
+		zap_ref = None
+		
+		# Only perform lookup if Zap is enabled by config AND the stage allows it
+		zap_enabled_by_config = config.plugins.FootOnSat.notify_zap.value in ("1", "2")
+		zap_allowed = zap_enabled_by_config and allow_zap 
+
+		if zap_allowed:
+			try:
+				# FIX! Use 'with' here to ensure the connection is closed
+				with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
+					c = conn.cursor()
+					
+					# Search for the fully normalized key (which has no spaces)
+					c.execute("SELECT ref FROM zap_channels WHERE match = ?", (normalized_search_key,))
+					row = c.fetchone()
+				# 'conn.close()' is now called automatically
+				
+				if row and row[0]:
+					zap_ref = eServiceReference(str(row[0]))
+					if debug_Notif: logdata("ZAP_DEBUG", "ZAP BY REFERENCE FOUND → %s (%s)" % (zap_ref.getName(), row[0]))
+				else:
+					if debug_Notif: logdatalogdata("ZAP_DEBUG", "No zap ref found (Search key: '%s')" % normalized_search_key)
+					pass
+			except Exception as e:
+				if debug_Notif: logdata("ZAP_DEBUG", "ZAP LOOKUP ERROR: %s" % str(e))
+				zap_ref = None # Ensure it is None on error
+
+		# 🔥 CORRECTED FEATURE LOGIC START
+		
+		if config.plugins.FootOnSat.notify_zap.value == "2":
+			# Case: Zap Only mode. Must suppress notification by NOT calling _do_actual_display.
+			if zap_ref:
+				# Zap channel found: Execute Zap immediately with sound.
+				if debug_zap: logdata("Notification", "Zap Only mode: Executing Zap to %s" % str(zap_ref))
+				self._play_tone() 
+				time.sleep(2.0)
+				InfoBar.instance.session.nav.playService(zap_ref)
+				InfoBar.instance.servicelist.addToHistory(zap_ref)
+			else:
+				# No Zap channel found: Do nothing. (NO ACTION, NO SOUND)
+				if debug_zap: logdata("Notification", "Zap Only mode: No zap channel found, skipping.")
+				pass
+			
+			# Notification is suppressed: Manually advance queue and RETURN
+			self._display_next_in_queue()
+			return # Exit to prevent calling _do_actual_display
+		
+		# Default path (Option "1" or Zap disabled): Proceed to display the notification
+		self._do_actual_display(match, compet, team1, team2, message, zap_ref=zap_ref)
+
+	def _do_actual_display(self, match, compet, team1, team2, message=None, zap_ref=None):
+		"""Show notification popup and execute Zap AFTER a 2.0s delay if a channel is found."""
+		if not self.instance:
+			return
+
+		if message:
+			if debug_Notif: logdata("ZAP_DEBUG", "Message: %s" % message)
+			pass
+
+		self['match'].setText(str(match))
+		if message:
+			self['live'].hide()
+			self['message'].setText(str(message))
+		else:
+			self['live'].show()
+			self['message'].setText("")
+
+		banner = FootOnSat.setCompet(compet.lower())
+		self['compet'].instance.setPixmapFromFile(banner)
+
+		flag1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/%s.png" % team1)
+		flag2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/%s.png" % team2)
+		default_flag = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/default.png")
+
+		self['flag1'].instance.setPixmapFromFile(str(flag1 if fileExists(flag1) else default_flag))
+		self['flag2'].instance.setPixmapFromFile(str(flag2 if fileExists(flag2) else default_flag))
+
+		# Play sound now, tied to the notification display (Option "1")
+		self._play_tone() 
+
+		FootOnSatNotifDialog.dialog.show()
+		
+		# Perform the Zap and Delay HERE for option "1"
+		if zap_ref:
+			try:
+				# 👇 DELAY HERE to let the user see/hear the notification FIRST
+				time.sleep(2.0)
+				InfoBar.instance.session.nav.playService(zap_ref)
+				InfoBar.instance.servicelist.addToHistory(zap_ref)
+				if debug_Notif: logdata("ZAP_DEBUG", "playService called — channel switching...")
+			except Exception as e:
+				if debug_Notif: logdata("ZAP_DEBUG", "ZAP EXECUTION ERROR: %s" % str(e))
+				pass
+		else:
+			if debug_Notif: logdata("ZAP_DEBUG", "Zap not required.")
+			pass
+
+	def _display_next_in_queue(self):
+		"""Pulls the next match from the queue, displays it, and schedules the next display or hides the dialog."""
+		
+		self.onhideTimer.stop() 
+		
+		if not self.matches_queue:
+			# Queue is empty: End of sequence, hide the dialog.
+			self.hideNotif() 
+			return
+
+		# Get the next match to display
+		match_data = self.matches_queue.pop(0)
+		allow_zap = match_data.get('allow_zap', True)
+
+		# Display the current match info 
+		self._update_display_only(
+			match_data['match'], 
+			match_data['compet'], 
+			match_data['team1'], 
+			match_data['team2'], 
+			match_data['message'],
+			allow_zap=allow_zap
+		)
+		
+		COMPENSATION_MS = 3000
+		notification_seconds = config.plugins.FootOnSat.notiftime.value
+		notification_milliseconds = notification_seconds * 1000
+		compensated_milliseconds = notification_milliseconds + COMPENSATION_MS
+		if compensated_milliseconds < 1000:
+			compensated_milliseconds = 1000
+		if self.matches_queue:
+			# Start timer with compensated value
+			self.onhideTimer.start(compensated_milliseconds)
+		else:
+			# Start final timer with compensated value
+			self.onhideTimer.start(compensated_milliseconds)
+
+	def _play_tone(self):
+		"""Plays the notification tone."""
+		from .launcher import MenuFootOnSat
+		tone_file = MenuFootOnSat.getToneFile()
+		if exists("/usr/bin/aplay"):
+			os.system('aplay "{}" &'.format(tone_file))
+		elif exists("/usr/bin/gst-launch-1.0"):
+			os.system('(gst-launch-1.0 -q --no-fault filesrc location="{}" ! wavparse ! audioconvert ! audioresample ! alsasink > /dev/null 2>&1 &) &'.format(tone_file))
+		else:
+			if debug_Notif: logdata("FootOnSatNotif", "No supported sound player found (aplay/gst-launch).")
+			pass
+
+	def _start_sequential_display(self):
+		"""Starts the sequential display process if not already running."""
+		if self.is_displaying:
+			return
+
+		self.is_displaying = True
+		# Sound logic has been MOVED to _play_tone() and is called when action is confirmed.
+			
+		# Start the sequential timer to immediately process the first item
+		self.onhideTimer.start(10)
+
+	def checkforNotif(self):
+		
+		# --- CRITICAL FIX: Re-entry Lock ---
+		if self.is_checking:
+			return
+		self.is_checking = True
+
+		try:
+			if fileExists(join(PLUGINPATH, "db/footonsat.db")):
+				self.deloldRecords()
+				with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
+					cur = conn.cursor()
+					rows = cur.execute("select * from LIVE_NOTIF")
+					rows = rows.fetchall()
+					now = datetime.strptime(datetime.now().strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M")
+					
+					# Get the user's notification choice ONCE per timer tick
+					user_choice = config.plugins.FootOnSat.notify.value
+					
+					if len(rows) > 0:
+						for row in rows:
+							match_name = row[0]
+							first_notif_str = row[5]
+							first_notif_time = datetime.strptime(first_notif_str, "%H:%M - %Y-%m-%d")
+							match_time_obj = datetime.strptime(row[2], "%H:%M - %Y-%m-%d")
+
+							# --- Check if the current scheduled reminder time is NOW ---
+							if now == first_notif_time:
+								
+								time_diff_minutes = int((match_time_obj - first_notif_time).total_seconds() / 60)
+								
+								if time_diff_minutes == 30:
+									# --- Stage 1: 30 Minute Reminder ---
+									
+									# 1a. Trigger Notification if option includes 30 min (1, 4, 6, 7)
+									if user_choice in ("1", "4", "6", "7"):
+										# Zap NOT allowed here
+										self.notify(match_name.strip(), row[1], row[3], row[4], row[8], allow_zap=False)
+									
+									# 1b. Determine Next Notification Time & Message
+									if user_choice in ("1", "3", "5", "7"):
+										# Next notification should be 15 min
+										message_next = "Kick-off in 15 minutes"
+										notif_next_time = (match_time_obj - timedelta(minutes=15)).strftime("%H:%M - %Y-%m-%d")
+									elif user_choice in ("2", "6"):
+										# Next notification should be start time
+										message_next = "Kick-off is NOW"
+										notif_next_time = match_time_obj.strftime("%H:%M - %Y-%m-%d")
+									else:
+										# No more notifications required for this choice (e.g., choice 4: 30 min only)
+										message_next = "Notifications Done"
+										# Set next time to 1 minute after match start for guaranteed cleanup
+										notif_next_time = (match_time_obj + timedelta(minutes=1)).strftime("%H:%M - %Y-%m-%d")
+									
+									# 1c. Update Database for next stage
+									cur.execute("UPDATE LIVE_NOTIF set FIRST_NOTIF = ?, MESSAGE = ? WHERE MATCH = ?", (notif_next_time, message_next, match_name,))
+									#if debug_Notif: logdata("FootOnSatNotif", "TRIGGER: 30-min Notif for %s. Next: %s" % (match_name, message_next))
+									continue
+
+								elif time_diff_minutes == 15:
+									# --- Stage 2: 15 Minute Reminder ---
+									
+									# 2a. Trigger Notification if option includes 15 min (1, 3, 5, 7)
+									if user_choice in ("1", "3", "5", "7"):
+										# Zap NOT allowed here
+										self.notify(match_name.strip(), row[1], row[3], row[4], row[8], allow_zap=False)
+									
+									# 2b. Determine Next Notification Time & Message
+									if user_choice in ("1", "2", "5", "6"):
+										# Next notification should be start time
+										message_next = "Kick-off is NOW"
+										notif_next_time = match_time_obj.strftime("%H:%M - %Y-%m-%d")
+									else:
+										# No more notifications required for this choice (e.g., choice 3, 7)
+										message_next = "Notifications Done"
+										# Set next time to 1 minute after match start for guaranteed cleanup
+										notif_next_time = (match_time_obj + timedelta(minutes=1)).strftime("%H:%M - %Y-%m-%d")
+										
+									# 2c. Update Database for next stage
+									cur.execute("UPDATE LIVE_NOTIF set FIRST_NOTIF = ?, MESSAGE = ? WHERE MATCH = ?", (notif_next_time, message_next, match_name,))
+									#if debug_Notif: logdata("FootOnSatNotif", "TRIGGER: 15-min Notif for %s. Next: %s" % (match_name, message_next))
+									continue
+
+								elif time_diff_minutes <= 1:
+									# --- Stage 3: Match Start Notification ---
+									
+									# 3a. Trigger Notification if option includes Start (1, 2, 5, 6)
+									if user_choice in ("1", "2", "5", "6"):
+										# Zap IS allowed here
+										self.notify(match_name.strip(), row[1], row[3], row[4], allow_zap=True)
+										if debug_Notif: logdata("FootOnSatNotif", "TRIGGER: Match Start Notif and DB delete for match: %s" % match_name)
+									else:
+										# Log deletion without triggering final notification
+										if debug_Notif: logdata("FootOnSatNotif", "CLEANUP: Deleting record after final stage for match: %s (No Start Notif)" % match_name)
+										pass
+										
+									# 3b. Delete the record regardless of the notification choice
+									cur.execute("DELETE FROM LIVE_NOTIF WHERE MATCH = ?", (match_name,))
+									continue
+					conn.commit()
+
+		except Exception as e:
+			if debug_Notif: logdata("FootOnSatNotif", "ERROR in checkforNotif: %s" % str(e))
+			pass
+		
+		finally:
+			if 'gc' in sys.modules and sys.version_info >= (3, 14):  # Checks if the 'gc' (Garbage Collector) module is available and loaded.
+				gc.collect()         # Forces immediate cleanup of unreferenced objects and file handles.
+			self.is_checking = False # Reset the lock ensures it can run again later
+
+	def deloldRecords(self):
+		if not fileExists(join(PLUGINPATH, "db/footonsat.db")):
+			return
+			
+		with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
+			cur = conn.cursor()
+			# row[0]=MATCH, row[1]=COMPET, row[2]=DATE
+			rows = cur.execute("select * from LIVE_NOTIF")
+			rows = rows.fetchall()
+			
+			# Note: All necessary modules (datetime, timedelta, re) are available globally
+			now = datetime.strptime(datetime.now().strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M") 
+			if len(rows) > 0:
+				for row in rows:
+					match_name = row[0] 
+					compet_name = row[1] # Reliable field 
+					date_string = row[2] # Reliable field
+					try:
+						# row[2] format: "HH:MM - YYYY-MM-DD"
+						record_date = datetime.strptime(date_string, "%H:%M - %Y-%m-%d")
+						cleanup_time = record_date + timedelta(minutes=1)
+						
+						if now > cleanup_time:
+							
+							# 1. Prepare the key for the ZAP_CHANNELS table (fully cleaned key)
+							# This uses the same logic used during the save/lookup
+							normalized_zap_key = match_name.replace(u'\xa0', u' ')
+							normalized_zap_key = re.sub(r'\s+', ' ', normalized_zap_key).strip()
+							normalized_zap_key = normalized_zap_key.replace(' ', '')
+							
+							# 2. CRITICAL FIX: Delete from LIVE_NOTIF using a reliable composite key (COMPET and DATE).
+							# This bypasses the unreliable MATCH primary key string lookup and guarantees deletion.
+							cur.execute("DELETE FROM LIVE_NOTIF WHERE COMPET = ? AND DATE = ?", (compet_name, date_string,))
+							
+							# 3. Delete from zap_channels using the cleaned key
+							cur.execute("DELETE FROM zap_channels WHERE match = ?", (normalized_zap_key,))
+							
+							if debug_Notif: logdata("FootOnSatNotif", "CLEANUP SUCCESSFUL: Deleted LIVE_NOTIF and zap_channels for match: %s" % match_name)
+
+					except Exception as e:
+						if debug_Notif: logdata("FootOnSatNotif", "Error during record cleanup (%s): %s" % (date_string, str(e)))
+						pass
+			conn.commit()
+
+	def notify(self, match, compet, team1, team2, message=None, allow_zap=True):
+		"""
+		[USER REQUESTED CHANGE] Now queues the notification and starts a sequential display timer.
+		It respects the single-call nature of checkforNotif's loop but delivers the output sequentially.
+		"""
+		if self.instance and FootOnSatNotifDialog.dialog is not None:
+			# 1. Package the match details
+			match_data = {
+				'match': match.strip(), 
+				'compet': compet, 
+				'team1': team1, 
+				'team2': team2, 
+				'message': message,
+				'allow_zap': allow_zap,
+			}
+			
+			# 2. Add to queue
+			self.matches_queue.append(match_data)
+
+			# 3. Start the sequential display process if it's not already running
+			self._start_sequential_display()
+
+	def hideNotif(self):
+		"""Standard hide function used by the queue processor."""
+		self.is_displaying = False
+		FootOnSatNotifDialog.dialog.hide()

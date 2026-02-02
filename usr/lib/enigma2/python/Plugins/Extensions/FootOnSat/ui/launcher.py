@@ -24,6 +24,8 @@ from Plugins.Extensions.FootOnSat.__init__ import __version__
 
 VER = float(__version__)
 
+debug_Fetch_Live = config.plugins.FootOnSat.debug_Fetch_Live.value
+
 if isUHD():
         from Plugins.Extensions.FootOnSat.assets.skin.skinUHD import *
 else:
@@ -82,7 +84,7 @@ class FootOnsatLauncher(Screen):
 		try:
 			compet = json.loads(data).keys()
 		except Exception as e:
-			logdata("getData-json-error", str(e))
+			if debug_Fetch_Live: logdata("launcher", "getData : %s" % str(e))
 			self.error("JSON parsing failed: " + str(e))
 			return
 		ordering = ["live", "end", "today", "championsleague", "europaleague", "ConferenceLeague", "premierleague", "laliga", "seriea",
@@ -120,7 +122,7 @@ class FootOnsatLauncher(Screen):
 			self["menu"].setList(self.menuList)
 			self.selectionChanged()
 		except Exception as e:
-			logdata("getData-menu-error", str(e))
+			if debug_Fetch_Live: logdata("launcher", "getData : %s" % str(e))
 			self.error("Menu rendering failed: " + str(e))
 
 	def custom_sort(self, ordem_custom, origin):
@@ -132,7 +134,7 @@ class FootOnsatLauncher(Screen):
 
 	def error(self, error=None):
 		if error:
-			logdata("API-error", str(error))
+			if debug_Fetch_Live: logdata("launcher", "API-error : %s" % str(e))
 			self.session.openWithCallback(self.exit, MessageBox, _('Error: %s') % str(error), MessageBox.TYPE_ERROR, timeout=10)
 
 	def ok(self):
@@ -280,10 +282,12 @@ class FootOnsatLauncher(Screen):
 			url = b"https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh"
 			getPage(url,timeout=10).addCallback(self.parseData).addErrback(self.errBack)
 		except Exception as error:
-			trace_error()
+			if debug_Fetch_Live: logdata("launcher", "checkupdates : %s" % error)
+			pass
 
 	def errBack(self,error=None):
-		logdata("errBack-error",error)
+		if debug_Fetch_Live: logdata("launcher", "errBack-erro : %s" % error)
+		pass
 
 	def parseData(self, data):
 		if PY3:
@@ -349,8 +353,9 @@ class FootOnsatLauncher(Screen):
 				cmd="wget -q https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh"
 				cmdlist.append(cmd)
 				self.session.open(Console, title='Installing last update, enigma will be started after install', cmdlist=cmdlist, finishedCallback=self.myCallback, closeOnSuccess=False)
-		except:
-			trace_error()
+		except Exception as e:
+			if debug_Fetch_Live: logdata("launcher", "Install Error: %s" % str(e))
+			pass
 	
 	def myCallback(self):
 		return

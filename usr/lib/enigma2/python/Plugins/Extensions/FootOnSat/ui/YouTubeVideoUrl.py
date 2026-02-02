@@ -1,8 +1,6 @@
 # -*- coding: UTF-8 -*-
 # This video extraction code based on youtube-dl: https://github.com/ytdl-org/youtube-dl
 
-from __future__ import print_function
-
 from re import escape
 from re import findall
 from re import match
@@ -22,6 +20,7 @@ from .jsinterp import JSInterpreter
 
 from .setup import *
 
+debug_MatchMedia = config.plugins.FootOnSat.debug_MatchMedia.value
 
 IGNORE_VIDEO_FORMAT = (
 	'43', '44', '45', '46',  # webm
@@ -139,7 +138,7 @@ class YouTubeVideoUrl():
 			''', jscode
 		).group('nfunc', 'idx')
 		if not func_name:
-			print('[YouTubeVideoUrl] Falling back to generic n function search')
+			if debug_MatchMedia: logdata('[YouTubeVideoUrl] Falling back to generic n function search')
 			return search(
 				r'''(?xs)
 					;\s*(?P<name>[a-zA-Z0-9_$]+)\s*=\s*function\([a-zA-Z0-9_$]+\)
@@ -162,7 +161,7 @@ class YouTubeVideoUrl():
 			player_id = search(r'player\\?/([0-9a-fA-F]{8})\\?/', res)
 			if player_id:
 				return player_id.group(1)
-		print('[YouTubeVideoUrl] Cannot get player info')
+		if debug_MatchMedia: logdata('[YouTubeVideoUrl] Cannot get player info')
 
 	def _load_player(self, player_id):
 		if player_id and player_id not in self._player_cache:
@@ -192,19 +191,19 @@ class YouTubeVideoUrl():
 		n_param = search(r'&n=(.+?)&', url).group(1)
 		n_id = 'nsig_%s_%s' % (player_id, '.'.join(str(len(p)) for p in n_param.split('.')))
 		if self.nsig_cache[0] != n_param:
-			print('[YouTubeVideoUrl] Decrypt nsig', n_id)
+			if debug_MatchMedia: logdata('[YouTubeVideoUrl]', 'Decrypt nsig: %s' % n_id)
 			self.nsig_cache = (None, None)
 			try:
 				ret = self._extract_function(player_id, n_id)(n_param)
 			except Exception as ex:
-				print('[YouTubeVideoUrl] Unable to decode nsig', ex)
+				if debug_MatchMedia: logdata('[YouTubeVideoUrl]', 'Unable to decode nsig: %s' % ex)
 			else:
 				if ret.startswith('enhanced_except_') or ret.endswith(n_param):
-					print('[YouTubeVideoUrl] Unhandled exception in decode', ret)
+					if debug_MatchMedia: logdata('[YouTubeVideoUrl]', 'Unhandled exception in decode: %s' % ret)
 				else:
 					self.nsig_cache = (n_param, ret)
 		if self.nsig_cache[1]:
-			print('[YouTubeVideoUrl] Decrypted nsig %s => %s' % self.nsig_cache)
+			if debug_MatchMedia: logdata('[YouTubeVideoUrl]', 'Decrypted nsig %s => %s' % self.nsig_cache)
 			return url.replace(self.nsig_cache[0], self.nsig_cache[1])
 		if n_id in self._code_cache:
 			del self._code_cache[n_id]
@@ -214,11 +213,11 @@ class YouTubeVideoUrl():
 		"""Turn the encrypted s field into a working signature"""
 		s = sc.get('s', [''])[0]
 		s_id = 'sig_%s_%s' % (player_id, '.'.join(str(len(p)) for p in s.split('.')))
-		print('[YouTubeVideoUrl] Decrypt signature', s_id)
+		if debug_MatchMedia: logdata('[YouTubeVideoUrl]', 'Decrypt signature: %s' % s_id)
 		try:
 			sig = self._extract_function(player_id, s_id)(s)
 		except Exception as ex:
-			print('[YouTubeVideoUrl] Signature extraction failed', ex)
+			if debug_MatchMedia: logdata('[YouTubeVideoUrl]', 'Signature extraction failed: %s' % ex)
 			if s_id in self._code_cache:
 				del self._code_cache[s_id]
 		else:
@@ -340,22 +339,22 @@ class YouTubeVideoUrl():
 		return sorted(sorted_fmt, key=lambda k: k['preference'])
 
 	def _extract_fmt_video_format(self, streaming_formats, player_id):
-		print('[YouTubeVideoUrl] Try fmt url')
+		if debug_MatchMedia: logdata('[YouTubeVideoUrl] Try fmt url')
 		for fmt in self._sort_formats(PRIORITY_VIDEO_FORMAT, streaming_formats):
 			url = self._extract_url(fmt, player_id)
 			if url:
-				print('[YouTubeVideoUrl] Found fmt url')
+				if debug_MatchMedia: logdata('[YouTubeVideoUrl] Found fmt url')
 				return url, str(fmt.get('itag'))
 		return '', ''
 
 	def _extract_dash_audio_format(self, streaming_formats, player_id, lang):
 		""" If DASH MP4 video add also DASH MP4 audio track"""
-		print('[YouTubeVideoUrl] Try fmt audio url')
+		if debug_MatchMedia: logdata('[YouTubeVideoUrl] Try fmt audio url')
 		DASH_AUDIO_FORMATS = ('141', '140', '139', '258', '265', '325', '328', '233', '234')
 		for fmt in self._sort_formats(DASH_AUDIO_FORMATS, streaming_formats, lang):
 			url = self._extract_url(fmt, player_id)
 			if url:
-				print('[YouTubeVideoUrl] Found fmt audio url')
+				if debug_MatchMedia: logdata('[YouTubeVideoUrl] Found fmt audio url')
 				return url
 		return ''
 
@@ -378,7 +377,7 @@ class YouTubeVideoUrl():
 				return self.try_get(loads(ytcfg.group(1)), ('INNERTUBE_CONTEXT', 'client', 'visitorData'))
 			except ValueError:  # pragma: no cover
 				pass
-		print('[YouTubeVideoUrl] Failed to extract visitor id')
+		if debug_MatchMedia: logdata('[YouTubeVideoUrl] Failed to extract visitor id')
 
 	def _extract_web_response(self, webpage):
 		player_response = search(r'ytInitialPlayerResponse\s*=\s*({[^>]*})\s*;\s*(?:var\s+meta|</script|\n)', webpage)
@@ -387,7 +386,7 @@ class YouTubeVideoUrl():
 				return loads(player_response.group(1)), self._extract_player_info()
 			except ValueError:  # pragma: no cover
 				pass
-		print('[YouTubeVideoUrl] Failed to extract web response')
+		if debug_MatchMedia: logdata('[YouTubeVideoUrl] Failed to extract web response')
 		return None, None
 
 	def _extract_player_response(self, video_id, yt_auth, client, lang, webpage=None):
@@ -461,7 +460,7 @@ class YouTubeVideoUrl():
 		try:
 			return loads(self._download_webpage(url, data, headers)), player_id
 		except ValueError:  # pragma: no cover
-			print('[YouTubeVideoUrl] Failed to parse JSON')
+			if debug_MatchMedia: logdata('[YouTubeVideoUrl] Failed to parse JSON')
 			return None, None
 
 	def _real_extract(self, video_id, yt_auth):
@@ -477,7 +476,7 @@ class YouTubeVideoUrl():
 		if config.plugins.FootOnSat.useDashMP4.value:
 			self.use_dash_mp4 = ()
 		else:
-			print('[YouTubeVideoUrl] skip DASH MP4 format')
+			if debug_MatchMedia: logdata('[YouTubeVideoUrl] skip DASH MP4 format')
 			self.use_dash_mp4 = DASHMP4_FORMAT
 
 		player_response, player_id = self._extract_player_response(video_id, None, 3, lang)
@@ -492,21 +491,21 @@ class YouTubeVideoUrl():
 				raise RuntimeError('Webpage not found!')
 
 			if not is_live:
-				print('[YouTubeVideoUrl] Got wrong player response, try mweb response')
+				if debug_MatchMedia: logdata('[YouTubeVideoUrl] Got wrong player response, try mweb response')
 				player_response, player_id = self._extract_player_response(video_id, None, 7, lang, webpage)
 			else:
 				if self.use_dash_mp4:
-					print('[YouTubeVideoUrl] Got wrong player response, try for live web response')
+					if debug_MatchMedia: logdata('[YouTubeVideoUrl] Got wrong player response, try for live web response')
 					player_response, player_id = self._extract_web_response(webpage)
 				else:
-					print('[YouTubeVideoUrl] Got wrong player response, try for live ios client')
+					if debug_MatchMedia: logdata('[YouTubeVideoUrl] Got wrong player response, try for live ios client')
 					player_response, player_id = self._extract_player_response(video_id, None, 5, lang, webpage)
 
 		if self.try_get(player_response, ('playabilityStatus', 'status')) == 'LOGIN_REQUIRED':
-			print('[YouTubeVideoUrl] Age gate content, try web embedded client')
+			if debug_MatchMedia: logdata('[YouTubeVideoUrl] Age gate content, try web embedded client')
 			player_response, player_id = self._extract_player_response(video_id, None, 56, lang)
 			if not player_response or self.try_get(player_response, ('playabilityStatus', 'status')) != 'OK':
-				print('[YouTubeVideoUrl] Player response is not usable, try authorized tv embedded client')
+				if debug_MatchMedia: logdata('[YouTubeVideoUrl] Player response is not usable, try authorized tv embedded client')
 				player_response, player_id = self._extract_player_response(video_id, yt_auth, 85, lang)
 			if not player_response:
 				raise RuntimeError('Age gate content player response not found!')
@@ -526,22 +525,22 @@ class YouTubeVideoUrl():
 				if audio_url:
 					if DreamOS():
 						try:
-							#logdata("DASH_FIX", "Applying DreamOS format")
+							if debug_MatchMedia: logdata("YouTubeVideoUrl - DASH_FIX", "Applying DreamOS format")
 							url = "%s#EXT-X-STREAM-INF:AUDIO=\"%s\"" % (url, audio_url)
-							#logdata("DASH_URL", url)
+							if debug_MatchMedia: logdata("YouTubeVideoUrl", "DASH_URL: %s" % url)
 						except Exception as e:
-							#logdata("DASH_ERR", str(e))
+							if debug_MatchMedia: logdata("YouTubeVideoUrl", "DASH_URL: %s" % str(e))
 							url += SUBURI + audio_url
 					else:
 						url += SUBURI + audio_url
 
 		if not url:
-			print('[YouTubeVideoUrl] Try manifest url')
+			if debug_MatchMedia: logdata('[YouTubeVideoUrl] Try manifest url')
 			hls_manifest_url = streaming_data.get('hlsManifestUrl')
 			if hls_manifest_url:
 				for fmt in self._extract_from_m3u8(hls_manifest_url):
 					url = fmt.get('url')
-					print('[YouTubeVideoUrl] Found manifest url')
+					if debug_MatchMedia: logdata('[YouTubeVideoUrl] Found manifest url')
 					break
 
 		if not url:
@@ -564,7 +563,7 @@ class YouTubeVideoUrl():
 				return self._real_extract(video_id, yt_auth)
 			except Exception as ex:
 				if ex is None:
-					print('No supported formats found, trying again!')
+					if debug_MatchMedia: logdata('No supported formats found, trying again!')
 				else:
 					error_message = str(ex)
 					break

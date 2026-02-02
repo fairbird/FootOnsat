@@ -109,6 +109,14 @@ config.plugins.FootOnSat.notiftime = ConfigInteger(default=6, limits=(6, 20))
 config.plugins.FootOnSat.notiffile = ConfigText(default="notif1", visible_width = 250, fixed_size = False)
 config.plugins.FootOnSat.useDashMP4 = ConfigYesNo(default=True)
 config.plugins.FootOnSat.extrafetch = ConfigYesNo(default=False)
+config.plugins.FootOnSat.debug_ZAP = ConfigYesNo(default=False)
+config.plugins.FootOnSat.debug_Notif = ConfigYesNo(default=False)
+config.plugins.FootOnSat.debug_Ignore = ConfigYesNo(default=False)
+config.plugins.FootOnSat.debug_Standings = ConfigYesNo(default=False)
+config.plugins.FootOnSat.debug_Fetch_Live = ConfigYesNo(default=False)
+config.plugins.FootOnSat.debug_MatchMedia = ConfigYesNo(default=False)
+config.plugins.FootOnSat.debug_MatchDetails = ConfigYesNo(default=False)
+config.plugins.FootOnSat.debug_MatchStatistics = ConfigYesNo(default=False)
 config.plugins.FootOnSat.pluginicon = ConfigSelection(default = "logo1", choices = [
 	("logo1", _("logo 1")),
 	("logo2", _("logo 2")),
@@ -125,7 +133,7 @@ config.plugins.FootOnSat.livecolor = ConfigSelection(default="0xFF0000", choices
 	("0x000000", _("BLACK")),
 	("0x0000FF", _("BLUE")),
 	])
-config.plugins.FootOnSat.finished = ConfigSelection(default = "3", choices = [
+config.plugins.FootOnSat.finished = ConfigSelection(default = "5", choices = [
 	("3", _("3 hours")),
 	("4", _("4 hours")),
 	("5", _("5 hours")),
@@ -180,7 +188,6 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		Screen.__init__(self, session)
 		self.list = []
 		ConfigListScreen.__init__(self, self.list)
-		self.configChanged = False
 		self.skin = SKIN_MenuFootOnSat
 
 		self["setupActions"] = ActionMap(["FootOnsatActions"],
@@ -201,11 +208,18 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.old_notiffile = config.plugins.FootOnSat.notiffile.value
 		self.icons_value = config.plugins.FootOnSat.icons.value
 		self.pluginicon = config.plugins.FootOnSat.pluginicon.value
+		self.debug_ZAP = config.plugins.FootOnSat.debug_ZAP.value
+		self.debug_Notif = config.plugins.FootOnSat.debug_Notif.value
+		self.debug_Ignore = config.plugins.FootOnSat.debug_Ignore.value
+		self.debug_Standings = config.plugins.FootOnSat.debug_Standings.value
+		self.debug_Fetch_Live = config.plugins.FootOnSat.debug_Fetch_Live.value
+		self.debug_MatchMedia = config.plugins.FootOnSat.debug_MatchMedia.value
+		self.debug_MatchDetails = config.plugins.FootOnSat.debug_MatchDetails.value
+		self.debug_MatchStatistics = config.plugins.FootOnSat.debug_MatchStatistics.value
 		self.getToneFile()
 		self.createSetup()
 
 	def createSetup(self):
-		self.configChanged = True
 		self.list = []
 		self.list.append(getConfigListEntry("_____________________________礑 Plugin 礑__________________________________________"))
 		self.list.append(getConfigListEntry(_("Show Plugin #press OK to change"), config.plugins.FootOnSat.showplugin, _("This option to show Plugin in any where you like")))
@@ -236,6 +250,16 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			if 'ServiceApp' in p.path:
 				self.list.append((_('Media player:'),config.plugins.FootOnSat.player, _('Specify the player which will be used for media playback.')))
 				break
+		self.list.append(getConfigListEntry("_______________________________礑 Debug 礑__________________________________________"))
+		self.list.append(getConfigListEntry(_("ZAP"), config.plugins.FootOnSat.debug_ZAP, _("This option allows you to print the (Zap) feature and codes work in a log file.")))
+		self.list.append(getConfigListEntry(_("Notif"), config.plugins.FootOnSat.debug_Notif, _("This option allows you to print the (Notification) feature and codes work in a log file.")))
+		self.list.append(getConfigListEntry(_("Ignore"), config.plugins.FootOnSat.debug_Ignore, _("This option allows you to print the (Ignore Competition) feature and codes work in a log file.")))
+		self.list.append(getConfigListEntry(_("Fetch and Live"), config.plugins.FootOnSat.debug_Fetch_Live, _("This option allows you to print the (Fetch url and bring data of Live) feature and codes work in a log file.")))
+		self.list.append(getConfigListEntry(_("Standings"), config.plugins.FootOnSat.debug_Standings, _("This option allows you to print the (Standings) screen and codes work in a log file.")))
+		self.list.append(getConfigListEntry(_("Match Media"), config.plugins.FootOnSat.debug_MatchMedia, _("This option allows you to print the (Match Media,) screen and codes work in a log file.")))
+		self.list.append(getConfigListEntry(_("Match Details"), config.plugins.FootOnSat.debug_MatchDetails, _("This option allows you to print the (Match Details) screen and codes work in a log file.")))
+		self.list.append(getConfigListEntry(_("Match Statistics"), config.plugins.FootOnSat.debug_MatchStatistics, _("This option allows you to print the (Match Statistics) screen and codes work in a log file.")))
+		
 		self["config"].list = self.list
 		self["config"].l.setList(self.list)
 		self["config"].onSelectionChanged.append(self.updateHelp)
@@ -342,12 +366,14 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			elif index == "logo3":
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo3.png')
 			if pic and self['Picture'].instance and exists(pic):
-				self['Picture'].instance.setPixmapFromFile(pic)
-				self['Picture'].show()
+				self["Picture"].instance.setScale(1)
+				self["Picture"].instance.setPixmapFromFile(pic)
+				self["Picture"].instance.show()
 			else:
 				self['Picture'].hide()
 		except Exception as error:
-			logdata("Picture preview:", error)
+			#logdata("Picture preview error:", str(error))
+			pass
 
 	def keyLeft(self):
 		cur = self["config"].getCurrent()
@@ -399,7 +425,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 
 	def save(self):
 		changed = False
-		icons_changed = False # New flag
+		Restart_changed = False # New flag
 
 		# Check for general config changes
 		for x in self["config"].list:
@@ -408,19 +434,27 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 				if hasattr(config_item, 'isChanged') and config_item.isChanged():
 					changed = True
 					break
+
+		# Check if debug has actually changed
+		if self.debug_ZAP != config.plugins.FootOnSat.debug_ZAP.value: Restart_changed = True
+		if self.debug_Notif != config.plugins.FootOnSat.debug_Notif.value: Restart_changed = True
+		if self.debug_Ignore != config.plugins.FootOnSat.debug_Ignore.value: Restart_changed = True
+		if self.debug_Standings != config.plugins.FootOnSat.debug_Standings.value: Restart_changed = True
+		if self.debug_Fetch_Live != config.plugins.FootOnSat.debug_Fetch_Live.value: Restart_changed = True
+		if self.debug_MatchMedia != config.plugins.FootOnSat.debug_MatchMedia.value: Restart_changed = True
+		if self.debug_MatchDetails != config.plugins.FootOnSat.debug_MatchDetails.value: Restart_changed = True
+		if self.debug_MatchStatistics != config.plugins.FootOnSat.debug_MatchStatistics.value: Restart_changed = True
 		
 		# Check if notiffile has actually changed
-		if self.old_notiffile != config.plugins.FootOnSat.notiffile.value:
-			changed = True
+		if self.old_notiffile != config.plugins.FootOnSat.notiffile.value: Restart_changed = True
 
 		# Check if plugin icon has actually changed
-		if self.pluginicon != config.plugins.FootOnSat.pluginicon.value:
-			icons_changed = True
+		if self.pluginicon != config.plugins.FootOnSat.pluginicon.value: Restart_changed = True
 
-		# Handle icons download and set icons_changed flag
+		# Handle icons download and set Restart_changed flag
 		if self.icons_value != config.plugins.FootOnSat.icons.value:
 			changed = True # General changed flag also set for safety/consistency
-			icons_changed = True # Set the specific flag for restart prompt
+			Restart_changed = True # Set the specific flag for restart prompt
 			extract_path = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
 			urls = {
 				"icons_default": "icons_default.tar.gz",
@@ -437,7 +471,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 				x[1].save()
 		configfile.save()
 		
-		if icons_changed:
+		if Restart_changed:
 			self.session.openWithCallback(self.restart, MessageBox, _("You need to restart GUI\nDo you want to do it now ?!"))
 		elif changed:
 			self.close("exit_launcher")
