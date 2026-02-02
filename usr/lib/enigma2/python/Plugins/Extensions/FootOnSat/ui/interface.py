@@ -38,6 +38,11 @@ from .compat import *
 from .setup import *
 
 try:
+	from skin import parseColor
+except ImportError:
+	parseColor = False
+
+try:
 	import ujson as json
 except ImportError:
 	import json
@@ -279,7 +284,9 @@ class FootOnSat(Screen):
 			if sel >= 0 and sel < len(self.matches):
 				match = self.matches[sel][0] 
 				if self.checkIfexist(match):
-					self["menu"].setText("\\c00ff0000" + _("Press (Menu) to select zap channel"))
+					self["menu"].setText(_("Press (Menu) to select zap channel"))
+					if parseColor and self["menu"].instance:
+						self["menu"].instance.setForegroundColor(parseColor("#ff0000"))
 					key = re.sub(r'\s+', '', match)
 					if not PY3:
 						key = key.decode('utf-8') if isinstance(key, str) else key
@@ -299,6 +306,8 @@ class FootOnSat(Screen):
 							if debug_ZAP: logdata("iniMenu ZAP_DEBUG", "Fetched channel name: '%s'" % channel_name)
 							if channel_name:
 								self["menu2"].setText("Will be Zap to >> " + channel_name)
+								if parseColor and self["menu2"].instance:
+									self["menu2"].instance.setForegroundColor(parseColor("#ff0000"))
 							else:
 								self["menu2"].setText("")
 						else:
@@ -309,9 +318,13 @@ class FootOnSat(Screen):
 						self["menu2"].setText("")
 				else:
 					self["menu"].setText(self.MENUTEXT)
+					if parseColor and self["menu"].instance:
+						self["menu"].instance.setForegroundColor(parseColor("#00ffffff"))
 					self["menu2"].setText("")
 			else:
 				self["menu"].setText(self.MENUTEXT)
+				if parseColor and self["menu"].instance:
+					self["menu"].instance.setForegroundColor(parseColor("#00ffffff"))
 				self["menu2"].setText("")
 
 			if isUHD():
@@ -679,7 +692,9 @@ class FootOnSat(Screen):
 			if sel >= 0 and sel < len(self.matches):
 				match = self.matches[sel][0] 
 				if self.checkIfexist(match):
-					self["menu"].setText("\\c00ff0000" + _("Press (Menu) to select zap channel"))
+					self["menu"].setText(_("Press (Menu) to select zap channel"))
+					if parseColor and self["menu"].instance:
+						self["menu"].instance.setForegroundColor(parseColor("#ff0000"))
 					key = re.sub(r'\s+', '', match)
 					if not PY3:
 						key = key.decode('utf-8') if isinstance(key, str) else key
@@ -699,6 +714,8 @@ class FootOnSat(Screen):
 							if debug_ZAP: logdata("updateMenuWidgets ZAP_DEBUG", "Fetched channel name: '%s'" % channel_name)
 							if channel_name:
 								self["menu2"].setText("Will be Zap to >> " + channel_name)
+								if parseColor and self["menu2"].instance:
+									self["menu2"].instance.setForegroundColor(parseColor("#ff0000"))
 							else:
 								self["menu2"].setText("")
 						else:
@@ -709,9 +726,13 @@ class FootOnSat(Screen):
 						self["menu2"].setText("")
 				else:
 					self["menu"].setText(self.MENUTEXT)
+					if parseColor and self["menu"].instance:
+						self["menu"].instance.setForegroundColor(parseColor("#00ffffff"))
 					self["menu2"].setText("")
 			else:
 				self["menu"].setText(self.MENUTEXT)
+				if parseColor and self["menu"].instance:
+					self["menu"].instance.setForegroundColor(parseColor("#00ffffff"))
 				self["menu2"].setText("")
 
 		if self.selectedList == self["list2"]:
