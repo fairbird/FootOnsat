@@ -262,6 +262,7 @@ class FootOnSat(Screen):
 		# Set items per page based on resolution (5 for QHD/2560, 4 for others)
 		self.items_per_page = 5 if isUHD() else 4
 		self.create_table()
+		self.is_closed = False
 		self.callAPI()
 
 	def onWindowShow(self):
@@ -996,6 +997,9 @@ class FootOnSat(Screen):
 		return resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/default/FHD/{}.png".format(banner))
 
 	def callAPI(self):
+		if self.is_closed:
+			if debug_Fetch_Live: logdata("FootOnSat", "SKIP: callAPI blocked. Plugin already closed.")
+			return
 		url_link = "today" if self.link in ["live", "end"] else self.link
 		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/{}.json'.format(url_link)
 		sniFactory = WebClientContextFactory(url)
@@ -1104,9 +1108,13 @@ class FootOnSat(Screen):
 				# Weekend: inject None so gatherResults keeps order
 				deferred_list.append(defer.succeed(None))
 
-			d = defer.gatherResults(deferred_list, consumeErrors=True)
+			self.fetch_deferred = defer.gatherResults(deferred_list, consumeErrors=True)
+			d = self.fetch_deferred
 
 			def process_results(results):
+				if self.is_closed:
+					if debug_Fetch_Live: logdata("fetch_live_results", "ABORTED: Background process stopped because plugin is closed.")
+					return
 				raw1, raw2 = results
 
 				if debug_Fetch_Live:
@@ -1143,6 +1151,9 @@ class FootOnSat(Screen):
 		else:
 			# PY2 version — same logic
 			def _fetch_smart():
+				if self.is_closed:
+					if debug_Fetch_Live: logdata("fetch_live_results", "ABORTED: Background process stopped because plugin is closed.")
+					return
 				results = []
 				# url1 always
 				try:
@@ -1173,7 +1184,8 @@ class FootOnSat(Screen):
 				valid = [r for r in results if r is not None]
 				return valid or [b'{"events":[]}']
 
-			d = deferToThread(_fetch_smart)
+			self.fetch_deferred = deferToThread(_fetch_smart)
+			d = self.fetch_deferred
 		
 		# === _process_response (Twisted Callback from network fetch) ===
 		def _process_response(raw_list): # <--- Argument changed from 'raw' to 'raw_list'
@@ -1181,7 +1193,8 @@ class FootOnSat(Screen):
 			all_events = []
 			# Decode and JSON Load
 			for idx, raw in enumerate(raw_list):
-				if raw is None: # Skip if fetch failed (non-PY3 path)
+				if self.is_closed: return # KILL JOB IMMEDIATELY
+				if raw is None:
 					continue
 				# Decode and JSON Load
 				try:
@@ -1228,6 +1241,9 @@ class FootOnSat(Screen):
 			live_matches = []
 			build_start = time.time()
 			for ev in events:
+				if self.is_closed:
+					if debug_Fetch_Live: logdata("fetch_live_results", "TERMINATED: Loop broken mid-process. System is now safe for Restart.")
+					break
 				try:
 					try:
 						home_team = ev.get('homeTeam') or {}
@@ -1369,6 +1385,7 @@ class FootOnSat(Screen):
 				# === RESTORED SPEED OPTIMIZATION: Pre-calculate schedule clean cache ONCE ===
 				schedule_clean_cache = {}
 				for match in matches_list:
+					if self.is_closed: return
 					try:
 						local_name = compat_str(match[0])
 						#teams = re.split(r'\s+vs\s+|\s+-\s+', local_name)
@@ -1388,6 +1405,7 @@ class FootOnSat(Screen):
 				# ===================================================================================
 
 				for match in matches_list:
+					if self.is_closed: return
 					try:
 						time_str = compat_str(match[1])
 						try:
@@ -1442,9 +1460,9 @@ class FootOnSat(Screen):
 							if not (straight_possible or swap_possible):
 								continue	
 
-							if debug_Fetch_Live: logdata("fetch_live_results FuzzyDebug","COMPARE | SCHED: '%s' vs '%s' | LIVE: '%s' vs '%s'" % (
-								l_t1_clean, l_t2_clean,
-								s_t1_clean, s_t2_clean))
+							#if debug_Fetch_Live: logdata("fetch_live_results FuzzyDebug","COMPARE | SCHED: '%s' vs '%s' | LIVE: '%s' vs '%s'" % (
+							#	l_t1_clean, l_t2_clean,
+							#	s_t1_clean, s_t2_clean))
 
 							sim1 = SequenceMatcher(None, l_t1_clean, s_t1_clean).ratio()
 							sim2 = SequenceMatcher(None, l_t2_clean, s_t2_clean).ratio()
@@ -1455,7 +1473,7 @@ class FootOnSat(Screen):
 							avg_swap = (sim1s + sim2s) / 2.0
 
 							cur_sim = max(avg_straight, avg_swap)
-							if debug_Fetch_Live: logdata("fetch_live_results FuzzyDebug", "Match '%s': sim=%.2f (straight=%.2f, swap=%.2f)" % (local_name, cur_sim, avg_straight, avg_swap))
+							#if debug_Fetch_Live: logdata("fetch_live_results FuzzyDebug", "Match '%s': sim=%.2f (straight=%.2f, swap=%.2f)" % (local_name, cur_sim, avg_straight, avg_swap))
 
 							if cur_sim > best_sim:
 								best_sim = cur_sim
@@ -1539,6 +1557,7 @@ class FootOnSat(Screen):
 			d_match.addErrback(lambda f: logdata("fetch_live_results", "Fuzzy matching thread failed: %s" % f.getErrorMessage()))
 
 		def _error(failure):
+			if self.is_closed: return
 			if debug_Fetch_Live: logdata("fetch_live_results", "Twisted Request failed: %s" % failure.getErrorMessage())
 			pass
 
@@ -1728,7 +1747,7 @@ class FootOnSat(Screen):
 						if debug_Fetch_Live: logdata("getData", "Ignored competition: " + str(match['match']) + ", Compet: " + compet)
 						pass
 				except KeyError:
-					if debug_Fetch_Live: logdata("getData", "KeyError on match: " + str(match))
+					#if debug_Fetch_Live: logdata("getData", "KeyError on match: " + str(match))
 					pass
 
 			self.matches = list
@@ -1906,6 +1925,20 @@ class FootOnSat(Screen):
 		return sat
 
 	def exit(self, ret=None):
+		self.is_closed = True
+		if hasattr(self, 'fetch_deferred') and self.fetch_deferred:
+			try:
+				# This kills the network socket (Twisted) or the thread callback
+				self.fetch_deferred.cancel()
+				self.fetch_deferred = None 
+				if debug_Fetch_Live: logdata("FootOnSat", "STOP JOB: fetch_deferred killed.")
+			except:
+				pass
+		try:
+			gc.collect()
+		except:
+			if debug_Fetch_Live: logdata("FootOnSat", "Garbage Collector: Failed.")
+			pass
 		self.close()
 
 	def manageIgnoreFile(self, compet=None, reset=False, remove=None):
