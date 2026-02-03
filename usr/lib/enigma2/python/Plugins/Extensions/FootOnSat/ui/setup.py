@@ -178,7 +178,7 @@ if DreamOS():
 else:
 	config.plugins.FootOnSat.player = ConfigSelection(default='5002', choices=[
 		('4097', _('Default (4097)')),
-		('5002', _('ExtePlayer'))
+		('5002', _('ExtePlayer (5002)'))
 	])
 
 class MenuFootOnSat(ConfigListScreen, Screen):
