@@ -216,11 +216,18 @@ class FootOnSat(Screen):
 		self.session = session
 		Screen.__init__(self, session)
 		self.link = link
-		if self.link not in ["live", "end", "yesterday"]:
+		if self.link == "yesterday":
+			y_date = date.today() - timedelta(days=1)
+			day_name = y_date.strftime('%A')
+			self.MENUTEXT = "Yesterday Matches - {0} - {1}".format(day_name, y_date.strftime('%d-%m-%Y'))
+		elif self.link in ["live", "end"]:
+			t_date = date.today()
+			day_name = t_date.strftime('%A')
+			self.MENUTEXT = "Today Matches - {0} - {1}".format(day_name, t_date.strftime('%d-%m-%Y'))
+		elif self.link not in json_urls:
 			self.MENUTEXT = _("Press (Ok) on any match to add notification")
 		else:
 			self.MENUTEXT = ""
-		self.execing = False
 		self.skin = SKIN_interface
 		self["setupActions"] = ActionMap(["FootOnsatActions", "ColorActions"],
 		{
@@ -257,12 +264,14 @@ class FootOnSat(Screen):
 		self["list2"] = MenuList([], enableWrapAround=True, content=eListboxPythonMultiContent)
 		self.selectedList = self["list1"]
 		self.canScan = False
+		self.execing = False
+		self.is_closed = False
+		self.fetch_timestamp = 0
 		self.channelData = []
 		self.matches = []
 		# Set items per page based on resolution (5 for QHD/2560, 4 for others)
 		self.items_per_page = 5 if isUHD() else 4
 		self.create_table()
-		self.is_closed = False
 		self.callAPI()
 
 	def onWindowShow(self):
@@ -318,14 +327,36 @@ class FootOnSat(Screen):
 						if debug_ZAP: logdata("iniMenu ZAP_DEBUG", "Error fetching zap ref: %s" % str(e))
 						self["menu2"].setText("")
 				else:
-					self["menu"].setText(self.MENUTEXT)
+					# Force update based on current link
+					if self.link == "yesterday":
+						y_date = date.today() - timedelta(days=1)
+						display_text = "Yesterday Matches - {0} - {1}".format(y_date.strftime('%A'), y_date.strftime('%d-%m-%Y'))
+					elif self.link in ["live", "end"]:
+						t_date = date.today()
+						display_text = "Today Matches - {0} - {1}".format(t_date.strftime('%A'), t_date.strftime('%d-%m-%Y'))
+					else:
+						display_text = self.MENUTEXT
+
+					self["menu"].setText(display_text)
 					if parseColor and self["menu"].instance:
-						self["menu"].instance.setForegroundColor(parseColor("#00ffffff"))
+						m_color = "#0000ff00" if self.link == "yesterday" else "#00ffffff"
+						self["menu"].instance.setForegroundColor(parseColor(m_color))
 					self["menu2"].setText("")
 			else:
-				self["menu"].setText(self.MENUTEXT)
+				# Same logic for the second branch to ensure sync
+				if self.link == "yesterday":
+					y_date = date.today() - timedelta(days=1)
+					display_text = "Yesterday Matches - {0} - {1}".format(y_date.strftime('%A'), y_date.strftime('%d-%m-%Y'))
+				elif self.link in ["live", "end"]:
+					t_date = date.today()
+					display_text = "Today Matches - {0} - {1}".format(t_date.strftime('%A'), t_date.strftime('%d-%m-%Y'))
+				else:
+					display_text = self.MENUTEXT
+
+				self["menu"].setText(display_text)
 				if parseColor and self["menu"].instance:
-					self["menu"].instance.setForegroundColor(parseColor("#00ffffff"))
+					m_color = "#0000ff00" if self.link == "yesterday" else "#00ffffff"
+					self["menu"].instance.setForegroundColor(parseColor(m_color))
 				self["menu2"].setText("")
 
 			if isUHD():
@@ -1018,6 +1049,8 @@ class FootOnSat(Screen):
 			self.session.openWithCallback(self.exit, MessageBox, error_msg, MessageBox.TYPE_ERROR, timeout=10)
 
 	def fetch_live_results(self):
+		self.fetch_timestamp = time.time()
+		current_ts = self.fetch_timestamp
 		if not self.matches:
 			self.onWindowShow()
 			return
@@ -1189,6 +1222,8 @@ class FootOnSat(Screen):
 		
 		# === _process_response (Twisted Callback from network fetch) ===
 		def _process_response(raw_list): # <--- Argument changed from 'raw' to 'raw_list'
+			if self.fetch_timestamp != current_ts: return
+			if debug_Fetch_Live: logdata("fetch_live_results", "MATCHES BEFORE: %d" % len(self.matches))
 			process_start = time.time()
 			all_events = []
 			# Decode and JSON Load
@@ -1367,7 +1402,7 @@ class FootOnSat(Screen):
 				return name
 
 			def _do_fuzzy_matching(matches_list, live_matches, now_adj):
-				match_perf_start = time.time()				
+				match_perf_start = time.time()			
 				# --- FIX: THRESHOLD ADJUSTMENT for maximum accuracy ---
 				THRESHOLD = 0.50 # Lowered from 0.60 to 0.55 to ensure all challenging names match
 				TIME_WINDOW = timedelta(hours=4)
@@ -1512,6 +1547,9 @@ class FootOnSat(Screen):
 				return matches_list
 
 			def _matching_complete(updated_matches_list):
+				if self.fetch_timestamp != current_ts:
+					if debug_Fetch_Live: logdata("fetch_live_results", "DROP: Ignoring outdated results from previous session.")
+					return
 				cache_file, terminated_cache, changed, final_list = join(PLUGINPATH, "db/terminated_matches.json"), {}, False, []
 				try:
 					if exists(cache_file):
@@ -1544,6 +1582,7 @@ class FootOnSat(Screen):
 					elif getattr(self, 'link', None) == "end":
 						if not (is_term or in_cache): continue
 					final_list.append(m)
+				if debug_Fetch_Live: logdata("fetch_live_results", "MATCHES AFTER: %d" % len(final_list))
 				self.matches = final_list
 				if changed and self.link == "live":
 					try:
@@ -1830,10 +1869,16 @@ class FootOnSat(Screen):
 		if self.link == "end":
 			if getattr(self, 'is_yesterday', False):
 				return
+			# Update timestamp to kill old fetch jobs
+			self.fetch_timestamp = time.time()
+			if hasattr(self, 'fetch_deferred') and self.fetch_deferred:
+				try: self.fetch_deferred.cancel()
+				except: pass
 			if debug_Fetch_Live: logdata("keyGreen", "Switching to Yesterday matches")
 			self.is_yesterday = True
 			self.link = "yesterday"
 			self.matches = []
+			self['list1'].setList([])
 			self['key_green'].setText(_("Wait..."))
 			self.fetchYesterdayData(yesterday=True)
 		elif self.link in json_urls:
