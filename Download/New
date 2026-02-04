@@ -1,8 +1,16 @@
-- Increase the hours of (Hide matches that started before) to 6 huors
+- Edit (Enable Live score + status)
+* If select (No live Score + Statau) Then (Live and Match End) will hide from menu
+- Changed (Hide matches that started before) to (Time to keep finished matches)
+* and Increase to 8 huors or Disable (Always keep) to end of day - Work only in " Match End" section
 - Add new section 'Match End' for finished Matches
-- Add new screen of Match Media (To play videos of highlight match if available)
+* Inside end section (Green button) to read Yesterday Matches
+- Add new debug options
+- Add new 'screen of Match Media' (To play videos of highlight match if available)
+- Add new option (Activate an additional url)
+- Add new option (Choose the icon of plugin)
 - Add new option (Use DASH MP4 format)
-- Add new option (Best resolution for first found) only if enable (Use DASH MP4 format)
+- Add new option (Maximum video resolution) only if enable (Use DASH MP4 format) will work
 - Add new option (Media player):
 * For DreamOS (Default (4097) + DreamOS GstPlayer (8193))
-* For open source Need install (ServiceApp + ExtePlayer3) Then get (Default (4097) + Best ExtePlayer3 (5002))
+* For open source Need install (ServiceApp + ExtePlayer3)..
+Plugin will install it if find it in feed. Then get (Default (4097) + Best ExtePlayer3 (5002) for hight qulity)
