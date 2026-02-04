@@ -302,12 +302,15 @@ fi
 
 MISSING_PKGS=""
 check_pkg() {
-if ! grep -q "$1" "$STATUS"; then
-	echo "#########################################################"
-	echo "#       $1 Not found in feed       #"
-	echo "#########################################################"
-	MISSING_PKGS="true"
-fi
+	if ! grep -q "$1" "$STATUS"; then
+		echo "####################################################"
+		echo "#       $1 Not found in feed       #"
+		echo "####################################################"
+
+		if [ "$1" != "$UJSON" ]; then
+			MISSING_PKGS="true"
+		fi
+	fi
 }
 check_pkg "$SQLITE3"
 check_pkg "$PYSIX"
@@ -321,10 +324,12 @@ check_pkg "$UJSON"
 check_pkg "$IO"
 check_pkg "$EMAIL"
 check_pkg "$DATETIME"
-if [ "$OS" = "DreamOS" ]; then
+
+if [ "$OS" != "DreamOS" ]; then
 	check_pkg "enigma2-plugin-systemplugins-serviceapp"
 	check_pkg "exteplayer3"
 fi
+
 if [ "$MISSING_PKGS" = "true" ]; then
 	exit 1
 fi
