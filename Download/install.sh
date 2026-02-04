@@ -266,6 +266,7 @@ fi
 if [ "$OS" != "DreamOS" ]; then
 	if [ "$serviceapp" = "Installed" -a "$exteplayer3" = "Installed" ]; then
 		echo ""
+	else
 		echo " Downloading serviceapp + exteplayer3 ......"
 		opkg update
 		opkg install enigma2-plugin-systemplugins-serviceapp
@@ -387,8 +388,8 @@ rm -rf *footonsat* >/dev/null 2>&1
 rm -rf *main* >/dev/null 2>&1
 #rm -rf *assets* >/dev/null 2>&1
 #rm -rf *ui* >/dev/null 2>&1
-rm -rf *TMP_DB* >/dev/null 2>&1
-rm -rf *TMP_TERMINATED* >/dev/null 2>&1
+rm -rf "$TMP_DB" >/dev/null 2>&1
+rm -rf "$TMP_TERMINATED" >/dev/null 2>&1
 cd ..
 echo
 echo
@@ -400,5 +401,5 @@ echo "#########################################################"
 echo "#                Restart Enigma2 GUI                    #"
 echo "#########################################################"
 sleep 2
-killall -9 enigma2
+killall enigma2
 exit 0
