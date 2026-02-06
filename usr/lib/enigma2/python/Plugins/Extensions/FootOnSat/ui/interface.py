@@ -2373,12 +2373,14 @@ class MatchDetailsScreen(Screen):
 				icon_name = ""
 				if itype == 'goal':
 					is_og = str(inc.get('incidentClass', '')).lower() == 'owngoal'
+					is_pen = str(inc.get('incidentClass', '')).lower() == 'penalty'
 					if is_og:
 						text = str(inc.get('player', {}).get('name', 'Own Goal')) + " (OG)"
 						color = 0xFF0000
 						icon_name = "owngoal.png"
 					else:
-						text = str(inc.get('player', {}).get('name', 'Goal'))
+						p_name = str(inc.get('player', {}).get('name', 'Goal'))
+						text = p_name + " (Pen.)" if is_pen else p_name
 						color = 0x00FF00
 						icon_name = "goal.png"
 				elif itype == 'card':
