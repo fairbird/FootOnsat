@@ -2217,9 +2217,9 @@ class MatchDetailsScreen(Screen):
 
 	def showFlags(self, team1, team2):
 		if isUHD():
-			h_pos, a_pos = (750, 680), (2790, 680)
+			h_pos, a_pos = (460, 400), (1955, 400)
 			# info: Set specific big size for UHD (Width, Height)
-			flag_size = eSize(200, 100)
+			flag_size = eSize(150, 50)
 		else:
 			h_pos, a_pos = (370, 330), (1400, 330)
 			# info: Set specific big size for FHD (Width, Height)
@@ -2315,30 +2315,42 @@ class MatchDetailsScreen(Screen):
 		gList = []
 		if inc_js and 'incidents' in inc_js:
 			if isUHD():
-				ITEM_H = 120   # Row Height
-				FONT_S = 50    # Font Size
-				C_X    = 1620  # Minute X Position
-				T_W    = 200   # Minute Width
-				H_TXT_X = 40   # Home Player Name X
-				H_TXT_W = 1450 # Home Player Name Width
-				H_IMG_X = 1530 # Home Icon X
-				A_IMG_X = 1850 # Away Icon X
-				A_TXT_X = 1930 # Away Player Name X
-				A_TXT_W = 1450 # Away Player Name Width
+				ITEM_H = 65   # Row Height
+				FONT_S = 40    # Font Size
+				C_X    = 1200  # Minute X Position
+				T_W    = 100   # Minute Width
+				T_W_Y  = 13    # Vertical Offset
+				# --- HOME SIDE ---
+				H_TXT_X = 300   # Home Player Name X
+				H_TXT_W = 800 # Home Player Name Width
+				H_IMG_X = 1135 # Home Icon X
+				H_TXT_Y = 12    # Vertical Offset
+				# --- AWAY SIDE ---
+				A_IMG_X = 1300 # Away Icon X
+				A_TXT_X = 1392 # Away Player Name X
+				A_TXT_W = 800 # Away Player Name Width
+				A_TXT_Y  = 12  # Vertical Offset
+				# --- ICON SIZE ---
 				IMG_W  = 60    # Fixed Width
 				IMG_H  = 80    # Fixed Height
-				IMG_Y  = 20    # Vertical Offset
+				IMG_Y  = -7    # Vertical Offset
 			else:
 				ITEM_H = 70    # Row Height
 				FONT_S = 36    # Font Size
 				C_X    = 850   # Minute X Position
 				T_W    = 100   # Minute Width
+				T_W_Y  = 0    # Vertical Offset
+				# --- HOME SIDE ---
 				H_TXT_X = 10   # Home Player Name X
 				H_TXT_W = 750  # Home Player Name Width
 				H_IMG_X = 780  # Home Icon X
+				H_TXT_Y = 0    # Vertical Offset
+				# --- AWAY SIDE ---
 				A_IMG_X = 970  # Away Icon X
 				A_TXT_X = 1040 # Away Player Name X
 				A_TXT_W = 700  # Away Player Name Width
+				A_TXT_Y  = 0  # Vertical Offset
+				# --- ICON SIZE ---
 				IMG_W  = 60    # Fixed Width
 				IMG_H  = 80    # Fixed Height
 				IMG_Y  = -5    # Vertical Offset
@@ -2391,17 +2403,20 @@ class MatchDetailsScreen(Screen):
 
 				# --- Incident List Row Information ---
 				res = [MultiContentEntryText()] # List row anchor
-				res.append(MultiContentEntryText(pos=(C_X, 0), size=(T_W, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=itime)) # Match Minute
+				if isUHD():
+					res.append(MultiContentEntryText(pos=(C_X, T_W_Y), size=(T_W, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=itime)) # Match Minute
+				else:
+					res.append(MultiContentEntryText(pos=(C_X, T_W_Y), size=(T_W, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=itime)) # Match Minute
 				
 				icon_path = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/icon/{}".format(icon_name)) # Icon Path
 				png = loadPNG(icon_path) # Load Incident Icon
 
 				if is_home:
 					if png: res.append(MultiContentEntryPixmapAlphaBlend(pos=(H_IMG_X, IMG_Y), size=(IMG_W, IMG_H), png=png)) # Home Incident Icon
-					res.append(MultiContentEntryText(pos=(H_TXT_X, 0), size=(H_TXT_W, ITEM_H), font=0, flags=RT_HALIGN_RIGHT|RT_VALIGN_CENTER, text=text, color=color)) # Home Player Name
+					res.append(MultiContentEntryText(pos=(H_TXT_X, H_TXT_Y), size=(H_TXT_W, ITEM_H), font=0, flags=RT_HALIGN_RIGHT|RT_VALIGN_CENTER, text=text, color=color)) # Home Player Name
 				else:
 					if png: res.append(MultiContentEntryPixmapAlphaBlend(pos=(A_IMG_X, IMG_Y), size=(IMG_W, IMG_H), png=png)) # Away Incident Icon
-					res.append(MultiContentEntryText(pos=(A_TXT_X, 0), size=(A_TXT_W, ITEM_H), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=text, color=color)) # Away Player Name
+					res.append(MultiContentEntryText(pos=(A_TXT_X, A_TXT_Y), size=(A_TXT_W, ITEM_H), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=text, color=color)) # Away Player Name
 				
 				gList.append(res) # Add Row to List
 		
@@ -2496,24 +2511,34 @@ class MatchStatisticsScreen(Screen):
 	def process_stats(self, data):
 		gList = []
 		if isUHD():
-			ITEM_H = 120  # Row Height: Increase to add space between rows
-			FONT_S = 52   # Font Size: Increase to make text bigger
-			W_LIST = 3440 # Total width of the list box
+			ITEM_H = 65   # Row Height: Increase to add space between rows
+			FONT_S = 40   # Font Size: Increase to make text bigger
+			W_LIST = 2462 # Total width of the list box
+			W_LIST_X = 0  # Vertical Offset x 
+			W_LIST_Y = 13 # Vertical Offset Y
 			HOME_X = 20   # Move Home value: Higher = Right, Lower = Left
+			HOME_Y = 13   # Vertical Offset
 			NAME_X = 400  # Move Stat Name: Higher = Right, Lower = Left
-			AWAY_X = 3000 # Move Away value: Higher = Right, Lower = Left
+			NAME_Y = 13   # Vertical Offset
+			AWAY_X = 1030 # Move Away value: Higher = Right, Lower = Left
+			AWAY_Y = 13   # Vertical Offset
 			COL_W  = 400  # Width of the value boxes
 			NAME_W = 2640 # Width of the middle name box
 		else:
 			ITEM_H = 80   # Row Height: Increase to add space between rows
 			FONT_S = 36   # Font Size: Increase to make text bigger
 			W_LIST = 1720 # Total width of the list box
+			W_LIST_X = 0  # Vertical Offset x
+			W_LIST_Y = 0  # Vertical Offset Y
 			HOME_X = 10   # Move Home value: Higher = Right, Lower = Left
+			HOME_Y = 0    # Vertical Offset
 			NAME_X = 250  # Move Stat Name: Higher = Right, Lower = Left
+			NAME_Y = 0    # Vertical Offset
 			AWAY_X = 1450 # Move Away value: Higher = Right, Lower = Left
+			AWAY_Y = 0    # Vertical Offset
 			COL_W  = 250  # Width of the value boxes
 			NAME_W = 1220 # Width of the middle name box
-			
+
 		self["stats_list"].l.setItemHeight(ITEM_H)
 		self["stats_list"].l.setFont(0, gFont('Regular', FONT_S))
 
@@ -2540,11 +2565,11 @@ class MatchStatisticsScreen(Screen):
 							val_a = str(item.get('away', '0'))
 							
 							# Home
-							res.append(MultiContentEntryText(pos=(HOME_X, 0), size=(COL_W, ITEM_H), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=val_h))
+							res.append(MultiContentEntryText(pos=(HOME_X, HOME_Y), size=(COL_W, ITEM_H), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=val_h))
 							# Name
-							res.append(MultiContentEntryText(pos=(NAME_X, 0), size=(NAME_W, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=val_n, color=0xaaaaaa))
+							res.append(MultiContentEntryText(pos=(NAME_X, NAME_Y), size=(NAME_W, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=val_n, color=0xaaaaaa))
 							# Away
-							res.append(MultiContentEntryText(pos=(AWAY_X, 0), size=(COL_W, ITEM_H), font=0, flags=RT_HALIGN_RIGHT|RT_VALIGN_CENTER, text=val_a))
+							res.append(MultiContentEntryText(pos=(AWAY_X, AWAY_Y), size=(COL_W, ITEM_H), font=0, flags=RT_HALIGN_RIGHT|RT_VALIGN_CENTER, text=val_a))
 							gList.append(res)
 					break
 
@@ -2552,7 +2577,7 @@ class MatchStatisticsScreen(Screen):
 			res = []
 			res.append(MultiContentEntryText()) # Anchor
 			no_data_text = str(_("No statistics information available"))
-			res.append(MultiContentEntryText(pos=(0, 0), size=(W_LIST, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=no_data_text, color=0xff0000))
+			res.append(MultiContentEntryText(pos=(W_LIST_X, W_LIST_Y), size=(W_LIST, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=no_data_text, color=0xff0000))
 			gList.append(res)
 		
 		self["stats_list"].setList(gList)
@@ -2652,19 +2677,23 @@ class MatchMediaScreen(Screen):
 	def process_media(self, data):
 		gList = []
 		if isUHD():
-			ITEM_H = 120             # Row Height: Increase to add space between rows
-			FONT_S = 52              # Font Size: Increase to make text bigger
-			W_LIST = 3440            # Total width of the list box
+			ITEM_H = 100             # Row Height: Increase to add space between rows
+			FONT_S = 50              # Font Size: Increase to make text bigger
+			W_LIST = 2462            # Total width of the list box
+			W_LIST_Y = 22            # Vertical Offset
 			X_OFF  = 40              # Left Padding for text
-			IMG_W, IMG_H = 100, 100   # info: Icon dimensions for UHD (100 is width, 100 is height)
+			IMG_W, IMG_H = 80, 80    # info: Icon dimensions for UHD (100 is width, 100 is height)
 			X_TEXT = 180             # info: Start position for text after the icon in UHD
+			X_TEXT_Y = 22            # Vertical Offset
 		else:
 			ITEM_H = 80              # Row Height: Increase to add space between rows
 			FONT_S = 36              # Font Size: Increase to make text bigger
 			W_LIST = 1720            # Total width of the list box
+			W_LIST_Y = 0             # Vertical Offset
 			X_OFF  = 20              # Left Padding for text
 			IMG_W, IMG_H = 60, 60    # info: Icon dimensions for FHD (60 is width, 60 is height)
 			X_TEXT = 120             # info: Start position for text after the icon in FHD
+			X_TEXT_Y = 0             # Vertical Offset
 
 		self["media_list"].l.setItemHeight(ITEM_H)
 		self["media_list"].l.setFont(0, gFont('Regular', FONT_S))
@@ -2707,13 +2736,13 @@ class MatchMediaScreen(Screen):
 						res.append(MultiContentEntryPixmapAlphaBlend(pos=(X_OFF, (ITEM_H - IMG_H)//2), size=(IMG_W, IMG_H), png=ptr))
 
 				# info: Draw the video title text after the fixed icon position
-				res.append(MultiContentEntryText(pos=(X_TEXT, 0), size=(W_LIST - X_TEXT, ITEM_H), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=display_text))
+				res.append(MultiContentEntryText(pos=(X_TEXT, X_TEXT_Y), size=(W_LIST - X_TEXT, ITEM_H), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=display_text))
 				gList.append(res)
 
 		if not gList:
 			res = [None, MultiContentEntryText()]
 			err_msg = str(_("No media available"))
-			res.append(MultiContentEntryText(pos=(0, 0), size=(W_LIST, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=err_msg, color=0xff0000))
+			res.append(MultiContentEntryText(pos=(0, W_LIST_Y), size=(W_LIST, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=err_msg, color=0xff0000))
 			gList.append(res)
 		
 		self["media_list"].setList(gList)

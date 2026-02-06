@@ -120,7 +120,9 @@ config.plugins.FootOnSat.debug_MatchStatistics = ConfigYesNo(default=False)
 config.plugins.FootOnSat.pluginicon = ConfigSelection(default = "logo1", choices = [
 	("logo1", _("logo 1")),
 	("logo2", _("logo 2")),
-	("logo3", _("logo 3"))
+	("logo3", _("logo 3")),
+	("logo4", _("logo 4")),
+	("logo5", _("logo 5"))
 	])
 config.plugins.FootOnSat.maxResolution = ConfigSelection(default='22', choices=[
 	('38', '4096x3072'), ('37', '1920x1080'), ('22', '1280x720'),
@@ -365,6 +367,10 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo2.png')
 			elif index == "logo3":
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo3.png')
+			elif index == "logo4":
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo4.png')
+			elif index == "logo5":
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo5.png')
 			if pic and self['Picture'].instance and exists(pic):
 				self["Picture"].instance.setScale(1)
 				self["Picture"].instance.setPixmapFromFile(pic)
