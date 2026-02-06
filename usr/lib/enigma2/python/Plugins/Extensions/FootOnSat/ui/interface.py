@@ -2518,14 +2518,14 @@ class MatchStatisticsScreen(Screen):
 			W_LIST = 2462 # Total width of the list box
 			W_LIST_X = 0  # Vertical Offset x 
 			W_LIST_Y = 13 # Vertical Offset Y
-			HOME_X = 20   # Move Home value: Higher = Right, Lower = Left
+			HOME_X = 131  # Move Home value: Higher = Right, Lower = Left
 			HOME_Y = 13   # Vertical Offset
-			NAME_X = 400  # Move Stat Name: Higher = Right, Lower = Left
+			NAME_X = 1030 # Move Stat Name: Higher = Right, Lower = Left
 			NAME_Y = 13   # Vertical Offset
-			AWAY_X = 1030 # Move Away value: Higher = Right, Lower = Left
+			AWAY_X = 1930 # Move Away value: Higher = Right, Lower = Left
 			AWAY_Y = 13   # Vertical Offset
 			COL_W  = 400  # Width of the value boxes
-			NAME_W = 2640 # Width of the middle name box
+			NAME_W = 400  # Width of the middle name box
 		else:
 			ITEM_H = 80   # Row Height: Increase to add space between rows
 			FONT_S = 36   # Font Size: Increase to make text bigger
