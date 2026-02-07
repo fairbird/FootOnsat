@@ -1095,7 +1095,10 @@ class FootOnSat(Screen):
 		weekday = date.today().weekday()  # 5 = Saturday, 6 = Sunday
 		is_weekend = weekday >= 5
 		if config.plugins.FootOnSat.extrafetch.value:
-			fetch_url2 = True  # Always fetch url2, optimized with timeout for large responses
+			if is_weekend:
+				fetch_url2 = self.link in ["live", "end", "yesterday"]
+			else:
+				fetch_url2 = True
 		else:
 			fetch_url2 = not is_weekend  # ONLY try url2 on Mon–Fri
 
@@ -2554,7 +2557,7 @@ class MatchStatisticsScreen(Screen):
 						# Force header to string for Py2
 						header_raw = group.get('groupName', '')
 						header_text = str("-- " + header_raw + " --") 
-						res.append(MultiContentEntryText(pos=(0, 0), size=(W_LIST, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=header_text, color=0xffcc00))
+						res.append(MultiContentEntryText(pos=(W_LIST_X, W_LIST_Y), size=(W_LIST, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=header_text, color=0xffcc00))
 						gList.append(res)
 						
 						for item in group.get('statisticsItems', []):
