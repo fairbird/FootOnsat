@@ -48,8 +48,10 @@ elif config.plugins.FootOnSat.pluginicon.value == "logo3":
 	ICON = "logo3.png"
 elif config.plugins.FootOnSat.pluginicon.value == "logo4":
 	ICON = "logo4.png"
-else:
+elif config.plugins.FootOnSat.pluginicon.value == "logo5":
 	ICON = "logo5.png"
+else:
+	ICON = "logo6.png"
 
 def Plugins(**kwargs):
 	result = [
