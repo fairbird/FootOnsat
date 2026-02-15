@@ -131,6 +131,7 @@ else
    IO='python-io'
    EMAIL='python-email'
    DATETIME='python-datetime'
+   GDB='gdb'
 fi
 
 if grep -q "$SQLITE3" "$STATUS"; then
@@ -181,14 +182,6 @@ if grep -q "$DATETIME" "$STATUS"; then
     datetime='Installed'
 fi
 
-if [ "$OS" = "Opensource" ] || [ "$DEVICE" = "arm64" ]; then
-	if grep -q 'alsa-utils-aplay' "$STATUS"; then
-		aplay='Installed'
-	fi
-else
-	aplay='Installed'
-fi
-
 if grep -q 'ffmpeg' "$STATUS"; then
     ffmpeg='Installed'
 fi
@@ -201,10 +194,26 @@ if grep -q 'exteplayer3' "$STATUS"; then
     exteplayer3='Installed'
 fi
 
+if [ "$OS" = "Opensource" ] || [ "$DEVICE" = "arm64" ]; then
+	if grep -q 'alsa-utils-aplay' "$STATUS"; then
+		aplay='Installed'
+	fi
+else
+	aplay='Installed'
+fi
+
+if [ "$OS" = "DreamOS" ] && [ "$DEVICE" = "arm64" ]; then
+	if grep -q "$GDB" "$STATUS"; then
+		gdb='Installed'
+	fi
+else
+	gdb='Installed'
+fi
+
 if [ "$sqlite" = "Installed" -a "$six" = "Installed" -a "$aplay" = "Installed" -a "$beautifulsoup4" = "Installed" -a \
       "$difflib" = "Installed" -a "$threading" = "Installed" -a "$pil" = "Installed" -a "$requestes" = "Installed" -a \
       "$json" = "Installed" -a "$ujson" = "Installed" -a "$io" = "Installed" -a "$email" = "Installed" -a "$datetime" = "Installed" -a \
-      "$ffmpeg" = "Installed" ]; then
+      "$ffmpeg" = "Installed" -a "$gdb" = "Installed" ]; then
      echo ""
 else
 
@@ -259,6 +268,7 @@ else
         apt-get install $IO -y
         apt-get install $EMAIL -y
         apt-get install $DATETIME -y
+        apt-get install $GDB -y
         echo "========================================================================"
     fi
 fi
@@ -293,7 +303,8 @@ if [ "$OS" = "DreamOS" ] && ! grep -q "$UJSON" "$STATUS"; then
 	elif [ "$DEVICE" = "mips" ]; then
 		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-ujson_1.35-r0.0_mipsel.deb"
 	elif [ "$DEVICE" = "arm64" ]; then
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-ujson_1.35-r0.0_arrch664.deb"
+		#wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-ujson_1.35-r0.0_arrch664.deb"
+		echo ""
 	fi
 	dpkg -i --force-overwrite *.deb
 	apt-get install -f -y
@@ -328,6 +339,10 @@ check_pkg "$DATETIME"
 if [ "$OS" != "DreamOS" ]; then
 	check_pkg "enigma2-plugin-systemplugins-serviceapp"
 	check_pkg "exteplayer3"
+fi
+
+if [ "$OS" = "DreamOS" ] && [ "$DEVICE" = "arm64" ]; then
+	check_pkg "$GDB"
 fi
 
 if [ "$MISSING_PKGS" = "true" ]; then
