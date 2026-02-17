@@ -757,14 +757,32 @@ class FootOnSat(Screen):
 						if debug_ZAP: logdata("updateMenuWidgets ZAP_DEBUG", "Error fetching zap ref: %s" % str(e))
 						self["menu2"].setText("")
 				else:
-					self["menu"].setText(self.MENUTEXT)
+					if self.link == "yesterday":
+						y_date = date.today() - timedelta(days=1)
+						display_text = "Yesterday Matches - {0} - {1}".format(y_date.strftime('%A'), y_date.strftime('%d-%m-%Y'))
+					elif self.link in ["live", "end"]:
+						t_date = date.today()
+						display_text = "Today Matches - {0} - {1}".format(t_date.strftime('%A'), t_date.strftime('%d-%m-%Y'))
+					else:
+						display_text = self.MENUTEXT
+					self["menu"].setText(display_text)
 					if parseColor and self["menu"].instance:
-						self["menu"].instance.setForegroundColor(parseColor("#00ffffff"))
+						m_color = "#0000ff00" if self.link == "yesterday" else "#00ffffff"
+						self["menu"].instance.setForegroundColor(parseColor(m_color))
 					self["menu2"].setText("")
 			else:
-				self["menu"].setText(self.MENUTEXT)
+				if self.link == "yesterday":
+					y_date = date.today() - timedelta(days=1)
+					display_text = "Yesterday Matches - {0} - {1}".format(y_date.strftime('%A'), y_date.strftime('%d-%m-%Y'))
+				elif self.link in ["live", "end"]:
+					t_date = date.today()
+					display_text = "Today Matches - {0} - {1}".format(t_date.strftime('%A'), t_date.strftime('%d-%m-%Y'))
+				else:
+					display_text = self.MENUTEXT
+				self["menu"].setText(display_text)
 				if parseColor and self["menu"].instance:
-					self["menu"].instance.setForegroundColor(parseColor("#00ffffff"))
+					m_color = "#0000ff00" if self.link == "yesterday" else "#00ffffff"
+					self["menu"].instance.setForegroundColor(parseColor(m_color))
 				self["menu2"].setText("")
 
 		if self.selectedList == self["list2"]:
