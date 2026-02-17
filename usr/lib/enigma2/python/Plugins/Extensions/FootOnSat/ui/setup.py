@@ -254,9 +254,9 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 				self.list.append((_('Media player:'),config.plugins.FootOnSat.player, _('Specify the player which will be used for media playback.')))
 				break
 		self.list.append(getConfigListEntry("_______________________________礑 Debug 礑__________________________________________"))
-		self.list.append(getConfigListEntry(_("ZAP"), config.plugins.FootOnSat.debug_ZAP, _("This option allows you to print the (Zap) feature and codes work in a log file.")))
-		self.list.append(getConfigListEntry(_("Notif"), config.plugins.FootOnSat.debug_Notif, _("This option allows you to print the (Notification) feature and codes work in a log file.")))
-		self.list.append(getConfigListEntry(_("Ignore"), config.plugins.FootOnSat.debug_Ignore, _("This option allows you to print the (Ignore Competition) feature and codes work in a log file.")))
+		self.list.append(getConfigListEntry(_("ZAP to Channel"), config.plugins.FootOnSat.debug_ZAP, _("This option allows you to print the (ZAP to channel after Notification) feature and codes work in a log file.")))
+		self.list.append(getConfigListEntry(_("Notification"), config.plugins.FootOnSat.debug_Notif, _("This option allows you to print the (Notification) feature and codes work in a log file.")))
+		self.list.append(getConfigListEntry(_("Ignore Competition"), config.plugins.FootOnSat.debug_Ignore, _("This option allows you to print the (Ignore Competition) feature and codes work in a log file.")))
 		self.list.append(getConfigListEntry(_("Fetch and Live"), config.plugins.FootOnSat.debug_Fetch_Live, _("This option allows you to print the (Fetch url and bring data of Live) feature and codes work in a log file.")))
 		self.list.append(getConfigListEntry(_("Standings"), config.plugins.FootOnSat.debug_Standings, _("This option allows you to print the (Standings) screen and codes work in a log file.")))
 		self.list.append(getConfigListEntry(_("Match Media"), config.plugins.FootOnSat.debug_MatchMedia, _("This option allows you to print the (Match Media,) screen and codes work in a log file.")))

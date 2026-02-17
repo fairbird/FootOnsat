@@ -2708,10 +2708,12 @@ class MatchMediaScreen(Screen):
 			icon_yt = path + "youtube_iconUHD.png"
 			icon_tw = path + "twitter_iconUHD.png"
 			icon_vs = path + "vsports_iconUHD.png"
+			icon_su = path + "superliga_iconUHD.png"
 		else:
 			icon_yt = path + "youtube_icon.png"
 			icon_tw = path + "twitter_icon.png"
 			icon_vs = path + "vsports_icon.png"
+			icon_su = path + "superliga_icon.png"
 
 		if data and 'media' in data:
 			for item in data['media']:
@@ -2733,6 +2735,9 @@ class MatchMediaScreen(Screen):
 					icon_path = icon_tw
 				elif "vsports.pt" in v_url.lower():
 					icon_path = icon_vs
+				elif "superliga.dk" in v_url.lower():
+					#icon_path = icon_su # Need to fix later
+					continue
 
 				if icon_path and exists(icon_path):
 					# info: Use LoadPixmap with size to force auto-scaling of the PNG file
@@ -2760,9 +2765,11 @@ class MatchMediaScreen(Screen):
 		if debug_MatchMedia: logdata("MatchMedia", "Processing URL: %s" % str(url))
 		self.play_timer_conn = None
 		self.error_timer_conn = None
-		is_youtube = "youtube.com" in url.lower() or "youtu.be" in url.lower()
-		is_twitter = "twitter.com" in url.lower() or "x.com" in url.lower()
-		is_vsports = "vsports.pt" in url.lower() # Add this line
+		url_lower = str(url).lower()
+		is_youtube = "youtube.com" in url_lower or "youtu.be" in url_lower
+		is_twitter = "twitter.com" in url_lower or "x.com" in url_lower
+		is_vsports = "vsports.pt" in url_lower
+		is_superliga = "superliga.dk" in url_lower
 		if is_youtube:
 			if debug_MatchMedia: logdata("MatchMedia-YOUTUBE", "Start Play: %s" % url)
 			pass
@@ -2771,6 +2778,9 @@ class MatchMediaScreen(Screen):
 			pass
 		if is_vsports:
 			if debug_MatchMedia: logdata("MatchMedia-VSPORTS", "Start Play: %s" % url)
+			pass
+		if is_superliga:
+			if debug_MatchMedia: logdata("MatchMedia-superliga", "Start Play: %s" % url)
 			pass
 		msg = _("Please wait while extracting video stream...")
 		if is_youtube:
@@ -2795,6 +2805,9 @@ class MatchMediaScreen(Screen):
 		elif is_vsports:
 			self.wait_dialog = self.session.open(MessageBox, msg, MessageBox.TYPE_INFO, enable_input=False)
 			deferToThread(self.extract_vsports_stream, url).addCallback(self.playAfterExtract).addErrback(self.playback_error)
+		elif is_superliga:
+			self.wait_dialog = self.session.open(MessageBox, msg, MessageBox.TYPE_INFO, enable_input=False)
+			deferToThread(self.extract_superliga_stream, url).addCallback(self.playAfterExtract).addErrback(self.playback_error)
 		else:
 			#self.playAfterExtract(str(url))
 			# Fallback for unsupported URLs
@@ -2900,6 +2913,54 @@ class MatchMediaScreen(Screen):
 				if exists("/tmp/a.mp4"): os.remove("/tmp/a.mp4")
 			except:
 				pass
+
+	def extract_superliga_stream(self, url):
+		headers = {
+			'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+			'Referer': 'https://www.superliga.dk/',
+			'Accept': '*/*'
+		}
+		if debug_MatchMedia: logdata("MatchMedia", "Superliga: Requesting %s" % url)
+		s = requests.Session()
+		r = s.get(url, headers=headers, timeout=15, verify=False)
+		if r.status_code != 200: return None
+		content = r.content.decode('utf-8', 'ignore')
+		# 1. Look for the Nuxt state where all dynamic match data is stored
+		# We search for the pattern "1_" (Kaltura Entry ID) and digits (Partner ID)
+		entry_id = None
+		partner_id = None
+		# Brute force search for Kaltura Entry ID pattern 1_xxxxxxxx
+		m_ent = re.search(r'1_[a-zA-Z0-9]{8}', content)
+		if m_ent:
+			entry_id = m_ent.group(0)
+			if debug_MatchMedia: logdata("MatchMedia", "Superliga: Found EntryID: %s" % entry_id)
+		# Search for Partner ID near the Entry ID in the Nuxt state string
+		# It usually appears as "partnerId":4215093 or similar inside the JSON
+		m_pid = re.search(r'partnerId["\']?\s*[:=]\s*["\']?(\d{5,})["\']?', content)
+		if m_pid:
+			partner_id = m_pid.group(1)
+			if debug_MatchMedia: logdata("MatchMedia", "Superliga: Found PartnerID: %s" % partner_id)
+		# 2. Fallback: If not in HTML, check for the Video Tool pattern
+		if not entry_id:
+			m_vid = re.search(r'video_id["\']?\s*[:=]\s*["\']?(\d+)["\']?', content)
+			if m_vid:
+				photo_id = m_vid.group(1)
+				api_url = "https://superliga.video-tool.com/api/photo/get?photo_id=%s&format=json" % photo_id
+				r_api = s.get(api_url, headers=headers, timeout=10)
+				if r_api.status_code == 200:
+					data = r_api.json()
+					url = data.get('photo', {}).get('video_hls_url')
+					if url: return url.replace('\\/', '/')
+		# 3. Construct the Manifest if Kaltura info was found
+		if entry_id and partner_id:
+			manifest_url = "https://cdnapisec.kaltura.com/p/%s/sp/%s00/playManifest/entryId/%s/protocol/https/format/applehttp/a.m3u8" % (partner_id, partner_id, entry_id)
+			if debug_MatchMedia: logdata("MatchMedia", "Superliga: Generated: %s" % manifest_url)
+			return manifest_url
+		# 4. Final Debug: If failed, we need to know what the Nuxt state contains
+		if debug_MatchMedia:
+			nuxt_check = "window.__NUXT__" in content
+			logdata("MatchMedia", "Superliga: FAILED. Nuxt Found: %s. EntryID Found: %s." % (nuxt_check, entry_id))
+		return None
 
 	def extract_vsports_stream(self, url):
 		try:

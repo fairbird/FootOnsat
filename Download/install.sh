@@ -194,7 +194,7 @@ if grep -q 'exteplayer3' "$STATUS"; then
     exteplayer3='Installed'
 fi
 
-if [ "$OS" = "Opensource" ] || [ "$DEVICE" = "arm64" ]; then
+if [ "$OS" = "Opensource" ]; then
 	if grep -q 'alsa-utils-aplay' "$STATUS"; then
 		aplay='Installed'
 	fi
@@ -253,7 +253,6 @@ else
         echo "========================================================================"
         echo " Downloading packages depend ......"
         apt-get install ffmpeg -y
-        #apt-get install alsa-utils-aplay -y
         echo "========================================================================"
         echo "========================================================================"
         apt-get install $SQLITE3 -y
@@ -284,7 +283,7 @@ if [ "$OS" != "DreamOS" ]; then
 	fi
 fi
 
-if ! grep -q 'ffmpeg' "$STATUS" || ! grep -q 'alsa-utils-aplay' "$STATUS"; then
+if ! grep -q 'alsa-utils-aplay' "$STATUS"; then
 	if [ "$OS" = "DreamOS" ] && [ "$DEVICE" = "arm64" ]; then
 		cd /tmp
 		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/arm64/alsa-utils-aplay.deb"
