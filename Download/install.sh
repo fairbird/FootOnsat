@@ -116,6 +116,8 @@ if python --version 2>&1 | grep -q '^Python 3\.'; then
    IO='python3-io'
    EMAIL='python3-email'
    DATETIME='python3-datetime'
+   FFMPEG='ffmpeg'
+   CURL='curl'
 else
    echo "You have Python2 image"
    PYTHON='PY2'
@@ -132,6 +134,8 @@ else
    EMAIL='python-email'
    DATETIME='python-datetime'
    GDB='gdb'
+   FFMPEG='ffmpeg'
+   CURL='curl'
 fi
 
 if grep -q "$SQLITE3" "$STATUS"; then
@@ -182,8 +186,12 @@ if grep -q "$DATETIME" "$STATUS"; then
     datetime='Installed'
 fi
 
-if grep -q 'ffmpeg' "$STATUS"; then
+if grep -q "$FFMPEG" "$STATUS"; then
     ffmpeg='Installed'
+fi
+
+if grep -q "$CURL" "$STATUS"; then
+    curl='Installed'
 fi
 
 if grep -q 'enigma2-plugin-systemplugins-serviceapp' "$STATUS"; then
@@ -213,7 +221,7 @@ fi
 if [ "$sqlite" = "Installed" -a "$six" = "Installed" -a "$aplay" = "Installed" -a "$beautifulsoup4" = "Installed" -a \
       "$difflib" = "Installed" -a "$threading" = "Installed" -a "$pil" = "Installed" -a "$requestes" = "Installed" -a \
       "$json" = "Installed" -a "$ujson" = "Installed" -a "$io" = "Installed" -a "$email" = "Installed" -a "$datetime" = "Installed" -a \
-      "$ffmpeg" = "Installed" -a "$gdb" = "Installed" ]; then
+      "$ffmpeg" = "Installed" -a "$curl" = "Installed" -a "$gdb" = "Installed" ]; then
      echo ""
 else
 
@@ -227,6 +235,7 @@ else
         echo "========================================================================"
         echo " Downloading packages depend ......"
         opkg install ffmpeg
+        opkg install curl
         opkg install alsa-utils-aplay
         echo "========================================================================"
         echo "========================================================================"
@@ -253,6 +262,7 @@ else
         echo "========================================================================"
         echo " Downloading packages depend ......"
         apt-get install ffmpeg -y
+        apt-get install curl -y
         echo "========================================================================"
         echo "========================================================================"
         apt-get install $SQLITE3 -y
@@ -334,6 +344,8 @@ check_pkg "$UJSON"
 check_pkg "$IO"
 check_pkg "$EMAIL"
 check_pkg "$DATETIME"
+check_pkg "$FFMPEG"
+check_pkg "$CURL"
 
 if [ "$OS" != "DreamOS" ]; then
 	check_pkg "enigma2-plugin-systemplugins-serviceapp"
