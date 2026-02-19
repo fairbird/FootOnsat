@@ -1820,12 +1820,10 @@ class FootOnSat(Screen):
 			#logdata("DEBUG_VALUE", "Value is: %s | Link is: %s" % (str(config.plugins.FootOnSat.livescore.value), str(self.link)))
 			# Only fetch live results for live/finished matches if livescore is set to "3"					
 			if config.plugins.FootOnSat.livescore.value == "2":
-				# Added 'and self.link != "today"' to block scores for the today section
 				if config.plugins.FootOnSat.livescoresections.value == "1" and self.link != "today":
 					self.fetch_live_results()
 				elif config.plugins.FootOnSat.livescoresections.value == "2":
-					# Logic: If setting is 'Specific Section', use it for 'live'
-					if self.link == "live" or self.link == "end":
+					if self.link == "live" or self.link == "end" or self.link == "yesterday":
 						self.fetch_live_results()
 
 			self.onWindowShow()
@@ -2885,33 +2883,91 @@ class MatchMediaScreen(Screen):
 			if debug_MatchMedia: logdata("MatchMedia", "Full video_url: %s" % str(video_url))
 			separator = '#EXT-X-STREAM-INF:AUDIO=' if '#EXT-X-STREAM-INF:AUDIO=' in video_url else SUBURI
 			if separator in video_url:
-				if debug_MatchMedia: logdata("MatchMedia", "Audio stream found via %s. Preparing download..." % separator)
+				if debug_MatchMedia: logdata("MatchMedia", "DASH: separate audio found. Starting real-time mux...")
+				self.dash_fifo = None
 				try:
-					v_url = pure_url
+					v_url = video_url.split(separator)[0]
+					if "#http_user_agent=" in v_url: v_url = v_url.split("#http_user_agent=")[0]
 					a_url = video_url.split(separator)[-1].replace('"', '').strip()
 					if "#http_user_agent=" in a_url: a_url = a_url.split("#http_user_agent=")[0]
-					a_tmp = "/tmp/a.mp4"
 					ua = str(user_agent) if user_agent else "Mozilla/5.0"
-					down_a = 'wget --no-check-certificate -U "%s" -O %s "%s"' % (ua, a_tmp, a_url)
-					if debug_MatchMedia: logdata("MatchMedia", "Downloading audio: %s" % down_a)
-					gst_cmd = "gst-launch-1.0 filesrc location=%s ! decodebin ! audioconvert ! audioresample ! alsasink" % a_tmp
-					self.dash_process = subprocess.Popen('%s && %s' % (down_a, gst_cmd), shell=True, preexec_fn=os.setsid)
-					if debug_MatchMedia: logdata("MatchMedia", "Audio download and background playback started.")
+					fifo = "/tmp/yt_dash.ts"
+					try:
+						if exists(fifo): os.remove(fifo)
+						self.dash_fifo = fifo
+					except Exception as fe:
+						if debug_MatchMedia: logdata("MatchMedia", "FIFO cleanup error: %s" % str(fe))
+					if self.dash_fifo:
+						ffmpeg_bin = "/usr/bin/ffmpeg"
+						ffmpeg_exists = exists(ffmpeg_bin)
+						ffmpeg_has_ssl = False
+						if ffmpeg_exists:
+							try:
+								proto_out = subprocess.Popen([ffmpeg_bin, '-protocols'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+								ffmpeg_has_ssl = b'https' in proto_out[0] + proto_out[1]
+							except: pass
+							if ffmpeg_has_ssl:
+								mux_cmd = (
+									'%(ff)s -y -hide_banner -loglevel error '
+									'-user_agent "%(ua)s" -headers "Referer: https://www.youtube.com/\r\n" '
+									'-i "%(v)s" '
+									'-user_agent "%(ua)s" -headers "Referer: https://www.youtube.com/\r\n" '
+									'-i "%(a)s" '
+									'-c copy -f mpegts "%(fifo)s"'
+								) % {'ff': ffmpeg_bin, 'ua': ua, 'v': v_url, 'a': a_url, 'fifo': fifo}
+							else:
+								mux_cmd = (
+									'rm -f /tmp/yt_v.fifo /tmp/yt_a.fifo /tmp/yt_dash.ts; '
+									'mkfifo /tmp/yt_v.fifo /tmp/yt_a.fifo; '
+									'curl -k -g -L -N --user-agent "%(ua)s" -o /tmp/yt_v.fifo "%(v)s" & '
+									'curl -k -g -L -N --user-agent "%(ua)s" -o /tmp/yt_a.fifo "%(a)s" & '
+									'%(ff)s -y -f mov -i /tmp/yt_v.fifo -f mov -i /tmp/yt_a.fifo '
+									'-map 0:v -map 1:a -c:v copy -c:a mp2 -b:a 192k -ar 48000 '
+									'-fflags +genpts+nobuffer -f mpegts "%(fifo)s"; '
+									'rm -f /tmp/yt_v.fifo /tmp/yt_a.fifo'
+								) % {'ff': ffmpeg_bin, 'ua': ua, 'v': v_url, 'a': a_url, 'fifo': fifo}
+						else:
+							try: os.mkfifo(fifo)
+							except: pass
+							mux_cmd = (
+								'gst-launch-1.0 -q '
+								'mpegtsmux name=mux ! filesink location="%(fifo)s" '
+								'souphttpsrc location="%(v)s" user-agent="%(ua)s" ! qtdemux ! h264parse ! queue ! mux. '
+								'souphttpsrc location="%(a)s" user-agent="%(ua)s" ! qtdemux ! aacparse ! queue ! mux.'
+							) % {'ua': ua, 'v': v_url, 'a': a_url, 'fifo': fifo}
+						if debug_MatchMedia: logdata("MatchMedia", "DASH mux cmd: %s" % mux_cmd)
+						self.dash_process = subprocess.Popen(mux_cmd, shell=True, preexec_fn=os.setsid)
+						if ffmpeg_exists:
+							for i in range(20):
+								if exists(fifo) and os.path.getsize(fifo) > 60000: break
+								time.sleep(0.5)
+							stype = 1
+						else:
+							for i in range(20):
+								if exists(fifo): break
+								time.sleep(0.5)
+						pure_url = fifo
+						user_agent = None
+						if debug_MatchMedia: logdata("MatchMedia", "DASH mux started. Source: %s" % fifo)
+					else:
+						if debug_MatchMedia: logdata("MatchMedia", "DASH FIFO unavailable, video-only fallback.")
+						pure_url = v_url
 				except Exception as e:
-					if debug_MatchMedia: logdata("MatchMedia", "Error: %s" % str(e))
-					pass
-		try:
-			req = compat_Request(pure_url)
-			if user_agent: req.add_header("User-Agent", user_agent)
-			req.add_header("Referer", "https://www.youtube.com/")
-			req.add_header("Range", "bytes=0-1")
-			resp = compat_urlopen(req, timeout=10)
-			code = getattr(resp, "getcode", lambda: 200)()
-			if code not in (200, 206): raise Exception("HTTP_%s" % code)
-		except Exception as e:
-			if "403" not in str(e):
-				self.session.open(MessageBox, _("Failed to extract video stream or link is broken."), MessageBox.TYPE_ERROR, timeout=10)
-				return
+					if debug_MatchMedia: logdata("MatchMedia", "DASH mux setup error: %s" % str(e))
+					self.dash_fifo = None
+		if pure_url.startswith("http"):
+			try:
+				req = compat_Request(pure_url)
+				if user_agent: req.add_header("User-Agent", user_agent)
+				req.add_header("Referer", "https://www.youtube.com/")
+				req.add_header("Range", "bytes=0-1")
+				resp = compat_urlopen(req, timeout=10)
+				code = getattr(resp, "getcode", lambda: 200)()
+				if code not in (200, 206): raise Exception("HTTP_%s" % code)
+			except Exception as e:
+				if "403" not in str(e):
+					self.session.open(MessageBox, _("Failed to extract video stream or link is broken."), MessageBox.TYPE_ERROR, timeout=10)
+					return
 		name = str(self["title"].getText())
 		ref_str = "%d:0:1:0:0:0:0:0:0:0::%s" % (stype, compat_quote(name))
 		ref = eServiceReference(ref_str)
@@ -2929,20 +2985,35 @@ class MatchMediaScreen(Screen):
 		if debug_MatchMedia: logdata("MatchMedia", "pure_url: %s" % str(pure_url))
 		if debug_MatchMedia: logdata("MatchMedia", "SREF: %s" % ref.toString())
 		if DreamOS():
-			self.play_timer_conn = self.play_timer.timeout.connect(lambda: self.session.openWithCallback(self.stopDashAudio, MoviePlayer, ref))
+			self.play_timer_conn = self.play_timer.timeout.connect(lambda: self.session.open(CustomMediaPlayer, ref, self))
 		else:
-			self.play_timer.callback.append(lambda: self.session.openWithCallback(self.stopDashAudio, MoviePlayer, ref))
+			self.play_timer.callback.append(lambda: self.session.open(CustomMediaPlayer, ref, self))
 		self.play_timer.start(200, True)
 
 	def stopDashAudio(self, *args):
 		if hasattr(self, 'dash_process') and self.dash_process:
 			try:
 				os.killpg(os.getpgid(self.dash_process.pid), signal.SIGTERM)
-				if debug_MatchMedia: logdata("MatchMedia", "Audio process killed.")
-				del self.dash_process
-				if exists("/tmp/a.mp4"): os.remove("/tmp/a.mp4")
+				if debug_MatchMedia: logdata("MatchMedia", "DASH mux process killed.")
 			except:
 				pass
+			try:
+				del self.dash_process
+			except:
+				pass
+		fifo = getattr(self, 'dash_fifo', None)
+		if fifo:
+			try:
+				if exists(fifo): os.remove(fifo)
+				if debug_MatchMedia: logdata("MatchMedia", "DASH FIFO removed: %s" % fifo)
+			except:
+				pass
+			self.dash_fifo = None
+		# info: Clean up all temporary files and the new FIFOs
+		for f in ("/tmp/yt_v.fifo", "/tmp/yt_a.fifo", "/tmp/yt_v.mp4", "/tmp/yt_a.mp4", "/tmp/a.mp4", "/tmp/yt_dash.ts"):
+			if exists(f):
+				try: os.remove(f)
+				except: pass
 
 	def extract_vbox7_stream(self, url):
 		try:
@@ -3062,6 +3133,44 @@ class MatchMediaScreen(Screen):
 		else:
 			self.error_timer.callback.append(lambda: self.session.open(MessageBox, msg, MessageBox.TYPE_ERROR, timeout=10))
 		self.error_timer.start(250, True)
+
+
+class CustomMediaPlayer(MoviePlayer):
+	def __init__(self, session, service, parent):
+		MoviePlayer.__init__(self, session, service)
+		self.parent_screen = parent
+		self.service = service
+		self['actions'] = ActionMap(['ColorActions',
+			'SetupActions', 'DirectionActions', 'MovieSelectionActions', 'MediaPlayerActions'],
+			{
+				'red': self.leavePlayer,
+				'cancel': self.leavePlayer,
+				'stop': self.leavePlayer
+			}, -1)
+		
+	def leavePlayer(self):
+		if debug_MatchMedia: logdata("MatchMedia", "CustomMediaPlayer: leavePlayer")
+		self.close()
+	
+	def leavePlayerOnExit(self):
+		if debug_MatchMedia: logdata("MatchMedia", "CustomMediaPlayer: leavePlayerOnExit")
+		self.close()
+	
+	def doEofInternal(self, playing):
+		if debug_MatchMedia: logdata("MatchMedia", "CustomMediaPlayer: doEofInternal")
+		self.close()
+
+	def close(self):
+		if debug_MatchMedia: logdata("MatchMedia", "CustomMediaPlayer: close - cleanup")
+		clist = [(_('Yes, and Close'), 'quit')]
+		self.session.openWithCallback(self.callbackClose, ChoiceBox, title=_('Stop playing this movie?'), list=clist)
+
+	def callbackClose(self, answer):
+		answer = answer and answer[1]
+		if debug_MatchMedia: logdata("MatchMedia", "CustomMediaPlayer: callbackClose answer=%s" % str(answer))
+		if answer == 'quit':
+			self.parent_screen.stopDashAudio()
+			MoviePlayer.close(self)
 
 
 class StandingsScreen(Screen):
