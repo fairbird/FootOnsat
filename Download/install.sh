@@ -412,6 +412,26 @@ if [ -d $PLUGIN_PATH ]; then
 	fi
 fi
 
+#################
+BANNERS_TMP_TAR="/tmp/banners_main.tar.gz"
+BANNERS_TMP_DIR="/tmp/banners_extract"
+BANNERS_SHA_FILE="$PLUGIN_PATH/assets/compet/.last_commit.sha"
+wget -q "https://github.com/fairbird/Banners_FootOnSat/archive/refs/heads/main.tar.gz" -O "$BANNERS_TMP_TAR"
+if [ -f "$BANNERS_TMP_TAR" ]; then
+    mkdir -p "$BANNERS_TMP_DIR"
+    tar -xzf "$BANNERS_TMP_TAR" -C "$BANNERS_TMP_DIR"
+    SRC_PATH=$(ls -d $BANNERS_TMP_DIR/* | head -n 1)/banners
+    cp -r "$SRC_PATH/package.json" "$PLUGIN_PATH/assets/compet/"
+    mkdir -p "$PLUGIN_PATH/assets/compet/FHD"
+    cp -r "$SRC_PATH/FHD/"*.png "$PLUGIN_PATH/assets/compet/FHD/"
+    CUR_SHA=$(curl -s "https://api.github.com/repos/fairbird/Banners_FootOnSat/commits?path=banners&per_page=1" | grep '"sha"' | head -n 1 | cut -d '"' -f 4)
+    if [ -n "$CUR_SHA" ]; then
+        echo "$CUR_SHA" > "$BANNERS_SHA_FILE"
+    fi
+    rm -rf "$BANNERS_TMP_TAR" "$BANNERS_TMP_DIR"
+fi
+##################
+
 echo "clean tmp ..."
 cd /tmp
 rm -rf *FootOnsat* >/dev/null 2>&1
