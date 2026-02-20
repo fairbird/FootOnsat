@@ -3138,6 +3138,7 @@ class MatchMediaScreen(Screen):
 class CustomMediaPlayer(MoviePlayer):
 	def __init__(self, session, service, parent):
 		MoviePlayer.__init__(self, session, service)
+		self.skinName = ['CustomMediaPlayer', 'MoviePlayer']
 		self.parent_screen = parent
 		self.service = service
 		self['actions'] = ActionMap(['ColorActions',
