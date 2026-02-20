@@ -11,12 +11,10 @@ from Components.FootMenu import FlexibleMenu
 from Plugins.Extensions.FootOnSat.ui.Console import Console
 from Plugins.Extensions.FootOnSat.ui.interface import FootOnSat, WebClientContextFactory
 from Plugins.Extensions.FootOnSat.component.configs import ConfigDictionarySet
-from twisted.web.client import getPage
+from twisted.web.client import getPage, downloadPage
 from os.path import join, exists
-import re
-import os
-import json
-import sys
+import re, os, json, sys
+from os import system
 from sys import version_info
 from .compat import *
 from .setup import *
@@ -30,6 +28,8 @@ if isUHD():
         from Plugins.Extensions.FootOnSat.assets.skin.skinUHD import *
 else:
         from Plugins.Extensions.FootOnSat.assets.skin.skinFHD import *
+
+PLUGINPATH="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
 
 
 class FootOnsatLauncher(Screen):
@@ -74,6 +74,8 @@ class FootOnsatLauncher(Screen):
 	def callAPI(self):
 		if config.plugins.FootOnSat.updateonline.value:
 			self.checkupdates()
+		elif config.plugins.FootOnSat.updatebannersonline.value:
+			self.checkbannersupdates()
 		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/api.json'
 		sniFactory = WebClientContextFactory(url)
 		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
@@ -282,12 +284,10 @@ class FootOnsatLauncher(Screen):
 			url = b"https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh"
 			getPage(url,timeout=10).addCallback(self.parseData).addErrback(self.errBack)
 		except Exception as error:
-			if debug_Fetch_Live: logdata("launcher", "checkupdates : %s" % error)
-			pass
+			logdata("launcher", "checkupdates : %s" % error)
 
 	def errBack(self,error=None):
-		if debug_Fetch_Live: logdata("launcher", "errBack-erro : %s" % error)
-		pass
+		logdata("launcher", "errBack-erro : %s" % error)
 
 	def parseData(self, data):
 		if PY3:
@@ -332,6 +332,8 @@ class FootOnsatLauncher(Screen):
 				try:
 					if float(VER) >= float(self.new_version):
 						logdata("Updates", "No new version available")
+						if config.plugins.FootOnSat.updatebannersonline.value:
+							self.checkbannersupdates()
 					else:
 						new_description = self.new_description
 						logdata("Updates", "New version %s is available" % self.new_version)
@@ -354,8 +356,36 @@ class FootOnsatLauncher(Screen):
 				cmdlist.append(cmd)
 				self.session.open(Console, title='Installing last update, enigma will be started after install', cmdlist=cmdlist, finishedCallback=self.myCallback, closeOnSuccess=False)
 		except Exception as e:
-			if debug_Fetch_Live: logdata("launcher", "Install Error: %s" % str(e))
-			pass
+			logdata("launcher", "Install Error: %s" % str(e))
 	
 	def myCallback(self):
 		return
+
+	def checkbannersupdates(self):
+		self.sha_file = join(PLUGINPATH, "assets/compet/.last_commit.sha")
+		def process_all(result):
+			try:
+				system("mkdir -p /tmp/b_ext && tar -xzf /tmp/b.tar.gz -C /tmp/b_ext")
+				root_dir = os.listdir("/tmp/b_ext")[0]
+				src = join("/tmp/b_ext", root_dir, "banners")
+				dest = join(PLUGINPATH, "assets/compet")
+				system("cp -f %s %s" % (join(src, "package.json"), join(dest, "package.json")))
+				if not exists(join(dest, "FHD")): os.makedirs(join(dest, "FHD"))
+				system("cp -rf %s/* %s/" % (join(src, "FHD"), join(dest, "FHD")))
+				with open(self.sha_file, "w") as f: f.write(self.latest_sha)
+			except: pass
+			finally:
+				system("rm -f /tmp/b.tar.gz && rm -rf /tmp/b_ext")
+		def check_commit(data):
+			try:
+				if PY3: data = data.decode("utf-8")
+				self.latest_sha = json.loads(data)[0]['sha']
+				local_sha = ""
+				if exists(self.sha_file):
+					with open(self.sha_file, "r") as f: local_sha = f.read().strip()
+				if not local_sha or self.latest_sha != local_sha:
+					url = "https://api.github.com/repos/fairbird/Banners_FootOnSat/tarball/main"
+					downloadPage(str.encode(url), "/tmp/b.tar.gz").addCallback(process_all)
+			except: pass
+		try: getPage(b"https://api.github.com/repos/fairbird/Banners_FootOnSat/commits?path=banners&per_page=1", agent=b"Enigma2").addCallback(check_commit)
+		except: pass
