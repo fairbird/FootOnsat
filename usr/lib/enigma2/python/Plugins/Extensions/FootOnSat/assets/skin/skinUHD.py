@@ -140,7 +140,7 @@ SKIN_standingsbasketball = """
 SKIN_MatchDetails = """
 <screen name="MatchDetailsScreen" position="0,0" size="2560,1440" title="Match Details" flags="wfNoBorder" backgroundColor="#16000000">
     <eLabel position="0,0" size="2560,208" backgroundColor="#003366" zPosition="0" />
-    <widget name="title" position="80,40" size="2400,131" font="Regular;90" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#003366" transparent="1" zPosition="1" />
+    <widget name="title" position="80,40" size="2400,131" font="Regular;80" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#003366" transparent="1" zPosition="1" />
     <widget name="home_name_big" position="50,210" size="980,160" font="Regular;80" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#101010" transparent="1" />
     <widget name="away_name_big" position="1535,210" size="980,160" font="Regular;80" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#101010" transparent="1" />
     <widget name="home_team" position="50,375" size="980,115" backgroundColor="#101010" transparent="1" alphatest="blend" />
@@ -156,7 +156,7 @@ SKIN_MatchDetails = """
 SKIN_MatchStatistics = """
 <screen name="MatchStatisticsScreen" position="0,0" size="2560,1440" title="Match Statistics" flags="wfNoBorder" backgroundColor="#101010">
     <eLabel position="0,0" size="2560,208" backgroundColor="#006633" zPosition="0" />
-    <widget name="title" position="80,40" size="2400,131" font="Regular;90" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#006633" transparent="1" zPosition="1" />
+    <widget name="title" position="80,40" size="2400,131" font="Regular;80" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#006633" transparent="1" zPosition="1" />
     <widget name="home_team" position="50,210" size="980,160" font="Regular;80" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
     <widget name="away_team" position="1535,210" size="980,160" font="Regular;80" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
     <widget name="stats_list" position="50,429" size="2462,780" scrollbarMode="showOnDemand" transparent="1" />
@@ -169,7 +169,7 @@ SKIN_MatchStatistics = """
 SKIN_MatchMedia = """
 <screen name="MatchMediaScreen" position="0,0" size="2560,1440" title="Match Media" flags="wfNoBorder" backgroundColor="#16000000">
     <eLabel position="0,0" size="2560,208" backgroundColor="#660000" zPosition="0" />
-    <widget name="title" position="80,40" size="2400,131" font="Regular;90" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#660000" transparent="1" zPosition="1" />
+    <widget name="title" position="80,40" size="2400,131" font="Regular;80" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#660000" transparent="1" zPosition="1" />
     <widget name="media_list" position="50,291" size="2462,999" scrollbarMode="showOnDemand" transparent="1" />
     <eLabel text="&lt; Statistics | Details &gt;" position="1716,1290" size="800,120" font="Regular;38" foregroundColor="#ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" halign="right" valign="center" />
     <widget name="key_red" position="50,1300" size="800,120" zPosition="1" font="Regular;38" halign="left" valign="center" backgroundColor="#101010" transparent="1" foregroundColor="red" />

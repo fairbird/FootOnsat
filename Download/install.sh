@@ -305,6 +305,14 @@ if ! grep -q 'alsa-utils-aplay' "$STATUS"; then
 	fi
 fi
 
+if ! grep -q 'gstreamer1.0-plugins-bad-mpegtsmux' "$STATUS"; then
+	if [ "$OS" = "DreamOS" ]; then
+		apt-get update
+		apt-get install gstreamer1.0-plugins-bad-mpegtsmux -f -y
+		cd ..
+	fi
+fi
+
 if [ "$OS" = "DreamOS" ] && ! grep -q "$UJSON" "$STATUS"; then
 	cd /tmp
 	if [ "$DEVICE" = "arm" ]; then
