@@ -116,10 +116,7 @@ if python --version 2>&1 | grep -q '^Python 3\.'; then
    IO='python3-io'
    EMAIL='python3-email'
    DATETIME='python3-datetime'
-<<<<<<< HEAD
    FFMPEG='ffmpeg'
-=======
->>>>>>> ede3518c65293cbb0bd2da3c57b995eb90482d3a
    CURL='curl'
 else
    echo "You have Python2 image"
@@ -136,17 +133,13 @@ else
    IO='python-io'
    EMAIL='python-email'
    DATETIME='python-datetime'
-<<<<<<< HEAD
    GDB='gdb'
    FFMPEG='ffmpeg'
-   CURL='curl'
-=======
    CURL='curl'
 fi
 
 if grep -q "$CURL" "$STATUS"; then
     curl='Installed'
->>>>>>> ede3518c65293cbb0bd2da3c57b995eb90482d3a
 fi
 
 if grep -q "$SQLITE3" "$STATUS"; then
@@ -231,13 +224,8 @@ fi
 
 if [ "$sqlite" = "Installed" -a "$six" = "Installed" -a "$aplay" = "Installed" -a "$beautifulsoup4" = "Installed" -a \
       "$difflib" = "Installed" -a "$threading" = "Installed" -a "$pil" = "Installed" -a "$requestes" = "Installed" -a \
-<<<<<<< HEAD
-      "$json" = "Installed" -a "$ujson" = "Installed" -a "$io" = "Installed" -a "$email" = "Installed" -a "$datetime" = "Installed" -a \
-      "$ffmpeg" = "Installed" -a "$curl" = "Installed" -a "$gdb" = "Installed" ]; then
-=======
       "$json" = "Installed" -a "$ujson" = "Installed" -a "$io" = "Installed" -a "$datetime" = "Installed" -a \
-      "$email" = "Installed" -a "$ffmpeg" = "Installed" -a "$curl" = "Installed" ]; then
->>>>>>> ede3518c65293cbb0bd2da3c57b995eb90482d3a
+      "$email" = "Installed" -a "$ffmpeg" = "Installed" -a "$curl" = "Installed" -a "$gdb" = "Installed" ]; then ]; then
      echo ""
 else
 
