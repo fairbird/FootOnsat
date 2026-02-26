@@ -2929,19 +2929,29 @@ class MatchMediaScreen(Screen):
 						else:
 							try: os.mkfifo(fifo)
 							except: pass
-							mux_cmd = (
-								'gst-launch-1.0 -q '
-								'mpegtsmux name=mux ! filesink location="%(fifo)s" '
-								'souphttpsrc location="%(v)s" user-agent="%(ua)s" ! qtdemux ! h264parse ! queue ! mux. '
-								'souphttpsrc location="%(a)s" user-agent="%(ua)s" ! qtdemux ! aacparse ! queue ! mux.'
-							) % {'ua': ua, 'v': v_url, 'a': a_url, 'fifo': fifo}
+							stb_model = ""
+							if exists("/proc/stb/info/model"):
+								with open("/proc/stb/info/model", "r") as f:
+									stb_model = f.read().strip().lower()
+							if debug_MatchMedia: logdata("MatchMedia", "STB Model detected: %s" % stb_model)
+							if stb_model in ["one", "two"]:
+								if debug_MatchMedia: logdata("MatchMedia", "Using DreamOS Gst-DASH Muxing")
+								mux_cmd = (
+									'gst-launch-1.0 -q mpegtsmux name=mux ! filesink location="%(fifo)s" '
+									'souphttpsrc location="%(v)s" user-agent="com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip" ! qtdemux name=vdemux vdemux.video_0 ! h264parse ! queue ! mux. '
+									'souphttpsrc location="%(a)s" user-agent="com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip" ! qtdemux name=ademux ademux.audio_0 ! aacparse ! queue ! mux.'
+								) % {'v': v_url, 'a': a_url, 'fifo': fifo}
+							else:
+								if debug_MatchMedia: logdata("MatchMedia", "Using Standard Gst-DASH Muxing")
+								mux_cmd = (
+									'gst-launch-1.0 -q mpegtsmux name=mux ! filesink location="%(fifo)s" '
+									'souphttpsrc location="%(v)s" user-agent="%(ua)s" ! qtdemux ! h264parse ! queue ! mux. '
+									'souphttpsrc location="%(a)s" user-agent="%(ua)s" ! qtdemux ! aacparse ! queue ! mux.'
+								) % {'ua': ua, 'v': v_url, 'a': a_url, 'fifo': fifo}
 						if debug_MatchMedia: logdata("MatchMedia", "DASH mux cmd: %s" % mux_cmd)
 						self.dash_process = subprocess.Popen(mux_cmd, shell=True, preexec_fn=os.setsid)
 						if ffmpeg_exists:
-							for i in range(20):
-								if exists(fifo) and os.path.getsize(fifo) > 60000: break
-								time.sleep(0.5)
-							stype = 1
+							time.sleep(8)
 						else:
 							for i in range(20):
 								if exists(fifo): break
