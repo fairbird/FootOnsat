@@ -225,7 +225,7 @@ fi
 if [ "$sqlite" = "Installed" -a "$six" = "Installed" -a "$aplay" = "Installed" -a "$beautifulsoup4" = "Installed" -a \
       "$difflib" = "Installed" -a "$threading" = "Installed" -a "$pil" = "Installed" -a "$requestes" = "Installed" -a \
       "$json" = "Installed" -a "$ujson" = "Installed" -a "$io" = "Installed" -a "$datetime" = "Installed" -a \
-      "$email" = "Installed" -a "$ffmpeg" = "Installed" -a "$curl" = "Installed" -a "$gdb" = "Installed" ]; then ]; then
+      "$email" = "Installed" -a "$ffmpeg" = "Installed" -a "$curl" = "Installed" -a "$gdb" = "Installed" ]; then
      echo ""
 else
 
