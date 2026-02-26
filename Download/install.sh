@@ -116,7 +116,10 @@ if python --version 2>&1 | grep -q '^Python 3\.'; then
    IO='python3-io'
    EMAIL='python3-email'
    DATETIME='python3-datetime'
+<<<<<<< HEAD
    FFMPEG='ffmpeg'
+=======
+>>>>>>> ede3518c65293cbb0bd2da3c57b995eb90482d3a
    CURL='curl'
 else
    echo "You have Python2 image"
@@ -133,9 +136,17 @@ else
    IO='python-io'
    EMAIL='python-email'
    DATETIME='python-datetime'
+<<<<<<< HEAD
    GDB='gdb'
    FFMPEG='ffmpeg'
    CURL='curl'
+=======
+   CURL='curl'
+fi
+
+if grep -q "$CURL" "$STATUS"; then
+    curl='Installed'
+>>>>>>> ede3518c65293cbb0bd2da3c57b995eb90482d3a
 fi
 
 if grep -q "$SQLITE3" "$STATUS"; then
@@ -220,8 +231,13 @@ fi
 
 if [ "$sqlite" = "Installed" -a "$six" = "Installed" -a "$aplay" = "Installed" -a "$beautifulsoup4" = "Installed" -a \
       "$difflib" = "Installed" -a "$threading" = "Installed" -a "$pil" = "Installed" -a "$requestes" = "Installed" -a \
+<<<<<<< HEAD
       "$json" = "Installed" -a "$ujson" = "Installed" -a "$io" = "Installed" -a "$email" = "Installed" -a "$datetime" = "Installed" -a \
       "$ffmpeg" = "Installed" -a "$curl" = "Installed" -a "$gdb" = "Installed" ]; then
+=======
+      "$json" = "Installed" -a "$ujson" = "Installed" -a "$io" = "Installed" -a "$datetime" = "Installed" -a \
+      "$email" = "Installed" -a "$ffmpeg" = "Installed" -a "$curl" = "Installed" ]; then
+>>>>>>> ede3518c65293cbb0bd2da3c57b995eb90482d3a
      echo ""
 else
 
@@ -239,6 +255,7 @@ else
         opkg install alsa-utils-aplay
         echo "========================================================================"
         echo "========================================================================"
+        opkg install $CURL
         opkg install $SQLITE3
         opkg install $PYSIX
         opkg install $SOUP4
@@ -265,6 +282,7 @@ else
         apt-get install curl -y
         echo "========================================================================"
         echo "========================================================================"
+        apt-get install $CURL -y
         apt-get install $SQLITE3 -y
         apt-get install $PYSIX -y
         apt-get install $SOUP4 -y
@@ -340,6 +358,7 @@ check_pkg() {
 		fi
 	fi
 }
+check_pkg "$CURL"
 check_pkg "$SQLITE3"
 check_pkg "$PYSIX"
 check_pkg "$SOUP4"
@@ -374,8 +393,9 @@ cd /tmp
 set -e
 rm -rf *main* >/dev/null 2>&1
 rm -rf *FootOnsat* >/dev/null 2>&1
-wget -q "https://github.com/fairbird/FootOnsat/archive/refs/heads/main.tar.gz"
-if [ -f "/tmp/main.tar.gz" ]; then
+wget -q -c "--no-check-certificate" "https://github.com/fairbird/FootOnsat/archive/refs/heads/main.tar.gz" -O main.tar.gz
+if [ -s "main.tar.gz" ] && tar -ztf main.tar.gz >/dev/null 2>&1; then
+	echo "Archive verified successfully"
 	echo "remove old version"
 	echo ""
 	rm -rf $PLUGIN_PATH >/dev/null 2>&1
@@ -383,6 +403,18 @@ if [ -f "/tmp/main.tar.gz" ]; then
 	echo ""
 	tar -xzf main.tar.gz
 	cp -r FootOnsat-main/usr / >/dev/null 2>&1
+else
+	echo "Download failed or corrupted, trying with curl..."
+	curl -Lk "https://github.com/fairbird/FootOnsat/archive/refs/heads/main.tar.gz" -o main.tar.gz
+	if [ -s "main.tar.gz" ] && tar -ztf main.tar.gz >/dev/null 2>&1; then
+		echo "Archive verified successfully via curl"
+		rm -rf $PLUGIN_PATH >/dev/null 2>&1
+		tar -xzf main.tar.gz
+		cp -r FootOnsat-main/usr / >/dev/null 2>&1
+	else
+		echo "Critical Error: Archive is still corrupted after retry"
+		exit 1
+	fi
 fi
 if [ -d $PLUGIN_PATH ]; then
 	if [ -f "$TMP_DB" ]; then
