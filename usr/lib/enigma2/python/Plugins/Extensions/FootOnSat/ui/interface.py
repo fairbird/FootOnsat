@@ -183,6 +183,12 @@ FOOTBALL = {
 	"bundesliga", "bundesliga2", "belgianpro", "superLig", "liganos", "afcchampions", "afcchampionstwo"
 }
 
+def getSTBModel():
+	if exists("/proc/stb/info/model"):
+		with open("/proc/stb/info/model", "r") as f:
+			return f.read().strip().lower()
+	return ""
+
 # Place this function at the top level of your script (outside the StandingsScreen class)
 def sanitize_team_name(team):
 	"""Replaces problematic characters (non-ASCII, spaces, etc.) for use in permanent filenames."""
@@ -2844,6 +2850,7 @@ class MatchMediaScreen(Screen):
 			self.session.open(MessageBox, msg, MessageBox.TYPE_INFO, timeout=10)
 
 	def playAfterExtract(self, video_url):
+		stb_model = getSTBModel()
 		video_url = video_url or ""
 		if hasattr(self, 'wait_dialog') and self.wait_dialog:
 			self.wait_dialog.close()
@@ -2899,9 +2906,8 @@ class MatchMediaScreen(Screen):
 						if debug_MatchMedia: logdata("MatchMedia", "FIFO cleanup error: %s" % str(fe))
 					if self.dash_fifo:
 						ffmpeg_bin = "/usr/bin/ffmpeg"
-						ffmpeg_exists = exists(ffmpeg_bin)
 						ffmpeg_has_ssl = False
-						if ffmpeg_exists:
+						if config.plugins.FootOnSat.playmethod.value == "1":
 							try:
 								proto_out = subprocess.Popen([ffmpeg_bin, '-protocols'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
 								ffmpeg_has_ssl = b'https' in proto_out[0] + proto_out[1]
@@ -2929,10 +2935,6 @@ class MatchMediaScreen(Screen):
 						else:
 							try: os.mkfifo(fifo)
 							except: pass
-							stb_model = ""
-							if exists("/proc/stb/info/model"):
-								with open("/proc/stb/info/model", "r") as f:
-									stb_model = f.read().strip().lower()
 							if debug_MatchMedia: logdata("MatchMedia", "STB Model detected: %s" % stb_model)
 							if stb_model in ["one", "two"]:
 								if debug_MatchMedia: logdata("MatchMedia", "Using DreamOS Gst-DASH Muxing")
@@ -2950,12 +2952,28 @@ class MatchMediaScreen(Screen):
 								) % {'ua': ua, 'v': v_url, 'a': a_url, 'fifo': fifo}
 						if debug_MatchMedia: logdata("MatchMedia", "DASH mux cmd: %s" % mux_cmd)
 						self.dash_process = subprocess.Popen(mux_cmd, shell=True, preexec_fn=os.setsid)
-						if ffmpeg_exists:
-							time.sleep(8)
+						if config.plugins.FootOnSat.playmethod.value == "1":
+							if stb_model in ["one", "two"]:
+								for i in range(20):
+									if exists(fifo) and os.path.getsize(fifo) > 60000: break
+									time.sleep(0.5)
+								stype = 1
+								if hasattr(self, 'wait_dialog') and self.wait_dialog:
+									self.wait_dialog.close()
+									self.wait_dialog = None
+								if hasattr(self, 'error_timer') and self.error_timer:
+									self.error_timer.stop()
+							else:
+								time.sleep(8)
 						else:
-							for i in range(20):
+							if exists(fifo):
+								try: os.remove(fifo)
+								except: pass
+							try: os.mkfifo(fifo)
+							except: pass
+							for i in range(15):
 								if exists(fifo): break
-								time.sleep(0.5)
+								time.sleep(0.01)
 						pure_url = fifo
 						user_agent = None
 						if debug_MatchMedia: logdata("MatchMedia", "DASH mux started. Source: %s" % fifo)

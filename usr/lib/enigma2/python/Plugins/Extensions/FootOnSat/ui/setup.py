@@ -174,6 +174,11 @@ config.plugins.FootOnSat.icons = ConfigSelection(default = "icons_default", choi
 	("icons_italia2012", _("italia2012 Full style color"))
 	])
 
+config.plugins.FootOnSat.playmethod = ConfigSelection(default = "1", choices = [
+	("1", _("FFmpeg")),
+	("2", _("Gstreamer")),
+	])
+
 if DreamOS():
 	config.plugins.FootOnSat.player = ConfigSelection(default='4097', choices=[
 		('4097', _('Default (4097)')),
@@ -251,10 +256,15 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.list.append(getConfigListEntry(_("Maximum video resolution"), config.plugins.FootOnSat.maxResolution, _("What maximum resolution used when playing video, if available.\n\nIf you have a slow Internet connection, you can use a lower resolution.")))
 		if DreamOS():
 			self.list.append((_('Media Player:'), config.plugins.FootOnSat.player, _('Specify the player which will be used for media playback.'))) 
+		has_serviceapp = False
 		for p in plugins.getPlugins(where=PluginDescriptor.WHERE_MENU):
 			if 'ServiceApp' in p.path:
-				self.list.append((_('Media player:'),config.plugins.FootOnSat.player, _('Specify the player which will be used for media playback.')))
+				has_serviceapp = True
 				break
+		if has_serviceapp:
+			self.list.append((_('Media player:'), config.plugins.FootOnSat.player, _('Specify the player which will be used for media playback.')))
+		else:
+			self.list.append((_('Play method:'), config.plugins.FootOnSat.playmethod, _('Specify the play method which will be used (ffmpeg) or (Gstreamer).')))
 		self.list.append(getConfigListEntry("_______________________________礑 Debug 礑__________________________________________"))
 		self.list.append(getConfigListEntry(_("ZAP"), config.plugins.FootOnSat.debug_ZAP, _("This option allows you to print the (Zap) feature and codes work in a log file.")))
 		self.list.append(getConfigListEntry(_("Notif"), config.plugins.FootOnSat.debug_Notif, _("This option allows you to print the (Notification) feature and codes work in a log file.")))
