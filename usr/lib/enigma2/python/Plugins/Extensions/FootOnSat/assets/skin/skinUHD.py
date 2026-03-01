@@ -69,7 +69,7 @@ SKIN_interface = """
     <widget name="key_blue" position="2067,1200" size="514,54" font="Regular;38" halign="left" foregroundColor="#1E90FF" backgroundColor="#0000FF" zPosition="5" transparent="1" />
     <widget name="list1" position="76,194" size="1627,875" scrollbarMode="showNever" selectionPixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/button1450x175.png" foregroundColor="#00ffffff" foregroundColorSelected="#00F9C731" backgroundColorSelected="#0000FF" enableWrapAround="1" transparent="1" zPosition="2" /> 
     <widget name="list2" position="1754,200" size="747,456" scrollbarMode="showNever" selectionPixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/list22selectionpixmap.png" foregroundColor="#00ffffff" foregroundColorSelected="#00F9C731" backgroundColorSelected="#0000FF" enableWrapAround="1" transparent="1" zPosition="3" />
-    <widget font="Regular;47" foregroundColor="#00ffffff" backgroundColor="#16000000" halign="center" position="center,13" render="Label" size="473,70" source="global.CurrentTime" transparent="1" valign="center" zPosition="5">
+    <widget font="Regular;42" foregroundColor="#00ffffff" backgroundColor="#16000000" halign="center" position="center,13" render="Label" size="473,70" source="global.CurrentTime" transparent="1" valign="center" zPosition="5">
         <convert type="ClockToText">Format:%H:%M  %a. %d.%m.%Y</convert>
     </widget>
     <widget name="counter" foregroundColor="#00ffffff" backgroundColor="#16000000" position="756,1167" halign="center" size="309,70" font="Regular;38" transparent="1" valign="center" zPosition="5" />
