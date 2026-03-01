@@ -118,6 +118,7 @@ if python --version 2>&1 | grep -q '^Python 3\.'; then
    DATETIME='python3-datetime'
    FFMPEG='ffmpeg'
    CURL='curl'
+   MPEGTSMUX='gstreamer1.0-plugins-bad-mpegtsmux'
 else
    echo "You have Python2 image"
    PYTHON='PY2'
@@ -136,10 +137,15 @@ else
    GDB='gdb'
    FFMPEG='ffmpeg'
    CURL='curl'
+   MPEGTSMUX='gstreamer1.0-plugins-bad-mpegtsmux'
 fi
 
 if grep -q "$CURL" "$STATUS"; then
     curl='Installed'
+fi
+
+if grep -q "$MPEGTSMUX" "$STATUS"; then
+    mpegtsmux='Installed'
 fi
 
 if grep -q "$SQLITE3" "$STATUS"; then
@@ -194,10 +200,6 @@ if grep -q "$FFMPEG" "$STATUS"; then
     ffmpeg='Installed'
 fi
 
-if grep -q "$CURL" "$STATUS"; then
-    curl='Installed'
-fi
-
 if grep -q 'enigma2-plugin-systemplugins-serviceapp' "$STATUS"; then
     serviceapp='Installed'
 fi
@@ -225,7 +227,7 @@ fi
 if [ "$sqlite" = "Installed" -a "$six" = "Installed" -a "$aplay" = "Installed" -a "$beautifulsoup4" = "Installed" -a \
       "$difflib" = "Installed" -a "$threading" = "Installed" -a "$pil" = "Installed" -a "$requestes" = "Installed" -a \
       "$json" = "Installed" -a "$ujson" = "Installed" -a "$io" = "Installed" -a "$datetime" = "Installed" -a \
-      "$email" = "Installed" -a "$ffmpeg" = "Installed" -a "$curl" = "Installed" -a "$gdb" = "Installed" ]; then
+      "$email" = "Installed" -a "$ffmpeg" = "Installed" -a "$curl" = "Installed" -a "$mpegtsmux" = "Installed" -a "$gdb" = "Installed" ]; then
      echo ""
 else
 
@@ -238,12 +240,12 @@ else
         opkg update
         echo "========================================================================"
         echo " Downloading packages depend ......"
-        opkg install ffmpeg
-        opkg install curl
         opkg install alsa-utils-aplay
         echo "========================================================================"
         echo "========================================================================"
         opkg install $CURL
+        opkg install $FFMPEG
+        opkg install $MPEGTSMUX
         opkg install $SQLITE3
         opkg install $PYSIX
         opkg install $SOUP4
@@ -266,11 +268,11 @@ else
         apt-get update
         echo "========================================================================"
         echo " Downloading packages depend ......"
-        apt-get install ffmpeg -y
-        apt-get install curl -y
         echo "========================================================================"
         echo "========================================================================"
         apt-get install $CURL -y
+        apt-get install $FFMPEG -y
+        apt-get install $MPEGTSMUX -y
         apt-get install $SQLITE3 -y
         apt-get install $PYSIX -y
         apt-get install $SOUP4 -y
@@ -307,14 +309,6 @@ if ! grep -q 'alsa-utils-aplay' "$STATUS"; then
 		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/arm64/alsa-utils-arecord.deb"
 		dpkg -i --force-overwrite *.deb
 		apt-get install -f -y
-		cd ..
-	fi
-fi
-
-if ! grep -q 'gstreamer1.0-plugins-bad-mpegtsmux' "$STATUS"; then
-	if [ "$OS" = "DreamOS" ]; then
-		apt-get update
-		apt-get install gstreamer1.0-plugins-bad-mpegtsmux -f -y
 		cd ..
 	fi
 fi
@@ -360,7 +354,7 @@ check_pkg "$IO"
 check_pkg "$EMAIL"
 check_pkg "$DATETIME"
 check_pkg "$FFMPEG"
-check_pkg "$CURL"
+check_pkg "$MPEGTSMUX"
 
 if [ "$OS" != "DreamOS" ]; then
 	check_pkg "enigma2-plugin-systemplugins-serviceapp"
