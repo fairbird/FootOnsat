@@ -2424,8 +2424,13 @@ class MatchDetailsScreen(Screen):
 						color = 0xFF0000
 						icon_name = "redcard.png"
 				elif itype == 'substitution':
-					text = str(inc.get('playerIn', {}).get('name', ''))
-					color = 0xAAAAAA
+					def shortName(name):
+						parts = name.split()
+						return "%s. %s" % (parts[0][0], parts[-1]) if len(parts) > 1 else name
+					p_in = shortName(str(inc.get('playerIn', {}).get('name', '')))
+					p_out = shortName(str(inc.get('playerOut', {}).get('name', '')))
+					text = "%s (Out) / %s (In)" % (p_out, p_in)
+					color = 0xFFFFFF
 					icon_name = "substitution.png"
 
 				# --- Incident List Row Information ---
