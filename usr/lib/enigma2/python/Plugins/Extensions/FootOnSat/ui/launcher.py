@@ -367,12 +367,14 @@ class FootOnsatLauncher(Screen):
 			try:
 				system("mkdir -p /tmp/b_ext && tar -xzf /tmp/b.tar.gz -C /tmp/b_ext")
 				root_dir = os.listdir("/tmp/b_ext")[0]
-				src = join("/tmp/b_ext", root_dir, "banners")
+				src_root = join("/tmp/b_ext", root_dir)
 				dest = join(PLUGINPATH, "assets/compet")
-				system("cp -f %s %s" % (join(src, "package.json"), join(dest, "package.json")))
+				system("cp -af %s %s" % (join(src_root, "banners/package.json"), join(dest, "package.json")))
+				src_banners = join(src_root, "banners")
 				if not exists(join(dest, "FHD")): os.makedirs(join(dest, "FHD"))
-				system("cp -rf %s/* %s/" % (join(src, "FHD"), join(dest, "FHD")))
+				system("cp -rf %s/* %s/" % (join(src_banners, "FHD"), join(dest, "FHD")))
 				with open(self.sha_file, "w") as f: f.write(self.latest_sha)
+				self.session.open(MessageBox, _("Banners updated successfully.\nPlease restart Enigma2 to apply changes."), MessageBox.TYPE_INFO, timeout=10)
 			except: pass
 			finally:
 				system("rm -f /tmp/b.tar.gz && rm -rf /tmp/b_ext")
