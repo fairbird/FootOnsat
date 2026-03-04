@@ -198,8 +198,10 @@ class FlexibleMenu(GUIComponent):
 				logoPath = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/icons/{}.png".format(elem[0]))
 				if fileExists(logoPath):
 					logo = LoadPixmap(logoPath)
-				text_match = "Match" if (elem[0] == "today" and show_match_today_text) else ""
-				text_today = "Today" if (elem[0] == "today" and show_match_today_text) else ""
+				#text_match = "Match" if (elem[0] == "today" and show_match_today_text) else ""
+				#text_today = "Today" if (elem[0] == "today" and show_match_today_text) else ""
+				text_match = ""
+				text_today = ""
 				self.entries.update({
 					elem[0]:{
 						"active":(
