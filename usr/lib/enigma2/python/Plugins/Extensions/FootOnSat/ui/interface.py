@@ -2959,9 +2959,13 @@ class MatchMediaScreen(Screen):
 						self.dash_process = subprocess.Popen(mux_cmd, shell=True, preexec_fn=os.setsid)
 						if config.plugins.FootOnSat.playmethod.value == "1":
 							if stb_model in ["one", "two"]:
-								for i in range(20):
-									if exists(fifo) and os.path.getsize(fifo) > 60000: break
+								time.sleep(1.5)
+								for i in range(250):
+									if exists(fifo) and os.path.getsize(fifo) > 300000:
+										break
 									time.sleep(0.5)
+								if exists(fifo) and os.path.getsize(fifo) < 150000:
+									time.sleep(1)
 								stype = 1
 								if hasattr(self, 'wait_dialog') and self.wait_dialog:
 									self.wait_dialog.close()
@@ -2971,14 +2975,11 @@ class MatchMediaScreen(Screen):
 							else:
 								time.sleep(8)
 						else:
-							if exists(fifo):
-								try: os.remove(fifo)
-								except: pass
-							try: os.mkfifo(fifo)
-							except: pass
-							for i in range(15):
+							if stb_model in ["one", "two"]:
+								time.sleep(3)
+							for i in range(20):
 								if exists(fifo): break
-								time.sleep(0.01)
+								time.sleep(0.05)
 						pure_url = fifo
 						user_agent = None
 						if debug_MatchMedia: logdata("MatchMedia", "DASH mux started. Source: %s" % fifo)
