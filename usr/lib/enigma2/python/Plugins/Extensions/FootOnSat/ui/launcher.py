@@ -374,7 +374,7 @@ class FootOnsatLauncher(Screen):
 				if not exists(join(dest, "FHD")): os.makedirs(join(dest, "FHD"))
 				system("cp -rf %s/* %s/" % (join(src_banners, "FHD"), join(dest, "FHD")))
 				with open(self.sha_file, "w") as f: f.write(self.latest_sha)
-				self.session.open(MessageBox, _("Banners updated successfully.\nPlease restart Enigma2 to apply changes."), MessageBox.TYPE_INFO, timeout=10)
+				#self.session.open(MessageBox, _("Some banners updated successfully.\nPlease restart Enigma2 to apply changes."), MessageBox.TYPE_INFO, timeout=10)
 			except: pass
 			finally:
 				system("rm -f /tmp/b.tar.gz && rm -rf /tmp/b_ext")
