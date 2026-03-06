@@ -1,4 +1,5 @@
-- Add new option (Play method) only for images that do not contain serviceeApp + Exteplayer3
+- Fix YouTube Video
 - Edit UHD skin (Thanks dniestre)
 - Separate the Today match statement from the Python code
-- Fix YouTubeVideoUrl
+- Update some banners + icons (Thanks buwalla and Greenwich)
+- Add new option (Play method) only for images that do not contain serviceeApp + Exteplayer3
