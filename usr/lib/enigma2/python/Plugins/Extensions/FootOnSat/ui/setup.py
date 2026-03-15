@@ -124,7 +124,8 @@ config.plugins.FootOnSat.pluginicon = ConfigSelection(default = "logo1", choices
 	("logo3", _("logo 3")),
 	("logo4", _("logo 4")),
 	("logo5", _("logo 5")),
-	("logo6", _("logo 6"))
+	("logo6", _("logo 6")),
+	("logo7", _("logo 7"))
 	])
 config.plugins.FootOnSat.maxResolution = ConfigSelection(default='22', choices=[
 	('38', '4096x3072'), ('37', '1920x1080'), ('22', '1280x720'),
@@ -375,17 +376,19 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			elif index == "icons_italia2012":
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/icons_italia2012.png')
 			elif index == "logo1":
-				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo1.png')
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo/logo1.png')
 			elif index == "logo2":
-				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo2.png')
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo/logo2.png')
 			elif index == "logo3":
-				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo3.png')
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo/logo3.png')
 			elif index == "logo4":
-				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo4.png')
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo/logo4.png')
 			elif index == "logo5":
-				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo5.png')
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo/logo5.png')
 			elif index == "logo6":
-				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo6.png')
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo/logo6.png')
+			elif index == "logo7":
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo/logo7.png')
 			if pic and self['Picture'].instance and exists(pic):
 				self["Picture"].instance.setScale(1)
 				self["Picture"].instance.setPixmapFromFile(pic)

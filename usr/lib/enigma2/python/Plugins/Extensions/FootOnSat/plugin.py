@@ -41,17 +41,19 @@ def sessionstart(reason, **kwargs):
 description = _("FootOnSat")
 
 if config.plugins.FootOnSat.pluginicon.value == "logo1":
-	ICON = "logo1.png"
+	ICON = "logo/logo1.png"
 elif config.plugins.FootOnSat.pluginicon.value == "logo2":
-	ICON = "logo2.png"
+	ICON = "logo/logo2.png"
 elif config.plugins.FootOnSat.pluginicon.value == "logo3":
-	ICON = "logo3.png"
+	ICON = "logo/logo3.png"
 elif config.plugins.FootOnSat.pluginicon.value == "logo4":
-	ICON = "logo4.png"
+	ICON = "logo/logo4.png"
 elif config.plugins.FootOnSat.pluginicon.value == "logo5":
-	ICON = "logo5.png"
+	ICON = "logo/logo5.png"
+elif config.plugins.FootOnSat.pluginicon.value == "logo6":
+	ICON = "logo/logo6.png"
 else:
-	ICON = "logo6.png"
+	ICON = "logo/logo7.png"
 
 def Plugins(**kwargs):
 	result = [
