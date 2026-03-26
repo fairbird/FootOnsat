@@ -332,10 +332,10 @@ MISSING_PKGS=""
 check_pkg() {
 	if ! grep -q "$1" "$STATUS"; then
 		echo "####################################################"
-		echo "#       $1 Not found in feed       #"
+		echo "#           $1 Not found in feed           #"
 		echo "####################################################"
 
-		if [ "$1" != "$UJSON" ]; then
+		if [ "$1" != "$UJSON" ] && [ "$1" != "$MPEGTSMUX" ]; then
 			MISSING_PKGS="true"
 		fi
 	fi
