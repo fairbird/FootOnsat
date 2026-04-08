@@ -303,7 +303,10 @@ class FootOnSat(Screen):
 					self["menu"].setText(_("%s") % title121)
 					if parseColor and self["menu"].instance:
 						self["menu"].instance.setForegroundColor(parseColor("#ff0000"))
-					key = re.sub(r'\s+', '', match)
+					if PY3:
+						key = re.sub(r'\s+', '', match.replace(u'\xa0', u''))
+					else:
+						key = re.sub(r'\s+', '', match.decode('utf-8').replace(u'\xa0', u''))
 					if not PY3:
 						key = key.decode('utf-8') if isinstance(key, str) else key
 					try:
@@ -321,7 +324,7 @@ class FootOnSat(Screen):
 							channel_name = info.getName(service_ref) if info else ""
 							if debug_ZAP: logdata("iniMenu ZAP_DEBUG", "Fetched channel name: '%s'" % channel_name)
 							if channel_name:
-								self["menu2"].setText("Will be Zap to >> " + channel_name)
+								self["menu2"].setText("%s >> %s" % (title275, channel_name))
 								if parseColor and self["menu2"].instance:
 									self["menu2"].instance.setForegroundColor(parseColor("#ff0000"))
 							else:
@@ -394,34 +397,24 @@ class FootOnSat(Screen):
 
 				# 2. Map known status abbreviations to full text and check for running time
 				# NOTE: Assuming clean_status is the uppercased status from the scraper (e.g., 'FINISHED', 'HALFTIME', '90')
-				# NOTE: Assuming display_status is the original status (e.g., 'Half Time', '90+', 'FINISHED')
-				if clean_status == 'CANCELED': # Using the exact clean status 'HALFTIME' from the scraper logic
-					status_text = "%s" % title124
-					display_prefix = "%s : " % title122
-				elif clean_status == 'FINISHED':
-					status_text = "%s" % title125
-					display_prefix = "%s : " % title122
-				elif clean_status == 'FT':
-					status_text = "%s" % title126
-					display_prefix = "%s : " % title122
-				elif clean_status == 'AET':
-					status_text = "%s" % title127
-					display_prefix = "%s : " % title122
-				elif clean_status == 'PEN':
-					status_text = "%" % title128
-					display_prefix = "%s : " % title122
-				elif clean_status == 'HALFTIME': # Using the exact clean status 'HALFTIME' from the scraper logic
-					status_text = "%s" % title129
-					display_prefix = "%s : " % title123 # Typically, Half Time is still considered a "Live" state
-				elif clean_status in ('DELAYED', 'DELAY'):
-					status_text = "%s" % title130
-					display_prefix = "%s : " % title123
+				# NOTE: Assuming display_status is the original status (e.g., 'Half Time', '90+', 'FINISHED')				
+				STATUS_DISPLAY = {
+					'CANCELED': (title124, title122),
+					'FINISHED': (title125, title122),
+					'FT':       (title126, title122),
+					'AET':      (title127, title122),
+					'PEN':      (title128, title122),
+					'HALFTIME': (title129, title123),
+					'DELAYED':  (title130, title123),
+					'DELAY':    (title130, title123),
+				}
+				if clean_status in STATUS_DISPLAY:
+					status_text, prefix_key = STATUS_DISPLAY[clean_status]
+					display_prefix = "%s : " % prefix_key
 				elif clean_status.isdigit() or re.search(r'^\d+[\'+]*\+?\d*$', clean_status):
-					# Covers minutes like '51', '77', '90+', etc.
-					status_text = "%s %s" % (display_status, title131) 
-					display_prefix = "%s : " % title123 # Prefix for running matches
+					status_text = "%s %s" % (display_status, title131)
+					display_prefix = "%s : " % title123
 				else:
-					# Catch-all for "LIVE", "POSTPONED", "CANCELLED", etc.
 					status_text = display_status
 					display_prefix = "%s : " % title123
 				# =======================================================
@@ -733,7 +726,10 @@ class FootOnSat(Screen):
 					self["menu"].setText(_("%s") % title121)
 					if parseColor and self["menu"].instance:
 						self["menu"].instance.setForegroundColor(parseColor("#ff0000"))
-					key = re.sub(r'\s+', '', match)
+					if PY3:
+						key = re.sub(r'\s+', '', match.replace(u'\xa0', u''))
+					else:
+						key = re.sub(r'\s+', '', match.decode('utf-8').replace(u'\xa0', u''))
 					if not PY3:
 						key = key.decode('utf-8') if isinstance(key, str) else key
 					try:
@@ -751,7 +747,7 @@ class FootOnSat(Screen):
 							channel_name = info.getName(service_ref) if info else ""
 							if debug_ZAP: logdata("updateMenuWidgets ZAP_DEBUG", "Fetched channel name: '%s'" % channel_name)
 							if channel_name:
-								self["menu2"].setText("Will be Zap to >> " + channel_name)
+								self["menu2"].setText("%s >> %s" % (title275, channel_name))
 								if parseColor and self["menu2"].instance:
 									self["menu2"].instance.setForegroundColor(parseColor("#ff0000"))
 							else:
@@ -850,7 +846,7 @@ class FootOnSat(Screen):
 					from Screens.ChannelSelection import ChannelSelection
 					sel_class = ChannelSelection
 
-			self.session.openWithCallback(self.channelSelected, sel_class, _("%s") % title141)
+			self.session.openWithCallback(self.channelSelected, sel_class,  title141)
 
 	def channelSelected(self, service_ref=None):
 		if not service_ref:
@@ -946,8 +942,9 @@ class FootOnSat(Screen):
 				cur.execute("CREATE TABLE IF NOT EXISTS zap_channels (match TEXT primary key, ref TEXT)")
 				if self.checkIfexist(match):
 					if debug_Notif: logdata("Ok Database", "Removing match: %s" % str(match))
+					clean_match_key = re.sub(r'\s+', '', match.replace(u'\xa0', u''))
 					cur.execute("DELETE FROM LIVE_NOTIF WHERE MATCH = ?", (match,))
-					cur.execute("DELETE FROM zap_channels WHERE match = ?", (re.sub(r'\s+', '', match),))
+					cur.execute("DELETE FROM zap_channels WHERE match = ?", (clean_match_key,))
 				else:
 					if debug_Notif: logdata("Ok Database", "Adding match to notifications: %s" % str(match))
 					first_notif, message = self.setFirstNotifTime(match_date)
@@ -963,22 +960,22 @@ class FootOnSat(Screen):
 		notif_30min_time = dt_obj - timedelta(minutes=30)
 		if notif_30min_time > now:
 			first_notif_str = notif_30min_time.strftime("%H:%M - %Y-%m-%d")
-			message = title147
+			message = title147 if PY3 else title147.decode('utf-8')
 			return [first_notif_str, message]
 		# 2. 15-minute reminder
 		notif_15min_time = dt_obj - timedelta(minutes=15)
 		if notif_15min_time > now:
 			first_notif_str = notif_15min_time.strftime("%H:%M - %Y-%m-%d")
-			message = title148
+			message = title148 if PY3 else title148.decode('utf-8')
 			return [first_notif_str, message]
 		# 3. Match Start time reminder
 		if dt_obj > now:
 			first_notif_str = dt_obj.strftime("%H:%M - %Y-%m-%d")
-			message = title149
+			message = title149 if PY3 else title149.decode('utf-8')
 			return [first_notif_str, message]
 		# 4. Fallback: Match already started or passed (should be immediately deleted by cleanup)
 		first_notif_str = dt_obj.strftime("%H:%M - %Y-%m-%d")
-		message = title150
+		message = title150 if PY3 else title150.decode('utf-8')
 		return [first_notif_str, message]
 
 	def sameDate(self, dt):
@@ -1053,7 +1050,7 @@ class FootOnSat(Screen):
 		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/{}.json'.format(url_link)
 		sniFactory = WebClientContextFactory(url)
 		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
-            # This code only for test locale json files
+		# This code only for test locale json files
 #		from twisted.internet import reactor
 #		json_file_path = '/media/hdd/today.json'
 #		with open(json_file_path, 'r') as f:
@@ -1329,24 +1326,24 @@ class FootOnSat(Screen):
 					# --- Status Logic (Match Time Calculation) ---
 					status = ''
 					if stype == 'canceled':
-						status = '%s' % title124
+						status = 'CANCELED'
 					elif stype == 'finished':
-						status = '%s' % title125
+						status = 'FINISHED'
 					elif stype == 'postponed':
-						status = '%s' % title152
+						status = 'POSTPONED'
 						h_score = a_score = ''
 					elif stype == 'inprogress':
 						m = re.search(r'(\d{1,3}[\'+]*\+?\d*)\s*\'', descr)
 						if m:
 							status = '{0} min'.format(m.group(1))
 						elif 'extra time' in descr.lower():
-							status = '%s' % title153
+							status = 'AET'
 						elif 'penalties' in descr.lower():
-							status = '%s' % title154
+							status = 'title154'
 						elif descr.lower() in ['half time', 'halftime']:
-							status = '%s' % title155
+							status = 'HALFTIME'
 						elif 'delayed' in descr.lower():
-							status = '%s' % title156
+							status = 'DELAYED'
 						else:
 							try:
 								status_time_ts = ev.get('statusTime', {}).get('timestamp')
@@ -2644,6 +2641,9 @@ class MatchStatisticsScreen(Screen):
 						    "Total saves":            title263,
 						    "Punches":                title264,
 						    "Goal kicks":             title265,
+						    "Goals prevented":        title272,
+						    "High claims":            title273,
+						    "Errors lead to a shot":  title274,
 						}
 						header_raw = group.get('groupName', '')
 						header_text = str("-- " + STATS_MAP.get(header_raw, header_raw) + " --")
@@ -4323,7 +4323,7 @@ class FootOnsatNotifScreen(Screen):
 									# 1b. Determine Next Notification Time & Message
 									if user_choice in ("1", "3", "5", "7"):
 										# Next notification should be 15 min
-										message_next = "%s" % title148
+										message_next = title148 if PY3 else title148.decode('utf-8')
 										notif_next_time = (match_time_obj - timedelta(minutes=15)).strftime("%H:%M - %Y-%m-%d")
 									elif user_choice in ("2", "6"):
 										# Next notification should be start time
@@ -4351,11 +4351,11 @@ class FootOnsatNotifScreen(Screen):
 									# 2b. Determine Next Notification Time & Message
 									if user_choice in ("1", "2", "5", "6"):
 										# Next notification should be start time
-										message_next = "Kick-off is NOW" % title188
+										message_next = title188 if PY3 else title188.decode('utf-8')
 										notif_next_time = match_time_obj.strftime("%H:%M - %Y-%m-%d")
 									else:
 										# No more notifications required for this choice (e.g., choice 3, 7)
-										message_next = "Notifications Done" % title189
+										message_next = title189 if PY3 else title188.decode('utf-8')
 										# Set next time to 1 minute after match start for guaranteed cleanup
 										notif_next_time = (match_time_obj + timedelta(minutes=1)).strftime("%H:%M - %Y-%m-%d")
 										
