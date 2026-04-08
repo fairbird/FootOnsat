@@ -141,75 +141,76 @@ config.plugins.FootOnSat.debug_MatchMedia = ConfigYesNo(default=False)
 config.plugins.FootOnSat.debug_MatchDetails = ConfigYesNo(default=False)
 config.plugins.FootOnSat.debug_MatchStatistics = ConfigYesNo(default=False)
 config.plugins.FootOnSat.pluginicon = ConfigSelection(default = "logo1", choices = [
-	("logo1", _("%s 1") % title0),
-	("logo2", _("%s 2") % title0),
-	("logo3", _("%s 3") % title0),
-	("logo4", _("%s 4") % title0),
-	("logo5", _("%s 5") % title0),
-	("logo6", _("%s 6") % title0)
+	("logo1", "%s 1" % title0),
+	("logo2", "%s 2" % title0),
+	("logo3", "%s 3" % title0),
+	("logo4", "%s 4" % title0),
+	("logo5", "%s 5" % title0),
+	("logo6", "%s 6" % title0),
+	("logo7", "%s 7" % title0)
 	])
-config.plugins.FootOnSat.maxResolution = ConfigSelection(default='22', choices=[
-	('38', '4096x3072'), ('37', '1920x1080'), ('22', '1280x720'),
-	('35', '854x480'), ('18', '640x360'), ('5', '400x240'), ('17', '176x144')
+config.plugins.FootOnSat.maxResolution = ConfigSelection(default="22", choices=[
+	("38", "4096x3072"), ("37", "1920x1080"), ("22", "1280x720"),
+	("35", "854x480"), ("18", "640x360"), ("5", "400x240"), ("17", "176x144")
 ])
 config.plugins.FootOnSat.livecolor = ConfigSelection(default="0xFF0000", choices = [
-	("0xFF0000", _("%s") % title1),
-	("0xFFFFFF", _("%s") % title2),
-	("0x00FF00", _("%s") % title3),
-	("0x000000", _("%s") % title4),
-	("0x0000FF", _("%s") % title5),
+	("0xFF0000", "%s" % title1),
+	("0xFFFFFF", "%s" % title2),
+	("0x00FF00", "%s" % title3),
+	("0x000000", "%s" % title4),
+	("0x0000FF", "%s" % title5),
 	])
 config.plugins.FootOnSat.finished = ConfigSelection(default = "5", choices = [
-	("3", _("3 %s") % title6),
-	("4", _("4 %s") % title6),
-	("5", _("5 %s") % title6),
-	("6", _("6 %s") % title6),
-	("7", _("7 %s") % title6),
-	("8", _("8 %s") % title6),
-	("9999", _("%s") % title7)
+	("3", "3 %s" % title6),
+	("4", "4 %s" % title6),
+	("5", "5 %s" % title6),
+	("6", "6 %s" % title6),
+	("7", "7 %s" % title6),
+	("8", "8 %s" % title6),
+	("9999", "%s" % title7)
 	])
 config.plugins.FootOnSat.livescore = ConfigSelection(default = "2", choices = [
-	("1", _("%s") % title8),
-	("2", _("%s") % title9)
+	("1", "%s" % title8),
+	("2", "%s" % title9)
 	])
 config.plugins.FootOnSat.livescoresections = ConfigSelection(default = "1", choices = [
-	("1", _("%s") % title10),
-	("2", _("%s") % title11),
+	("1", "%s" % title10),
+	("2", "%s" % title11),
 	])
 config.plugins.FootOnSat.notify_zap = ConfigSelection(default = "1", choices = [
-	("1", _("%s") % title12),
-	("2", _("%s") % title13),
+	("1", "%s" % title12),
+	("2", "%s" % title13),
 	])
 config.plugins.FootOnSat.notify = ConfigSelection(default = "1", choices = [
-	("1", _("%s") % title14),
-	("2", _("%s") % title15),
-	("3", _("%s") % title16),
-	("4", _("%s") % title17),
-	("5", _("%s") % title18),
-	("6", _("%s") % title19),
-	("7", _("%s")% title20)
+	("1", "%s" % title14),
+	("2", "%s" % title15),
+	("3", "%s" % title16),
+	("4", "%s" % title17),
+	("5", "%s" % title18),
+	("6", "%s" % title19),
+	("7", "%s" % title20)
 	])
 config.plugins.FootOnSat.icons = ConfigSelection(default = "icons_default", choices = [
-	("icons_default", _("%s") % title21),
-	("icons_buwalla", _("%s") % title22),
-	("icons_renkli", _("%s") % title23),
-	("icons_italia2012", _("%s") % title24)
+	("icons_default", "%s" % title21),
+	("icons_buwalla", "%s" % title22),
+	("icons_renkli", "%s" % title23),
+	("icons_italia2012", "%s" % title24)
 	])
 
 config.plugins.FootOnSat.playmethod = ConfigSelection(default = "1", choices = [
-	("1", _("%s") % title25),
-	("2", _("%s") % title26),
+	("1", "%s" % title25),
+	("2", "%s" % title26),
 	])
 
 if DreamOS():
-	config.plugins.FootOnSat.player = ConfigSelection(default='4097', choices=[
-		('4097', _('%s') % title27),
-		('8193', _('%s') % title28)
+	config.plugins.FootOnSat.player = ConfigSelection(default="4097", choices=[
+		("4097", "%s" % title27),
+		("8193", "%s" % title28)
 	])
 else:
-	config.plugins.FootOnSat.player = ConfigSelection(default='5002', choices=[
-		('4097', _('%s') % title29),
-		('5002', _('%s') % title30)
+	config.plugins.FootOnSat.player = ConfigSelection(default="5002", choices=[
+		("4097", "%s" % title29),
+		("5002", "%s" % title30)
 	])
 
 def getDesktopSize():
@@ -417,17 +418,19 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			elif index == "icons_italia2012":
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/icons_italia2012.png')
 			elif index == "logo1":
-				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo1.png')
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo/logo1.png')
 			elif index == "logo2":
-				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo2.png')
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo/logo2.png')
 			elif index == "logo3":
-				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo3.png')
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo/logo3.png')
 			elif index == "logo4":
-				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo4.png')
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo/logo4.png')
 			elif index == "logo5":
-				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo5.png')
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo/logo5.png')
 			elif index == "logo6":
-				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo6.png')
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo/logo6.png')
+			elif index == "logo7":
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo/logo7.png')
 			if pic and self['Picture'].instance and exists(pic):
 				self["Picture"].instance.setScale(1)
 				self["Picture"].instance.setPixmapFromFile(pic)
@@ -538,7 +541,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		configfile.save()
 		
 		if Restart_changed:
-			self.session.openWithCallback(self.restart, MessageBox, _("%s") % title103)
+			self.session.openWithCallback(self.restart, MessageBox, title103)
 		elif changed:
 			self.close("exit_launcher")
 		else:
@@ -570,20 +573,23 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		except:
 			trace_error()
 
-	def doUpdateinstall(self,answer=False):
+	def doUpdateinstall(self, answer=False):
 		try:
 			if answer:
 				cmdlist = []
 				extract_path = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
-				cmd="wget -q -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/languages/languages_update.tar.gz | tar -xz -C %s" % extract_path
+				cmd = "wget -q -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/languages/languages_update.tar.gz | tar -xz -C %s" % extract_path
 				cmdlist.append(cmd)
-				self.session.open(Console, title="%s" % title105, cmdlist=cmdlist, finishedCallback=self.myCallback, closeOnSuccess=False)
+				self.session.open(Console, title="%s" % title105, cmdlist=cmdlist, finishedCallback=self.myCallbackUpdate, closeOnSuccess=False)
 		except:
 			trace_error()
-	
+
 	def myCallback(self):
 		return
 
+	def myCallbackUpdate(self):
+		self.session.openWithCallback(self.restart, MessageBox, title103)
+	
 	def restart(self,answer=None):
 		if answer:
 			self.session.open(TryQuitMainloop, 3)
