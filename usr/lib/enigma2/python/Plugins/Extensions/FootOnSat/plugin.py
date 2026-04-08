@@ -2,9 +2,11 @@ import os
 from Components.config import config
 from Plugins.Plugin import PluginDescriptor
 from Screens.MessageBox import MessageBox
+from enigma import addFont, getDesktop
+
+from Plugins.Extensions.FootOnSat.ui.setup import *
 from Plugins.Extensions.FootOnSat.ui.interface import FootOnSatNotifDialog
 from Plugins.Extensions.FootOnSat.ui.launcher import FootOnsatLauncher
-from enigma import addFont, getDesktop
 
 addFont("/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/fonts/miso-bold.ttf", "FootFont", 100, 0)
 addFont("/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/fonts/font_default.otf", "ArabicFont", 100, 0)
@@ -30,7 +32,7 @@ def main_menu(menuid, **kwargs):
 
 def main(session, **kwargs):
 	if isHD():
-		session.open(MessageBox, _('Skin is not supported\nFootOnSat Plugin works only with FHD skins'), MessageBox.TYPE_ERROR)
+		session.open(MessageBox, _("%s") % title112, MessageBox.TYPE_ERROR)
 	else:
 		session.open(FootOnsatLauncher)
 
@@ -41,19 +43,17 @@ def sessionstart(reason, **kwargs):
 description = _("FootOnSat")
 
 if config.plugins.FootOnSat.pluginicon.value == "logo1":
-	ICON = "logo/logo1.png"
+	ICON = "logo1.png"
 elif config.plugins.FootOnSat.pluginicon.value == "logo2":
-	ICON = "logo/logo2.png"
+	ICON = "logo2.png"
 elif config.plugins.FootOnSat.pluginicon.value == "logo3":
-	ICON = "logo/logo3.png"
+	ICON = "logo3.png"
 elif config.plugins.FootOnSat.pluginicon.value == "logo4":
-	ICON = "logo/logo4.png"
+	ICON = "logo4.png"
 elif config.plugins.FootOnSat.pluginicon.value == "logo5":
-	ICON = "logo/logo5.png"
-elif config.plugins.FootOnSat.pluginicon.value == "logo6":
-	ICON = "logo/logo6.png"
+	ICON = "logo5.png"
 else:
-	ICON = "logo/logo7.png"
+	ICON = "logo6.png"
 
 def Plugins(**kwargs):
 	result = [
@@ -63,7 +63,7 @@ def Plugins(**kwargs):
 		),
 		PluginDescriptor(
 			name=_("FootOnSat"),
-			description = _("Football Fixtures"),
+			description = _("%s") % title113,
 			where = PluginDescriptor.WHERE_PLUGINMENU,
 			icon = ICON,
 			fnc = main

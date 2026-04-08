@@ -116,6 +116,7 @@ if python --version 2>&1 | grep -q '^Python 3\.'; then
    IO='python3-io'
    EMAIL='python3-email'
    DATETIME='python3-datetime'
+   IMPORTLIB='python-importlib'
    FFMPEG='ffmpeg'
    CURL='curl'
    MPEGTSMUX='gstreamer1.0-plugins-bad-mpegtsmux'
@@ -134,6 +135,7 @@ else
    IO='python-io'
    EMAIL='python-email'
    DATETIME='python-datetime'
+   IMPORTLIB='python-importlib'
    GDB='gdb'
    FFMPEG='ffmpeg'
    CURL='curl'
@@ -196,6 +198,10 @@ if grep -q "$DATETIME" "$STATUS"; then
     datetime='Installed'
 fi
 
+if grep -q "$IMPORTLIB" "$STATUS"; then
+    importlib='Installed'
+fi
+
 if grep -q "$FFMPEG" "$STATUS"; then
     ffmpeg='Installed'
 fi
@@ -226,8 +232,8 @@ fi
 
 if [ "$sqlite" = "Installed" -a "$six" = "Installed" -a "$aplay" = "Installed" -a "$beautifulsoup4" = "Installed" -a \
       "$difflib" = "Installed" -a "$threading" = "Installed" -a "$pil" = "Installed" -a "$requestes" = "Installed" -a \
-      "$json" = "Installed" -a "$ujson" = "Installed" -a "$io" = "Installed" -a "$datetime" = "Installed" -a \
-      "$email" = "Installed" -a "$ffmpeg" = "Installed" -a "$curl" = "Installed" -a "$mpegtsmux" = "Installed" -a "$gdb" = "Installed" ]; then
+      "$json" = "Installed" -a "$ujson" = "Installed" -a "$io" = "Installed" -a "$datetime" = "Installed" -a "$email" = "Installed" -a \
+      "$importlib" = "Installed" -a "$ffmpeg" = "Installed" -a "$curl" = "Installed" -a "$mpegtsmux" = "Installed" -a "$gdb" = "Installed" ]; then
      echo ""
 else
 
@@ -258,6 +264,7 @@ else
         opkg install $IO
         opkg install $EMAIL
         opkg install $DATETIME
+        opkg install $IMPORTLIB
         echo "========================================================================"
     else
         echo "=========================================================================="
@@ -285,6 +292,7 @@ else
         apt-get install $IO -y
         apt-get install $EMAIL -y
         apt-get install $DATETIME -y
+        apt-get install $IMPORTLIB -y
         apt-get install $GDB -y
         echo "========================================================================"
     fi
@@ -353,6 +361,7 @@ check_pkg "$UJSON"
 check_pkg "$IO"
 check_pkg "$EMAIL"
 check_pkg "$DATETIME"
+check_pkg "$IMPORTLIB"
 check_pkg "$FFMPEG"
 check_pkg "$MPEGTSMUX"
 

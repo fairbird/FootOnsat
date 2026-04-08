@@ -225,13 +225,13 @@ class FootOnSat(Screen):
 		if self.link == "yesterday":
 			y_date = date.today() - timedelta(days=1)
 			day_name = y_date.strftime('%A')
-			self.MENUTEXT = "Yesterday Matches - {0} - {1}".format(day_name, y_date.strftime('%d-%m-%Y'))
+			self.MENUTEXT = "{0} - {1} - {2}".format(title114, day_name, y_date.strftime('%d-%m-%Y'))
 		elif self.link in ["live", "end"]:
 			t_date = date.today()
 			day_name = t_date.strftime('%A')
-			self.MENUTEXT = "Today Matches - {0} - {1}".format(day_name, t_date.strftime('%d-%m-%Y'))
+			self.MENUTEXT = "{0} - {1} - {2}".format(title115, day_name, t_date.strftime('%d-%m-%Y'))
 		elif self.link not in json_urls:
-			self.MENUTEXT = _("Press (Ok) on any match to add notification")
+			self.MENUTEXT = _("%s") % title116
 		else:
 			self.MENUTEXT = ""
 		self.skin = SKIN_interface
@@ -258,10 +258,10 @@ class FootOnSat(Screen):
 		self["enc"] = Label()
 		self["menu"] = Label()
 		self["menu2"] = Label()
-		self["key_red"] = Button(_("Ignore Competition"))
-		self["key_yellow"] = Button(_("Reset Ignore List"))
-		self["key_blue"] = Button(_("Scan"))
-		self["key_green"] = Button(_("Standings Table"))
+		self["key_red"] = Button(_("%s") % title117)
+		self["key_yellow"] = Button(_("%s") % title118)
+		self["key_blue"] = Button(_("%s") % title119)
+		self["key_green"] = Button(_("%s") % title120)
 		self["key_red"].hide()
 		self["key_yellow"].hide()
 		self["key_blue"].hide()
@@ -300,7 +300,7 @@ class FootOnSat(Screen):
 			if sel >= 0 and sel < len(self.matches):
 				match = self.matches[sel][0] 
 				if self.checkIfexist(match):
-					self["menu"].setText(_("Press (Menu) to select zap channel"))
+					self["menu"].setText(_("%s") % title121)
 					if parseColor and self["menu"].instance:
 						self["menu"].instance.setForegroundColor(parseColor("#ff0000"))
 					key = re.sub(r'\s+', '', match)
@@ -336,10 +336,10 @@ class FootOnSat(Screen):
 					# Force update based on current link
 					if self.link == "yesterday":
 						y_date = date.today() - timedelta(days=1)
-						display_text = "Yesterday Matches - {0} - {1}".format(y_date.strftime('%A'), y_date.strftime('%d-%m-%Y'))
+						display_text = "{0} - {1} - {2}".format(title114, y_date.strftime('%A'), y_date.strftime('%d-%m-%Y'))
 					elif self.link in ["live", "end"]:
 						t_date = date.today()
-						display_text = "Today Matches - {0} - {1}".format(t_date.strftime('%A'), t_date.strftime('%d-%m-%Y'))
+						display_text = "{0} - {1} - {2}".format(title115, t_date.strftime('%A'), t_date.strftime('%d-%m-%Y'))
 					else:
 						display_text = self.MENUTEXT
 
@@ -352,10 +352,10 @@ class FootOnSat(Screen):
 				# Same logic for the second branch to ensure sync
 				if self.link == "yesterday":
 					y_date = date.today() - timedelta(days=1)
-					display_text = "Yesterday Matches - {0} - {1}".format(y_date.strftime('%A'), y_date.strftime('%d-%m-%Y'))
+					display_text = "{0} - {1} - {2}".format(title114, y_date.strftime('%A'), y_date.strftime('%d-%m-%Y'))
 				elif self.link in ["live", "end"]:
 					t_date = date.today()
-					display_text = "Today Matches - {0} - {1}".format(t_date.strftime('%A'), t_date.strftime('%d-%m-%Y'))
+					display_text = "{0} - {1} - {2}".format(title115, t_date.strftime('%A'), t_date.strftime('%d-%m-%Y'))
 				else:
 					display_text = self.MENUTEXT
 
@@ -396,34 +396,34 @@ class FootOnSat(Screen):
 				# NOTE: Assuming clean_status is the uppercased status from the scraper (e.g., 'FINISHED', 'HALFTIME', '90')
 				# NOTE: Assuming display_status is the original status (e.g., 'Half Time', '90+', 'FINISHED')
 				if clean_status == 'CANCELED': # Using the exact clean status 'HALFTIME' from the scraper logic
-					status_text = "Canceled"
-					display_prefix = "Status : "
+					status_text = "%s" % title124
+					display_prefix = "%s : " % title122
 				elif clean_status == 'FINISHED':
-					status_text = "Finished"
-					display_prefix = "Status : "
+					status_text = "%s" % title125
+					display_prefix = "%s : " % title122
 				elif clean_status == 'FT':
-					status_text = "Full Time"
-					display_prefix = "Status : "
+					status_text = "%s" % title126
+					display_prefix = "%s : " % title122
 				elif clean_status == 'AET':
-					status_text = "After Extra Time"
-					display_prefix = "Status : "
+					status_text = "%s" % title127
+					display_prefix = "%s : " % title122
 				elif clean_status == 'PEN':
-					status_text = "Penalties"
-					display_prefix = "Status : "
+					status_text = "%" % title128
+					display_prefix = "%s : " % title122
 				elif clean_status == 'HALFTIME': # Using the exact clean status 'HALFTIME' from the scraper logic
-					status_text = "Half Time"
-					display_prefix = "Live: " # Typically, Half Time is still considered a "Live" state
+					status_text = "%s" % title129
+					display_prefix = "%s : " % title123 # Typically, Half Time is still considered a "Live" state
 				elif clean_status in ('DELAYED', 'DELAY'):
-					status_text = "Delayed"
-					display_prefix = "Live: "
+					status_text = "%s" % title130
+					display_prefix = "%s : " % title123
 				elif clean_status.isdigit() or re.search(r'^\d+[\'+]*\+?\d*$', clean_status):
 					# Covers minutes like '51', '77', '90+', etc.
-					status_text = "%s min" % display_status 
-					display_prefix = "Live: " # Prefix for running matches
+					status_text = "%s %s" % (display_status, title131) 
+					display_prefix = "%s : " % title123 # Prefix for running matches
 				else:
 					# Catch-all for "LIVE", "POSTPONED", "CANCELLED", etc.
 					status_text = display_status
-					display_prefix = "Live: "
+					display_prefix = "%s : " % title123
 				# =======================================================
 				# *** NEW LOGIC END ***
 				# =======================================================
@@ -556,9 +556,9 @@ class FootOnSat(Screen):
 				else:
 					# Otherwise, display the scheduled Kick-off time
 					if self.link in ["end", "yesterday"]:
-						KICKOFF = "Status : .... Wait"
+						KICKOFF = "%s" % title132
 					else:
-						KICKOFF = "Kick-off : %s" % match_date
+						KICKOFF = "%s : %s" % (title133, match_date)
 					if isUHD():
 						if self.link in (SPORTS | FOOTBALL):
 							res.append(MultiContentEntryText(pos=(430, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(KICKOFF)))
@@ -590,16 +590,16 @@ class FootOnSat(Screen):
 			elif self.link in ["end", "yesterday"]:
 				if getattr(self, 'is_yesterday', False):
 					self['key_red'].show()
-					self['key_red'].setText(_("Close"))
+					self['key_red'].setText(_("%s") % title134)
 					self['key_green'].hide()
 				else:
 					self['key_green'].show()
-					self['key_green'].setText(_("Yesterday Matches"))
+					self['key_green'].setText(_("%s") % title114)
 			elif self.link in json_urls:
 				self['key_red'].hide()
 				self['key_yellow'].hide()
 				self['key_green'].show()
-				self['key_green'].setText(_("Standings Table"))
+				self['key_green'].setText(_("%s") % title135)
 			else:
 				self['key_red'].hide()
 				self['key_yellow'].hide()
@@ -610,13 +610,13 @@ class FootOnSat(Screen):
 			# If no data is found, display message in the list instead of a MessageBox
 			gList = []
 			if self.link == "live":
-				no_schedules_text = _('No Live matches at this time')
+				no_schedules_text = _("%s") % title136
 			elif self.link == "end":
-				no_schedules_text = _('No Finished matches at this time')
+				no_schedules_text = _("%s") % title137
 			elif self.link == "yesterday":
-				no_schedules_text = _('Wite to bring list of yesterday matches')
+				no_schedules_text = _("%s") % title138
 			else:
-				no_schedules_text = _('No schedules in this section at this time')
+				no_schedules_text = _("%s") % title139
 			# Set font and height (mirroring the 'if' block setup)
 			self["list1"].l.setItemHeight(175)
 			if isUHD():
@@ -648,10 +648,10 @@ class FootOnSat(Screen):
 					self['key_green'].hide()
 				else:
 					self['key_green'].show()
-					self['key_green'].setText(_("Yesterday Matches"))
+					self['key_green'].setText(title114)
 			elif self.link in json_urls:
 				self['key_green'].show()
-				self['key_green'].setText(_("Standings Table"))
+				self['key_green'].setText(_("%s") % title135)
 			else:
 				self['key_green'].hide()
 			self["counter"].setText("0/0")
@@ -730,7 +730,7 @@ class FootOnSat(Screen):
 			if sel >= 0 and sel < len(self.matches):
 				match = self.matches[sel][0] 
 				if self.checkIfexist(match):
-					self["menu"].setText(_("Press (Menu) to select zap channel"))
+					self["menu"].setText(_("%s") % title121)
 					if parseColor and self["menu"].instance:
 						self["menu"].instance.setForegroundColor(parseColor("#ff0000"))
 					key = re.sub(r'\s+', '', match)
@@ -765,10 +765,10 @@ class FootOnSat(Screen):
 				else:
 					if self.link == "yesterday":
 						y_date = date.today() - timedelta(days=1)
-						display_text = "Yesterday Matches - {0} - {1}".format(y_date.strftime('%A'), y_date.strftime('%d-%m-%Y'))
+						display_text = "{0} - {1} - {2}".format(title114, y_date.strftime('%A'), y_date.strftime('%d-%m-%Y'))
 					elif self.link in ["live", "end"]:
 						t_date = date.today()
-						display_text = "Today Matches - {0} - {1}".format(t_date.strftime('%A'), t_date.strftime('%d-%m-%Y'))
+						display_text = "{0} - {1} - {2}".format(title115, t_date.strftime('%A'), t_date.strftime('%d-%m-%Y'))
 					else:
 						display_text = self.MENUTEXT
 					self["menu"].setText(display_text)
@@ -779,10 +779,10 @@ class FootOnSat(Screen):
 			else:
 				if self.link == "yesterday":
 					y_date = date.today() - timedelta(days=1)
-					display_text = "Yesterday Matches - {0} - {1}".format(y_date.strftime('%A'), y_date.strftime('%d-%m-%Y'))
+					display_text = "{0} - {1} - {2}".format(title114, y_date.strftime('%A'), y_date.strftime('%d-%m-%Y'))
 				elif self.link in ["live", "end"]:
 					t_date = date.today()
-					display_text = "Today Matches - {0} - {1}".format(t_date.strftime('%A'), t_date.strftime('%d-%m-%Y'))
+					display_text = "{0} - {1} - {2}".format(title115, t_date.strftime('%A'), t_date.strftime('%d-%m-%Y'))
 				else:
 					display_text = self.MENUTEXT
 				self["menu"].setText(display_text)
@@ -833,7 +833,7 @@ class FootOnSat(Screen):
 
 			if not self.checkIfexist(match):
 				self.session.open(MessageBox,
-					_("Please press OK on the match first to enable notification!"),
+					_("%s") % title140,
 					MessageBox.TYPE_INFO, timeout=6)
 				return
 
@@ -852,7 +852,7 @@ class FootOnSat(Screen):
 					from Screens.ChannelSelection import ChannelSelection
 					sel_class = ChannelSelection
 
-			self.session.openWithCallback(self.channelSelected, sel_class, _("Select Notification Channel"))
+			self.session.openWithCallback(self.channelSelected, sel_class, _("%s") % title141)
 
 	def channelSelected(self, service_ref=None):
 		if not service_ref:
@@ -893,10 +893,10 @@ class FootOnSat(Screen):
 		self.iniMenu()
 
 		self.session.open(MessageBox,
-			_("Notification channel saved!\n\n") +
-			_("Match: ") + exact_match + "\n" +
-			_("Channel: ") + channel_name + "\n\n" +
-			_("Receiver will zap to this channel when notification appears."),
+			_("%s\n\n") % title142 +
+			_("%s: ") % title143 + exact_match + "\n" +
+			_("%s: ") % title144 + channel_name + "\n\n" +
+			_("%s") % title145,
 			MessageBox.TYPE_INFO, timeout=10)
 
 	def ok(self):
@@ -930,7 +930,7 @@ class FootOnSat(Screen):
 					current_match[4])
 				return
 			else:
-				self.session.open(MessageBox, _("Please wait a few seconds to get live data..."), MessageBox.TYPE_INFO, timeout=3)
+				self.session.open(MessageBox, _("%s") % title146, MessageBox.TYPE_INFO, timeout=3)
 				return
 
 		if PY3:
@@ -969,22 +969,22 @@ class FootOnSat(Screen):
 		notif_30min_time = dt_obj - timedelta(minutes=30)
 		if notif_30min_time > now:
 			first_notif_str = notif_30min_time.strftime("%H:%M - %Y-%m-%d")
-			message = "Kick-off in 30 minutes"
+			message = "%s" % title147
 			return [first_notif_str, message]
 		# 2. 15-minute reminder
 		notif_15min_time = dt_obj - timedelta(minutes=15)
 		if notif_15min_time > now:
 			first_notif_str = notif_15min_time.strftime("%H:%M - %Y-%m-%d")
-			message = "Kick-off in 15 minutes"
+			message = "%s" % title148
 			return [first_notif_str, message]
 		# 3. Match Start time reminder
 		if dt_obj > now:
 			first_notif_str = dt_obj.strftime("%H:%M - %Y-%m-%d")
-			message = "Kick-off in 1 minute"
+			message = "%s" % title149
 			return [first_notif_str, message]
 		# 4. Fallback: Match already started or passed (should be immediately deleted by cleanup)
 		first_notif_str = dt_obj.strftime("%H:%M - %Y-%m-%d")
-		message = "Match has started" 
+		message = "%s" % title150
 		return [first_notif_str, message]
 
 	def sameDate(self, dt):
@@ -1069,7 +1069,7 @@ class FootOnSat(Screen):
 	def error(self, error=None):
 		if error:
 			if debug_Fetch_Live: logdata("FootOnSat-Error", "HTTP Error: " + str(error))
-			error_msg = _('An Unexpected HTTP Error Occurred During The API Request !!')
+			error_msg = _("%s") % title151
 			self.session.openWithCallback(self.exit, MessageBox, error_msg, MessageBox.TYPE_ERROR, timeout=10)
 
 	def fetch_live_results(self):
@@ -1335,24 +1335,24 @@ class FootOnSat(Screen):
 					# --- Status Logic (Match Time Calculation) ---
 					status = ''
 					if stype == 'canceled':
-						status = 'CANCELED'
+						status = '%s' % title124
 					elif stype == 'finished':
-						status = 'FINISHED'
+						status = '%s' % title125
 					elif stype == 'postponed':
-						status = 'POSTPONED'
+						status = '%s' % title152
 						h_score = a_score = ''
 					elif stype == 'inprogress':
 						m = re.search(r'(\d{1,3}[\'+]*\+?\d*)\s*\'', descr)
 						if m:
 							status = '{0} min'.format(m.group(1))
 						elif 'extra time' in descr.lower():
-							status = 'AET'
+							status = '%s' % title153
 						elif 'penalties' in descr.lower():
-							status = 'PEN'
+							status = '%s' % title154
 						elif descr.lower() in ['half time', 'halftime']:
-							status = 'HALFTIME'
+							status = '%s' % title155
 						elif 'delayed' in descr.lower():
-							status = 'DELAYED'
+							status = '%s' % title156
 						else:
 							try:
 								status_time_ts = ev.get('statusTime', {}).get('timestamp')
@@ -1381,7 +1381,7 @@ class FootOnSat(Screen):
 					elif stype in ['notstarted', 'canceled']:
 						h_score = a_score = ''
 						if stype == 'canceled':
-							status = 'CANCELED'
+							status = '%s' % title124
 						else:
 							status = ''
 
@@ -1647,7 +1647,7 @@ class FootOnSat(Screen):
 				self['key_green'].hide()
 		except Exception as e:
 			# This is where the missing/corrupted message is triggered
-			error_msg = _('Yesterday JSON file is missing or corrupted!') if getattr(self, 'is_yesterday', False) else _('Invalid API data! Check logs.')
+			error_msg = _('%s') % title157 if getattr(self, 'is_yesterday', False) else _('%s') % title158
 			self.session.openWithCallback(self.exit, MessageBox, error_msg, MessageBox.TYPE_ERROR, timeout=10)
 			return
 		# === DEBUG: Save LiveOnSat/GitHub JSON to /tmp (Pretty Print) ===
@@ -1922,9 +1922,9 @@ class FootOnSat(Screen):
 	def Yesterdayerror(self, failure):
 		if debug_Fetch_Live: logdata("API-Error", "Error: %s" % str(failure.getErrorMessage()))
 		if getattr(self, 'is_yesterday', False):
-			error_msg = _('Yesterday JSON file is missing or server error!')
+			error_msg = _("%s") % title159
 		else:
-			error_msg = _('An Unexpected HTTP Error Occurred During The API Request !!')
+			error_msg = _("%s") % title151
 		self.session.openWithCallback(self.exit, MessageBox, error_msg, MessageBox.TYPE_ERROR, timeout=10)
 
 	def keyBlue(self):
@@ -1962,7 +1962,7 @@ class FootOnSat(Screen):
 			polarization = 'V' if 'V' in self.channelData[index][2] else 'H'
 
 			if len(nimList) == 0:
-				self.session.open(MessageBox, _('Satellite frontend Not found!'), MessageBox.TYPE_ERROR, timeout=10)
+				self.session.open(MessageBox, _("%s") % title160, MessageBox.TYPE_ERROR, timeout=10)
 			elif fileExists('/var/lib/dpkg/status'):
 				from Plugins.Extensions.FootOnSat.satfinder.dreamos import Satfinder
 				self.session.open(Satfinder, self.getfeid(), freq, symbolrate, sat, polarization, fec)
@@ -1973,7 +1973,7 @@ class FootOnSat(Screen):
 				from Plugins.Extensions.FootOnSat.satfinder.openpli import Satfinder
 				self.session.open(Satfinder, freq, symbolrate, sat, polarization, fec)
 			else:
-				self.session.open(MessageBox, 'Satfinder Is not compatible with this image', MessageBox.TYPE_ERROR, timeout=10)
+				self.session.open(MessageBox, _("%s") % title161, MessageBox.TYPE_ERROR, timeout=10)
 		else:
 			self['key_blue'].hide()
 
@@ -2113,12 +2113,12 @@ class FootOnSat(Screen):
 
 	def selectCompetitionToRemove(self, selected):
 		if not selected or not selected[1]:
-			self.session.open(MessageBox, _('No competition selected to remove'), MessageBox.TYPE_INFO, timeout=5)
+			self.session.open(MessageBox, _("%s") % title162, MessageBox.TYPE_INFO, timeout=5)
 			return
 		compet = selected[1]
 		if debug_Ignore: logdata("selectCompetitionToRemove", "Removing competition: " + compet)
 		self.manageIgnoreFile(remove=compet)
-		self.session.open(MessageBox, _('Competition "%s" removed from ignore list') % compet, MessageBox.TYPE_INFO, timeout=5)
+		self.session.open(MessageBox, title163 % compet, MessageBox.TYPE_INFO, timeout=5)
 		# Refresh the match list to include removed competition's matches
 		self.matches = []
 		self["list1"].setList([])
@@ -2143,7 +2143,7 @@ class FootOnSat(Screen):
 						compet = compet.split(suffix)[0].strip()
 				
 				if not compet:
-					self.session.open(MessageBox, _('No valid competition selected!'), MessageBox.TYPE_ERROR, timeout=5)
+					self.session.open(MessageBox, _("%s") % title164, MessageBox.TYPE_ERROR, timeout=5)
 					return
 				
 				# Load current ignored competitions
@@ -2155,7 +2155,7 @@ class FootOnSat(Screen):
 				if compet in ignored_after and compet not in ignored_before:
 					# Use the variable containing only the file path string
 					path_info = ignore_file_path
-					msg = _('Competition "%s" added to ignore list.\n\nSave file on "%s"') % (compet, path_info)
+					msg = title165 % (compet, path_info)
 					self.session.open(MessageBox, msg, MessageBox.TYPE_INFO, timeout=5)
 				else:
 					if debug_Ignore: logdata("keyRed", "Competition " + compet + " not added (already ignored or failed)")
@@ -2167,14 +2167,14 @@ class FootOnSat(Screen):
 				self.callAPI()
 			except Exception as e:
 				if debug_Ignore: logdata("keyRed", "Error ignoring competition: " + str(e))
-				self.session.open(MessageBox, _('Error ignoring competition!'), MessageBox.TYPE_ERROR, timeout=5)
+				self.session.open(MessageBox, _("%s") % title166, MessageBox.TYPE_ERROR, timeout=5)
 
 	def keyYellow(self):
 		if self.link == "today":
 			try:
 				ignored_list = self.manageIgnoreFile()
 				if not ignored_list:
-					self.session.open(MessageBox, _('No competitions in the ignore list'), MessageBox.TYPE_INFO, timeout=5)
+					self.session.open(MessageBox, _("%s") % title167, MessageBox.TYPE_INFO, timeout=5)
 					return
 				if debug_Ignore: logdata("keyYellow", "Ignored competitions: " + str(ignored_list))
 				list = []
@@ -2194,13 +2194,13 @@ class FootOnSat(Screen):
 					list.append((comp_str, comp_str))
 				# If the list is empty after processing, stop
 				if not list:
-					self.session.open(MessageBox, _('Error processing ignore list items!'), MessageBox.TYPE_ERROR, timeout=5)
+					self.session.open(MessageBox, _("%s") % title168, MessageBox.TYPE_ERROR, timeout=5)
 					return
-				self.session.openWithCallback(self.selectCompetitionToRemove, ChoiceBox, _('Select the competition to remove from list'), list)
+				self.session.openWithCallback(self.selectCompetitionToRemove, ChoiceBox, _("%s") % title169, list)
 			except Exception as e:
 				if debug_Ignore: logdata("keyYellow", "Error selecting competition to remove: " + str(e))
 				# This addresses the original error which likely occurred here due to string conversion failure
-				self.session.open(MessageBox, _('Error accessing ignore list!'), MessageBox.TYPE_ERROR, timeout=5)
+				self.session.open(MessageBox, _("%s") % title170, MessageBox.TYPE_ERROR, timeout=5)
 
 
 class MatchDetailsScreen(Screen):
@@ -2210,14 +2210,14 @@ class MatchDetailsScreen(Screen):
 		self.skin = SKIN_MatchDetails
 		self.event_id = str(event_id)
 		if debug_MatchDetails: logdata("MatchDetails", "Initializing MatchDetails for event_id: %s, match_name: %s, home_full: %s, away_full: %s, home_country: %s, away_country: %s" % (event_id, match_name, home_full, away_full, home_country, away_country))
-		self["title"] = Label(str(match_name) + " - Details")
+		self["title"] = Label(str(match_name) + " - " + title171)
 		self["home_name_big"] = Label(str(home_full))
 		self["away_name_big"] = Label(str(away_full))
 		self["home_team"] = Pixmap()
 		self["away_team"] = Pixmap()
 		self["score"] = Label("- : -")
-		self["status"] = Label(_("Loading..."))
-		self["key_red"] = Label(_("Close"))
+		self["status"] = Label(_("%s...") % title172)
+		self["key_red"] = Label(_("%s") % title134)
 		
 		self["details_list"] = MenuList([], enableWrapAround=True, content=eListboxPythonMultiContent)
 		
@@ -2268,10 +2268,10 @@ class MatchDetailsScreen(Screen):
 				self[side].instance.show()
 
 	def openMedia(self):
-		self.session.openWithCallback(self.navCallback, MatchMediaScreen, self.event_id, self["title"].getText().replace(" - Details", ""))
+		self.session.openWithCallback(self.navCallback, MatchMediaScreen, self.event_id, self["title"].getText().replace(" - " + title171, ""))
 
 	def openStats(self):
-		self.session.openWithCallback(self.navCallback, MatchStatisticsScreen, self.event_id, self["title"].getText().replace(" - Details", ""), self["home_name_big"].getText(), self["away_name_big"].getText())
+		self.session.openWithCallback(self.navCallback, MatchStatisticsScreen, self.event_id, self["title"].getText().replace(" - " + title171, ""), self["home_name_big"].getText(), self["away_name_big"].getText())
 
 	def navCallback(self, answer=None):
 		if answer == "exit_all":
@@ -2335,7 +2335,20 @@ class MatchDetailsScreen(Screen):
 			h = ev.get('homeScore', {}).get('current', 0)
 			a = ev.get('awayScore', {}).get('current', 0)
 			self["score"].setText(str(h) + " - " + str(a))
-			self["status"].setText(str(ev.get('status', {}).get('description', '')))
+			STATUS_MAP = {
+				"Ended":       title209,
+				"1st half":    title210,
+				"2nd half":    title211,
+				"Halftime":    title212,
+				"Postponed":   title213,
+				"Canceled":    title214,
+				"Delayed":     title215,
+				"Extra Time":  title216,
+				"Penalties":   title217,
+				"Not started": title218,
+			}
+			raw_status = str(ev.get('status', {}).get('description', ''))
+			self["status"].setText(STATUS_MAP.get(raw_status, raw_status))
 
 		gList = []
 		if inc_js and 'incidents' in inc_js:
@@ -2400,12 +2413,12 @@ class MatchDetailsScreen(Screen):
 					is_og = str(inc.get('incidentClass', '')).lower() == 'owngoal'
 					is_pen = str(inc.get('incidentClass', '')).lower() == 'penalty'
 					if is_og:
-						text = str(inc.get('player', {}).get('name', 'Own Goal')) + " (OG)"
+						text = str(inc.get('player', {}).get('name', 'Own Goal')) + " (OG)" % title173
 						color = 0xFF0000
 						icon_name = "owngoal.png"
 					else:
 						p_name = str(inc.get('player', {}).get('name', 'Goal'))
-						text = p_name + " (Pen.)" if is_pen else p_name
+						text = p_name + " (Pen.)" % title174 if is_pen else p_name
 						color = 0x00FF00
 						icon_name = "goal.png"
 				elif itype == 'card':
@@ -2429,7 +2442,7 @@ class MatchDetailsScreen(Screen):
 						return "%s. %s" % (parts[0][0], parts[-1]) if len(parts) > 1 else name
 					p_in = shortName(str(inc.get('playerIn', {}).get('name', '')))
 					p_out = shortName(str(inc.get('playerOut', {}).get('name', '')))
-					text = "%s (Out) / %s (In)" % (p_out, p_in)
+					text = "%s %s / %s %s" % (p_out, title175, p_in, title176)
 					color = 0xFFFFFF
 					icon_name = "substitution.png"
 
@@ -2462,10 +2475,10 @@ class MatchStatisticsScreen(Screen):
 		self.skin = SKIN_MatchStatistics
 		self.event_id = event_id
 		if debug_MatchStatistics: logdata("MatchStatistics", "Initializing MatchStatistics for event_id: %s, match_name: %s, home_name: %s, away_name: %s" % (event_id, match_name, home_name, away_name))
-		self["title"] = Label(str(match_name) + " - Statistics")
+		self["title"] = Label(str(match_name) + " - " + title177)
 		self["home_team"] = Label(str(home_name))
 		self["away_team"] = Label(str(away_name))
-		self["key_red"] = Label(_("Close"))
+		self["key_red"] = Label(_("%s") % title134)
 		self["stats_list"] = MenuList([], enableWrapAround=True, content=eListboxPythonMultiContent)
 
 		self["setupActions"] = ActionMap(["FootOnsatActions", "ColorActions"], {
@@ -2484,7 +2497,7 @@ class MatchStatisticsScreen(Screen):
 		self.close("exit_all")
 
 	def openMedia(self):
-		clean_title = self["title"].getText().replace(" - Statistics", "")
+		clean_title = self["title"].getText().replace(" - " + title177, "")
 		self.session.openWithCallback(self.navCallback, MatchMediaScreen, self.event_id, clean_title)
 
 	def navCallback(self, answer=None):
@@ -2581,9 +2594,65 @@ class MatchStatisticsScreen(Screen):
 						# --- Group Header (Fixing the not-a-string error here) ---
 						res = []
 						res.append(MultiContentEntryText()) # Anchor
-						# Force header to string for Py2
+						STATS_MAP = {
+						    # Group Headers
+						    "Match overview":         title219,
+						    "Shots":                  title220,
+						    "Attack":                 title221,
+						    "Passes":                 title222,
+						    "Duels":                  title223,
+						    "Defending":              title224,
+						    "Goalkeeping":            title225,
+						    # Match overview
+						    "Ball possession":        title226,
+						    "Expected goals":         title227,
+						    "Big chances":            title228,
+						    "Total shots":            title229,
+						    "Goalkeeper saves":       title230,
+						    "Corner kicks":           title231,
+						    "Fouls":                  title232,
+						    "Tackles":                title233,
+						    "Free kicks":             title234,
+						    "Yellow cards":           title235,
+						    "Offsides":               title236,
+						    # Shots
+						    "Shots on target":        title237,
+						    "Hit woodwork":           title238,
+						    "Shots off target":       title239,
+						    "Blocked shots":          title240,
+						    "Shots inside box":       title241,
+						    "Shots outside box":      title242,
+						    # Attack
+						    "Big chances scored":     title243,
+						    "Big chances missed":     title244,
+						    "Touches in penalty area":title245,
+						    "Fouled in final third":  title246,
+						    # Passes
+						    "Accurate passes":        title247,
+						    "Throw-ins":              title248,
+						    "Final third entries":    title249,
+						    "Final third phase":      title250,
+						    "Long balls":             title251,
+						    "Crosses":                title252,
+						    # Duels
+						    "Duels":                  title253,
+						    "Dispossessed":           title254,
+						    "Ground duels":           title255,
+						    "Aerial duels":           title256,
+						    "Dribbles":               title257,
+						    # Defending
+						    "Tackles won":            title258,
+						    "Total tackles":          title259,
+						    "Interceptions":          title260,
+						    "Recoveries":             title261,
+						    "Clearances":             title262,
+						    # Goalkeeping
+						    "Total saves":            title263,
+						    "Punches":                title264,
+						    "Goal kicks":             title265,
+						}
 						header_raw = group.get('groupName', '')
-						header_text = str("-- " + header_raw + " --") 
+						header_text = str("-- " + STATS_MAP.get(header_raw, header_raw) + " --")
 						res.append(MultiContentEntryText(pos=(W_LIST_X, W_LIST_Y), size=(W_LIST, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=header_text, color=0xffcc00))
 						gList.append(res)
 						
@@ -2593,7 +2662,7 @@ class MatchStatisticsScreen(Screen):
 							
 							# Force all values to strings for Py2
 							val_h = str(item.get('home', '0'))
-							val_n = str(item.get('name', ''))
+							val_n = str(STATS_MAP.get(item.get('name', ''), item.get('name', '')))
 							val_a = str(item.get('away', '0'))
 							
 							# Home
@@ -2608,7 +2677,7 @@ class MatchStatisticsScreen(Screen):
 		if not gList:
 			res = []
 			res.append(MultiContentEntryText()) # Anchor
-			no_data_text = str(_("No statistics information available"))
+			no_data_text = str(_("%s") % title178)
 			res.append(MultiContentEntryText(pos=(W_LIST_X, W_LIST_Y), size=(W_LIST, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=no_data_text, color=0xff0000))
 			gList.append(res)
 		
@@ -2622,8 +2691,8 @@ class MatchMediaScreen(Screen):
 		self.skin = SKIN_MatchMedia
 		self.event_id = event_id
 		if debug_MatchMedia: logdata("MatchMediaScreen", "Initializing MatchMediaScreen for event_id: %s, match_name: %s" % (event_id, match_name))
-		self["title"] = Label(str(match_name) + " - Media")
-		self["key_red"] = Label(_("Close"))
+		self["title"] = Label(str(match_name) + " - " + title179)
+		self["key_red"] = Label(_("%s") % title144)
 		self["media_list"] = MenuList([], enableWrapAround=True, content=eListboxPythonMultiContent)
 
 		self["setupActions"] = ActionMap(["FootOnsatActions", "ColorActions"], {
@@ -2656,7 +2725,7 @@ class MatchMediaScreen(Screen):
 		self.close("exit_all")
 
 	def openStats(self):
-		clean_title = self["title"].getText().replace(" - Media", "")
+		clean_title = self["title"].getText().replace(" - " + title179, "")
 		self.session.openWithCallback(self.navCallback, MatchStatisticsScreen, self.event_id, clean_title, "", "")
 
 	def navCallback(self, answer=None):
@@ -2783,7 +2852,7 @@ class MatchMediaScreen(Screen):
 
 		if not gList:
 			res = [None, MultiContentEntryText()]
-			err_msg = str(_("No media available"))
+			err_msg = str(_("%s") % title180)
 			res.append(MultiContentEntryText(pos=(0, W_LIST_Y), size=(W_LIST, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=err_msg, color=0xff0000))
 			gList.append(res)
 		
@@ -2818,7 +2887,7 @@ class MatchMediaScreen(Screen):
 		if is_vbox7:
 			if debug_MatchMedia: logdata("MatchMedia-vbox7", "Start Play: %s" % url)
 			pass
-		msg = _("Please wait while extracting video stream...")
+		msg = _("%s") % title181
 		if is_youtube:
 			self.wait_dialog = self.session.open(MessageBox, msg, MessageBox.TYPE_INFO, enable_input=False)
 			def safe_extract(video_url):
@@ -2851,7 +2920,7 @@ class MatchMediaScreen(Screen):
 			#self.playAfterExtract(str(url))
 			# Fallback for unsupported URLs
 			if debug_MatchMedia: logdata("MatchMedia", "Unsupported URL/Video: %s" % str(url))
-			msg = _("This video source is not supported yet\n\nSend /tmp/FootOnSat.log to support.")
+			msg = _("%s") % title182
 			self.session.open(MessageBox, msg, MessageBox.TYPE_INFO, timeout=10)
 
 	def playAfterExtract(self, video_url):
@@ -2865,7 +2934,7 @@ class MatchMediaScreen(Screen):
 			lower_err = err_msg.lower()
 			if debug_MatchMedia: logdata("MatchMedia", "playAfterExtract_lower: %s" % lower_err)
 			if "country" in lower_err or "available" in lower_err:
-				msg = _("This video is not available in your country or is private.")
+				msg = _("%s") % title183
 				self.error_timer = eTimer()
 				if DreamOS():
 					self.error_timer_conn = self.error_timer.timeout.connect(lambda: self.session.open(MessageBox, msg, MessageBox.TYPE_ERROR, timeout=10))
@@ -2874,7 +2943,7 @@ class MatchMediaScreen(Screen):
 				self.error_timer.start(250, True)
 				return
 		if not video_url_str.startswith("http"):
-			msg = _("Failed to extract video stream or link is broken.")
+			msg = _("%s") % title184
 			self.error_timer = eTimer()
 			if DreamOS():
 				self.error_timer_conn = self.error_timer.timeout.connect(lambda: self.session.open(MessageBox, msg, MessageBox.TYPE_ERROR, timeout=10))
@@ -3000,7 +3069,7 @@ class MatchMediaScreen(Screen):
 				if code not in (200, 206): raise Exception("HTTP_%s" % code)
 			except Exception as e:
 				if "403" not in str(e):
-					self.session.open(MessageBox, _("Failed to extract video stream or link is broken."), MessageBox.TYPE_ERROR, timeout=10)
+					self.session.open(MessageBox, _("%s") % title184, MessageBox.TYPE_ERROR, timeout=10)
 					return
 		name = str(self["title"].getText())
 		ref_str = "%d:0:1:0:0:0:0:0:0:0::%s" % (stype, compat_quote(name))
@@ -3160,7 +3229,7 @@ class MatchMediaScreen(Screen):
 		if hasattr(self, 'wait_dialog') and self.wait_dialog:
 			self.wait_dialog.close()
 		if debug_MatchMedia: logdata("MatchMedia", "playback_error_raw : %s" % str(failure))
-		msg = _("Failed to extract video stream or link is broken.")
+		msg = _("%s") % title184
 		self.error_timer = eTimer()
 		if DreamOS():
 			self.error_timer_conn = self.error_timer.timeout.connect(lambda: self.session.open(MessageBox, msg, MessageBox.TYPE_ERROR, timeout=10))
@@ -3223,11 +3292,11 @@ class StandingsScreen(Screen):
 			self.skin = SKIN_standings
 		self["standings_list"] = MenuList([], enableWrapAround=True, content=eListboxPythonMultiContent)
 		# FIX for Python 2 eLabel: encode to UTF-8 if not Python 3
-		title_text = "%s Standings" % self.league
+		title_text = "%s %s" % (self.league, title185)
 		if not PY3:
 			title_text = title_text.encode('utf-8')
 		self["title"] = Label(_(title_text))
-		self["key_red"] = Button(_("To Close Press Ok or Exit"))
+		self["key_red"] = Button(_("%s") % title186)
 		self["setupActions"] = ActionMap(["OkCancelActions", "ColorActions"], {
 			"ok": self.close,
 			"cancel": self.close,
@@ -3998,7 +4067,7 @@ class StandingsScreen(Screen):
 		self["standings_list"].setList(gList)
 		if not self.standings_data:
 			#logdata("display_standings", "No standings data, showing MessageBox")
-			self.session.openWithCallback(self.close, MessageBox, _('No standings available for this league.'), MessageBox.TYPE_INFO, timeout=10)
+			self.session.openWithCallback(self.close, MessageBox, _("%s") % title187, MessageBox.TYPE_INFO, timeout=10)
 		else:
 			#logdata("display_standings", "Displaying standings, total entries: %d" % len(gList))
 			pass
@@ -4260,15 +4329,15 @@ class FootOnsatNotifScreen(Screen):
 									# 1b. Determine Next Notification Time & Message
 									if user_choice in ("1", "3", "5", "7"):
 										# Next notification should be 15 min
-										message_next = "Kick-off in 15 minutes"
+										message_next = "%s" % title148
 										notif_next_time = (match_time_obj - timedelta(minutes=15)).strftime("%H:%M - %Y-%m-%d")
 									elif user_choice in ("2", "6"):
 										# Next notification should be start time
-										message_next = "Kick-off is NOW"
+										message_next = "%s" % title188
 										notif_next_time = match_time_obj.strftime("%H:%M - %Y-%m-%d")
 									else:
 										# No more notifications required for this choice (e.g., choice 4: 30 min only)
-										message_next = "Notifications Done"
+										message_next = "%s" % title189
 										# Set next time to 1 minute after match start for guaranteed cleanup
 										notif_next_time = (match_time_obj + timedelta(minutes=1)).strftime("%H:%M - %Y-%m-%d")
 									
@@ -4288,11 +4357,11 @@ class FootOnsatNotifScreen(Screen):
 									# 2b. Determine Next Notification Time & Message
 									if user_choice in ("1", "2", "5", "6"):
 										# Next notification should be start time
-										message_next = "Kick-off is NOW"
+										message_next = "Kick-off is NOW" % title188
 										notif_next_time = match_time_obj.strftime("%H:%M - %Y-%m-%d")
 									else:
 										# No more notifications required for this choice (e.g., choice 3, 7)
-										message_next = "Notifications Done"
+										message_next = "Notifications Done" % title189
 										# Set next time to 1 minute after match start for guaranteed cleanup
 										notif_next_time = (match_time_obj + timedelta(minutes=1)).strftime("%H:%M - %Y-%m-%d")
 										

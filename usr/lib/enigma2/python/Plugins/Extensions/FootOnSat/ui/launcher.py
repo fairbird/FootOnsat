@@ -118,7 +118,7 @@ class FootOnsatLauncher(Screen):
 			idx += 1
 			i += 10
 		self.full_list = list(self.menuList)
-		self["blue"].setText("Edit mode on")
+		self["blue"].setText(title190)
 		try:
 			self.hide_show_entries()
 			self["menu"].setList(self.menuList)
@@ -137,7 +137,7 @@ class FootOnsatLauncher(Screen):
 	def error(self, error=None):
 		if error:
 			if debug_Fetch_Live: logdata("launcher", "API-error : %s" % str(e))
-			self.session.openWithCallback(self.exit, MessageBox, _('Error: %s') % str(error), MessageBox.TYPE_ERROR, timeout=10)
+			self.session.openWithCallback(self.exit, MessageBox, title191 + ': %s' % str(error), MessageBox.TYPE_ERROR, timeout=10)
 
 	def ok(self):
 		if self.sort_mode and len(self.menuList):
@@ -148,10 +148,10 @@ class FootOnsatLauncher(Screen):
 			elif self.selected_entry != m_entry:
 				select = True
 			if not select:
-				self["green"].setText(_("Move mode on"))
+				self["green"].setText(title192)
 				self.selected_entry = None
 			else:
-				self["green"].setText(_("Move mode off"))
+				self["green"].setText(title193)
 			idx = 0
 			for x in self.menuList:
 				if m_entry == x[0] and select == True:
@@ -202,9 +202,9 @@ class FootOnsatLauncher(Screen):
 		if self.sort_mode and len(self.menuList) > 0:
 			selection = self["menu"].getCurrent()[0]
 			if self.sub_menu_sort.getConfigValue(selection, "hidden"):
-				self["yellow"].setText("show")
+				self["yellow"].setText(title208)
 			else:
-				self["yellow"].setText("hide")
+				self["yellow"].setText(title207)
 		else:
 			self["yellow"].setText("")
 
@@ -218,16 +218,16 @@ class FootOnsatLauncher(Screen):
 			hidden = self.sub_menu_sort.getConfigValue(m_entry, "hidden") or 0
 			if hidden:
 				self.sub_menu_sort.removeConfigValue(m_entry, "hidden")
-				self["yellow"].setText(_("hide"))
+				self["yellow"].setText(title207)
 			else:
 				self.sub_menu_sort.changeConfigValue(m_entry, "hidden", 1)
-				self["yellow"].setText(_("show"))
+				self["yellow"].setText(title208)
 
 	def toggleSortMode(self):
 		if self.sort_mode:
 			self["green"].setText("")
 			self["yellow"].setText("")
-			self["blue"].setText(_("Edit mode on"))
+			self["blue"].setText(title190)
 			self.sort_mode = False
 			i = 10
 			idx = 0
@@ -250,8 +250,8 @@ class FootOnsatLauncher(Screen):
 			self.hide_show_entries()
 			self["menu"].setList(self.menuList)
 		else:
-			self["green"].setText(_("Move mode on"))
-			self["blue"].setText(_("Edit mode off"))
+			self["green"].setText(title192)
+			self["blue"].setText(title193)
 			self.sort_mode = True
 			self.hide_show_entries()
 			self["menu"].setList(self.menuList)
@@ -338,11 +338,7 @@ class FootOnsatLauncher(Screen):
 						new_description = self.new_description
 						logdata("Updates", "New version %s is available" % self.new_version)
 						self.session.openWithCallback(
-							self.install,
-							MessageBox,
-							_("New version %s is available.\n\nDo want to install now." % self.new_version),
-							MessageBox.TYPE_YESNO
-						)
+							self.install, MessageBox, title194 % self.new_version, MessageBox.TYPE_YESNO)
 				except Exception as e:
 					logdata("Update-check-error", str(e))
 			else:
@@ -354,7 +350,7 @@ class FootOnsatLauncher(Screen):
 				cmdlist = []
 				cmd="wget -q https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh"
 				cmdlist.append(cmd)
-				self.session.open(Console, title='Installing last update, enigma will be started after install', cmdlist=cmdlist, finishedCallback=self.myCallback, closeOnSuccess=False)
+				self.session.open(Console, title="%s" % title105, cmdlist=cmdlist, finishedCallback=self.myCallback, closeOnSuccess=False)
 		except Exception as e:
 			logdata("launcher", "Install Error: %s" % str(e))
 	

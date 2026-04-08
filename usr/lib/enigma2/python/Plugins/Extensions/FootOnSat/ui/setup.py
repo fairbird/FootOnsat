@@ -19,26 +19,9 @@ from Tools.Directories import resolveFilename, SCOPE_PLUGINS
 from Plugins.Extensions.FootOnSat.ui.Console import Console
 from Plugins.Extensions.FootOnSat.component.configs import ConfigDictionarySet
 from os.path import join, exists, splitext, isfile
-import re, os, json, sys
+import re, os, json, sys, io
 from .compat import *
-
-
-def getDesktopSize():
-	s = getDesktop(0).size()
-	return (s.width(), s.height())
-
-def isUHD():
-	desktopSize = getDesktopSize()
-	return desktopSize[0] >= 2560
-
-def isFHD():
-	desktopSize = getDesktopSize()
-	return desktopSize[0] == 1920
-
-if isUHD():
-        from Plugins.Extensions.FootOnSat.assets.skin.skinUHD import *
-else:
-        from Plugins.Extensions.FootOnSat.assets.skin.skinFHD import *
+import importlib
 
 def logdata(label_name = "", data = None):
 	try:
@@ -100,6 +83,45 @@ for part in mounted_partitions:
 		pass
 
 config.plugins.FootOnSat = ConfigSubsection()
+############ Keep it here do not move it 
+_lang_dir = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/languages")
+
+def _get_lang_name(filepath):
+	try:
+		with io.open(filepath, 'r', encoding='utf-8') as f:
+			lines = f.readlines()
+			if len(lines) >= 2:
+				# Second line: # English translation by (XXXXXX)
+				line = lines[1].strip().lstrip('#').strip()
+				name = line.split('translation')[0].strip()
+				if name:
+					return name
+	except:
+		pass
+	return None
+
+_available_langs = []
+try:
+	for _file in sorted(os.listdir(_lang_dir)):
+		if _file.endswith('.py') and _file != '__init__.py':
+			_code = _file[:-3].upper()
+			_name = _get_lang_name(os.path.join(_lang_dir, _file))
+			if _name:
+				_available_langs.append((_code, _name))
+except:
+	pass
+
+if not _available_langs:
+	_available_langs = [("EN", "English")]
+
+config.plugins.FootOnSat.lang = ConfigSelection(default="EN", choices=_available_langs)
+_lang = config.plugins.FootOnSat.lang.value.lower()
+try:
+	_mod = importlib.import_module("Plugins.Extensions.FootOnSat.assets.languages.%s" % _lang)
+	globals().update(vars(_mod))
+except:
+	from Plugins.Extensions.FootOnSat.assets.languages.en import *
+#############################
 config.plugins.FootOnSat.showplugin = ConfigText(default="")
 config.plugins.FootOnSat.devicepath = ConfigSelection(default=default_ignore_dir,choices=mounted_devices)
 config.plugins.FootOnSat.sort = ConfigDictionarySet(default={"footmenu": {"footsubmenu": {}}})
@@ -119,77 +141,94 @@ config.plugins.FootOnSat.debug_MatchMedia = ConfigYesNo(default=False)
 config.plugins.FootOnSat.debug_MatchDetails = ConfigYesNo(default=False)
 config.plugins.FootOnSat.debug_MatchStatistics = ConfigYesNo(default=False)
 config.plugins.FootOnSat.pluginicon = ConfigSelection(default = "logo1", choices = [
-	("logo1", _("logo 1")),
-	("logo2", _("logo 2")),
-	("logo3", _("logo 3")),
-	("logo4", _("logo 4")),
-	("logo5", _("logo 5")),
-	("logo6", _("logo 6")),
-	("logo7", _("logo 7"))
+	("logo1", _("%s 1") % title0),
+	("logo2", _("%s 2") % title0),
+	("logo3", _("%s 3") % title0),
+	("logo4", _("%s 4") % title0),
+	("logo5", _("%s 5") % title0),
+	("logo6", _("%s 6") % title0)
 	])
 config.plugins.FootOnSat.maxResolution = ConfigSelection(default='22', choices=[
 	('38', '4096x3072'), ('37', '1920x1080'), ('22', '1280x720'),
 	('35', '854x480'), ('18', '640x360'), ('5', '400x240'), ('17', '176x144')
 ])
 config.plugins.FootOnSat.livecolor = ConfigSelection(default="0xFF0000", choices = [
-	("0xFF0000", _("RED")),
-	("0xFFFFFF", _("WHITE")),
-	("0x00FF00", _("GREEN")),
-	("0x000000", _("BLACK")),
-	("0x0000FF", _("BLUE")),
+	("0xFF0000", _("%s") % title1),
+	("0xFFFFFF", _("%s") % title2),
+	("0x00FF00", _("%s") % title3),
+	("0x000000", _("%s") % title4),
+	("0x0000FF", _("%s") % title5),
 	])
 config.plugins.FootOnSat.finished = ConfigSelection(default = "5", choices = [
-	("3", _("3 hours")),
-	("4", _("4 hours")),
-	("5", _("5 hours")),
-	("6", _("6 hours")),
-	("7", _("7 hours")),
-	("8", _("8 hours")),
-	("9999", _("Disable (Always keep)"))
+	("3", _("3 %s") % title6),
+	("4", _("4 %s") % title6),
+	("5", _("5 %s") % title6),
+	("6", _("6 %s") % title6),
+	("7", _("7 %s") % title6),
+	("8", _("8 %s") % title6),
+	("9999", _("%s") % title7)
 	])
 config.plugins.FootOnSat.livescore = ConfigSelection(default = "2", choices = [
-	("1", _("No live Score + Status")),
-	("2", _("Live Score + Status"))
+	("1", _("%s") % title8),
+	("2", _("%s") % title9)
 	])
 config.plugins.FootOnSat.livescoresections = ConfigSelection(default = "1", choices = [
-	("1", _("All Sections")),
-	("2", _("Live and Match End sections only")),
+	("1", _("%s") % title10),
+	("2", _("%s") % title11),
 	])
 config.plugins.FootOnSat.notify_zap = ConfigSelection(default = "1", choices = [
-	("1", _("sound + Notifications + Zap")),
-	("2", _("sound + Zap only")),
+	("1", _("%s") % title12),
+	("2", _("%s") % title13),
 	])
 config.plugins.FootOnSat.notify = ConfigSelection(default = "1", choices = [
-	("1", _("All three notifications")),
-	("2", _("Only when started match")),
-	("3", _("Only 15 minutes before the match starts")),
-	("4", _("Only 30 minutes before the match starts")),
-	("5", _("Only Before 15 min + Start match")),
-	("6", _("Only Before 30 min + Start match")),
-	("7", _("Only Before 15 min + Before 30 min"))
+	("1", _("%s") % title14),
+	("2", _("%s") % title15),
+	("3", _("%s") % title16),
+	("4", _("%s") % title17),
+	("5", _("%s") % title18),
+	("6", _("%s") % title19),
+	("7", _("%s")% title20)
 	])
 config.plugins.FootOnSat.icons = ConfigSelection(default = "icons_default", choices = [
-	("icons_default", _("default icons")),
-	("icons_buwalla", _("buwalla icons")),
-	("icons_renkli", _("renkli icons")),
-	("icons_italia2012", _("italia2012 Full style color"))
+	("icons_default", _("%s") % title21),
+	("icons_buwalla", _("%s") % title22),
+	("icons_renkli", _("%s") % title23),
+	("icons_italia2012", _("%s") % title24)
 	])
 
 config.plugins.FootOnSat.playmethod = ConfigSelection(default = "1", choices = [
-	("1", _("FFmpeg")),
-	("2", _("Gstreamer")),
+	("1", _("%s") % title25),
+	("2", _("%s") % title26),
 	])
 
 if DreamOS():
 	config.plugins.FootOnSat.player = ConfigSelection(default='4097', choices=[
-		('4097', _('Default (4097)')),
-		('8193', _('DreamOS GstPlayer (8193)'))
+		('4097', _('%s') % title27),
+		('8193', _('%s') % title28)
 	])
 else:
 	config.plugins.FootOnSat.player = ConfigSelection(default='5002', choices=[
-		('4097', _('Default (4097)')),
-		('5002', _('ExtePlayer (5002)'))
+		('4097', _('%s') % title29),
+		('5002', _('%s') % title30)
 	])
+
+def getDesktopSize():
+	s = getDesktop(0).size()
+	return (s.width(), s.height())
+
+def isUHD():
+	desktopSize = getDesktopSize()
+	return desktopSize[0] >= 2560
+
+def isFHD():
+	desktopSize = getDesktopSize()
+	return desktopSize[0] == 1920
+
+if isUHD():
+	from Plugins.Extensions.FootOnSat.assets.skin.skinUHD import SKIN_MenuFootOnSat, SKIN_SelectionScreen
+else:
+	from Plugins.Extensions.FootOnSat.assets.skin.skinFHD import SKIN_MenuFootOnSat, SKIN_SelectionScreen
+
 
 class MenuFootOnSat(ConfigListScreen, Screen):
 
@@ -205,16 +244,17 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			"cancel": self.cancel,
 			"red": self.cancel,
 			"green": self.save,
-			"blue": self.reinstall,
+			"blue": self.install,
 			"ok": self.keyOk,
 		}, -1)
 
-		self["key_red"] = StaticText(_("Exit"))
-		self["key_green"] = StaticText(_("Save"))
-		self["key_blue"] = StaticText(_("Install Plugin"))
+		self["key_red"] = StaticText(_("%s") % title97)
+		self["key_green"] = StaticText(_("%s") % title98)
+		self["key_blue"] = StaticText(_("%s") % title99)
 
 		self["Picture"] = Pixmap()
 		self["help"] = StaticText()
+		self.lang = config.plugins.FootOnSat.lang.value
 		self.old_notiffile = config.plugins.FootOnSat.notiffile.value
 		self.icons_value = config.plugins.FootOnSat.icons.value
 		self.pluginicon = config.plugins.FootOnSat.pluginicon.value
@@ -231,50 +271,51 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 
 	def createSetup(self):
 		self.list = []
-		self.list.append(getConfigListEntry("_____________________________礑 Plugin 礑__________________________________________"))
-		self.list.append(getConfigListEntry(_("Show Plugin #press OK to change"), config.plugins.FootOnSat.showplugin, _("This option to show Plugin in any where you like")))
-		self.list.append(getConfigListEntry(_("Enable checking for Online Update"), config.plugins.FootOnSat.updateonline, _("This option to Enable or Disable checking for Online Update")))
-		self.list.append(getConfigListEntry(_("Enable checking for Online Banners Update"), config.plugins.FootOnSat.updatebannersonline, _("This option to Enable or Disable checking for Online Update of Banners")))
-		self.list.append(getConfigListEntry(_("Choose the icon of plugin"), config.plugins.FootOnSat.pluginicon, _("This option to allows you to select the icon of plugin.\n\nChoose and Press Save (Green Button)")))
-		self.list.append(getConfigListEntry(_("Select Icons Style"), config.plugins.FootOnSat.icons, _("This option to allows you to select Icons Style.\nChoose and Press Save (Green Button)")))
-		self.list.append(getConfigListEntry("______________________________礑 Other 礑__________________________________________"))
-		self.list.append(getConfigListEntry(_("Enable flags of teams"), config.plugins.FootOnSat.enableflag, _("This option to Enable or Disable flags of teams with logo")))
-		self.list.append(getConfigListEntry(_("Path to store ignore file"), config.plugins.FootOnSat.devicepath, _("This option to set the path of save file for ignore matches")))
-		self.list.append(getConfigListEntry("_______________________________礑 Live 礑__________________________________________"))
-		self.list.append(getConfigListEntry(_("Enable Live score + status"), config.plugins.FootOnSat.livescore, _("This feature allows you to show or hide the matches with or without result + status")))
+		self.list.append(getConfigListEntry(title91))
+		self.list.append(getConfigListEntry(_("%s") % title31, config.plugins.FootOnSat.lang, _("%s") % title32))
+		self.list.append(getConfigListEntry(_("%s") % title33, config.plugins.FootOnSat.showplugin, _("%s") % title34))
+		self.list.append(getConfigListEntry(_("%s") % title35, config.plugins.FootOnSat.updateonline, _("%s") % title36))
+		self.list.append(getConfigListEntry(_("%s") % title37, config.plugins.FootOnSat.updatebannersonline, _("%s") % title38))
+		self.list.append(getConfigListEntry(_("%s") % title39, config.plugins.FootOnSat.pluginicon, _("%s") % title40))
+		self.list.append(getConfigListEntry(_("%s") % title41, config.plugins.FootOnSat.icons, _("%s") % title42))
+		self.list.append(getConfigListEntry(title92))
+		self.list.append(getConfigListEntry(_("%s") % title43, config.plugins.FootOnSat.enableflag, _("%s") % title44))
+		self.list.append(getConfigListEntry(_("%s") % title45, config.plugins.FootOnSat.devicepath, _("%s") % title46))
+		self.list.append(getConfigListEntry(title93))
+		self.list.append(getConfigListEntry(_("%s") % title47, config.plugins.FootOnSat.livescore, _("%s") % title48))
 		if config.plugins.FootOnSat.livescore.value in ["2"]:
-			self.list.append(getConfigListEntry(_("Select appear live + score of match in"), config.plugins.FootOnSat.livescoresections, _("This feature allows you to show matches live with result in sections")))
-			self.list.append(getConfigListEntry(_("Time to keep finished matches"), config.plugins.FootOnSat.finished, _("This option specifies how long finished matches remain in the 'Match End' section before they disappear")))
-			self.list.append(getConfigListEntry(_("Color of score and status"), config.plugins.FootOnSat.livecolor, _("This option allows you to choose the color of score and status.")))
-			self.list.append(getConfigListEntry(_("Activate an additional url"), config.plugins.FootOnSat.extrafetch, _("This option allows you to activate an additional URL link to download data.\n\nActivating this will take longer for the fetch process on (Saturday and Sunday) to more than 1 minute.")))
-		self.list.append(getConfigListEntry("____________________________礑 notifications 礑__________________________________________"))
-		self.list.append(getConfigListEntry(_("Choose time for notifications"), config.plugins.FootOnSat.notiftime, _("This feature allows you to choose the number of seconds for notifications to appear.\n\nMove <Left | Right> to change seconds from (6 - 20)")))
-		self.list.append(getConfigListEntry(_("Choose to notifications and Zap"), config.plugins.FootOnSat.notify_zap, _("This feature allows you to specify the notifications and Zap to selected channel")))
-		self.list.append(getConfigListEntry(_("Choose to display notifications"), config.plugins.FootOnSat.notify, _("This feature allows you to specify the times for notifications to appear when matches start")))
-		self.list.append(getConfigListEntry(_("Choose tone of notifications #press OK to change"), config.plugins.FootOnSat.notiffile, _("This feature allows you to select a notification tone when matches start")))
-		self.list.append(getConfigListEntry("_______________________________礑 Media 礑__________________________________________"))
-		self.list.append(getConfigListEntry(_("Use DASH MP4 format (YouTube)"), config.plugins.FootOnSat.useDashMP4, _("Specify or you want to use DASH MP4 format streams if available.\n\nThis requires playing two streams together and may cause problems for some receivers.\n\nFor YouTube Only")))
-		self.list.append(getConfigListEntry(_("Maximum video resolution"), config.plugins.FootOnSat.maxResolution, _("What maximum resolution used when playing video, if available.\n\nIf you have a slow Internet connection, you can use a lower resolution.")))
+			self.list.append(getConfigListEntry(_("%s") % title49, config.plugins.FootOnSat.livescoresections, _("%s") % title50))
+			self.list.append(getConfigListEntry(_("%s") % title51, config.plugins.FootOnSat.finished, _("%s") % title52))
+			self.list.append(getConfigListEntry(_("%s") % title53, config.plugins.FootOnSat.livecolor, _("%s") % title54))
+			self.list.append(getConfigListEntry(_("%s") % title55, config.plugins.FootOnSat.extrafetch, _("%s") % title56))
+		self.list.append(getConfigListEntry(title94))
+		self.list.append(getConfigListEntry(_("%s") % title57, config.plugins.FootOnSat.notiftime, _("%s") % title58))
+		self.list.append(getConfigListEntry(_("%s") % title59, config.plugins.FootOnSat.notify_zap, _("%s") % title60))
+		self.list.append(getConfigListEntry(_("%s") % title61, config.plugins.FootOnSat.notify, _("%s") % title62))
+		self.list.append(getConfigListEntry(_("%s") % title63, config.plugins.FootOnSat.notiffile, _("%s") % title64))
+		self.list.append(getConfigListEntry(title95))
+		self.list.append(getConfigListEntry(_("%s") % title65, config.plugins.FootOnSat.useDashMP4, _("%s") % title66))
+		self.list.append(getConfigListEntry(_("%s") % title67, config.plugins.FootOnSat.maxResolution, _("%s") % title68))
 		if DreamOS():
-			self.list.append((_('Media Player:'), config.plugins.FootOnSat.player, _('Specify the player which will be used for media playback.'))) 
+			self.list.append((_("%s") % title69, config.plugins.FootOnSat.player, _("%s") % title70)) 
 		has_serviceapp = False
 		for p in plugins.getPlugins(where=PluginDescriptor.WHERE_MENU):
 			if 'ServiceApp' in p.path:
 				has_serviceapp = True
 				break
 		if has_serviceapp:
-			self.list.append((_('Media player:'), config.plugins.FootOnSat.player, _('Specify the player which will be used for media playback.')))
+			self.list.append((_("%s") % title71, config.plugins.FootOnSat.player, _("%s") % title72))
 		else:
-			self.list.append((_('Play method:'), config.plugins.FootOnSat.playmethod, _('Specify the play method which will be used (ffmpeg) or (Gstreamer).')))
-		self.list.append(getConfigListEntry("_______________________________礑 Debug 礑__________________________________________"))
-		self.list.append(getConfigListEntry(_("ZAP"), config.plugins.FootOnSat.debug_ZAP, _("This option allows you to print the (Zap) feature and codes work in a log file.")))
-		self.list.append(getConfigListEntry(_("Notif"), config.plugins.FootOnSat.debug_Notif, _("This option allows you to print the (Notification) feature and codes work in a log file.")))
-		self.list.append(getConfigListEntry(_("Ignore"), config.plugins.FootOnSat.debug_Ignore, _("This option allows you to print the (Ignore Competition) feature and codes work in a log file.")))
-		self.list.append(getConfigListEntry(_("Fetch and Live"), config.plugins.FootOnSat.debug_Fetch_Live, _("This option allows you to print the (Fetch url and bring data of Live) feature and codes work in a log file.")))
-		self.list.append(getConfigListEntry(_("Standings"), config.plugins.FootOnSat.debug_Standings, _("This option allows you to print the (Standings) screen and codes work in a log file.")))
-		self.list.append(getConfigListEntry(_("Match Media"), config.plugins.FootOnSat.debug_MatchMedia, _("This option allows you to print the (Match Media,) screen and codes work in a log file.")))
-		self.list.append(getConfigListEntry(_("Match Details"), config.plugins.FootOnSat.debug_MatchDetails, _("This option allows you to print the (Match Details) screen and codes work in a log file.")))
-		self.list.append(getConfigListEntry(_("Match Statistics"), config.plugins.FootOnSat.debug_MatchStatistics, _("This option allows you to print the (Match Statistics) screen and codes work in a log file.")))
+			self.list.append((_("%s") % title73, config.plugins.FootOnSat.playmethod, _("%s") % title74))
+		self.list.append(getConfigListEntry(title96))
+		self.list.append(getConfigListEntry(_("%s") % title75, config.plugins.FootOnSat.debug_ZAP, _("%s") % title76))
+		self.list.append(getConfigListEntry(_("%s") % title77, config.plugins.FootOnSat.debug_Notif, _("%s") % title78))
+		self.list.append(getConfigListEntry(_("%s") % title79, config.plugins.FootOnSat.debug_Ignore, _("%s") % title80))
+		self.list.append(getConfigListEntry(_("%s") % title81, config.plugins.FootOnSat.debug_Fetch_Live, _("%s") % title82))
+		self.list.append(getConfigListEntry(_("%s") % title83, config.plugins.FootOnSat.debug_Standings, _("%s") % title84))
+		self.list.append(getConfigListEntry(_("%s") % title85, config.plugins.FootOnSat.debug_MatchMedia, _("%s") % title86))
+		self.list.append(getConfigListEntry(_("%s") % title87, config.plugins.FootOnSat.debug_MatchDetails, _("%s") % title88))
+		self.list.append(getConfigListEntry(_("%s") % title89, config.plugins.FootOnSat.debug_MatchStatistics, _("%s") % title90))
 		
 		self["config"].list = self.list
 		self["config"].l.setList(self.list)
@@ -289,9 +330,9 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		if cur and len(cur) > 1 and cur[1] == config.plugins.FootOnSat.notiffile:
 			tone_list = self.getToneList()
 			if tone_list:
-				self.session.openWithCallback(self.saveToneSelection, ChoiceBox, title=_("Select tone file"), list=tone_list)
+				self.session.openWithCallback(self.saveToneSelection, ChoiceBox, title=_("%s") % title101, list=tone_list)
 			else:
-				self.session.open(MessageBox, _("No .wav files found in sound folder!"), MessageBox.TYPE_INFO)
+				self.session.open(MessageBox, _("%s") % title102, MessageBox.TYPE_INFO)
 
 	@staticmethod
 	def getToneFile():
@@ -376,19 +417,17 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			elif index == "icons_italia2012":
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/compet/preview/icons_italia2012.png')
 			elif index == "logo1":
-				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo/logo1.png')
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo1.png')
 			elif index == "logo2":
-				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo/logo2.png')
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo2.png')
 			elif index == "logo3":
-				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo/logo3.png')
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo3.png')
 			elif index == "logo4":
-				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo/logo4.png')
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo4.png')
 			elif index == "logo5":
-				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo/logo5.png')
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo5.png')
 			elif index == "logo6":
-				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo/logo6.png')
-			elif index == "logo7":
-				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo/logo7.png')
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo6.png')
 			if pic and self['Picture'].instance and exists(pic):
 				self["Picture"].instance.setScale(1)
 				self["Picture"].instance.setPixmapFromFile(pic)
@@ -468,7 +507,10 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		if self.debug_MatchMedia != config.plugins.FootOnSat.debug_MatchMedia.value: Restart_changed = True
 		if self.debug_MatchDetails != config.plugins.FootOnSat.debug_MatchDetails.value: Restart_changed = True
 		if self.debug_MatchStatistics != config.plugins.FootOnSat.debug_MatchStatistics.value: Restart_changed = True
-		
+
+		# Check if languages has actually changed
+		if self.lang != config.plugins.FootOnSat.lang.value: Restart_changed = True
+
 		# Check if notiffile has actually changed
 		if self.old_notiffile != config.plugins.FootOnSat.notiffile.value: Restart_changed = True
 
@@ -496,22 +538,46 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		configfile.save()
 		
 		if Restart_changed:
-			self.session.openWithCallback(self.restart, MessageBox, _("You need to restart GUI\nDo you want to do it now ?!"))
+			self.session.openWithCallback(self.restart, MessageBox, _("%s") % title103)
 		elif changed:
 			self.close("exit_launcher")
 		else:
 			self.close()
 
-	def reinstall(self):
-		self.session.openWithCallback(self.doinstall, MessageBox, _("Do You want to Reinstall pluign again ?!"), MessageBox.TYPE_YESNO)
+	def install(self):
+		list = []
+		list.append((title270, "ReInstall_Plugin"))
+		list.append((title271, "Update_Languages"))
+		self.session.openWithCallback(self.reinstall, ChoiceBox, title=_("%s") % title269, list=list)
 
-	def doinstall(self,answer=False):
+	def reinstall(self, select):
+		self.list = []
+		if select:
+			if select[1] == "ReInstall_Plugin":
+				self.session.openWithCallback(self.doreinstall, MessageBox, _("%s") % title104, MessageBox.TYPE_YESNO)
+			elif select[1] == "Update_Languages":
+				self.session.openWithCallback(self.doUpdateinstall, MessageBox, _("%s") % title268, MessageBox.TYPE_YESNO)
+		else:
+			self.close()
+
+	def doreinstall(self,answer=False):
 		try:
 			if answer:
 				cmdlist = []
 				cmd="wget -q https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh"
 				cmdlist.append(cmd)
-				self.session.open(Console, title='Installing last update, enigma will be started after install', cmdlist=cmdlist, finishedCallback=self.myCallback, closeOnSuccess=False)
+				self.session.open(Console, title="%s" % title105, cmdlist=cmdlist, finishedCallback=self.myCallback, closeOnSuccess=False)
+		except:
+			trace_error()
+
+	def doUpdateinstall(self,answer=False):
+		try:
+			if answer:
+				cmdlist = []
+				extract_path = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
+				cmd="wget -q -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/languages/languages_update.tar.gz | tar -xz -C %s" % extract_path
+				cmdlist.append(cmd)
+				self.session.open(Console, title="%s" % title105, cmdlist=cmdlist, finishedCallback=self.myCallback, closeOnSuccess=False)
 		except:
 			trace_error()
 	
@@ -531,7 +597,7 @@ class SelectionScreen(Screen, ConfigListScreen):
                 self.skin = SKIN_SelectionScreen
                 ConfigListScreen.__init__(self, [], session=session)
                 self.session = session
-                self.setup_title = _("Select your choose")
+                self.setup_title = _("%s") % title106
                 self.setTitle(self.setup_title)
 
                 # Load pixmaps for checkboxes
@@ -563,8 +629,8 @@ class SelectionScreen(Screen, ConfigListScreen):
                 self.updateList()
 
                 # Set up labels
-                self["key_green"] = Label(_("Save"))
-                self["key_red"] = Label(_("Cancel"))
+                self["key_green"] = Label(title98)
+                self["key_red"] = Label(title107)
 
                 # Set up actions
                 self["setupActions"] = ActionMap(["FootOnsatActions"], {
@@ -584,9 +650,9 @@ class SelectionScreen(Screen, ConfigListScreen):
                 current_index = self["list"].getIndex() or 0
                 self.list = []
                 choices = [
-                        ("Menu", _("Menu")),
-                        ("Channellist", _("Channellist")),
-                        ("Extensions", _("Extensions"))
+                        ("Menu", _("%s") % title108),
+                        ("Channellist", _("%s") % title109),
+                        ("Extensions", _("%s") % title110)
                 ]
 
                 for key, text in choices:
@@ -615,7 +681,7 @@ class SelectionScreen(Screen, ConfigListScreen):
                 config.plugins.FootOnSat.showplugin.save()
 
                 if self.current_value != new_value:
-                        self.session.openWithCallback(self.restart, MessageBox, _("You need to restart GUI\nDo you want to do it now ?!"))
+                        self.session.openWithCallback(self.restart, MessageBox, _("%s") % title111)
                 else:
                         self.close(True)
 
