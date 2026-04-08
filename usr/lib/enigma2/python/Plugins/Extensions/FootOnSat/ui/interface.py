@@ -832,9 +832,7 @@ class FootOnSat(Screen):
 			match = self.matches[index][0] if PY3 else self.matches[index][0].decode('utf-8')
 
 			if not self.checkIfexist(match):
-				self.session.open(MessageBox,
-					_("%s") % title140,
-					MessageBox.TYPE_INFO, timeout=6)
+				self.session.open(MessageBox, title140, MessageBox.TYPE_INFO, timeout=6)
 				return
 
 			self.current_selected_match = match
@@ -892,12 +890,8 @@ class FootOnSat(Screen):
 
 		self.iniMenu()
 
-		self.session.open(MessageBox,
-			_("%s\n\n") % title142 +
-			_("%s: ") % title143 + exact_match + "\n" +
-			_("%s: ") % title144 + channel_name + "\n\n" +
-			_("%s") % title145,
-			MessageBox.TYPE_INFO, timeout=10)
+		self.session.open(MessageBox, "%s\n\n" % title142 + "%s: " % title143 + exact_match + "\n" +
+			"%s: " % title144 + channel_name + "\n\n" + title145, MessageBox.TYPE_INFO, timeout=10)
 
 	def ok(self):
 		if self.selectedList != self["list1"] or len(self.matches) == 0:
@@ -930,7 +924,7 @@ class FootOnSat(Screen):
 					current_match[4])
 				return
 			else:
-				self.session.open(MessageBox, _("%s") % title146, MessageBox.TYPE_INFO, timeout=3)
+				self.session.open(MessageBox,  title146, MessageBox.TYPE_INFO, timeout=3)
 				return
 
 		if PY3:
@@ -969,22 +963,22 @@ class FootOnSat(Screen):
 		notif_30min_time = dt_obj - timedelta(minutes=30)
 		if notif_30min_time > now:
 			first_notif_str = notif_30min_time.strftime("%H:%M - %Y-%m-%d")
-			message = "%s" % title147
+			message = title147
 			return [first_notif_str, message]
 		# 2. 15-minute reminder
 		notif_15min_time = dt_obj - timedelta(minutes=15)
 		if notif_15min_time > now:
 			first_notif_str = notif_15min_time.strftime("%H:%M - %Y-%m-%d")
-			message = "%s" % title148
+			message = title148
 			return [first_notif_str, message]
 		# 3. Match Start time reminder
 		if dt_obj > now:
 			first_notif_str = dt_obj.strftime("%H:%M - %Y-%m-%d")
-			message = "%s" % title149
+			message = title149
 			return [first_notif_str, message]
 		# 4. Fallback: Match already started or passed (should be immediately deleted by cleanup)
 		first_notif_str = dt_obj.strftime("%H:%M - %Y-%m-%d")
-		message = "%s" % title150
+		message = title150
 		return [first_notif_str, message]
 
 	def sameDate(self, dt):
@@ -1922,9 +1916,9 @@ class FootOnSat(Screen):
 	def Yesterdayerror(self, failure):
 		if debug_Fetch_Live: logdata("API-Error", "Error: %s" % str(failure.getErrorMessage()))
 		if getattr(self, 'is_yesterday', False):
-			error_msg = _("%s") % title159
+			error_msg = title159
 		else:
-			error_msg = _("%s") % title151
+			error_msg = title151
 		self.session.openWithCallback(self.exit, MessageBox, error_msg, MessageBox.TYPE_ERROR, timeout=10)
 
 	def keyBlue(self):
@@ -1962,7 +1956,7 @@ class FootOnSat(Screen):
 			polarization = 'V' if 'V' in self.channelData[index][2] else 'H'
 
 			if len(nimList) == 0:
-				self.session.open(MessageBox, _("%s") % title160, MessageBox.TYPE_ERROR, timeout=10)
+				self.session.open(MessageBox, title160, MessageBox.TYPE_ERROR, timeout=10)
 			elif fileExists('/var/lib/dpkg/status'):
 				from Plugins.Extensions.FootOnSat.satfinder.dreamos import Satfinder
 				self.session.open(Satfinder, self.getfeid(), freq, symbolrate, sat, polarization, fec)
@@ -1973,7 +1967,7 @@ class FootOnSat(Screen):
 				from Plugins.Extensions.FootOnSat.satfinder.openpli import Satfinder
 				self.session.open(Satfinder, freq, symbolrate, sat, polarization, fec)
 			else:
-				self.session.open(MessageBox, _("%s") % title161, MessageBox.TYPE_ERROR, timeout=10)
+				self.session.open(MessageBox, title161, MessageBox.TYPE_ERROR, timeout=10)
 		else:
 			self['key_blue'].hide()
 
@@ -2113,7 +2107,7 @@ class FootOnSat(Screen):
 
 	def selectCompetitionToRemove(self, selected):
 		if not selected or not selected[1]:
-			self.session.open(MessageBox, _("%s") % title162, MessageBox.TYPE_INFO, timeout=5)
+			self.session.open(MessageBox, title162, MessageBox.TYPE_INFO, timeout=5)
 			return
 		compet = selected[1]
 		if debug_Ignore: logdata("selectCompetitionToRemove", "Removing competition: " + compet)
@@ -2143,7 +2137,7 @@ class FootOnSat(Screen):
 						compet = compet.split(suffix)[0].strip()
 				
 				if not compet:
-					self.session.open(MessageBox, _("%s") % title164, MessageBox.TYPE_ERROR, timeout=5)
+					self.session.open(MessageBox, title164, MessageBox.TYPE_ERROR, timeout=5)
 					return
 				
 				# Load current ignored competitions
@@ -2167,14 +2161,14 @@ class FootOnSat(Screen):
 				self.callAPI()
 			except Exception as e:
 				if debug_Ignore: logdata("keyRed", "Error ignoring competition: " + str(e))
-				self.session.open(MessageBox, _("%s") % title166, MessageBox.TYPE_ERROR, timeout=5)
+				self.session.open(MessageBox, title166, MessageBox.TYPE_ERROR, timeout=5)
 
 	def keyYellow(self):
 		if self.link == "today":
 			try:
 				ignored_list = self.manageIgnoreFile()
 				if not ignored_list:
-					self.session.open(MessageBox, _("%s") % title167, MessageBox.TYPE_INFO, timeout=5)
+					self.session.open(MessageBox, title167, MessageBox.TYPE_INFO, timeout=5)
 					return
 				if debug_Ignore: logdata("keyYellow", "Ignored competitions: " + str(ignored_list))
 				list = []
@@ -2194,13 +2188,13 @@ class FootOnSat(Screen):
 					list.append((comp_str, comp_str))
 				# If the list is empty after processing, stop
 				if not list:
-					self.session.open(MessageBox, _("%s") % title168, MessageBox.TYPE_ERROR, timeout=5)
+					self.session.open(MessageBox, title168, MessageBox.TYPE_ERROR, timeout=5)
 					return
 				self.session.openWithCallback(self.selectCompetitionToRemove, ChoiceBox, _("%s") % title169, list)
 			except Exception as e:
 				if debug_Ignore: logdata("keyYellow", "Error selecting competition to remove: " + str(e))
 				# This addresses the original error which likely occurred here due to string conversion failure
-				self.session.open(MessageBox, _("%s") % title170, MessageBox.TYPE_ERROR, timeout=5)
+				self.session.open(MessageBox, title170, MessageBox.TYPE_ERROR, timeout=5)
 
 
 class MatchDetailsScreen(Screen):
@@ -3069,7 +3063,7 @@ class MatchMediaScreen(Screen):
 				if code not in (200, 206): raise Exception("HTTP_%s" % code)
 			except Exception as e:
 				if "403" not in str(e):
-					self.session.open(MessageBox, _("%s") % title184, MessageBox.TYPE_ERROR, timeout=10)
+					self.session.open(MessageBox, title184, MessageBox.TYPE_ERROR, timeout=10)
 					return
 		name = str(self["title"].getText())
 		ref_str = "%d:0:1:0:0:0:0:0:0:0::%s" % (stype, compat_quote(name))
@@ -4067,7 +4061,7 @@ class StandingsScreen(Screen):
 		self["standings_list"].setList(gList)
 		if not self.standings_data:
 			#logdata("display_standings", "No standings data, showing MessageBox")
-			self.session.openWithCallback(self.close, MessageBox, _("%s") % title187, MessageBox.TYPE_INFO, timeout=10)
+			self.session.openWithCallback(self.close, MessageBox, title187, MessageBox.TYPE_INFO, timeout=10)
 		else:
 			#logdata("display_standings", "Displaying standings, total entries: %d" % len(gList))
 			pass

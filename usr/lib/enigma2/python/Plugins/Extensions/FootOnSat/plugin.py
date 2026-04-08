@@ -42,21 +42,7 @@ def sessionstart(reason, **kwargs):
 		FootOnSatNotifDialog.startNotif(kwargs["session"])
 
 description = _("FootOnSat")
-
-if config.plugins.FootOnSat.pluginicon.value == "logo1":
-	ICON = "logo/logo1.png"
-elif config.plugins.FootOnSat.pluginicon.value == "logo2":
-	ICON = "logo/logo2.png"
-elif config.plugins.FootOnSat.pluginicon.value == "logo3":
-	ICON = "logo/logo3.png"
-elif config.plugins.FootOnSat.pluginicon.value == "logo4":
-	ICON = "logo/logo4.png"
-elif config.plugins.FootOnSat.pluginicon.value == "logo5":
-	ICON = "logo/logo5.png"
-elif config.plugins.FootOnSat.pluginicon.value == "logo6":
-	ICON = "logo/logo6.png"
-else:
-	ICON = "logo/logo7.png"
+ICON = "logo/%s.png" % config.plugins.FootOnSat.pluginicon.value
 
 def Plugins(**kwargs):
 	result = [
