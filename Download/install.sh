@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #wget -q "--no-check-certificate" https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh
-VERSION=6.8
+VERSION=6.9
 PLUGIN_PATH="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
 DB_FILE="$PLUGIN_PATH/db/footonsat.db"
 TERMINATED_FILE="$PLUGIN_PATH/db/terminated_matches.json"
