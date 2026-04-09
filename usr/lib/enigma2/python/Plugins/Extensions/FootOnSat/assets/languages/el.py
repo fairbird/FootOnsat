@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Greek translation by (giorbak)
+# Ελληνικά translation by (giorbak)
 
 title0="Λογότυπο"
 title1="Κόκκινο"
