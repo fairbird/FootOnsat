@@ -2606,6 +2606,9 @@ class MatchStatisticsScreen(Screen):
 						    "Free kicks":             title234,
 						    "Yellow cards":           title235,
 						    "Offsides":               title236,
+						    "Distance covered":       title277,
+						    "Number of sprints":      title278,
+						    "Red cards":              title279,
 						    # Shots
 						    "Shots on target":        title237,
 						    "Hit woodwork":           title238,
@@ -2618,6 +2621,7 @@ class MatchStatisticsScreen(Screen):
 						    "Big chances missed":     title244,
 						    "Touches in penalty area":title245,
 						    "Fouled in final third":  title246,
+						    "Through balls":          title280,
 						    # Passes
 						    "Accurate passes":        title247,
 						    "Throw-ins":              title248,
@@ -2637,6 +2641,7 @@ class MatchStatisticsScreen(Screen):
 						    "Interceptions":          title260,
 						    "Recoveries":             title261,
 						    "Clearances":             title262,
+						    "Errors lead to a goal":  title267,
 						    # Goalkeeping
 						    "Total saves":            title263,
 						    "Punches":                title264,
@@ -2644,6 +2649,8 @@ class MatchStatisticsScreen(Screen):
 						    "Goals prevented":        title272,
 						    "High claims":            title273,
 						    "Errors lead to a shot":  title274,
+						    "Big saves":              title281,
+						    "Penalty saves":          title282,
 						}
 						header_raw = group.get('groupName', '')
 						header_text = str("-- " + STATS_MAP.get(header_raw, header_raw) + " --")
