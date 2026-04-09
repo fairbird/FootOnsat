@@ -538,9 +538,9 @@ class FootOnSat(Screen):
 					# If score or status exists, display the dynamic status/time (e.g., "Live: 70 min" or "Status : FT")
 					if isUHD():
 						if self.link in FOOTBALL:
-							res.append(MultiContentEntryText(pos=(430, 120), size=(400, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=LIVECOLORE))
+							res.append(MultiContentEntryText(pos=(430, 120), size=(400, 48), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=LIVECOLORE))
 						else:
-							res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=LIVECOLORE))
+							res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 48), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=LIVECOLORE))
 					else:
 						if self.link in FOOTBALL:
 							res.append(MultiContentEntryText(pos=(320, 120), size=(240, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(display_prefix + "%s" % status_text), color=LIVECOLORE))
@@ -554,9 +554,9 @@ class FootOnSat(Screen):
 						KICKOFF = "%s : %s" % (title133, match_date)
 					if isUHD():
 						if self.link in (SPORTS | FOOTBALL):
-							res.append(MultiContentEntryText(pos=(430, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(KICKOFF)))
+							res.append(MultiContentEntryText(pos=(430, 120), size=(1000, 48), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(KICKOFF)))
 						else:
-							res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(KICKOFF)))
+							res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 48), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(KICKOFF)))
 					else:
 						if self.link in (SPORTS | FOOTBALL):
 							res.append(MultiContentEntryText(pos=(320, 120), size=(500, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(KICKOFF)))
@@ -622,7 +622,7 @@ class FootOnSat(Screen):
 			# Text centered vertically (y=70 is roughly the center of 175 height item) and horizontally
 			res.append(MultiContentEntryText(
 				pos=(0, 70), 
-				size=(850 if isUHD() else 660, 36),
+				size=(850 if isUHD() else 660, 48 if isUHD() else 36),
 				font=0, 
 				flags=RT_HALIGN_CENTER | RT_VALIGN_CENTER, 
 				text=no_schedules_text
@@ -2554,12 +2554,12 @@ class MatchStatisticsScreen(Screen):
 			W_LIST_Y = 13 # Vertical Offset Y
 			HOME_X = 131  # Move Home value: Higher = Right, Lower = Left
 			HOME_Y = 13   # Vertical Offset
-			NAME_X = 1030 # Move Stat Name: Higher = Right, Lower = Left
+			NAME_X = 731 # Move Stat Name: Higher = Right, Lower = Left
 			NAME_Y = 13   # Vertical Offset
 			AWAY_X = 1930 # Move Away value: Higher = Right, Lower = Left
 			AWAY_Y = 13   # Vertical Offset
 			COL_W  = 400  # Width of the value boxes
-			NAME_W = 400  # Width of the middle name box
+			NAME_W = 1000  # Width of the middle name box
 		else:
 			ITEM_H = 80   # Row Height: Increase to add space between rows
 			FONT_S = 36   # Font Size: Increase to make text bigger
