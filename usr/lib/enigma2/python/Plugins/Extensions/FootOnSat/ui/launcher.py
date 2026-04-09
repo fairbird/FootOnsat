@@ -251,7 +251,7 @@ class FootOnsatLauncher(Screen):
 			self["menu"].setList(self.menuList)
 		else:
 			self["green"].setText(title192)
-			self["blue"].setText(title193)
+			self["blue"].setText(title276)
 			self.sort_mode = True
 			self.hide_show_entries()
 			self["menu"].setList(self.menuList)
