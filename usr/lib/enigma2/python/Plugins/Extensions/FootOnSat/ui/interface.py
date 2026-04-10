@@ -2896,6 +2896,7 @@ class MatchMediaScreen(Screen):
 					v_id = video_url
 					if 'watch?v=' in v_id: v_id = v_id.split('watch?v=')[-1]
 					elif 'youtu.be/' in v_id: v_id = v_id.split('youtu.be/')[-1]
+					if '?' in v_id: v_id = v_id.split('?')[0]
 					if '&' in v_id: v_id = v_id.split('&')[0]
 					ytdl = YouTubeVideoUrl()
 					result = ytdl.extract(v_id)
@@ -2934,7 +2935,8 @@ class MatchMediaScreen(Screen):
 			err_msg = video_url_str.split("ERROR:", 1)[1].lstrip()
 			lower_err = err_msg.lower()
 			if debug_MatchMedia: logdata("MatchMedia", "playAfterExtract_lower: %s" % lower_err)
-			if "country" in lower_err or "available" in lower_err:
+			if "country" in lower_err or "not available" in lower_err:
+				if debug_MatchMedia: logdata("MatchMedia", "Geo-restriction error (all client retries exhausted): %s" % err_msg)
 				msg = _("%s") % title183
 				self.error_timer = eTimer()
 				if DreamOS():

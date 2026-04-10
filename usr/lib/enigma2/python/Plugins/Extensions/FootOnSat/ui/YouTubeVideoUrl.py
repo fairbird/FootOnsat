@@ -510,6 +510,32 @@ class YouTubeVideoUrl():
 			if not player_response:
 				raise RuntimeError('Age gate content player response not found!')
 
+		# Handle geo-restricted / country-blocked content by retrying with alternative clients.
+		# The Android client (3) is tried first but often returns GEO_RESTRICTED even when the
+		# video is fully accessible via TVHTML5, iOS or the embedded player clients.
+		_playability = self.try_get(player_response, ('playabilityStatus', 'status'))
+		if _playability not in ('OK', None):
+			_reason = (self.try_get(player_response, ('playabilityStatus', 'reason')) or '').lower()
+			_is_geo = _playability == 'GEO_RESTRICTED' or 'country' in _reason or 'not available' in _reason
+			if _is_geo:
+				if debug_MatchMedia: logdata('[YouTubeVideoUrl] Geo-restriction detected (%s), trying alternative clients' % _playability)
+				_webpage = self._download_webpage(
+					'https://www.youtube.com/watch?v=%s&bpctr=9999999999&has_verified=1' % video_id
+				) or ''
+				for _client_id, _needs_wp in ((7, True), (5, True), (56, False)):
+					if debug_MatchMedia: logdata('[YouTubeVideoUrl] Geo-retry: trying client %s' % _client_id)
+					_alt_resp, _alt_pid = self._extract_player_response(
+						video_id, None, _client_id, lang,
+						_webpage if _needs_wp else None
+					)
+					if _alt_resp and self.try_get(_alt_resp, ('playabilityStatus', 'status')) == 'OK':
+						if debug_MatchMedia: logdata('[YouTubeVideoUrl] Geo-retry succeeded with client %s' % _client_id)
+						player_response = _alt_resp
+						player_id = _alt_pid
+						break
+				else:
+					if debug_MatchMedia: logdata('[YouTubeVideoUrl] All geo-retry clients failed')
+
 		streaming_data = player_response.get('streamingData', {})
 		streaming_formats = streaming_data.get('formats', [])
 
