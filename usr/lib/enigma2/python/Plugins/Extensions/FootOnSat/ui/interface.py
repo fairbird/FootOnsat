@@ -1438,7 +1438,7 @@ class FootOnSat(Screen):
 				# === RESTORED SPEED OPTIMIZATION: Pre-calculate schedule clean cache ONCE ===
 				schedule_clean_cache = {}
 				for match in matches_list:
-					if self.is_closed: return
+					if getattr(self, 'is_closed', True): return
 					try:
 						local_name = compat_str(match[0])
 						#teams = re.split(r'\s+vs\s+|\s+-\s+', local_name)
@@ -1458,7 +1458,7 @@ class FootOnSat(Screen):
 				# ===================================================================================
 
 				for match in matches_list:
-					if self.is_closed: return
+					if getattr(self, 'is_closed', True): return
 					try:
 						time_str = compat_str(match[1])
 						try:
@@ -1611,7 +1611,7 @@ class FootOnSat(Screen):
 
 			d_match = deferToThread(_do_fuzzy_matching, matches_list, live_matches, now_adj)
 			d_match.addCallback(_matching_complete)
-			d_match.addErrback(lambda f: logdata("fetch_live_results", "Fuzzy matching thread failed: %s" % f.getErrorMessage()))
+			d_match.addErrback(lambda f: logdata("fetch_live_results", "Fuzzy matching thread failed: %s" % f.getErrorMessage()) if not getattr(self, 'is_closed', True) else None)
 
 		def _error(failure):
 			if self.is_closed: return
