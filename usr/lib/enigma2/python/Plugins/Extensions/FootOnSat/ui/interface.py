@@ -2838,8 +2838,7 @@ class MatchMediaScreen(Screen):
 					#icon_path = icon_su # Need to fix later
 					continue
 				elif "vbox7.com" in v_url.lower():
-					#icon_path = icon_vbox7 # Need to fix later
-					continue
+					icon_path = icon_vbox7
 
 				if icon_path and exists(icon_path):
 					# info: Use LoadPixmap with size to force auto-scaling of the PNG file
@@ -3121,6 +3120,75 @@ class MatchMediaScreen(Screen):
 				try: os.remove(f)
 				except: pass
 
+	def extract_superliga_stream(self, url):
+		headers = {
+			'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+			'Referer': 'https://superliga.dk/',
+		}
+		if debug_MatchMedia: logdata("MatchMedia", "Superliga: Starting extraction for %s" % url)
+		r = requests.get(url, headers=headers, timeout=15, verify=False)
+		if debug_MatchMedia: logdata("MatchMedia", "Superliga: Main page status: %s | Size: %s" % (r.status_code, len(r.text)))
+		if r.status_code != 200: return None
+		content = r.text
+		event_id = None
+		# Expanded patterns based on web debug fetch logs (looking for eventId=5222360)
+		patterns = [
+			r'eventId=(\d+)',
+			r'eventId["\']?\s*[:=]\s*["\']?(\d+)',
+			r'["\']match["\']\s*:\s*\{\s*["\']id["\']\s*:\s*(\d+)',
+			r'["\']matchId["\']\s*:\s*(\d+)',
+			r'["\']id["\']\s*:\s*(\d+)\s*,\s*["\']slug["\']\s*:\s*["\']' + url.split('/')[-1],
+			r'/events/(\d+)',
+			r'data-event-id=["\'](\d+)'
+		]
+		for pattern in patterns:
+			m_ev = re.search(pattern, content)
+			if m_ev:
+				event_id = m_ev.group(1)
+				if debug_MatchMedia: logdata("MatchMedia", "Superliga: Found EventID via pattern [%s]: %s" % (pattern, event_id))
+				break
+		if not event_id:
+			m_id = re.search(r'["\']id["\']\s*:\s*(\d{6,10})', content)
+			if m_id:
+				event_id = m_id.group(1)
+				if debug_MatchMedia: logdata("MatchMedia", "Superliga: Fallback Found generic ID: %s" % event_id)
+		if debug_MatchMedia: logdata("MatchMedia", "Superliga: Final EventID: %s" % event_id)
+		if not event_id:
+			if debug_MatchMedia: logdata("MatchMedia", "Superliga: CONTENT SNIPPET: %s" % content[:1500].replace('\n', ' '))
+			return None
+		partner_id = "4215093"
+		uiconf_id = "56081452"
+		m_partner = re.search(r'partnerId["\']?\s*[:=]\s*["\']?(\d+)', content)
+		if m_partner:
+			partner_id = m_partner.group(1)
+			if debug_MatchMedia: logdata("MatchMedia", "Superliga: Found PartnerID: %s" % partner_id)
+		m_uiconf = re.search(r'uiconf_id/(\d+)', content)
+		if not m_uiconf: m_uiconf = re.search(r'uiConfId["\']?\s*[:=]\s*["\']?(\d+)', content)
+		if m_uiconf:
+			uiconf_id = m_uiconf.group(1)
+			if debug_MatchMedia: logdata("MatchMedia", "Superliga: Found UIConfID: %s" % uiconf_id)
+		token = "5b6ab6f5eb84c60031bbbd24"
+		api_url = "https://api.superliga.dk/highlights?appName=superligadk&access_token=%s&env=production&eventId=%s&source=kaltura" % (token, event_id)
+		if debug_MatchMedia: logdata("MatchMedia", "Superliga: Calling Highlights API: %s" % api_url)
+		ra = requests.get(api_url, headers=headers, timeout=10, verify=False)
+		entry_id = None
+		if ra.status_code == 200:
+			data = ra.json()
+			if debug_MatchMedia: logdata("MatchMedia", "Superliga: API Response Data: %s" % str(data)[:300])
+			if isinstance(data, list) and len(data) > 0:
+				entry_id = data[0].get('externalId') or data[0].get('entryId')
+		if not entry_id:
+			if debug_MatchMedia: logdata("MatchMedia", "Superliga: API fail/empty, scanning content for entry_id")
+			m_kal = re.search(r'kaltura/(\w{1,2}_\w+)', content)
+			if not m_kal: m_kal = re.search(r'entry_id["\']?\s*[:=]\s*["\']?(\w{1,2}_\w+)', content)
+			if m_kal: entry_id = m_kal.group(1)
+		if debug_MatchMedia: logdata("MatchMedia", "Superliga: Final EntryID: %s" % entry_id)
+		if not entry_id: return None
+		# Building standard HLS manifest URL which serves the .ts segments
+		manifest_url = "https://cdnapisec.kaltura.com/p/%s/sp/%s00/playManifest/entryId/%s/protocol/https/format/applehttp/a.m3u8?uiConfId=%s" % (partner_id, partner_id, entry_id, uiconf_id)
+		if debug_MatchMedia: logdata("MatchMedia", "Superliga: Final URL: %s" % manifest_url)
+		return str(manifest_url)
+
 	def extract_vbox7_stream(self, url):
 		try:
 			headers = {
@@ -3142,7 +3210,37 @@ class MatchMediaScreen(Screen):
 					if hls_url:
 						final = hls_url.replace('\\/', '/')
 						if final.startswith('//'): final = 'https:' + final
-						if '.mpd' in final: final = final.split(v_id)[0] + v_id + '/' + v_id + '.mpd'
+						if '.mpd' in final:
+							final = final.replace('.mpd', '.m3u8')
+						# Try to find separate audio track in the m3u8 manifest
+						try:
+							rm = requests.get(final, headers=headers, timeout=10, verify=False)
+							if rm.status_code == 200:
+								manifest = rm.text
+								# Look for EXT-X-MEDIA audio URI
+								m_audio = re.search(r'#EXT-X-MEDIA:.*?TYPE=AUDIO.*?URI="([^"]+)"', manifest, re.DOTALL)
+								if m_audio:
+									audio_uri = m_audio.group(1)
+									base_url = final.rsplit('/', 1)[0] + '/'
+									if not audio_uri.startswith('http'):
+										audio_uri = base_url + audio_uri
+									if debug_MatchMedia: logdata("MatchMedia", "Vbox7: Found audio track: %s" % audio_uri)
+									final = final + SUBURI + audio_uri
+								else:
+									# Fallback: try track2 pattern from URL
+									base = final.rsplit('/', 1)[0] + '/'
+									v_id_part = v_id
+									audio_url = base + v_id_part + '_audio.m3u8'
+									# Try common vbox7 audio track naming
+									for suffix in ['_track2.m3u8', '_audio.m3u8', '_2.m3u8']:
+										test_url = base + v_id_part + suffix
+										rt = requests.get(test_url, headers=headers, timeout=5, verify=False)
+										if rt.status_code == 200:
+											if debug_MatchMedia: logdata("MatchMedia", "Vbox7: Found audio fallback: %s" % test_url)
+											final = final + SUBURI + test_url
+											break
+						except Exception as ae:
+							if debug_MatchMedia: logdata("MatchMedia", "Vbox7: Audio extract error: %s" % str(ae))
 						if debug_MatchMedia: logdata("MatchMedia", "Vbox7: Found Master HLS: %s" % final)
 						return final
 				stream = options.get('src', '')
