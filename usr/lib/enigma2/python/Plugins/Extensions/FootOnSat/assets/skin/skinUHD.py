@@ -11,7 +11,7 @@ def DreamOS():
 SKIN_launcher = """
 <screen name="FootOnsatLauncher" position="0,0" size="2560,1440" backgroundColor="transparent" flags="wfNoBorder" title="MenuLauncher">
     <widget name="menu" boxSize="300" activeSize="330" panelheight="760" itemPerPage="12" margin="30" itemPixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/Box_off.png" selPixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/Box_on.png" position="300,center" size="2214,780" transparent="1"/>
-    <eLabel backgroundColor="#50494f4f" position="1223,1018" size="138,48" cornerRadius="25" zPosition="-25" />
+    <eLabel backgroundColor="#50494f4f" position="1218,1018" size="148,48" cornerRadius="25" zPosition="-25" />
     <eLabel backgroundColor="#80000000" position="0,1160" size="2560,174" />
     <eLabel backgroundColor="#494f4f" position="0,1334" size="2560,174" />
     <widget backgroundColor="#80000000" font="FootFont;44" foregroundColor="#00ffffff" halign="right" noWrap="1" position="538,1259" render="Label" size="1574,54" source="session.Event_Now" transparent="1" valign="center" zPosition="5">
