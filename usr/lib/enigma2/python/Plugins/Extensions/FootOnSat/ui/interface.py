@@ -1895,7 +1895,7 @@ class FootOnSat(Screen):
 			self.link = "yesterday"
 			self.matches = []
 			self['list1'].setList([])
-			self['key_green'].setText(_("Wait..."))
+			self['key_green'].setText(title283)
 			self.fetchYesterdayData(yesterday=True)
 		elif self.link in json_urls:
 			if debug_Standings: logdata("keyGreen", "Opening Standings for: %s" % str(self.link))
