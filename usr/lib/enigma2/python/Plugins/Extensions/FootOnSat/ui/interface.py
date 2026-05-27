@@ -134,6 +134,8 @@ json_urls = {
 	"hockey": "https://www.sofascore.com/tournament/ice-hockey/usa/nhl/234#id:78476",
 	# american football
 	"nfl": "https://www.sofascore.com/tournament/american-football/usa/nfl/9464#id:75522",
+	# World Cup
+	"worldcup": "https://www.sofascore.com/football/tournament/world/world-championship/16#id:58210",
 }
 
 # Use thess url to download missing log of team (Extra code)
@@ -172,6 +174,8 @@ log_urls = {
 	"afcchampions": "https://www.worldfootball.net/competition/afc-champions-league-elite/",
 	# Asia Champions league two
 	"afcchampionstwo": "https://www.worldfootball.net/competition/afc-champions-league-two/",
+	# World Cup
+	"worldcup": "https://www.worldfootball.net/competition/co139/fifa-world-cup/",
 }
 
 SPORTS = {
@@ -180,7 +184,7 @@ SPORTS = {
 FOOTBALL = {
 	"championsleague", "europaleague", "ConferenceLeague", "premierleague",
 	"laliga", "laliga2", "championship", "seriea", "ligue1", "eredivisie", "saudiarabia",
-	"bundesliga", "bundesliga2", "belgianpro", "superLig", "liganos", "afcchampions", "afcchampionstwo"
+	"bundesliga", "bundesliga2", "belgianpro", "superLig", "liganos", "afcchampions", "afcchampionstwo", "worldcup"
 }
 
 def getSTBModel():
@@ -592,7 +596,7 @@ class FootOnSat(Screen):
 				self['key_red'].hide()
 				self['key_yellow'].hide()
 				self['key_green'].show()
-				self['key_green'].setText(_("%s") % title135)
+				self['key_green'].setText(_("%s") % title120)
 			else:
 				self['key_red'].hide()
 				self['key_yellow'].hide()
