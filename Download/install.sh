@@ -237,27 +237,27 @@ else
         echo "=========================================================================="
         echo "Opkg Update ..."
         echo "========================================================================"
-        opkg update
+        opkg update > /dev/null 2>&1
         echo "========================================================================"
         echo " Downloading packages depend ......"
-        opkg install alsa-utils-aplay
+        opkg install alsa-utils-aplay > /dev/null 2>&1
         echo "========================================================================"
         echo "========================================================================"
-        opkg install $CURL
-        opkg install $FFMPEG
-        opkg install $MPEGTSMUX
-        opkg install $SQLITE3
-        opkg install $PYSIX
-        opkg install $SOUP4
-        opkg install $DIFFLIB
-        opkg install $THREADING
-        opkg install $PLI
-        opkg install $REQUESTES
-        opkg install $JSON
-        opkg install $UJSON
-        opkg install $IO
-        opkg install $EMAIL
-        opkg install $DATETIME
+        opkg install $CURL > /dev/null 2>&1
+        opkg install $FFMPEG > /dev/null 2>&1
+        opkg install $MPEGTSMUX > /dev/null 2>&1
+        opkg install $SQLITE3 > /dev/null 2>&1
+        opkg install $PYSIX > /dev/null 2>&1
+        opkg install $SOUP4 > /dev/null 2>&1
+        opkg install $DIFFLIB > /dev/null 2>&1
+        opkg install $THREADING > /dev/null 2>&1
+        opkg install $PLI > /dev/null 2>&1
+        opkg install $REQUESTES > /dev/null 2>&1
+        opkg install $JSON > /dev/null 2>&1
+        opkg install $UJSON > /dev/null 2>&1
+        opkg install $IO > /dev/null 2>&1
+        opkg install $EMAIL > /dev/null 2>&1
+        opkg install $DATETIME > /dev/null 2>&1
         echo "========================================================================"
     else
         echo "=========================================================================="
@@ -265,27 +265,27 @@ else
         echo "=========================================================================="
         echo "apt Update ..."
         echo "========================================================================"
-        apt-get update
+        apt-get update > /dev/null 2>&1
         echo "========================================================================"
         echo " Downloading packages depend ......"
         echo "========================================================================"
         echo "========================================================================"
-        apt-get install $CURL -y
-        apt-get install $FFMPEG -y
-        apt-get install $MPEGTSMUX -y
-        apt-get install $SQLITE3 -y
-        apt-get install $PYSIX -y
-        apt-get install $SOUP4 -y
-        apt-get install $DIFFLIB -y
-        apt-get install $THREADING -y
-        apt-get install $PLI -y
-        apt-get install $REQUESTES -y
-        apt-get install $JSON -y
-        apt-get install $UJSON -y
-        apt-get install $IO -y
-        apt-get install $EMAIL -y
-        apt-get install $DATETIME -y
-        apt-get install $GDB -y
+        apt-get install $CURL -y > /dev/null 2>&1
+        apt-get install $FFMPEG -y > /dev/null 2>&1
+        apt-get install $MPEGTSMUX -y > /dev/null 2>&1
+        apt-get install $SQLITE3 -y > /dev/null 2>&1
+        apt-get install $PYSIX -y > /dev/null 2>&1
+        apt-get install $SOUP4 -y > /dev/null 2>&1
+        apt-get install $DIFFLIB -y > /dev/null 2>&1
+        apt-get install $THREADING -y > /dev/null 2>&1
+        apt-get install $PLI -y > /dev/null 2>&1
+        apt-get install $REQUESTES -y > /dev/null 2>&1
+        apt-get install $JSON -y > /dev/null 2>&1
+        apt-get install $UJSON -y > /dev/null 2>&1
+        apt-get install $IO -y > /dev/null 2>&1
+        apt-get install $EMAIL -y > /dev/null 2>&1
+        apt-get install $DATETIME -y > /dev/null 2>&1
+        apt-get install $GDB -y > /dev/null 2>&1
         echo "========================================================================"
     fi
 fi
@@ -295,9 +295,9 @@ if [ "$OS" != "DreamOS" ]; then
 		echo ""
 	else
 		echo " Downloading serviceapp + exteplayer3 ......"
-		opkg update
-		opkg install enigma2-plugin-systemplugins-serviceapp
-		opkg install exteplayer3
+		opkg update > /dev/null 2>&1
+		opkg install enigma2-plugin-systemplugins-serviceapp > /dev/null 2>&1
+		opkg install exteplayer3 > /dev/null 2>&1
 	fi
 fi
 
@@ -307,8 +307,8 @@ if ! grep -q 'alsa-utils-aplay' "$STATUS"; then
 		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/arm64/alsa-utils-aplay.deb"
 		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/arm64/alsa-utils-amixer.deb"
 		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/arm64/alsa-utils-arecord.deb"
-		dpkg -i --force-overwrite *.deb
-		apt-get install -f -y
+		dpkg -i --force-overwrite *.deb > /dev/null 2>&1
+		apt-get install -f -y > /dev/null 2>&1
 		cd ..
 	fi
 fi
@@ -323,8 +323,8 @@ if [ "$OS" = "DreamOS" ] && ! grep -q "$UJSON" "$STATUS"; then
 		#wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-ujson_1.35-r0.0_arrch664.deb"
 		echo ""
 	fi
-	dpkg -i --force-overwrite *.deb
-	apt-get install -f -y
+	dpkg -i --force-overwrite *.deb > /dev/null 2>&1
+	apt-get install -f -y > /dev/null 2>&1
 	cd ..
 fi
 
