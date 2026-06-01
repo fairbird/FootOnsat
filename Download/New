@@ -1,2 +1,1 @@
-- Add World Cup tean logos (Thanks meggi44)
-- Enable Standings table of World Cup
+- Fix error with new version of python3-twisted 26.4

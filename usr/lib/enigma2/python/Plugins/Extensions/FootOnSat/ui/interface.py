@@ -211,12 +211,15 @@ def sanitize_team_name(team):
 class WebClientContextFactory(ClientContextFactory):
 	def __init__(self, url=None):
 		domain = compat_urlparse(url).netloc
-		self.hostname = domain
-	
+		self.hostname = domain.split(':')[0] if ':' in domain else domain
+
 	def getContext(self, hostname=None, port=None):
 		ctx = ClientContextFactory.getContext(self)
 		if self.hostname and ClientTLSOptions is not None:
-			ClientTLSOptions(self.hostname, ctx)
+			try:
+				ClientTLSOptions(self.hostname, ctx)
+			except Exception:
+				pass
 		return ctx
 
 
@@ -1125,7 +1128,7 @@ class FootOnSat(Screen):
 		deferred_list = []
 		if PY3:
 			try:
-				sniFactory = WebClientContextFactory()
+				sniFactory = WebClientContextFactory(url1)
 			except Exception as e:
 				if debug_Fetch_Live: logdata("fetch_live_results", "Failed to create WebClientContextFactory: %s" % str(e))
 				self.matches = [list(m) for m in self.matches]
@@ -2285,7 +2288,7 @@ class MatchDetailsScreen(Screen):
 				try:
 					urls = ["https://api.sofascore.com/api/v1/event/{}/incidents".format(eid),
 							"https://api.sofascore.com/api/v1/event/{}".format(eid)]
-					sni = WebClientContextFactory()
+					sni = sni = WebClientContextFactory(urls[0])
 					hdrs = {b'User-Agent':[b'Mozilla/5.0 (X11; Linux x86_64)'],
 							b'Connection':[b'close'],
 							b'Accept':[b'application/json, text/plain, */*'],
@@ -2513,7 +2516,7 @@ class MatchStatisticsScreen(Screen):
 			def _get_stats(eid):
 				try:
 					url = "https://api.sofascore.com/api/v1/event/{}/statistics".format(eid)
-					sni = WebClientContextFactory()
+					sni = WebClientContextFactory(url)
 					hdrs = {
 						b'User-Agent': [b'Mozilla/5.0 (X11; Linux x86_64)'],
 						b'Connection': [b'close'],
@@ -2745,7 +2748,7 @@ class MatchMediaScreen(Screen):
 			def _get_media(eid):
 				try:
 					url = "https://api.sofascore.com/api/v1/event/{}/media".format(eid)
-					sni = WebClientContextFactory()
+					sni = WebClientContextFactory(url)
 					hdrs = {
 						b'User-Agent': [b'Mozilla/5.0 (X11; Linux x86_64)'],
 						b'Connection': [b'close'],
