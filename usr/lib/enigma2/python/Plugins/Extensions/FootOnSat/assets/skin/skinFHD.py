@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 from os.path import join, exists
-from Plugins.Extensions.FootOnSat.ui.setup import *
-
 
 def DreamOS():
 	if exists('/var/lib/dpkg/status'):
@@ -58,7 +56,7 @@ SKIN_interface = """
     <eLabel position="1330,670" zPosition="5" size="60,60" text="&#xeb3a;" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;60" transparent="1" />
     <eLabel position="1335,758" zPosition="5" size="50,50" text="&#xf04e;" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;50" transparent="1" />
     <eLabel position="1330,843" zPosition="5" size="60,50" text="&#xe870;" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;60" transparent="1" />
-    widget name="menu" position="5,15" size="890,45" font="Regular;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" />
+    <widget name="menu" position="5,15" size="890,45" font="Regular;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" />
     <widget name="menu2" position="1074,15" size="805,45" font="Regular;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#16000000" zPosition="5" transparent="1"/>
     <widget name="channel" position="1450,600" size="385,39" font="Regular;25" halign="left" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
     <widget name="sat" position="1450,684" size="385,39" font="Regular;25" halign="left" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
@@ -102,14 +100,14 @@ SKIN_standings = """
     <eLabel backgroundColor="#00ffffff" position="60,180" size="1800,3" zPosition="5"/>
 
     <!-- Column headers -->
-    <eLabel text="{0}" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="65,140" size="59,35" zPosition="5" transparent="1" halign="center"/>
-    <eLabel text="{1}" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="230,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
-    <eLabel text="{2}" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="572,140" size="150,35" zPosition="5" transparent="1" halign="center"/>
-    <eLabel text="{3}" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="745,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
-    <eLabel text="{4}" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="889,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
-    <eLabel text="{5}" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1040,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
-    <eLabel text="{6}" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1199,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
-    <eLabel text="{7}|{8}|{9}" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1357,140" size="500,35" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="Pos." font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="65,140" size="59,35" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="Team" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="230,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="Played" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="572,140" size="150,35" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="Points" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="745,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="Wins" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="889,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="Draws" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1040,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="Losses" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1199,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="Goals Scored|Conceded|Difference" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1357,140" size="500,35" zPosition="5" transparent="1" halign="center"/>
 
     <!-- Standings list -->  
     <widget name="standings_list" position="60,190" size="1800,785" scrollbarMode="showNever" 
@@ -119,7 +117,7 @@ SKIN_standings = """
     <widget name="key_red" position="45,990" size="600,40" font="Regular;28" halign="center" 
         	foregroundColor="#00ff2525" backgroundColor="#16000000" zPosition="5" transparent="1" />
 </screen>
-""".format(title196, title197, title198, title199, title200, title201, title202, title203, title204, title205)
+"""
 
 SKIN_standingsbasketball = """
 <screen name="StandingsScreen" position="0,0" size="1920,1080" backgroundColor="#16000000" flags="wfNoBorder" title="Standings">
@@ -132,14 +130,14 @@ SKIN_standingsbasketball = """
     <eLabel backgroundColor="#00ffffff" position="60,180" size="1800,3" zPosition="5"/>
 
     <!-- Column headers -->
-    <eLabel text="{0}" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="65,140" size="59,35" zPosition="5" transparent="1" halign="center" />
-    <eLabel text="{1}" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="230,140" size="130,35" zPosition="5" transparent="1" halign="center" />
-    <eLabel text="{2}" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="572,140" size="150,35" zPosition="5" transparent="1" halign="center" />
-    <eLabel text="{3}" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="780,140" size="130,35" zPosition="5" transparent="1" halign="center" />
-    <eLabel text="{4}" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="987,140" size="130,35" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="Pos." font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="65,140" size="59,35" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="Team" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="230,140" size="130,35" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="Played" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="572,140" size="150,35" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="Wins" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="780,140" size="130,35" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="Losses" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="987,140" size="130,35" zPosition="5" transparent="1" halign="center" />
     <eLabel text="%s" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1177,140" size="130,35" zPosition="5" transparent="1" halign="center" />
-    <eLabel text="{5}" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1305,140" size="250,35" zPosition="5" transparent="1" halign="center" />
-    <eLabel text="{6}" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1540,140" size="250,35" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="Difference" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1305,140" size="250,35" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="Win Percentage" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1540,140" size="250,35" zPosition="5" transparent="1" halign="center" />
 
     <!-- Standings list -->  
     <widget name="standings_list" position="60,190" size="1800,785" scrollbarMode="showNever" 
@@ -149,7 +147,7 @@ SKIN_standingsbasketball = """
     <widget name="key_red" position="45,990" size="600,40" font="Regular;28" halign="center" 
         foregroundColor="#00ff2525" backgroundColor="#16000000" zPosition="5" transparent="1" />
 </screen>
-""".format(title196, title197, title198, title200, title202, title205, title206)
+"""
 
 SKIN_MatchDetails = """
 <screen name="MatchDetailsScreen" position="0,0" size="1920,1080" title="Match Details" flags="wfNoBorder" backgroundColor="#16000000">
@@ -167,12 +165,12 @@ SKIN_MatchDetails = """
     
     <widget name="details_list" position="50,450" size="1780,545" scrollbarMode="showOnDemand" transparent="1" />
 
-    <eLabel text="&lt; {0} | {1} &gt;" position="910,1000" size="969,60" font="Regular;35" foregroundColor="#ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" halign="center" valign="center" />
+    <eLabel text="&lt; Media | Statistics &gt;" position="910,1000" size="969,60" font="Regular;35" foregroundColor="#ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" halign="center" valign="center" />
 
     <eLabel position="0,1076" size="1920,4" backgroundColor="#333333" />
     <widget name="key_red" position="40,1000" size="400,60" zPosition="1" font="Regular;34" halign="left" valign="center" backgroundColor="#101010" transparent="1" foregroundColor="red" />
 </screen>
-""".format(title179, title197)
+"""
 
 SKIN_MatchStatistics = """
 <screen name="MatchStatisticsScreen" position="0,0" size="1920,1080" title="Match Statistics" flags="wfNoBorder" backgroundColor="#16000000">
@@ -184,12 +182,12 @@ SKIN_MatchStatistics = """
 	
     <widget name="stats_list" position="100,280" size="1780,700" scrollbarMode="showOnDemand" transparent="1" />
 
-    <eLabel text="&lt; {0} | {1} &gt;" position="910,1000" size="969,60" font="Regular;35" foregroundColor="#ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" halign="center" valign="center" />
+    <eLabel text="&lt; Details | Media &gt;" position="910,1000" size="969,60" font="Regular;35" foregroundColor="#ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" halign="center" valign="center" />
    
     <eLabel position="0,1076" size="1920,4" backgroundColor="#333333" />
     <widget name="key_red" position="40,1000" size="400,60" zPosition="1" font="Regular;34" halign="left" valign="center" backgroundColor="#101010" transparent="1" foregroundColor="red" />
 </screen>
-""".format(title171, title179)
+"""
 
 SKIN_MatchMedia = """
 <screen name="MatchMediaScreen" position="0,0" size="1920,1080" title="Match Media" flags="wfNoBorder" backgroundColor="#16000000">
@@ -198,12 +196,12 @@ SKIN_MatchMedia = """
     
     <widget name="media_list" position="100,180" size="1720,800" scrollbarMode="showOnDemand" transparent="1" />
 
-    <eLabel text="&lt; {0} | {1} &gt;" position="910,1000" size="969,60" font="Regular;35" foregroundColor="#ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" halign="center" valign="center" />
+    <eLabel text="&lt; Statistics | Details &gt;" position="910,1000" size="969,60" font="Regular;35" foregroundColor="#ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" halign="center" valign="center" />
 
     <eLabel position="0,1076" size="1920,4" backgroundColor="#333333" />
     <widget name="key_red" position="40,1000" size="400,60" zPosition="1" font="Regular;34" halign="left" valign="center" backgroundColor="#101010" transparent="1" foregroundColor="red" />
 </screen>
-""".format(title177, title171)
+"""
 
 if DreamOS():
 	SKIN_MenuFootOnSat = """
@@ -264,3 +262,16 @@ SKIN_SelectionScreen = """
 	<widget name="key_green" position="445,480" size="246,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;35" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
 </screen>
 """
+
+if DreamOS():
+	SKIN_TeamListScreen = """
+	<screen name="TeamListScreen" position="center,center" size="800,800" title="Select" backgroundColor="#16000000">
+		<widget name="list" position="16,19" size="774,774" foregroundColor="#00ffffff" backgroundColor="#16000000" scrollbarMode="showOnDemand" transparent="1"/>
+	</screen>
+	"""
+else:
+	SKIN_TeamListScreen = """
+	<screen name="TeamListScreen" position="center,center" size="800,800" title="Select" backgroundColor="#16000000">
+		<widget name="list" position="16,19" size="774,774" itemHeight="40" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" scrollbarMode="showOnDemand" transparent="1"/>
+	</screen>
+	"""

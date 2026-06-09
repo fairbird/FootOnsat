@@ -23,6 +23,7 @@ from Screens.InfoBar import InfoBar, MoviePlayer
 from Screens.ChoiceBox import ChoiceBox
 from Screens.MessageBox import MessageBox
 from Screens.ChannelSelection import ChannelSelection
+from Screens.VirtualKeyBoard import VirtualKeyBoard
 from Plugins.Plugin import PluginDescriptor
 from Tools.Directories import resolveFilename, SCOPE_PLUGINS, fileExists
 from Tools.LoadPixmap import LoadPixmap
@@ -237,6 +238,8 @@ class FootOnSat(Screen):
 			t_date = date.today()
 			day_name = t_date.strftime('%A')
 			self.MENUTEXT = "{0} - {1} - {2}".format(title115, day_name, t_date.strftime('%d-%m-%Y'))
+		elif self.link == "favorite":
+			self.MENUTEXT = "{0}".format(title284)
 		elif self.link not in json_urls:
 			self.MENUTEXT = _("%s") % title116
 		else:
@@ -350,6 +353,8 @@ class FootOnSat(Screen):
 					elif self.link in ["live", "end"]:
 						t_date = date.today()
 						display_text = "{0} - {1} - {2}".format(title115, t_date.strftime('%A'), t_date.strftime('%d-%m-%Y'))
+					elif self.link == "favorite":
+						display_text = "{0}".format(title284)
 					else:
 						display_text = self.MENUTEXT
 
@@ -366,6 +371,8 @@ class FootOnSat(Screen):
 				elif self.link in ["live", "end"]:
 					t_date = date.today()
 					display_text = "{0} - {1} - {2}".format(title115, t_date.strftime('%A'), t_date.strftime('%d-%m-%Y'))
+				elif self.link == "favorite":
+						display_text = "{0}".format(title284)
 				else:
 					display_text = self.MENUTEXT
 
@@ -587,6 +594,14 @@ class FootOnSat(Screen):
 				self['key_red'].show()
 				self['key_yellow'].show()
 				self['key_green'].hide()
+				self['key_blue'].hide()
+			elif self.link == "favorite":
+				self['key_red'].show()
+				self['key_red'].setText(_("%s") % title285)
+				self['key_yellow'].show()
+				self['key_yellow'].setText(_("%s") % title286)
+				self['key_green'].hide()
+				self['key_blue'].hide()
 			elif self.link in ["end", "yesterday"]:
 				if getattr(self, 'is_yesterday', False):
 					self['key_red'].show()
@@ -615,6 +630,8 @@ class FootOnSat(Screen):
 				no_schedules_text = _("%s") % title137
 			elif self.link == "yesterday":
 				no_schedules_text = _("%s") % title138
+			elif self.link == "favorite":
+				no_schedules_text = _("%s") % title292
 			else:
 				no_schedules_text = _("%s") % title139
 			# Set font and height (mirroring the 'if' block setup)
@@ -643,6 +660,13 @@ class FootOnSat(Screen):
 			self['key_blue'].hide()
 			if self.link in ["today", "live"]:
 				self['key_green'].hide()
+			elif self.link == "favorite":
+				self['key_red'].show()
+				self['key_red'].setText(_("%s") % title285)
+				self['key_yellow'].show()
+				self['key_yellow'].setText(_("%s") % title286)
+				self['key_green'].hide()
+				self['key_blue'].hide()
 			elif self.link in ["end", "yesterday"]:
 				if getattr(self, "is_yesterday", False):
 					self['key_green'].hide()
@@ -772,6 +796,8 @@ class FootOnSat(Screen):
 					elif self.link in ["live", "end"]:
 						t_date = date.today()
 						display_text = "{0} - {1} - {2}".format(title115, t_date.strftime('%A'), t_date.strftime('%d-%m-%Y'))
+					elif self.link == "favorite":
+						display_text = "{0}".format(title284)
 					else:
 						display_text = self.MENUTEXT
 					self["menu"].setText(display_text)
@@ -786,6 +812,8 @@ class FootOnSat(Screen):
 				elif self.link in ["live", "end"]:
 					t_date = date.today()
 					display_text = "{0} - {1} - {2}".format(title115, t_date.strftime('%A'), t_date.strftime('%d-%m-%Y'))
+				elif self.link == "favorite":
+						display_text = "{0}".format(title284)
 				else:
 					display_text = self.MENUTEXT
 				self["menu"].setText(display_text)
@@ -1053,7 +1081,7 @@ class FootOnSat(Screen):
 		if self.is_closed:
 			if debug_Fetch_Live: logdata("FootOnSat", "SKIP: callAPI blocked. Plugin already closed.")
 			return
-		url_link = "today" if self.link in ["live", "end"] else self.link
+		url_link = "today" if self.link in ["live", "end", "favorite"] else self.link
 		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/{}.json'.format(url_link)
 		sniFactory = WebClientContextFactory(url)
 		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
@@ -1676,6 +1704,16 @@ class FootOnSat(Screen):
 			if debug_Ignore: logdata("getData", "Failed to load ignored competitions: %s" % str(e))
 			pass
 
+		from .launcher import get_data_paths
+		_, _, fav_file = get_data_paths()
+		favs = []
+		if self.link == "favorite":
+			if exists(fav_file):
+				try:
+					with open(fav_file, 'r') as f: favs = json.load(f)
+				except: pass
+			favs = [str(f).lower() for f in favs]
+
 		now = datetime.now()
 		# 1. UPDATED: Consider matches live for 2 hours
 		try:
@@ -1718,7 +1756,7 @@ class FootOnSat(Screen):
 						if suffix in compet:
 							compet = compet.split(suffix)[0].strip()
 
-					if compet not in ignored_competitions or self.link not in ["today", "live", "end", "yesterday"]:
+					if compet not in ignored_competitions or self.link not in ["today", "live", "end", "yesterday", "favorite"]:
 						match_date = datetime.strptime(match['date'] + ' ' + match['time'], '%Y-%m-%d %H:%M')
 						match_date_adjusted = datetime.strptime(self.getTime(match['time'] + ' - ' + match['date']), '%H:%M - %Y-%m-%d')
 
@@ -1747,6 +1785,12 @@ class FootOnSat(Screen):
 						is_really_finished = now > (match_date_adjusted + timedelta(minutes=180))
 						is_terminated = any(x in str(match_status).upper() for x in ['FINISHED', 'CANCELED', 'POSTPONED'])
 						in_cache = match_name in terminated_cache
+						if getattr(self, 'link', None) == "favorite":
+							m_lower = match_name.lower()
+							if not any(f in m_lower for f in favs):
+								continue
+							show_match_row = True
+							show_scores_status = True
 						if getattr(self, 'link', None) == "live":
 							if is_really_finished and in_cache:
 								terminated_cache.pop(match_name, None)
@@ -2012,8 +2056,8 @@ class FootOnSat(Screen):
 	def manageIgnoreFile(self, compet=None, reset=False, remove=None):
 		if debug_Ignore: logdata("manageIgnoreFile", "Called with compet={}, reset={}, remove={}".format(compet, reset, remove))
 		# Create ignore directory if it doesn't exist
-		from .launcher import get_ignore_paths
-		ignore_dir, ignore_file = get_ignore_paths()
+		from .launcher import get_data_paths
+		ignore_dir, ignore_file, fav_file = get_data_paths()
 		if not exists(ignore_dir):
 			try:
 				os.makedirs(ignore_dir, 0o755)
@@ -2122,15 +2166,89 @@ class FootOnSat(Screen):
 		self["list1"].setList([])
 		self.callAPI()
 
+	def searchTeam(self, text):
+		if text:
+			url = 'http://suggestqueries.google.com/complete/search?client=chrome&q={}'.format(text.replace(' ', '%20'))
+			getPage(str.encode(url)).addCallback(self.showSuggestions).addErrback(self.error)
+
+	def showSuggestions(self, data):
+		try:
+			if not PY3 and isinstance(data, str):
+				data = data.decode('utf-8', 'ignore')
+			js = json.loads(data)
+			search_term = js[0]
+			suggestions = js[1]
+			display_list = []
+			if search_term:
+				display_list.append((str(search_term).title(), str(search_term).title()))
+			if suggestions:
+				for s in suggestions:
+					s_title = str(s).title()
+					if (s_title, s_title) not in display_list:
+						display_list.append((s_title, s_title))
+			if display_list:
+				self.session.openWithCallback(self.addFavorite, TeamListScreen, list_data=display_list, title_text=_("%s") % title287)
+			else:
+				self.session.open(MessageBox, title288, MessageBox.TYPE_INFO, timeout=5)
+		except Exception as e:
+			pass
+
+	def addFavorite(self, ret):
+		if ret:
+			team = ret[0]
+			from .launcher import get_data_paths
+			_, _, fav_file = get_data_paths() # Ensure this points to the correct new path
+			favs = []
+			if exists(fav_file):
+				try:
+					with open(fav_file, 'r') as f: favs = json.load(f)
+				except: pass
+			if team not in favs:
+				favs.append(team)
+				with open(fav_file, 'w') as f: json.dump(favs, f)
+			self.matches = []
+			self["list1"].setList([])
+			self.callAPI()
+
+	def removeFavorite(self, ret):
+		if ret:
+			team = ret[0]
+			from .launcher import get_data_paths
+			_, _, fav_file = get_data_paths()
+			favs = []
+			if exists(fav_file):
+				try:
+					with open(fav_file, 'r') as f: favs = json.load(f)
+				except: pass
+			if team in favs:
+				favs.remove(team)
+				with open(fav_file, 'w') as f: json.dump(favs, f)
+			self.matches = []
+			self["list1"].setList([])
+			self.callAPI()
+
 	def keyRed(self):
 		if getattr(self, 'is_yesterday', False) and self.link == "end":
 			self.is_yesterday = False
 			self['key_red'].hide()
 			self.close()
 			return
-		from .launcher import get_ignore_paths
-		ignore_dir_path, ignore_file_path = get_ignore_paths()
-		
+		if getattr(self, 'link', None) == "favorite":
+			from .launcher import get_data_paths
+			_, _, fav_file = get_data_paths()
+			favs = []
+			if exists(fav_file):
+				try:
+					with open(fav_file, 'r') as f: favs = json.load(f)
+				except: pass
+			if favs:
+				list = [(str(f), str(f)) for f in favs]
+				self.session.openWithCallback(self.removeFavorite, TeamListScreen, list_data=list, title_text=title289)
+			else:
+				self.session.open(MessageBox, title290, MessageBox.TYPE_INFO, timeout=5)
+			return
+		from .launcher import get_data_paths
+		ignore_dir_path, ignore_file_path, _ = get_data_paths()
 		if self.link == "today" and self.selectedList == self["list1"] and len(self.matches) > 0:
 			try:
 				index = self['list1'].getSelectionIndex()
@@ -2139,17 +2257,14 @@ class FootOnSat(Screen):
 				for suffix in [' - Week ', ' - Matchday ', ' - Round ']:
 					if suffix in compet:
 						compet = compet.split(suffix)[0].strip()
-				
 				if not compet:
 					self.session.open(MessageBox, title164, MessageBox.TYPE_ERROR, timeout=5)
 					return
-				
 				# Load current ignored competitions
 				ignored_before = self.manageIgnoreFile()
 				# Add selected competition to ignore list
 				self.manageIgnoreFile(compet=compet)
 				ignored_after = self.manageIgnoreFile()
-				
 				if compet in ignored_after and compet not in ignored_before:
 					# Use the variable containing only the file path string
 					path_info = ignore_file_path
@@ -2158,7 +2273,6 @@ class FootOnSat(Screen):
 				else:
 					if debug_Ignore: logdata("keyRed", "Competition " + compet + " not added (already ignored or failed)")
 					pass
-				
 				# Refresh the match list to exclude ignored competitions
 				self.matches = []
 				self["list1"].setList([])
@@ -2168,6 +2282,9 @@ class FootOnSat(Screen):
 				self.session.open(MessageBox, title166, MessageBox.TYPE_ERROR, timeout=5)
 
 	def keyYellow(self):
+		if getattr(self, 'link', None) == "favorite":
+			self.session.openWithCallback(self.searchTeam, VirtualKeyBoard, title=title293, text="")
+			return
 		if self.link == "today":
 			try:
 				ignored_list = self.manageIgnoreFile()
@@ -2194,11 +2311,30 @@ class FootOnSat(Screen):
 				if not list:
 					self.session.open(MessageBox, title168, MessageBox.TYPE_ERROR, timeout=5)
 					return
-				self.session.openWithCallback(self.selectCompetitionToRemove, ChoiceBox, _("%s") % title169, list)
+				self.session.openWithCallback(self.selectCompetitionToRemove, TeamListScreen, title_text=_("%s") % title169, list_data=list)
 			except Exception as e:
 				if debug_Ignore: logdata("keyYellow", "Error selecting competition to remove: " + str(e))
 				# This addresses the original error which likely occurred here due to string conversion failure
 				self.session.open(MessageBox, title170, MessageBox.TYPE_ERROR, timeout=5)
+
+
+class TeamListScreen(Screen):
+	def __init__(self, session, list_data, title_text=title291):
+		Screen.__init__(self, session)
+		self.skin = SKIN_TeamListScreen
+		self.setTitle(title_text)
+		self.list_data = list_data
+		display_list = [item[0] if isinstance(item, tuple) else item for item in list_data]
+		self["list"] = MenuList(display_list)
+		self["actions"] = ActionMap(["OkCancelActions"], {
+			"ok": self.okClicked,
+			"cancel": self.cancelClicked
+		}, -1)
+	def okClicked(self):
+		idx = self["list"].getSelectedIndex()
+		self.close(self.list_data[idx])
+	def cancelClicked(self):
+		self.close(None)
 
 
 class MatchDetailsScreen(Screen):

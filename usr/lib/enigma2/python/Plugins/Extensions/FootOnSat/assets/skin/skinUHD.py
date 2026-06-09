@@ -239,3 +239,9 @@ SKIN_SelectionScreen = """
 	<widget name="key_green" position="445,480" size="246,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;35" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
 </screen>
 """
+
+SKIN_TeamListScreen = """
+<screen name="TeamListScreen" position="center,center" size="1178,1144" title="Select" backgroundColor="#16000000">
+	<widget name="list" position="19,15" size="1143,1109" foregroundColor="#00ffffff" backgroundColor="#16000000" scrollbarMode="showOnDemand" transparent="1"/>
+</screen>
+"""

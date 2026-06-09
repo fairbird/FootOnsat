@@ -44,24 +44,27 @@ def DreamOS():
 		return True
 	return False
 
-DEFAULT_IGNORE_DIR = "/etc/enigma2/ignore"
-def get_ignore_paths():
+DEFAULT_DATA_DIR = "/etc/enigma2/footonsat"
+def get_data_paths():
 	try:
 		selected_path = config.plugins.FootOnSat.devicepath.value
 	except Exception:
-		selected_path = DEFAULT_IGNORE_DIR
+		selected_path = DEFAULT_DATA_DIR
 	normalized_path = os.path.normpath(selected_path)
-	if normalized_path == DEFAULT_IGNORE_DIR or normalized_path.endswith("/ignore"):
-		ignore_dir = normalized_path
+	if normalized_path == DEFAULT_DATA_DIR or normalized_path.endswith("/footonsat"):
+		data_dir = normalized_path
 	else:
-		ignore_dir = join(normalized_path, "ignore")
-	ignore_file = join(ignore_dir, "ignore-match.json")
-	if not exists(ignore_dir):
+		data_dir = join(normalized_path, "footonsat")
+	
+	ignore_file = join(data_dir, "ignore-match.json")
+	fav_file = join(data_dir, "favorite_teams.json")
+	
+	if not exists(data_dir):
 		try:
-			os.makedirs(ignore_dir)
+			os.makedirs(data_dir)
 		except Exception:
 			pass
-	return ignore_dir, ignore_file
+	return data_dir, ignore_file, fav_file
 
 def DreamOS():
 	if exists('/var/lib/dpkg/status'):
@@ -70,14 +73,14 @@ def DreamOS():
 
 mounted_partitions = harddiskmanager.getMountedPartitions()
 mounted_devices = []
-default_ignore_dir = "/etc/enigma2/ignore"
-ignore_paths = ["/media/net", "/"]
-mounted_devices = [(default_ignore_dir, default_ignore_dir)]
+default_data_dir = "/etc/enigma2/footonsat"
+device_paths = ["/media/net", "/"]
+mounted_devices = [(default_data_dir, default_data_dir)]
 for part in mounted_partitions:
 	try:
 		mountpoint = part.mountpoint
-		if mountpoint and mountpoint not in ignore_paths and mountpoint != default_ignore_dir:
-			final_path = join(mountpoint, "ignore")
+		if mountpoint and mountpoint not in device_paths and mountpoint != default_data_dir:
+			final_path = join(mountpoint, "footonsat")
 			mounted_devices.append((final_path, final_path))
 	except Exception:
 		pass
@@ -123,7 +126,7 @@ except:
 	from Plugins.Extensions.FootOnSat.assets.languages.en import *
 #############################
 config.plugins.FootOnSat.showplugin = ConfigText(default="")
-config.plugins.FootOnSat.devicepath = ConfigSelection(default=default_ignore_dir,choices=mounted_devices)
+config.plugins.FootOnSat.devicepath = ConfigSelection(default=default_data_dir,choices=mounted_devices)
 config.plugins.FootOnSat.sort = ConfigDictionarySet(default={"footmenu": {"footsubmenu": {}}})
 config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
 config.plugins.FootOnSat.updatebannersonline = ConfigYesNo(default=True)
