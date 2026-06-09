@@ -655,10 +655,17 @@ class FootOnSat(Screen):
 			# Set the list
 			self["list1"].setList(gList)
 			# Clear all auxiliary information and hide buttons
-			self['key_red'].hide()
-			self['key_yellow'].hide()
-			self['key_blue'].hide()
-			if self.link in ["today", "live"]:
+			if self.link == "today":
+				self['key_red'].show()
+				self['key_red'].setText(_("%s") % title117)
+				self['key_yellow'].show()
+				self['key_yellow'].setText(_("%s") % title118)
+				self['key_green'].hide()
+				self['key_blue'].hide()
+			elif self.link == "live":
+				self['key_red'].hide()
+				self['key_yellow'].hide()
+				self['key_blue'].hide()
 				self['key_green'].hide()
 			elif self.link == "favorite":
 				self['key_red'].show()
