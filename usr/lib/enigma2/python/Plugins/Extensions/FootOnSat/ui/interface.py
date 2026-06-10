@@ -1811,6 +1811,7 @@ class FootOnSat(Screen):
 						in_cache = match_name in terminated_cache
 						if getattr(self, 'link', None) == "favorite":
 							m_lower = match_name.lower()
+							# Check if any part of the saved favorite matches the current match name
 							if not any(f in m_lower for f in favs):
 								continue
 							show_match_row = True
