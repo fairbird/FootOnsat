@@ -64,6 +64,7 @@ debug_MatchDetails = config.plugins.FootOnSat.debug_MatchDetails.value
 debug_ZAP = config.plugins.FootOnSat.debug_ZAP.value
 debug_Fetch_Live = config.plugins.FootOnSat.debug_Fetch_Live.value
 debug_Ignore = config.plugins.FootOnSat.debug_Ignore.value
+debug_favorite = config.plugins.FootOnSat.debug_favorite.value
 
 # Check for PIL availability first, and import if found
 try:
@@ -2175,6 +2176,7 @@ class FootOnSat(Screen):
 
 	def searchTeam(self, text):
 		if text:
+			if debug_favorite: logdata("searchTeam", "Searching for team: " + str(text))
 			url = 'http://suggestqueries.google.com/complete/search?client=chrome&q={}'.format(text.replace(' ', '%20'))
 			getPage(str.encode(url)).addCallback(self.showSuggestions).addErrback(self.error)
 
@@ -2185,6 +2187,7 @@ class FootOnSat(Screen):
 			js = json.loads(data)
 			search_term = js[0]
 			suggestions = js[1]
+			if debug_favorite: logdata("showSuggestions", "Suggestions received for: " + str(search_term))
 			display_list = []
 			if search_term:
 				display_list.append((str(search_term).title(), str(search_term).title()))
@@ -2203,6 +2206,7 @@ class FootOnSat(Screen):
 	def addFavorite(self, ret):
 		if ret:
 			team = ret[0]
+			if debug_favorite: logdata("addFavorite", "Adding team to favorites: " + str(team))
 			from .launcher import get_data_paths
 			_, _, fav_file = get_data_paths() # Ensure this points to the correct new path
 			favs = []
@@ -2220,6 +2224,7 @@ class FootOnSat(Screen):
 	def removeFavorite(self, ret):
 		if ret:
 			team = ret[0]
+			if debug_favorite: logdata("removeFavorite", "Removing team from favorites: " + str(team))
 			from .launcher import get_data_paths
 			_, _, fav_file = get_data_paths()
 			favs = []
@@ -2241,6 +2246,7 @@ class FootOnSat(Screen):
 			self.close()
 			return
 		if getattr(self, 'link', None) == "favorite":
+			if debug_favorite: logdata("keyRed", "Opening remove favorite screen")
 			from .launcher import get_data_paths
 			_, _, fav_file = get_data_paths()
 			favs = []
@@ -2290,6 +2296,7 @@ class FootOnSat(Screen):
 
 	def keyYellow(self):
 		if getattr(self, 'link', None) == "favorite":
+			if debug_favorite: logdata("keyYellow", "Opening search team keyboard")
 			self.session.openWithCallback(self.searchTeam, VirtualKeyBoard, title=title293, text="")
 			return
 		if self.link == "today":
@@ -2331,16 +2338,21 @@ class TeamListScreen(Screen):
 		self.skin = SKIN_TeamListScreen
 		self.setTitle(title_text)
 		self.list_data = list_data
+		if debug_favorite: logdata("TeamListScreen", "Opened with title: %s, data count: %d" % (str(title_text), len(list_data)))
 		display_list = [item[0] if isinstance(item, tuple) else item for item in list_data]
 		self["list"] = MenuList(display_list)
 		self["actions"] = ActionMap(["OkCancelActions"], {
 			"ok": self.okClicked,
 			"cancel": self.cancelClicked
 		}, -1)
+
 	def okClicked(self):
 		idx = self["list"].getSelectedIndex()
+		if debug_favorite: logdata("TeamListScreen", "OK clicked, selected index: %d, data: %s" % (idx, str(self.list_data[idx])))
 		self.close(self.list_data[idx])
+
 	def cancelClicked(self):
+		if debug_favorite: logdata("TeamListScreen", "Cancel clicked")
 		self.close(None)
 
 

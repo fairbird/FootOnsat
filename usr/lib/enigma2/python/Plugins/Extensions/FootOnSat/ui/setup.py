@@ -138,6 +138,7 @@ config.plugins.FootOnSat.extrafetch = ConfigYesNo(default=False)
 config.plugins.FootOnSat.debug_ZAP = ConfigYesNo(default=False)
 config.plugins.FootOnSat.debug_Notif = ConfigYesNo(default=False)
 config.plugins.FootOnSat.debug_Ignore = ConfigYesNo(default=False)
+config.plugins.FootOnSat.debug_favorite = ConfigYesNo(default=False)
 config.plugins.FootOnSat.debug_Standings = ConfigYesNo(default=False)
 config.plugins.FootOnSat.debug_Fetch_Live = ConfigYesNo(default=False)
 config.plugins.FootOnSat.debug_MatchMedia = ConfigYesNo(default=False)
@@ -265,6 +266,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.debug_ZAP = config.plugins.FootOnSat.debug_ZAP.value
 		self.debug_Notif = config.plugins.FootOnSat.debug_Notif.value
 		self.debug_Ignore = config.plugins.FootOnSat.debug_Ignore.value
+		self.debug_favorite = config.plugins.FootOnSat.debug_favorite.value
 		self.debug_Standings = config.plugins.FootOnSat.debug_Standings.value
 		self.debug_Fetch_Live = config.plugins.FootOnSat.debug_Fetch_Live.value
 		self.debug_MatchMedia = config.plugins.FootOnSat.debug_MatchMedia.value
@@ -315,6 +317,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.list.append(getConfigListEntry(_("%s") % title75, config.plugins.FootOnSat.debug_ZAP, _("%s") % title76))
 		self.list.append(getConfigListEntry(_("%s") % title77, config.plugins.FootOnSat.debug_Notif, _("%s") % title78))
 		self.list.append(getConfigListEntry(_("%s") % title79, config.plugins.FootOnSat.debug_Ignore, _("%s") % title80))
+		self.list.append(getConfigListEntry(_("%s") % title294, config.plugins.FootOnSat.debug_favorite, _("%s") % title295))
 		self.list.append(getConfigListEntry(_("%s") % title81, config.plugins.FootOnSat.debug_Fetch_Live, _("%s") % title82))
 		self.list.append(getConfigListEntry(_("%s") % title83, config.plugins.FootOnSat.debug_Standings, _("%s") % title84))
 		self.list.append(getConfigListEntry(_("%s") % title85, config.plugins.FootOnSat.debug_MatchMedia, _("%s") % title86))
@@ -508,6 +511,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		if self.debug_ZAP != config.plugins.FootOnSat.debug_ZAP.value: Restart_changed = True
 		if self.debug_Notif != config.plugins.FootOnSat.debug_Notif.value: Restart_changed = True
 		if self.debug_Ignore != config.plugins.FootOnSat.debug_Ignore.value: Restart_changed = True
+		if self.debug_favorite != config.plugins.FootOnSat.debug_favorite.value: Restart_changed = True
 		if self.debug_Standings != config.plugins.FootOnSat.debug_Standings.value: Restart_changed = True
 		if self.debug_Fetch_Live != config.plugins.FootOnSat.debug_Fetch_Live.value: Restart_changed = True
 		if self.debug_MatchMedia != config.plugins.FootOnSat.debug_MatchMedia.value: Restart_changed = True
