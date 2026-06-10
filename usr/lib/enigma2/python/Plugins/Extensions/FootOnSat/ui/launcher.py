@@ -89,7 +89,7 @@ class FootOnsatLauncher(Screen):
 			if debug_Fetch_Live: logdata("launcher", "getData : %s" % str(e))
 			self.error("JSON parsing failed: " + str(e))
 			return
-		ordering = ["favorite", "live", "end", "today", "championsleague", "europaleague", "ConferenceLeague", "premierleague", "laliga", "seriea",
+		ordering = ["favorite", "live", "end", "today", "tomorrow", "championsleague", "europaleague", "ConferenceLeague", "premierleague", "laliga", "seriea",
 		"bundesliga", "bundesliga2", "ligue1", "saudiarabia", "worldcup", "afcchampions", "afcchampionstwo","championship", "cafchampions", "superLig",
 		"belgianpro", "eredivisie", "laliga2", "liganos", "basketball", "nba", "hockey", "nfl", "formula1"]
 		# Ensure "live" is always present even if not in JSON

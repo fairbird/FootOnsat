@@ -295,3 +295,4 @@ title292="Nem található kedvenc mérkőzés"
 title293="Csapat keresése
 title294="Kedvencek"
 title295="Ez a beállítás lehetővé teszi a (Kedvencek) funkció és a működési kódok naplófájlba való írását."
+title296="Holnapi meccsek"

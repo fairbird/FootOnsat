@@ -239,6 +239,10 @@ class FootOnSat(Screen):
 			t_date = date.today()
 			day_name = t_date.strftime('%A')
 			self.MENUTEXT = "{0} - {1} - {2}".format(title115, day_name, t_date.strftime('%d-%m-%Y'))
+		elif self.link == "tomorrow":
+			tm_date = date.today() + timedelta(days=1)
+			day_name = tm_date.strftime('%A')
+			self.MENUTEXT = "{0} - {1} - {2}".format(title296, day_name, tm_date.strftime('%d-%m-%Y'))
 		elif self.link == "favorite":
 			self.MENUTEXT = "{0}".format(title284)
 		elif self.link not in json_urls:
@@ -354,6 +358,9 @@ class FootOnSat(Screen):
 					elif self.link in ["live", "end"]:
 						t_date = date.today()
 						display_text = "{0} - {1} - {2}".format(title115, t_date.strftime('%A'), t_date.strftime('%d-%m-%Y'))
+					elif self.link == "tomorrow":
+						tm_date = date.today() + timedelta(days=1)
+						display_text = "{0} - {1} - {2}".format(title296, tm_date.strftime('%A'), tm_date.strftime('%d-%m-%Y'))
 					elif self.link == "favorite":
 						display_text = "{0}".format(title284)
 					else:
@@ -372,6 +379,9 @@ class FootOnSat(Screen):
 				elif self.link in ["live", "end"]:
 					t_date = date.today()
 					display_text = "{0} - {1} - {2}".format(title115, t_date.strftime('%A'), t_date.strftime('%d-%m-%Y'))
+				elif self.link == "tomorrow":
+					tm_date = date.today() + timedelta(days=1)
+					display_text = "{0} - {1} - {2}".format(title296, tm_date.strftime('%A'), tm_date.strftime('%d-%m-%Y'))
 				elif self.link == "favorite":
 						display_text = "{0}".format(title284)
 				else:
@@ -591,7 +601,7 @@ class FootOnSat(Screen):
 				gList.append(res)
 				res = []
 			self["list1"].setList(gList)
-			if self.link == "today":
+			if self.link in ["today", "tomorrow"]:
 				self['key_red'].show()
 				self['key_yellow'].show()
 				self['key_green'].hide()
@@ -656,7 +666,7 @@ class FootOnSat(Screen):
 			# Set the list
 			self["list1"].setList(gList)
 			# Clear all auxiliary information and hide buttons
-			if self.link == "today":
+			if self.link in ["today", "tomorrow"]:
 				self['key_red'].show()
 				self['key_red'].setText(_("%s") % title117)
 				self['key_yellow'].show()
@@ -804,6 +814,9 @@ class FootOnSat(Screen):
 					elif self.link in ["live", "end"]:
 						t_date = date.today()
 						display_text = "{0} - {1} - {2}".format(title115, t_date.strftime('%A'), t_date.strftime('%d-%m-%Y'))
+					elif self.link == "tomorrow":
+						tm_date = date.today() + timedelta(days=1)
+						display_text = "{0} - {1} - {2}".format(title296, tm_date.strftime('%A'), tm_date.strftime('%d-%m-%Y'))
 					elif self.link == "favorite":
 						display_text = "{0}".format(title284)
 					else:
@@ -820,6 +833,9 @@ class FootOnSat(Screen):
 				elif self.link in ["live", "end"]:
 					t_date = date.today()
 					display_text = "{0} - {1} - {2}".format(title115, t_date.strftime('%A'), t_date.strftime('%d-%m-%Y'))
+				elif self.link == "tomorrow":
+					tm_date = date.today() + timedelta(days=1)
+					display_text = "{0} - {1} - {2}".format(title296, tm_date.strftime('%A'), tm_date.strftime('%d-%m-%Y'))
 				elif self.link == "favorite":
 						display_text = "{0}".format(title284)
 				else:
@@ -1089,7 +1105,7 @@ class FootOnSat(Screen):
 		if self.is_closed:
 			if debug_Fetch_Live: logdata("FootOnSat", "SKIP: callAPI blocked. Plugin already closed.")
 			return
-		url_link = "today" if self.link in ["live", "end", "favorite"] else self.link
+		url_link = "tomorrow" if self.link == "tomorrow" else ("today" if self.link in ["live", "end", "favorite"] else self.link)
 		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/{}.json'.format(url_link)
 		sniFactory = WebClientContextFactory(url)
 		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
@@ -1764,7 +1780,7 @@ class FootOnSat(Screen):
 						if suffix in compet:
 							compet = compet.split(suffix)[0].strip()
 
-					if compet not in ignored_competitions or self.link not in ["today", "live", "end", "yesterday", "favorite"]:
+					if compet not in ignored_competitions or self.link not in ["today", "tomorrow", "live", "end", "yesterday", "favorite"]:
 						match_date = datetime.strptime(match['date'] + ' ' + match['time'], '%Y-%m-%d %H:%M')
 						match_date_adjusted = datetime.strptime(self.getTime(match['time'] + ' - ' + match['date']), '%H:%M - %Y-%m-%d')
 
@@ -2262,7 +2278,7 @@ class FootOnSat(Screen):
 			return
 		from .launcher import get_data_paths
 		ignore_dir_path, ignore_file_path, _ = get_data_paths()
-		if self.link == "today" and self.selectedList == self["list1"] and len(self.matches) > 0:
+		if self.link in ["today", "tomorrow"] and self.selectedList == self["list1"] and len(self.matches) > 0:
 			try:
 				index = self['list1'].getSelectionIndex()
 				compet = str(self.matches[index][2]).strip()
@@ -2299,7 +2315,7 @@ class FootOnSat(Screen):
 			if debug_favorite: logdata("keyYellow", "Opening search team keyboard")
 			self.session.openWithCallback(self.searchTeam, VirtualKeyBoard, title=title293, text="")
 			return
-		if self.link == "today":
+		if self.link in ["today", "tomorrow"]:
 			try:
 				ignored_list = self.manageIgnoreFile()
 				if not ignored_list:
