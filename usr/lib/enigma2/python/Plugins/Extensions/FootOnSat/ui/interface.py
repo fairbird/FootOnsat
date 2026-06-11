@@ -2438,7 +2438,9 @@ class MatchDetailsScreen(Screen):
 				self[side].instance.show()
 
 	def openMedia(self):
-		self.session.openWithCallback(self.navCallback, MatchMediaScreen, self.event_id, self["title"].getText().replace(" - " + title171, ""))
+		home_val = self["home_name_big"].getText() if "home_name_big" in self else ""
+		away_val = self["away_name_big"].getText() if "away_name_big" in self else ""
+		self.session.openWithCallback(self.navCallback, MatchMediaScreen, self.event_id, self["title"].getText().replace(" - " + title171, ""), home_val, away_val)
 
 	def openStats(self):
 		self.session.openWithCallback(self.navCallback, MatchStatisticsScreen, self.event_id, self["title"].getText().replace(" - " + title171, ""), self["home_name_big"].getText(), self["away_name_big"].getText())
@@ -2668,7 +2670,9 @@ class MatchStatisticsScreen(Screen):
 
 	def openMedia(self):
 		clean_title = self["title"].getText().replace(" - " + title177, "")
-		self.session.openWithCallback(self.navCallback, MatchMediaScreen, self.event_id, clean_title)
+		home_val = self["home_team"].getText() if "home_team" in self else ""
+		away_val = self["away_team"].getText() if "away_team" in self else ""
+		self.session.openWithCallback(self.navCallback, MatchMediaScreen, self.event_id, clean_title, home_val, away_val)
 
 	def navCallback(self, answer=None):
 		if answer == "exit_all":
@@ -2865,11 +2869,13 @@ class MatchStatisticsScreen(Screen):
 
 
 class MatchMediaScreen(Screen):
-	def __init__(self, session, event_id, match_name):
+	def __init__(self, session, event_id, match_name, home_name="", away_name=""):
 		self.session = session
 		Screen.__init__(self, session)
 		self.skin = SKIN_MatchMedia
 		self.event_id = event_id
+		self.home_name = home_name
+		self.away_name = away_name
 		if debug_MatchMedia: logdata("MatchMediaScreen", "Initializing MatchMediaScreen for event_id: %s, match_name: %s" % (event_id, match_name))
 		self["title"] = Label(str(match_name) + " - " + title179)
 		self["key_red"] = Label(_("%s") % title144)
@@ -2906,7 +2912,7 @@ class MatchMediaScreen(Screen):
 
 	def openStats(self):
 		clean_title = self["title"].getText().replace(" - " + title179, "")
-		self.session.openWithCallback(self.navCallback, MatchStatisticsScreen, self.event_id, clean_title, "", "")
+		self.session.openWithCallback(self.navCallback, MatchStatisticsScreen, self.event_id, clean_title, self.home_name, self.away_name)
 
 	def navCallback(self, answer=None):
 		if answer == "exit_all":
