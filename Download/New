@@ -1,2 +1,1 @@
-- Add debug to favorite section
-- Add new section (Tomorrow Matches)
+- fix: resolve 403 forbidden errors by updating session handling and headers for SofaScore API
