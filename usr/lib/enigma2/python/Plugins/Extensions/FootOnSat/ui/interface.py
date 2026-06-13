@@ -2465,40 +2465,57 @@ class MatchDetailsScreen(Screen):
 		self["details_list"].down()
 
 	def fetch_details(self):
-		def _get_data(eid):
-			s = requests.Session()
-			s.headers.update({
-				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36',
-				'Referer': 'https://www.sofascore.com/',
-				'Origin': 'https://www.sofascore.com',
-				'Accept': 'application/json'
-			})
-			urls = ["https://api.sofascore.com/api/v1/event/{}/incidents".format(eid),
-					"https://api.sofascore.com/api/v1/event/{}".format(eid)]
-			try:
-				s.get('https://www.sofascore.com')
-				results = []
-				for u in urls:
-					r = s.get(u, timeout=25)
-					if r.status_code == 403:
-						s.headers.update({'X-Requested-With': 'XMLHttpRequest'})
+		url_incidents = "https://api.sofascore.com/api/v1/event/{}/incidents".format(self.event_id)
+		url_event = "https://api.sofascore.com/api/v1/event/{}".format(self.event_id)
+		
+		if PY3:
+			sniFactory = WebClientContextFactory(url_incidents)
+			headers = {
+				b'User-Agent': [b'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36'],
+				b'Accept': [b'application/json'],
+				b'Referer': [b'https://www.sofascore.com/'],
+				b'Origin': [b'https://www.sofascore.com'],
+				b'X-Requested-With': [b'XMLHttpRequest']
+			}
+			
+			d1 = getPage(str.encode(url_incidents), contextFactory=sniFactory, timeout=25, headers=headers)
+			d2 = getPage(str.encode(url_event), contextFactory=sniFactory, timeout=25, headers=headers)
+			
+			d = defer.gatherResults([d1, d2], consumeErrors=True)
+			
+			def process_twisted(results):
+				raw = [r if not isinstance(r, Failure) else None for r in results]
+				if all(x is None for x in raw): return self.process_data(None)
+				try:
+					return self.process_data([json.loads(r.decode('utf-8')) for r in raw if r])
+				except: return self.process_data(None)
+			
+			d.addCallback(process_twisted)
+			
+		else:
+			def _get_data():
+				s = requests.Session()
+				s.headers.update({
+					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36',
+					'Referer': 'https://www.sofascore.com/',
+					'Origin': 'https://www.sofascore.com',
+					'Accept': 'application/json',
+					'X-Requested-With': 'XMLHttpRequest'
+				})
+				try:
+					s.get('https://www.sofascore.com', timeout=10)
+					results = []
+					for u in [url_incidents, url_event]:
 						r = s.get(u, timeout=25)
-					results.append(r.content)
-				return results
-			except Exception as e:
-				if debug_MatchDetails: logdata("MatchDetails", "Error: %s" % str(e))
-				return None
-
-		def _done(raw):
-			try:
-				return [json.loads(r.decode('utf-8') if hasattr(r, 'decode') else r) for r in raw]
-			except Exception as e:
-				if debug_MatchDetails: logdata("MatchDetails", "JSON parse error: %s" % str(e))
-				return None, None
-
-		d = deferToThread(_get_data, self.event_id)
-		d.addCallback(_done)
-		d.addCallbacks(self.process_data, lambda _: self.process_data(None))
+						r.raise_for_status()
+						results.append(json.loads(r.content.decode('utf-8')))
+					return results
+				except Exception as e:
+					if debug_MatchDetails: logdata("MatchDetails", "Error: %s" % str(e))
+					return None
+			
+			d = deferToThread(_get_data)
+			d.addCallback(self.process_data)
 
 	def process_data(self, data):
 		inc_js, ev_js = data
@@ -2687,36 +2704,29 @@ class MatchStatisticsScreen(Screen):
 		self["stats_list"].down()
 
 	def fetch_stats(self):
-		def _get_stats(eid):
-			try:
+		url = "https://api.sofascore.com/api/v1/event/{}/statistics".format(self.event_id)
+		headers = {
+			'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36',
+			'Referer': 'https://www.sofascore.com/',
+			'Origin': 'https://www.sofascore.com',
+			'Accept': 'application/json',
+			'X-Requested-With': 'XMLHttpRequest'
+		}
+
+		if PY3:
+			d = getPage(str.encode(url), contextFactory=WebClientContextFactory(url), timeout=25, headers={k.encode(): [v.encode()] for k, v in headers.items()})
+			d.addCallback(lambda raw: self.process_stats(json.loads(raw.decode('utf-8'))))
+			d.addErrback(lambda _: self.process_stats(None))
+		else:
+			def _get():
 				s = requests.Session()
-				s.headers.update({
-					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36',
-					'Referer': 'https://www.sofascore.com/',
-					'Origin': 'https://www.sofascore.com',
-					'Accept': 'application/json'
-				})
-				url = "https://api.sofascore.com/api/v1/event/{}/statistics".format(eid)
-				s.get('https://www.sofascore.com')
+				s.headers.update(headers)
+				s.get('https://www.sofascore.com', timeout=10)
 				r = s.get(url, timeout=25)
-				if r.status_code == 403:
-					s.headers.update({'X-Requested-With': 'XMLHttpRequest'})
-					r = s.get(url, timeout=25)
-				return r.content
-			except Exception as e:
-				if debug_MatchStatistics: logdata("MatchStatistics", "Error: %s" % str(e))
-				return None
-
-		def _done(raw):
-			try:
-				return json.loads(raw.decode('utf-8') if hasattr(raw, 'decode') else raw) if raw else None
-			except Exception as e:
-				if debug_MatchStatistics: logdata("MatchStatistics", "JSON parse error: %s" % str(e))
-				return None
-
-		d = deferToThread(_get_stats, self.event_id)
-		d.addCallback(_done)
-		d.addCallbacks(self.process_stats, lambda _: self.process_stats(None))
+				return json.loads(r.content.decode('utf-8')) if r.status_code == 200 else None
+			d = deferToThread(_get)
+			d.addCallback(self.process_stats)
+			d.addErrback(lambda _: self.process_stats(None))
 
 	def process_stats(self, data):
 		gList = []
@@ -2912,36 +2922,29 @@ class MatchMediaScreen(Screen):
 			self.close()
 
 	def fetch_media(self):
-		def _get_media(eid):
-			try:
+		url = "https://api.sofascore.com/api/v1/event/{}/media".format(self.event_id)
+		headers = {
+			'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36',
+			'Referer': 'https://www.sofascore.com/',
+			'Origin': 'https://www.sofascore.com',
+			'Accept': 'application/json',
+			'X-Requested-With': 'XMLHttpRequest'
+		}
+
+		if PY3:
+			d = getPage(str.encode(url), contextFactory=WebClientContextFactory(url), timeout=25, headers={k.encode(): [v.encode()] for k, v in headers.items()})
+			d.addCallback(lambda raw: self.process_media(json.loads(raw.decode('utf-8'))))
+			d.addErrback(lambda _: self.process_media(None))
+		else:
+			def _get():
 				s = requests.Session()
-				s.headers.update({
-					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36',
-					'Referer': 'https://www.sofascore.com/',
-					'Origin': 'https://www.sofascore.com',
-					'Accept': 'application/json'
-				})
-				url = "https://api.sofascore.com/api/v1/event/{}/media".format(eid)
-				s.get('https://www.sofascore.com')
+				s.headers.update(headers)
+				s.get('https://www.sofascore.com', timeout=10)
 				r = s.get(url, timeout=25)
-				if r.status_code == 403:
-					s.headers.update({'X-Requested-With': 'XMLHttpRequest'})
-					r = s.get(url, timeout=25)
-				return r.content
-			except Exception as e:
-				if debug_MatchMedia: logdata("MatchMedia", "Error: %s" % str(e))
-				return None
-
-		def _done(raw):
-			try:
-				return json.loads(raw.decode('utf-8') if hasattr(raw, 'decode') else raw) if raw else None
-			except Exception as e:
-				if debug_MatchMedia: logdata("MatchMedia", "JSON parse error: %s" % str(e))
-				return None
-
-		d = deferToThread(_get_media, self.event_id)
-		d.addCallback(_done)
-		d.addCallbacks(self.process_media, lambda _: self.process_media(None))
+				return json.loads(r.content.decode('utf-8')) if r.status_code == 200 else None
+			d = deferToThread(_get)
+			d.addCallback(self.process_media)
+			d.addErrback(lambda _: self.process_media(None))
 
 	def process_media(self, data):
 		gList = []
@@ -3604,7 +3607,7 @@ class StandingsScreen(Screen):
 		# Use onShown to trigger the fetch process
 		self.onShown.append(self.fetch_standings)
 
-	def fetch_standings(self):
+	def fetch_standings (self):
 		# 1. Start parsing the URL to get IDs
 		url_to_parse = self.url
 		if not isinstance(url_to_parse, compat_str):
