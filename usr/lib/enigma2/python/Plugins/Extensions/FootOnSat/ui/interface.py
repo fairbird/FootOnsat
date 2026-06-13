@@ -2518,7 +2518,13 @@ class MatchDetailsScreen(Screen):
 			d.addCallback(self.process_data)
 
 	def process_data(self, data):
-		inc_js, ev_js = data
+		if not data:
+			self["details_list"].setList([])
+			return
+		try:
+			inc_js, ev_js = data
+		except (TypeError, ValueError):
+			inc_js, ev_js = None, None
 		if ev_js and 'event' in ev_js:
 			ev = ev_js['event']
 			h = ev.get('homeScore', {}).get('current', 0)
@@ -2602,12 +2608,12 @@ class MatchDetailsScreen(Screen):
 					is_og = str(inc.get('incidentClass', '')).lower() == 'owngoal'
 					is_pen = str(inc.get('incidentClass', '')).lower() == 'penalty'
 					if is_og:
-						text = str(inc.get('player', {}).get('name', 'Own Goal')) + " (OG)" % title173
+						text = str(inc.get('player', {}).get('name', '')) + " (OG)"
 						color = 0xFF0000
 						icon_name = "owngoal.png"
 					else:
 						p_name = str(inc.get('player', {}).get('name', 'Goal'))
-						text = p_name + " (Pen.)" % title174 if is_pen else p_name
+						text = (p_name + " (Pen.)") if is_pen else p_name
 						color = 0x00FF00
 						icon_name = "goal.png"
 				elif itype == 'card':
