@@ -2465,7 +2465,6 @@ class MatchDetailsScreen(Screen):
 		self["details_list"].down()
 
 	def fetch_details(self):
-		if debug_MatchDetails: logdata("MatchDetails", "Python 3.x and 2 without 3.9")
 		def _get_data(eid):
 			s = requests.Session()
 			s.headers.update({
@@ -2688,7 +2687,6 @@ class MatchStatisticsScreen(Screen):
 		self["stats_list"].down()
 
 	def fetch_stats(self):
-		if debug_MatchStatistics: logdata("MatchStatistics", "Python 3.x and 2 without 3.9")
 		def _get_stats(eid):
 			try:
 				s = requests.Session()
@@ -2914,7 +2912,6 @@ class MatchMediaScreen(Screen):
 			self.close()
 
 	def fetch_media(self):
-		if debug_MatchMedia: logdata("MatchMedia", "Python 3.x and 2 without 3.9")
 		def _get_media(eid):
 			try:
 				s = requests.Session()
