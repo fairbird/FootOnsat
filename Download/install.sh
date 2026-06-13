@@ -356,10 +356,10 @@ check_pkg "$DATETIME"
 check_pkg "$FFMPEG"
 check_pkg "$MPEGTSMUX"
 
-if [ "$OS" != "DreamOS" ]; then
-	check_pkg "enigma2-plugin-systemplugins-serviceapp"
-	check_pkg "exteplayer3"
-fi
+#if [ "$OS" != "DreamOS" ]; then
+#	check_pkg "enigma2-plugin-systemplugins-serviceapp"
+#	check_pkg "exteplayer3"
+#fi
 
 if [ "$OS" = "DreamOS" ] && [ "$DEVICE" = "arm64" ]; then
 	check_pkg "$GDB"
