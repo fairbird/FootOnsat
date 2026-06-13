@@ -2977,12 +2977,14 @@ class MatchMediaScreen(Screen):
 			icon_vs = path + "vsports_iconUHD.png"
 			icon_su = path + "superliga_iconUHD.png"
 			icon_vbox7 = path + "vbox7_iconUHD.png"
+			icon_sf = path + "sofascore_iconUHD.png"
 		else:
 			icon_yt = path + "youtube_icon.png"
 			icon_tw = path + "twitter_icon.png"
 			icon_vs = path + "vsports_icon.png"
 			icon_su = path + "superliga_icon.png"
 			icon_vbox7 = path + "vbox7_icon.png"
+			icon_sf = path + "sofascore_icon.png"
 
 		if data and 'media' in data:
 			for item in data['media']:
@@ -3004,11 +3006,17 @@ class MatchMediaScreen(Screen):
 					icon_path = icon_tw
 				elif "vsports.pt" in v_url.lower():
 					icon_path = icon_vs
+				elif "vbox7.com" in v_url.lower():
+					icon_path = icon_vbox7
+				elif "sofascore.com" in v_url.lower():
+					icon_path = icon_sf
 				elif "superliga.dk" in v_url.lower():
 					#icon_path = icon_su # Need to fix later
 					continue
-				elif "vbox7.com" in v_url.lower():
-					icon_path = icon_vbox7
+				elif "fifa.com" in v_url.lower():
+					continue
+				else:
+					continue
 
 				if icon_path and exists(icon_path):
 					# info: Use LoadPixmap with size to force auto-scaling of the PNG file
@@ -3042,6 +3050,7 @@ class MatchMediaScreen(Screen):
 		is_vsports = "vsports.pt" in url_lower
 		is_superliga = "superliga.dk" in url_lower
 		is_vbox7 = "vbox7.com" in url_lower
+		is_sofascore = "sofascore.com/video-player.html" in url_lower
 		if is_youtube:
 			if debug_MatchMedia: logdata("MatchMedia-YOUTUBE", "Start Play: %s" % url)
 			pass
@@ -3056,6 +3065,9 @@ class MatchMediaScreen(Screen):
 			pass
 		if is_vbox7:
 			if debug_MatchMedia: logdata("MatchMedia-vbox7", "Start Play: %s" % url)
+			pass
+		if is_sofascore:
+			if debug_MatchMedia: logdata("MatchMedia-SOFASCORE", "Start Play: %s" % url)
 			pass
 		msg = _("%s") % title181
 		if is_youtube:
@@ -3087,6 +3099,9 @@ class MatchMediaScreen(Screen):
 		elif is_vbox7:
 			self.wait_dialog = self.session.open(MessageBox, msg, MessageBox.TYPE_INFO, enable_input=False)
 			deferToThread(self.extract_vbox7_stream, url).addCallback(self.playAfterExtract).addErrback(self.playback_error)
+		elif is_sofascore:
+			self.wait_dialog = self.session.open(MessageBox, msg, MessageBox.TYPE_INFO, enable_input=False)
+			deferToThread(self.extract_sofascore_stream, url).addCallback(self.playAfterExtract).addErrback(self.playback_error)
 		else:
 			#self.playAfterExtract(str(url))
 			# Fallback for unsupported URLs
@@ -3289,6 +3304,16 @@ class MatchMediaScreen(Screen):
 			if exists(f):
 				try: os.remove(f)
 				except: pass
+
+	def extract_sofascore_stream(self, url):
+		try:
+			from urllib.parse import unquote
+			if "sofascore.com/video-player.html?url=" in url:
+				stream_url = unquote(url.split("url=")[1])
+				return str(stream_url)
+		except Exception as e:
+			if debug_MatchMedia: logdata("MatchMedia", "Sofascore Error: %s" % str(e))
+		return None
 
 	def extract_superliga_stream(self, url):
 		headers = {

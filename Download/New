@@ -1,1 +1,1 @@
-- More fix: resolve 403 forbidden errors by updating session handling and headers for SofaScore API
+- Add support to play video direct from (sofascore.com)
