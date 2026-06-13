@@ -4,4 +4,4 @@ log_path = '/tmp/FootOnSat.log'
 if os.path.exists(log_path):
     os.remove(log_path)
 
-__version__ = 8.2
+__version__ = 8.3
