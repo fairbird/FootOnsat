@@ -4408,6 +4408,7 @@ class FootOnsatNotifScreen(Screen):
 		self.matches_queue = []
 		self.is_displaying = False
 		self.is_checking = False
+		self.woken_up_matches = set()
 
 	def _update_display_only(self, match, compet, team1, team2, message=None, allow_zap=True):
 		if not self.instance:
@@ -4597,10 +4598,16 @@ class FootOnsatNotifScreen(Screen):
 					rows = cur.execute("select * from LIVE_NOTIF")
 					rows = rows.fetchall()
 					now = datetime.strptime(datetime.now().strftime('%Y-%m-%d %H:%M'), "%Y-%m-%d %H:%M")
-					
+					now_sec = datetime.now()
+
+					try:
+						WakingUp_sec = float(config.plugins.FootOnSat.WakingUp.value)
+					except:
+						WakingUp_sec = 3
+
 					# Get the user's notification choice ONCE per timer tick
 					user_choice = config.plugins.FootOnSat.notify.value
-					
+
 					if len(rows) > 0:
 						for row in rows:
 							match_name = row[0]
@@ -4608,9 +4615,23 @@ class FootOnsatNotifScreen(Screen):
 							first_notif_time = datetime.strptime(first_notif_str, "%H:%M - %Y-%m-%d")
 							match_time_obj = datetime.strptime(row[2], "%H:%M - %Y-%m-%d")
 
+							# --- PRE-WAKE: Wake device WakingUp_sec seconds BEFORE match start ---
+							wakeup_dt = match_time_obj - timedelta(seconds=WakingUp_sec)
+							wake_key = match_name + "_wakeup"
+							if (match_time_obj - now_sec).total_seconds() <= WakingUp_sec and now_sec < match_time_obj and wake_key not in self.woken_up_matches:
+								self.woken_up_matches.add(wake_key)
+								try:
+									from Screens.Standby import inStandby
+									if inStandby and inStandby.isActive():
+										if debug_Notif: logdata("FootOnSatNotif", "PRE-WAKE: Waking device %s sec before match start for: %s" % (WakingUp_sec, match_name))
+										inStandby.Power()
+								except Exception as e:
+									if debug_Notif: logdata("FootOnSatNotif", "PRE-WAKE standby error: %s" % str(e))
+									try: getPage(b"http://127.0.0.1/web/powerstate?newstate=4")
+									except: pass
+
 							# --- Check if the current scheduled reminder time is NOW ---
 							if now == first_notif_time:
-								
 								time_diff_minutes = int((match_time_obj - first_notif_time).total_seconds() / 60)
 								
 								if time_diff_minutes == 30:
@@ -4744,14 +4765,13 @@ class FootOnsatNotifScreen(Screen):
 		if self.instance and FootOnSatNotifDialog.dialog is not None:
 			# 1. Package the match details
 			match_data = {
-				'match': match.strip(), 
-				'compet': compet, 
-				'team1': team1, 
-				'team2': team2, 
+				'match': match.strip(),
+				'compet': compet,
+				'team1': team1,
+				'team2': team2,
 				'message': message,
 				'allow_zap': allow_zap,
 			}
-			
 			# 2. Add to queue
 			self.matches_queue.append(match_data)
 
