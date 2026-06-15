@@ -133,6 +133,7 @@ config.plugins.FootOnSat.updatebannersonline = ConfigYesNo(default=True)
 config.plugins.FootOnSat.enableflag = ConfigYesNo(default=True)
 config.plugins.FootOnSat.notiftime = ConfigInteger(default=6, limits=(6, 20))
 config.plugins.FootOnSat.notiffile = ConfigText(default="notif1", visible_width = 250, fixed_size = False)
+config.plugins.FootOnSat.WakingUp = ConfigInteger(default=3, limits=(1, 60))
 config.plugins.FootOnSat.useDashMP4 = ConfigYesNo(default=True)
 config.plugins.FootOnSat.extrafetch = ConfigYesNo(default=False)
 config.plugins.FootOnSat.debug_ZAP = ConfigYesNo(default=False)
@@ -261,6 +262,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self["help"] = StaticText()
 		self.lang = config.plugins.FootOnSat.lang.value
 		self.old_notiffile = config.plugins.FootOnSat.notiffile.value
+		self.old_WakingUp = config.plugins.FootOnSat.WakingUp.value
 		self.icons_value = config.plugins.FootOnSat.icons.value
 		self.pluginicon = config.plugins.FootOnSat.pluginicon.value
 		self.debug_ZAP = config.plugins.FootOnSat.debug_ZAP.value
@@ -299,6 +301,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.list.append(getConfigListEntry(_("%s") % title59, config.plugins.FootOnSat.notify_zap, _("%s") % title60))
 		self.list.append(getConfigListEntry(_("%s") % title61, config.plugins.FootOnSat.notify, _("%s") % title62))
 		self.list.append(getConfigListEntry(_("%s") % title63, config.plugins.FootOnSat.notiffile, _("%s") % title64))
+		self.list.append(getConfigListEntry(_("%s") % title297, config.plugins.FootOnSat.WakingUp, _("%s") % title298))
 		self.list.append(getConfigListEntry(title95))
 		self.list.append(getConfigListEntry(_("%s") % title65, config.plugins.FootOnSat.useDashMP4, _("%s") % title66))
 		self.list.append(getConfigListEntry(_("%s") % title67, config.plugins.FootOnSat.maxResolution, _("%s") % title68))
@@ -449,17 +452,18 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 
 	def keyLeft(self):
 		cur = self["config"].getCurrent()
-		if cur and cur[1] == config.plugins.FootOnSat.notiftime:
-			val = config.plugins.FootOnSat.notiftime.value
-			limits = config.plugins.FootOnSat.notiftime.limits
+		if cur and (cur[1] == config.plugins.FootOnSat.notiftime or cur[1] == config.plugins.FootOnSat.WakingUp):
+			cfg = cur[1]
+			val = cfg.value
+			limits = cfg.limits
 			if isinstance(limits[0], int):
 				low, high = limits
 			else:
 				low, high = limits[0]
 			if val > low:
-				config.plugins.FootOnSat.notiftime.value = val - 1
+				cfg.value = val - 1
 				try:
-					self["config"].invalidate(config.plugins.FootOnSat.notiftime)
+					self["config"].invalidate(cfg)
 				except Exception:
 					self["config"].invalidate()
 				self["config"].l.setList(self["config"].list)
@@ -470,17 +474,18 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 
 	def keyRight(self):
 		cur = self["config"].getCurrent()
-		if cur and cur[1] == config.plugins.FootOnSat.notiftime:
-			val = config.plugins.FootOnSat.notiftime.value
-			limits = config.plugins.FootOnSat.notiftime.limits
+		if cur and (cur[1] == config.plugins.FootOnSat.notiftime or cur[1] == config.plugins.FootOnSat.WakingUp):
+			cfg = cur[1]
+			val = cfg.value
+			limits = cfg.limits
 			if isinstance(limits[0], int):
 				low, high = limits
 			else:
 				low, high = limits[0]
 			if val < high:
-				config.plugins.FootOnSat.notiftime.value = val + 1
+				cfg.value = val + 1
 				try:
-					self["config"].invalidate(config.plugins.FootOnSat.notiftime)
+					self["config"].invalidate(cfg)
 				except Exception:
 					self["config"].invalidate()
 				self["config"].l.setList(self["config"].list)
