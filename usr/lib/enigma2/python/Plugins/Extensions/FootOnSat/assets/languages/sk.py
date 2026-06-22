@@ -298,3 +298,4 @@ title295="Táto možnosť umožňuje zaznamenať funkciu (Obľúbené) a kódy d
 title296="Zápasy zajtra"
 title297="Zvoľte počet sekúnd pre prebudenie"
 title298="Táto funkcia umožňuje zvoliť počet sekúnd, po ktorých sa zariadenie prebudí z pohotovostného režimu, kým sa začnú zobrazovať upozornenia.\n\nPohybom <doľava | doprava> zmeníte počet sekúnd v rozsahu (1 - 60)"
+title299="PRERUŠENÉ"

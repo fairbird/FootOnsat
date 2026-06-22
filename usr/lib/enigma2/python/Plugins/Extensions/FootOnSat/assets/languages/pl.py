@@ -298,3 +298,4 @@ title295="Ta opcja umożliwia zapisanie funkcji (Ulubione) i kodów działania w
 title296="Jutrzejsze Mecze."
 title297="Wybierz liczbę sekund do wybudzenia"
 title298="Ta funkcja pozwala wybrać liczbę sekund, po których urządzenie wybudzi się z trybu czuwania, zanim zaczną pojawiać się powiadomienia.\n\nUżyj <W W lewo prawo |>, aby zmienić liczbę sekund w zakresie (1 - 60)"
+title299="PRZERWANO"

@@ -298,3 +298,4 @@ title295="Esta opção permite registar num ficheiro de relatório (log) a funci
 title296="Jogos de amanhã"
 title297="Escolha o número de segundos para despertar"
 title298="Este recurso permite escolher o número de segundos para que o dispositivo desperte do modo de espera antes que as notificações comecem a aparecer.\n\nMova <Esquerda Direita |> para alterar os segundos de (1 - 60)"
+title299="INTERROMPIDO"

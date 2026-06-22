@@ -298,3 +298,4 @@ title295="Tato možnost umožňuje zaznamenat funkci (Oblíbené) a pracovní k�
 title296="Zápasy zítra"
 title297="Zvolte počet sekund pro probuzení"
 title298="Tato funkce umožňuje zvolit počet sekund, po kterých se zařízení probudí z pohotovostního režimu, než se začnou zobrazovat oznámení.\n\nPohybem <doleva | doprava> změníte počet sekund v rozsahu (1 - 60)"
+title299="PŘERUŠENO"

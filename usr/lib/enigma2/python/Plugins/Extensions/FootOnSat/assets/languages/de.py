@@ -298,3 +298,4 @@ title295="Diese Option ermöglicht es, die Funktion (Favoriten) und die Arbeitsc
 title296="Morgige Spiele"
 title297="Wählen Sie die Sekundenanzahl zum Aufwachen"
 title298="Mit dieser Funktion können Sie festlegen, wie viele Sekunden das Gerät aus dem Standby-Modus aufwachen soll, bevor Benachrichtigungen angezeigt werden.\n\nBewegen Sie <Links Rechts |>, um die Sekunden zwischen (1 - 60) zu ändern"
+title299="UNTERBROCHEN"

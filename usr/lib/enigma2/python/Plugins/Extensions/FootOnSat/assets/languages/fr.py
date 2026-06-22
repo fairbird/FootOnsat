@@ -298,3 +298,4 @@ title295="Cette option permet d'enregistrer la fonctionnalité (Favori) et les c
 title296="Matchs de demain"
 title297="Choisissez le nombre de secondes pour sortir de veille"
 title298="Cette fonctionnalité vous permet de choisir le nombre de secondes nécessaires pour que l'appareil sorte du mode veille avant que les notifications ne commencent à apparaître.\n\nDéplacez <Gauche Droite |> pour changer le nombre de secondes de (1 à 60)"
+title299="INTERROMPU"

@@ -298,3 +298,4 @@ title295="Bu seçenek, (Favori) özelliğini ve kodların çalışmasını bir g
 title296="Yarınki Maçlar"
 title297="Uyanma için saniye sayısını seçin"
 title298="Bu özellik, bildirimler görünmeye başlamadan önce cihazın bekleme modundan uyanması için gereken saniye sayısını seçmenize olanak tanır.\n\nSaniyeleri (1 - 60) arasında değiştirmek için <Sol Sağ |> hareket ettirin"
+title299="KESİNTİYE UĞRADI"

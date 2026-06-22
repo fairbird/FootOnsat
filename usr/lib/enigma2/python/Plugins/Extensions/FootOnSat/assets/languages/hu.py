@@ -298,3 +298,4 @@ title295="Ez a beállítás lehetővé teszi a (Kedvencek) funkció és a műkö
 title296="Holnapi meccsek"
 title297="Válassza ki az ébresztéshez szükséges másodpercek számát"
 title298="Ez a funkció lehetővé teszi, hogy kiválassza, hány másodperc teljen el a készülék készenléti állapotból való felébredése után, mielőtt az értesítések megjelennének.\n\nMozgassa <Balra Jobbra |> a másodpercek módosításához (1 - 60 között)"
+title299="MEGSZAKÍTVA"

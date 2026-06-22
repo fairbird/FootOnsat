@@ -298,3 +298,4 @@ title295="This option allows you to print the (Favorite) feature and codes work 
 title296="Tomorrow Matches"
 title297="Choose the number of seconds to wake up"
 title298="This feature allows you to choose the number of seconds for the device to wake up from standby before notifications begin to appear.\n\nMove <Left | Right> to change seconds from (1 - 60)"
+title299="INTERRUPTED"
