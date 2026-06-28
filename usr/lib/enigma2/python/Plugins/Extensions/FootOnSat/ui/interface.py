@@ -1636,6 +1636,7 @@ class FootOnSat(Screen):
 				if self.fetch_timestamp != current_ts:
 					if debug_Fetch_Live: logdata("fetch_live_results", "DROP: Ignoring outdated results from previous session.")
 					return
+				# Do not remove, Move or change this import (It is important like this)
 				from .launcher import get_terminated_file
 				cache_file, terminated_cache, changed, final_list = get_terminated_file(), {}, False, []
 				try:
@@ -1721,7 +1722,8 @@ class FootOnSat(Screen):
 #		except Exception as e:
 #			logdata("FootOnSat-DEBUG-ERROR", "Failed to save LiveOnSat JSON: %s" % str(e))
 		# === END DEBUG ===
-		from .launcher import get_terminated_file
+		# Do not remove, Move or change this import (It is important like this)
+		from .launcher import get_terminated_file, get_data_paths
 		cache_file = get_terminated_file()
 		terminated_cache = []
 		cache_changed = False
@@ -1737,8 +1739,6 @@ class FootOnSat(Screen):
 		except Exception as e:
 			if debug_Ignore: logdata("getData", "Failed to load ignored competitions: %s" % str(e))
 			pass
-
-		from .launcher import get_data_paths
 		_, _, fav_file = get_data_paths()
 		favs = []
 		if self.link == "favorite":
@@ -2091,6 +2091,7 @@ class FootOnSat(Screen):
 	def manageIgnoreFile(self, compet=None, reset=False, remove=None):
 		if debug_Ignore: logdata("manageIgnoreFile", "Called with compet={}, reset={}, remove={}".format(compet, reset, remove))
 		# Create ignore directory if it doesn't exist
+		# Do not remove, Move or change this import (It is important like this)
 		from .launcher import get_data_paths
 		ignore_dir, ignore_file, fav_file = get_data_paths()
 		if not exists(ignore_dir):
@@ -2234,6 +2235,7 @@ class FootOnSat(Screen):
 		if ret:
 			team = ret[0]
 			if debug_favorite: logdata("addFavorite", "Adding team to favorites: " + str(team))
+			# Do not remove, Move or change this import (It is important like this)
 			from .launcher import get_data_paths
 			_, _, fav_file = get_data_paths() # Ensure this points to the correct new path
 			favs = []
@@ -2252,6 +2254,7 @@ class FootOnSat(Screen):
 		if ret:
 			team = ret[0]
 			if debug_favorite: logdata("removeFavorite", "Removing team from favorites: " + str(team))
+			# Do not remove, Move or change this import (It is important like this)
 			from .launcher import get_data_paths
 			_, _, fav_file = get_data_paths()
 			favs = []
@@ -2274,6 +2277,7 @@ class FootOnSat(Screen):
 			return
 		if getattr(self, 'link', None) == "favorite":
 			if debug_favorite: logdata("keyRed", "Opening remove favorite screen")
+			# Do not remove, Move or change this import (It is important like this)
 			from .launcher import get_data_paths
 			_, _, fav_file = get_data_paths()
 			favs = []
@@ -2287,6 +2291,7 @@ class FootOnSat(Screen):
 			else:
 				self.session.open(MessageBox, title290, MessageBox.TYPE_INFO, timeout=5)
 			return
+		# Do not remove, Move or change this import (It is important like this)
 		from .launcher import get_data_paths
 		ignore_dir_path, ignore_file_path, _ = get_data_paths()
 		if self.link in ["today", "tomorrow"] and self.selectedList == self["list1"] and len(self.matches) > 0:
@@ -4563,6 +4568,7 @@ class FootOnsatNotifScreen(Screen):
 
 	def _play_tone(self):
 		"""Plays the notification tone."""
+		# Do not remove, Move or change this import (It is important like this)
 		from .launcher import MenuFootOnSat
 		tone_file = MenuFootOnSat.getToneFile()
 		if exists("/usr/bin/aplay"):
