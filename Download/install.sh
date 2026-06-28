@@ -4,11 +4,9 @@
 VERSION=8.5
 PLUGIN_PATH="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
 DB_FILE="$PLUGIN_PATH/db/footonsat.db"
-TERMINATED_FILE="$PLUGIN_PATH/db/terminated_matches.json"
 ASSETS_PATH="$PLUGIN_PATH/assets"
 IGNORE_PATH="$PLUGIN_PATH/ignore"
 TMP_DB="/tmp/footonsat.db"
-TMP_TERMINATED="/tmp/terminated_matches.json"
 TMP_ASSETS="/tmp/assets"
 
 E2Settings='/etc/enigma2/settings'
@@ -79,11 +77,6 @@ if [ -d $PLUGIN_PATH ]; then
 		echo ""
 		echo "Backup old db..."
 		cp -a "$DB_FILE" "$TMP_DB" >/dev/null 2>&1
-	fi
-	if [ -f "$TERMINATED_FILE" ]; then
-		echo ""
-		echo "Backup old terminated_matches.json ..."
-		cp -a "$TERMINATED_FILE" "$TMP_TERMINATED" >/dev/null 2>&1
 	fi
 	echo ""
 #	echo "Backup current style ..."
@@ -404,11 +397,6 @@ if [ -d $PLUGIN_PATH ]; then
 		echo "Restore old db ..."
 		cp -a "$TMP_DB" "$DB_FILE" >/dev/null 2>&1
 	fi
-	if [ -f "$TMP_TERMINATED" ]; then
-		echo ""
-		echo "Restore old terminated_matches.json ..."
-		cp -a "$TMP_TERMINATED" "$TERMINATED_FILE" >/dev/null 2>&1
-	fi
 	echo ""
 	echo "Restore current style is: $CURRENT_VALUE"
 	echo ""
@@ -462,7 +450,6 @@ rm -rf *main* >/dev/null 2>&1
 #rm -rf *assets* >/dev/null 2>&1
 #rm -rf *ui* >/dev/null 2>&1
 rm -rf "$TMP_DB" >/dev/null 2>&1
-rm -rf "$TMP_TERMINATED" >/dev/null 2>&1
 cd ..
 echo
 echo
