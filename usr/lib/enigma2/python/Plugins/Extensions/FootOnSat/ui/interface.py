@@ -432,7 +432,6 @@ class FootOnSat(Screen):
 					'HALFTIME': (title129, title123),
 					'DELAYED':  (title130, title123),
 					'DELAY':    (title130, title123),
-					'INTERRUPTED': (title299, title123),
 				}
 				if clean_status in STATUS_DISPLAY:
 					status_text, prefix_key = STATUS_DISPLAY[clean_status]
@@ -1413,8 +1412,6 @@ class FootOnSat(Screen):
 							status = 'HALFTIME'
 						elif 'delayed' in descr.lower():
 							status = 'DELAYED'
-						elif 'interrupted' in descr.lower():
-							status = 'INTERRUPTED'
 						else:
 							try:
 								status_time_ts = ev.get('statusTime', {}).get('timestamp')
@@ -1429,8 +1426,6 @@ class FootOnSat(Screen):
 								status = ''
 					elif stype == 'notstarted':
 						status = ''
-					elif stype == 'interrupted':
-						status = 'INTERRUPTED'
 					else:
 						status = ''
 
@@ -1641,7 +1636,8 @@ class FootOnSat(Screen):
 				if self.fetch_timestamp != current_ts:
 					if debug_Fetch_Live: logdata("fetch_live_results", "DROP: Ignoring outdated results from previous session.")
 					return
-				cache_file, terminated_cache, changed, final_list = join(PLUGINPATH, "db/terminated_matches.json"), {}, False, []
+				from .launcher import get_terminated_file
+				cache_file, terminated_cache, changed, final_list = get_terminated_file(), {}, False, []
 				try:
 					if exists(cache_file):
 						with open(cache_file, 'r') as f:
@@ -1725,8 +1721,8 @@ class FootOnSat(Screen):
 #		except Exception as e:
 #			logdata("FootOnSat-DEBUG-ERROR", "Failed to save LiveOnSat JSON: %s" % str(e))
 		# === END DEBUG ===
-
-		cache_file = join(PLUGINPATH, "db/terminated_matches.json")
+		from .launcher import get_terminated_file
+		cache_file = get_terminated_file()
 		terminated_cache = []
 		cache_changed = False
 		try:
@@ -2546,7 +2542,6 @@ class MatchDetailsScreen(Screen):
 				"Extra Time":  title216,
 				"Penalties":   title217,
 				"Not started": title218,
-				"Interrupted": title299,
 			}
 			raw_status = str(ev.get('status', {}).get('description', ''))
 			self["status"].setText(STATUS_MAP.get(raw_status, raw_status))

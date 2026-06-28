@@ -58,13 +58,17 @@ def get_data_paths():
 	
 	ignore_file = join(data_dir, "ignore-match.json")
 	fav_file = join(data_dir, "favorite_teams.json")
-	
+
 	if not exists(data_dir):
 		try:
 			os.makedirs(data_dir)
 		except Exception:
 			pass
 	return data_dir, ignore_file, fav_file
+
+def get_terminated_file():
+	data_dir, _, _ = get_data_paths()
+	return join(data_dir, "terminated_matches.json")
 
 def DreamOS():
 	if exists('/var/lib/dpkg/status'):
