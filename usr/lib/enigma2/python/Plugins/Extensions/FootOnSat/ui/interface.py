@@ -1163,24 +1163,12 @@ class FootOnSat(Screen):
 			'Cache-Control': 'no-cache',
 		}
 
-		# === SMART DYNAMIC FETCH ===
-		# On Saturday/Sunday → url2 = 30 MB = DEATH
-		# So we check day: if weekend → SKIP url2 completely
-		weekday = date.today().weekday()  # 5 = Saturday, 6 = Sunday
-		is_weekend = weekday >= 5
-		if config.plugins.FootOnSat.extrafetch.value:
-			if is_weekend:
-				fetch_url2 = self.link in ["live", "end", "yesterday"]
-			else:
-				fetch_url2 = True
-		else:
-			fetch_url2 = not is_weekend  # ONLY try url2 on Mon–Fri
-
 		# === Twisted HTTP Request Handling (with Py3 compatibility) ===
 		deferred_list = []
 		if PY3:
+			base_url = 'https://www.sofascore.com'
 			try:
-				sniFactory = WebClientContextFactory(url1)
+				sniFactory = WebClientContextFactory(base_url)
 			except Exception as e:
 				if debug_Fetch_Live: logdata("fetch_live_results", "Failed to create WebClientContextFactory: %s" % str(e))
 				self.matches = [list(m) for m in self.matches]
@@ -1196,64 +1184,47 @@ class FootOnSat(Screen):
 				b'Cache-Control': [b'no-cache'],
 			}
 
-			# Always fetch url1 (main clean data)
-			d1 = getPage(str.encode(url1), contextFactory=sniFactory, timeout=20, headers=twisted_live_headers)
-			deferred_list.append(d1)
+			d = defer.Deferred()
 
-			# Conditionally fetch url2 (only on safe days)
-			d2 = None
-			if fetch_url2:
-				def safe_url2():
+			def _fetch_page(page, urls, d_final):
+				url = 'https://www.sofascore.com/api/v1/sport/football/scheduled-tournaments/{0}/page/{1}'.format(selected_date, page)
+				def _cb(raw):
 					try:
-						# Aggressive anti-block headers
-						headers2 = twisted_live_headers.copy()
-						headers2[b'User-Agent'] = [b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/129.0 Safari/537.36']
-						headers2[b'Accept-Encoding'] = [b'identity']
-						return getPage(str.encode(url2), contextFactory=sniFactory, timeout=120, headers=headers2)
+						data = json.loads(raw.decode('utf-8', 'ignore'))
+						scheduled = data.get("scheduled", [])
+						for item in scheduled:
+							t = item.get("tournament", {})
+							ut = t.get("uniqueTournament")
+							if ut and ut.get("id"): urls.append("https://www.sofascore.com/api/v1/unique-tournament/{0}/scheduled-events/{1}".format(ut["id"], selected_date))
+							elif t.get("id"): urls.append("https://www.sofascore.com/api/v1/tournament/{0}/scheduled-events/{1}".format(t["id"], selected_date))
+						if data.get("hasNextPage", False):
+							_fetch_page(page + 1, urls, d_final)
+						else:
+							urls_unique = list(set(urls))
+							deferreds = [getPage(str.encode(u), contextFactory=sniFactory, timeout=20, headers=twisted_live_headers) for u in urls_unique]
+							if not deferreds:
+								d_final.callback([b'{"events":[]}'])
+							else:
+								defer.gatherResults(deferreds, consumeErrors=True).chainDeferred(d_final)
 					except:
-						return defer.succeed(None)
-				d2 = safe_url2()
-				deferred_list.append(d2)
-			else:
-				# Weekend: inject None so gatherResults keeps order
-				deferred_list.append(defer.succeed(None))
+						d_final.callback([b'{"events":[]}'])
+				def _eb(err):
+					d_final.callback([b'{"events":[]}'])
+				getPage(str.encode(url), contextFactory=sniFactory, timeout=20, headers=twisted_live_headers).addCallback(_cb).addErrback(_eb)
 
-			self.fetch_deferred = defer.gatherResults(deferred_list, consumeErrors=True)
-			d = self.fetch_deferred
+			_fetch_page(1, [], d)
+			self.fetch_deferred = d
 
 			def process_results(results):
 				if self.is_closed:
 					if debug_Fetch_Live: logdata("fetch_live_results", "ABORTED: Background process stopped because plugin is closed.")
-					return
-				raw1, raw2 = results
-
-				if debug_Fetch_Live:
-					# Log url1
-					if isinstance(raw1, Failure):
-						logdata("fetch_live_results", "DEBUG URL1 FAILED: %s" % raw1.getErrorMessage())
-					else:
-						logdata("fetch_live_results", "DEBUG URL1 OK (Bytes: %d)" % len(raw1))
-					# Log url2
-					if not fetch_url2:
-						logdata("fetch_live_results", "DEBUG URL2 SKIPPED (weekend protection active)")
-					elif raw2 is None:
-						logdata("fetch_live_results", "DEBUG URL2 SKIPPED (setup failed)")
-					elif isinstance(raw2, Failure):
-						logdata("fetch_live_results", "DEBUG URL2 FAILED → SKIPPED SAFELY")
-					else:
-						logdata("fetch_live_results", "DEBUG URL2 OK (Bytes: %d) → using extra data" % len(raw2))
-
-				# Return only valid data
+					return [b'{"events":[]}']
 				valid = []
-				if raw1 and not isinstance(raw1, Failure):
-					valid.append(raw1)
-				if raw2 and not isinstance(raw2, Failure) and fetch_url2:
-					valid.append(raw2)
-
-				# Fallback if both fail
+				for r in results:
+					if r and not isinstance(r, Failure):
+						valid.append(r)
 				if not valid:
 					valid = [b'{"events":[]}']
-
 				return valid
 
 			d.addCallback(process_results)
@@ -1263,43 +1234,57 @@ class FootOnSat(Screen):
 			def _fetch_smart():
 				if self.is_closed:
 					if debug_Fetch_Live: logdata("fetch_live_results", "ABORTED: Background process stopped because plugin is closed.")
-					return
+					return []
 				results = []
 				s = requests.Session()
-				s.headers.update({
-					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36',
-					'Referer': 'https://www.sofascore.com/',
-					'Accept': 'application/json',
-					'Origin': 'https://www.sofascore.com'
-				})
-				# url1 always
-				try:
-					s.get('https://www.sofascore.com')
-					r = s.get(url1, timeout=20)
-					if r.status_code == 403:
-						s.headers.update({'X-Requested-With': 'XMLHttpRequest'})
-						r = s.get(url1, timeout=20)
-					r.raise_for_status()
-					results.append(r.content)
-					if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG URL1 (Py2) OK (%d KB)" % (len(r.content)//1024))
-				except Exception as e:
-					if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG URL1 (Py2) FAILED: %s" % str(e))
-					results.append(None)
-
-				# url2 only if safe
-				if fetch_url2:
+				s.headers.update(headers2)
+				page = 1
+				has_next = True
+				urls = []
+				while has_next:
+					main_url = "https://www.sofascore.com/api/v1/sport/football/scheduled-tournaments/{0}/page/{1}".format(selected_date, page)
 					try:
-						r2 = s.get(url2, timeout=120)
-						r2.raise_for_status()
-						results.append(r2.content)
-						if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG URL2 (Py2) OK (%d MB) → extra data" % (len(r2.content)//1024//1024))
-					except Exception as e:
-						if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG URL2 (Py2) FAILED → SKIPPED")
-						results.append(None)
-				else:
-					if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG URL2 (Py2) SKIPPED (weekend mode)")
-					results.append(None)
-
+						r = s.get(main_url, timeout=10)
+						if r.status_code != 200:
+							break
+						data = r.json()
+						scheduled = data.get("scheduled", [])
+						if not scheduled:
+							break
+						for item in scheduled:
+							t = item.get("tournament", {})
+							ut = t.get("uniqueTournament")
+							if ut and ut.get("id"):
+								urls.append("https://www.sofascore.com/api/v1/unique-tournament/{0}/scheduled-events/{1}".format(ut["id"], selected_date))
+							elif t.get("id"):
+								urls.append("https://www.sofascore.com/api/v1/tournament/{0}/scheduled-events/{1}".format(t["id"], selected_date))
+						has_next = data.get("hasNextPage", False)
+						page += 1
+					except:
+						break
+				urls = list(set(urls))
+				try:
+					from multiprocessing.dummy import Pool as ThreadPool
+					pool = ThreadPool(10)
+					def _fetch_url(u):
+						try:
+							r = s.get(u, timeout=10)
+							if r.status_code == 200: return r.content
+						except: pass
+						return None
+					res_list = pool.map(_fetch_url, urls)
+					pool.close()
+					pool.join()
+					for r in res_list:
+						if r: results.append(r)
+				except:
+					for u in urls:
+						try:
+							r = s.get(u, timeout=10)
+							if r.status_code == 200:
+								results.append(r.content)
+						except:
+							pass
 				valid = [r for r in results if r is not None]
 				return valid or [b'{"events":[]}']
 
@@ -2535,7 +2520,12 @@ class MatchDetailsScreen(Screen):
 			ev = ev_js['event']
 			h = ev.get('homeScore', {}).get('current', 0)
 			a = ev.get('awayScore', {}).get('current', 0)
-			self["score"].setText(str(h) + " - " + str(a))
+			pen_h = ev.get('homeScore', {}).get('penalty')
+			pen_a = ev.get('awayScore', {}).get('penalty')
+			if pen_h is not None and pen_a is not None:
+				self["score"].setText("%s (%s) - (%s) %s" % (h, pen_h, pen_a, a))
+			else:
+				self["score"].setText(str(h) + " - " + str(a))
 			STATUS_MAP = {
 				"Ended":       title209,
 				"1st half":    title210,
@@ -2547,6 +2537,9 @@ class MatchDetailsScreen(Screen):
 				"Extra Time":  title216,
 				"Penalties":   title217,
 				"Not started": title218,
+				"AP":          "%s - %s" % (title209, title217),
+				"AET":         "%s - %s" % (title209, title216),
+				"FT":          title209,
 			}
 			raw_status = str(ev.get('status', {}).get('description', ''))
 			self["status"].setText(STATUS_MAP.get(raw_status, raw_status))
