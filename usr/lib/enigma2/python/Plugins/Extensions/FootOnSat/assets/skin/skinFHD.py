@@ -162,7 +162,7 @@ SKIN_MatchDetails = """
     <widget name="home_team" position="375,340" size="150,100" alphatest="blend" />
     <widget name="away_team" position="1395,340" size="150,100" alphatest="blend" />
 
-    <widget name="score" position="800,200" size="320,150" font="Regular;120" halign="center" valign="center" foregroundColor="#ffcc00" backgroundColor="#101010" transparent="1" />
+    <widget name="score" position="760,200" size="400,150" font="Regular;95" halign="center" valign="center" foregroundColor="#ffcc00" backgroundColor="#101010" transparent="1" />
     <widget name="status" position="760,350" size="400,60" font="Regular;34" halign="center" valign="center" foregroundColor="#00ff00" backgroundColor="#101010" transparent="1" />
     
     <widget name="details_list" position="50,450" size="1780,545" scrollbarMode="showOnDemand" transparent="1" />

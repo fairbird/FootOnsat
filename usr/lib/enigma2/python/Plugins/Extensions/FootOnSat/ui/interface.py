@@ -2518,12 +2518,13 @@ class MatchDetailsScreen(Screen):
 			inc_js, ev_js = None, None
 		if ev_js and 'event' in ev_js:
 			ev = ev_js['event']
-			h = ev.get('homeScore', {}).get('current', 0)
-			a = ev.get('awayScore', {}).get('current', 0)
-			pen_h = ev.get('homeScore', {}).get('penalty')
-			pen_a = ev.get('awayScore', {}).get('penalty')
+			h = ev.get('homeScore', {}).get('display', ev.get('homeScore', {}).get('current', 0))
+			a = ev.get('awayScore', {}).get('display', ev.get('awayScore', {}).get('current', 0))
+			pen_h = ev.get('homeScore', {}).get('penalties')
+			pen_a = ev.get('awayScore', {}).get('penalties')
+			if debug_MatchDetails: logdata("MatchDetails", "DEBUG: Score: %s - %s | Penalty: %s - %s" % (h, a, pen_h, pen_a))
 			if pen_h is not None and pen_a is not None:
-				self["score"].setText("%s (%s) - (%s) %s" % (h, pen_h, pen_a, a))
+				self["score"].setText("%s(%s)-(%s)%s" % (h, pen_h, pen_a, a))
 			else:
 				self["score"].setText(str(h) + " - " + str(a))
 			STATUS_MAP = {
