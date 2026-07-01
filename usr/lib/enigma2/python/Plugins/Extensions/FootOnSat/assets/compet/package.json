@@ -5,7 +5,7 @@
             "banner": "abn amro u-17 future cup"
     },
         {
-	    "label": "afc asian cup 2027",
+	    	"label": "afc asian cup 2027",
             "banner": "afc asian cup 2027"
     },
         {
@@ -335,6 +335,10 @@
         {
             "label": "bosnia-herzegovina rs 1st league",
             "banner": "bosnia-herzegovina rs 1st league"
+    },
+    	{
+            "label": "bosnia-herzegovina fbih 1st league",
+            "banner": "bosnia-herzegovina fbih 1st league"
     },
         {
             "label": "bosnia-hercegovina super cup",
@@ -972,6 +976,10 @@
             "label": "faroe islands meistaradeildin",
             "banner": "faroe islands meistaradeildin"
     },
+		{
+            "label": "fifa/wc inter confederation play-offs",
+            "banner": "fifa-wc inter confederation play-offs"
+    },
         {
             "label": "fifa/afc wc 2026 qualifiers",
             "banner": "fifa afc wc 2026 qualifiers"
@@ -1167,6 +1175,10 @@
         {
             "label": "german junior cup",
             "banner": "german junior cup"
+    },
+        {
+            "label": "german regional cup - hessen",
+            "banner": "german regional cup - hessen"
     },
         {
             "label": "german regional cup - baden",
@@ -2019,6 +2031,10 @@
         {
             "label": "saudi super cup",
             "banner": "saudi super cup"
+   },
+        {
+            "label": "scottish centenary shield",
+			"banner": "scottish centenary shield"
     },
         {
             "label": "scottish challenge cup",
@@ -2597,6 +2613,38 @@
             "banner": "euroleague"
     },
         {
+            "label": "formula 1 grand prix - round 2",
+            "banner": "formula 1 grand prix - round 2"
+    },
+        {
+            "label": "formula 1 grand prix - round 3",
+            "banner": "formula 1 grand prix - round 3"
+    },
+        {
+            "label": "formula 1 grand prix - round 4",
+            "banner": "formula 1 grand prix - round 4"
+    },
+        {
+            "label": "formula 1 grand prix - round 5",
+            "banner": "formula 1 grand prix - round 5"
+    },
+        {
+            "label": "formula 1 grand prix - round 6",
+            "banner": "formula 1 grand prix - round 6"
+    },
+        {
+            "label": "formula 1 grand prix - round 7",
+            "banner": "formula 1 grand prix - round 7"
+    },
+        {
+            "label": "formula 1 grand prix - round 8",
+            "banner": "formula 1 grand prix - round 8"
+    },
+        {
+            "label": "formula 1 grand prix - round 9",
+            "banner": "formula 1 grand prix - round 9"
+    },
+        {
             "label": "formula 1 grand prix - round 10",
             "banner": "formula 1 grand prix - round 10"
     },
@@ -2637,10 +2685,6 @@
             "banner": "formula 1 grand prix - round 19"
     },
         {
-            "label": "formula 1 grand prix - round 1",
-            "banner": "formula 1 grand prix - round 1"
-    },
-        {
             "label": "formula 1 grand prix - round 20",
             "banner": "formula 1 grand prix - round 20"
     },
@@ -2661,36 +2705,8 @@
             "banner": "formula 1 grand prix - round 24"
     },
         {
-            "label": "formula 1 grand prix - round 2",
-            "banner": "formula 1 grand prix - round 2"
-    },
-        {
-            "label": "formula 1 grand prix - round 3",
-            "banner": "formula 1 grand prix - round 3"
-    },
-        {
-            "label": "formula 1 grand prix - round 4",
-            "banner": "formula 1 grand prix - round 4"
-    },
-        {
-            "label": "formula 1 grand prix - round 5",
-            "banner": "formula 1 grand prix - round 5"
-    },
-        {
-            "label": "formula 1 grand prix - round 6",
-            "banner": "formula 1 grand prix - round 6"
-    },
-        {
-            "label": "formula 1 grand prix - round 7",
-            "banner": "formula 1 grand prix - round 7"
-    },
-        {
-            "label": "formula 1 grand prix - round 8",
-            "banner": "formula 1 grand prix - round 8"
-    },
-        {
-            "label": "formula 1 grand prix - round 9",
-            "banner": "formula 1 grand prix - round 9"
+            "label": "formula 1 grand prix - round 1",
+            "banner": "formula 1 grand prix - round 1"
     },
         {
             "label": "formula 1",
