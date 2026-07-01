@@ -2591,19 +2591,33 @@ class MatchDetailsScreen(Screen):
 			self["details_list"].l.setFont(0, gFont('Regular', FONT_S))
 
 			# Sort: Top to Bottom (Start of match to end)
-			sorted_inc = sorted(inc_js['incidents'], key=lambda x: x.get('time', 0), reverse=False)
+			sorted_inc = sorted(inc_js['incidents'], key=lambda x: x.get('sequence', x.get('time', 0)), reverse=False)
 			player_cards = {}
+			normal_incidents = []
+			penalty_incidents = []
 			for inc in sorted_inc:
 				if inc.get('time', 0) < 0 or inc.get('isBenchPlayer', False):
 					continue
 				itype = inc.get('incidentType')
-				if itype not in ('goal', 'card', 'substitution'): continue
-				itime = str(inc.get('time', '')) + "'"
+				if itype not in ('goal', 'card', 'substitution', 'penaltyShootout'): continue
+				if itype == 'penaltyShootout':
+					penalty_incidents.append(inc)
+				else:
+					normal_incidents.append(inc)
+			final_incidents = list(normal_incidents)
+			if penalty_incidents:
+				final_incidents.append({'incidentType': 'separator_line'})
+				final_incidents.extend(penalty_incidents)
+			for inc in final_incidents:
+				itype = inc.get('incidentType')
 				is_home = inc.get('isHome', True)
 				text = ""
 				color = 0xFFFFFF
 				icon_name = ""
-				if itype == 'goal':
+				if itype == 'separator_line':
+					text = "------------------------ %s ------------------------" % title217
+					color = 0xFFFF00
+				elif itype == 'goal':
 					is_og = str(inc.get('incidentClass', '')).lower() == 'owngoal'
 					is_pen = str(inc.get('incidentClass', '')).lower() == 'penalty'
 					if is_og:
@@ -2639,9 +2653,31 @@ class MatchDetailsScreen(Screen):
 					text = "%s %s / %s %s" % (p_out, title175, p_in, title176)
 					color = 0xFFFFFF
 					icon_name = "substitution.png"
-
+				elif itype == 'penaltyShootout':
+					ic_class = str(inc.get('incidentClass', '')).lower()
+					is_scored = 'missed' not in ic_class and 'save' not in ic_class and 'post' not in ic_class
+					p_name = str(inc.get('player', {}).get('name', ''))
+					pen_h = inc.get('homeScore')
+					pen_a = inc.get('awayScore')
+					if pen_h is not None and pen_a is not None:
+						if is_home:
+							text = "%s - %s  %s" % (pen_h, pen_a, p_name)
+						else:
+							text = "%s  %s - %s" % (p_name, pen_h, pen_a)
+					else:
+						text = p_name if is_scored else "%s (Missed)" % p_name
+					color = 0x00FF00 if is_scored else 0xFF0000
+					icon_name = "pen_scored.png" if is_scored else "pen_missed.png"
+					itime = "PEN"
+				if itype != 'separator_line':
+					itime = str(inc.get('time', '')) + "'"
 				# --- Incident List Row Information ---
-				res = [MultiContentEntryText()] # List row anchor
+				res = [MultiContentEntryText()]
+				if itype == 'separator_line':
+					sep_w = 2100 if isUHD() else 1750
+					res.append(MultiContentEntryText(pos=(0, 0), size=(sep_w, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=text, color=color))
+					gList.append(res)
+					continue
 				if isUHD():
 					res.append(MultiContentEntryText(pos=(C_X, T_W_Y), size=(T_W, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=itime)) # Match Minute
 				else:
