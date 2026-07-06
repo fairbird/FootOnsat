@@ -430,8 +430,8 @@ class FootOnSat(Screen):
 					'AET':      (title127, title122),
 					'PEN':      (title128, title122),
 					'HALFTIME': (title129, title123),
-					'DELAYED':  (title130, title123),
-					'DELAY':    (title130, title123),
+					'DELAYED':  (title215, title123),
+					'DELAY':    (title215, title123),
 				}
 				if clean_status in STATUS_DISPLAY:
 					status_text, prefix_key = STATUS_DISPLAY[clean_status]
@@ -1379,24 +1379,24 @@ class FootOnSat(Screen):
 					# --- Status Logic (Match Time Calculation) ---
 					status = ''
 					if stype == 'canceled':
-						status = 'CANCELED'
+						status = title214
 					elif stype == 'finished':
-						status = 'FINISHED'
+						status = title125
 					elif stype == 'postponed':
-						status = 'POSTPONED'
+						status = title152
 						h_score = a_score = ''
 					elif stype == 'inprogress':
 						m = re.search(r'(\d{1,3}[\'+]*\+?\d*)\s*\'', descr)
 						if m:
 							status = '{0} min'.format(m.group(1))
 						elif 'extra time' in descr.lower():
-							status = 'AET'
+							status = title153
 						elif 'penalties' in descr.lower():
-							status = 'title154'
+							status = title154
 						elif descr.lower() in ['half time', 'halftime']:
-							status = 'HALFTIME'
+							status = title155
 						elif 'delayed' in descr.lower():
-							status = 'DELAYED'
+							status = title156
 						else:
 							try:
 								status_time_ts = ev.get('statusTime', {}).get('timestamp')
@@ -1645,6 +1645,8 @@ class FootOnSat(Screen):
 					m_name, m_status = str(m[0]), str(m[7]).upper()
 					# Apply getTime to match what user sees on screen
 					m_time_str = self.getTime(str(m[1]))
+					if 'DELAYED' in m_status:
+						m_time_str = "%s - %s" % (title130, m_time_str.split(' - ')[1])
 					is_term = any(x in m_status for x in ('FINISHED', 'CANCELED', 'POSTPONED'))
 					in_cache = m_name in terminated_cache
 					if getattr(self, 'link', None) == "live":
