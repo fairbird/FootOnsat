@@ -2197,9 +2197,11 @@ class FootOnSat(Screen):
 
 	def showSuggestions(self, data):
 		try:
-			if not PY3 and isinstance(data, str):
-				data = data.decode('utf-8', 'ignore')
+			if isinstance(data, bytes):
+				data = data.decode('latin-1')
 			js = json.loads(data)
+			if not js:
+				return
 			search_term = js[0]
 			suggestions = js[1]
 			if debug_favorite: logdata("showSuggestions", "Suggestions received for: " + str(search_term))
@@ -2211,11 +2213,14 @@ class FootOnSat(Screen):
 					s_title = str(s).title()
 					if (s_title, s_title) not in display_list:
 						display_list.append((s_title, s_title))
+			if not display_list and search_term:
+				display_list.append((str(search_term).title(), str(search_term).title()))
 			if display_list:
 				self.session.openWithCallback(self.addFavorite, TeamListScreen, list_data=display_list, title_text=_("%s") % title287)
 			else:
 				self.session.open(MessageBox, title288, MessageBox.TYPE_INFO, timeout=5)
 		except Exception as e:
+			logdata("showSuggestions", "Error: " + str(e))
 			pass
 
 	def addFavorite(self, ret):
