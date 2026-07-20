@@ -461,5 +461,7 @@ echo "#########################################################"
 echo "#                Restart Enigma2 GUI                    #"
 echo "#########################################################"
 sleep 2
-killall enigma2
+sync
+[ -w /proc/sys/vm/drop_caches ] && echo 3 > /proc/sys/vm/drop_caches
+killall -9 enigma2
 exit 0
