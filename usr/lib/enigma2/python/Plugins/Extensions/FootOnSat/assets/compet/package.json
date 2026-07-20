@@ -1377,6 +1377,10 @@
             "banner": "irish divisional play offs"
     },
         {
+            "label": "irish fai womens cup",
+            "banner": "irish fai womens cup"
+    },
+        {
             "label": "irish fai president's cup",
             "banner": "irish fai president's cup"
     },
@@ -2167,6 +2171,10 @@
         {
             "label": "slovak super liga",
             "banner": "slovak super liga"
+    },
+		{
+            "label": "slovenian prva liga",
+            "banner": "slovenian prva liga"
     },
         {
             "label": "slovenian 1. snl",
