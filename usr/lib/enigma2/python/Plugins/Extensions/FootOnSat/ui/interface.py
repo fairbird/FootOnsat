@@ -137,7 +137,7 @@ json_urls = {
 	# american football
 	"nfl": "https://www.sofascore.com/tournament/american-football/usa/nfl/9464#id:75522",
 	# World Cup
-	"worldcup": "https://www.sofascore.com/football/tournament/world/world-championship/16#id:58210",
+	#"worldcup": "https://www.sofascore.com/football/tournament/world/world-championship/16#id:58210",
 }
 
 # Use thess url to download missing log of team (Extra code)
@@ -243,12 +243,12 @@ class FootOnSat(Screen):
 			tm_date = date.today() + timedelta(days=1)
 			day_name = tm_date.strftime('%A')
 			self.MENUTEXT = "{0} - {1} - {2}".format(title296, day_name, tm_date.strftime('%d-%m-%Y'))
-		elif self.link == "favorite":
-			self.MENUTEXT = "{0}".format(title284)
+#		elif self.link == "favorite":
+#			self.MENUTEXT = "{0}".format(title284)
 		elif self.link not in json_urls:
 			self.MENUTEXT = _("%s") % title116
 		else:
-			self.MENUTEXT = ""
+			self.MENUTEXT = _("%s") % title116
 		self.skin = SKIN_interface
 		self["setupActions"] = ActionMap(["FootOnsatActions", "ColorActions"],
 		{
@@ -265,6 +265,7 @@ class FootOnSat(Screen):
 			"cancel": self.exit,
 			"Forward": self.forward,
 			"Backward": self.backward,
+			"info": self.info,
 		}, -1)
 		self["counter"] = Label()
 		self["channel"] = Label()
@@ -343,13 +344,13 @@ class FootOnSat(Screen):
 								if parseColor and self["menu2"].instance:
 									self["menu2"].instance.setForegroundColor(parseColor("#ff0000"))
 							else:
-								self["menu2"].setText("")
+								self["menu2"].setText(_("%s") % title300)
 						else:
 							if debug_ZAP: logdata("iniMenu ZAP_DEBUG", "No zap ref found for match → '%s'" % key)
-							self["menu2"].setText("")
+							self["menu2"].setText(_("%s") % title300)
 					except Exception as e:
 						if debug_ZAP: logdata("iniMenu ZAP_DEBUG", "Error fetching zap ref: %s" % str(e))
-						self["menu2"].setText("")
+						self["menu2"].setText(_("%s") % title300)
 				else:
 					# Force update based on current link
 					if self.link == "yesterday":
@@ -361,8 +362,8 @@ class FootOnSat(Screen):
 					elif self.link == "tomorrow":
 						tm_date = date.today() + timedelta(days=1)
 						display_text = "{0} - {1} - {2}".format(title296, tm_date.strftime('%A'), tm_date.strftime('%d-%m-%Y'))
-					elif self.link == "favorite":
-						display_text = "{0}".format(title284)
+					#elif self.link == "favorite":
+					#	display_text = "{0}".format(title284)
 					else:
 						display_text = self.MENUTEXT
 
@@ -370,7 +371,7 @@ class FootOnSat(Screen):
 					if parseColor and self["menu"].instance:
 						m_color = "#0000ff00" if self.link == "yesterday" else "#00ffffff"
 						self["menu"].instance.setForegroundColor(parseColor(m_color))
-					self["menu2"].setText("")
+					self["menu2"].setText(_("%s") % title300)
 			else:
 				# Same logic for the second branch to ensure sync
 				if self.link == "yesterday":
@@ -382,8 +383,8 @@ class FootOnSat(Screen):
 				elif self.link == "tomorrow":
 					tm_date = date.today() + timedelta(days=1)
 					display_text = "{0} - {1} - {2}".format(title296, tm_date.strftime('%A'), tm_date.strftime('%d-%m-%Y'))
-				elif self.link == "favorite":
-						display_text = "{0}".format(title284)
+				#elif self.link == "favorite":
+				#		display_text = "{0}".format(title284)
 				else:
 					display_text = self.MENUTEXT
 
@@ -391,7 +392,7 @@ class FootOnSat(Screen):
 				if parseColor and self["menu"].instance:
 					m_color = "#0000ff00" if self.link == "yesterday" else "#00ffffff"
 					self["menu"].instance.setForegroundColor(parseColor(m_color))
-				self["menu2"].setText("")
+				self["menu2"].setText(_("%s") % title300)
 
 			if isUHD():
 				self["list1"].l.setFont(0, gFont('Regular', 36))
@@ -720,6 +721,56 @@ class FootOnSat(Screen):
 		instance = self["list2"].instance
 		instance.setSelectionEnable(0)
 
+	def info(self):
+		sel = self["list1"].getCurrent()
+		try:
+			if debug_favorite: logdata("info", "Selected item: " + str(sel))
+		except: pass
+		if not sel: return
+		home_team, away_team = "", ""
+		if isinstance(sel, (list, tuple)):
+			for item in sel:
+				if isinstance(item, dict):
+					home_team = item.get("home_team", "")
+					away_team = item.get("away_team", "")
+				elif hasattr(item, "home_team"):
+					home_team = getattr(item, "home_team", "")
+					away_team = getattr(item, "away_team", "")
+				elif isinstance(item, str) and " vs " in item:
+					parts = item.split(" vs ")
+					if len(parts) == 2:
+						home_team, away_team = parts[0].strip(), parts[1].strip()
+				elif isinstance(item, (list, tuple)):
+					for sub_item in item:
+						if isinstance(sub_item, str) and " vs " in sub_item:
+							parts = sub_item.split(" vs ")
+							if len(parts) == 2:
+								home_team, away_team = parts[0].strip(), parts[1].strip()
+								break
+				if home_team or away_team: break
+		elif isinstance(sel, dict):
+			home_team = sel.get("home_team", "")
+			away_team = sel.get("away_team", "")
+		elif hasattr(sel, "home_team"):
+			home_team = getattr(sel, "home_team", "")
+			away_team = getattr(sel, "away_team", "")
+		try:
+			if debug_favorite: logdata("info", "Parsed Teams - Home: %s, Away: %s" % (str(home_team), str(away_team)))
+		except: pass
+		teams_list = []
+		if home_team: teams_list.append((str(home_team).strip(), str(home_team).strip()))
+		if away_team: teams_list.append((str(away_team).strip(), str(away_team).strip()))
+		if teams_list:
+			try:
+				self.session.openWithCallback(self.addFavorite, TeamListScreen, teams_list, title287)
+			except NameError:
+				from .interface import TeamListScreen
+				self.session.openWithCallback(self.addFavorite, TeamListScreen, teams_list, title287)
+		else:
+			try:
+				if debug_favorite: logdata("info", "No teams found to add.")
+			except: pass
+
 	def forward(self):
 		if len(self.matches) > 0:
 			current_index = self["list1"].getSelectionIndex()
@@ -800,13 +851,13 @@ class FootOnSat(Screen):
 								if parseColor and self["menu2"].instance:
 									self["menu2"].instance.setForegroundColor(parseColor("#ff0000"))
 							else:
-								self["menu2"].setText("")
+								self["menu2"].setText(_("%s") % title300)
 						else:
 							if debug_ZAP: logdata("updateMenuWidgets ZAP_DEBUG", "No zap ref found for match → '%s'" % key)
-							self["menu2"].setText("")
+							self["menu2"].setText(_("%s") % title300)
 					except Exception as e:
 						if debug_ZAP: logdata("updateMenuWidgets ZAP_DEBUG", "Error fetching zap ref: %s" % str(e))
-						self["menu2"].setText("")
+						self["menu2"].setText(_("%s") % title300)
 				else:
 					if self.link == "yesterday":
 						y_date = date.today() - timedelta(days=1)
@@ -817,15 +868,15 @@ class FootOnSat(Screen):
 					elif self.link == "tomorrow":
 						tm_date = date.today() + timedelta(days=1)
 						display_text = "{0} - {1} - {2}".format(title296, tm_date.strftime('%A'), tm_date.strftime('%d-%m-%Y'))
-					elif self.link == "favorite":
-						display_text = "{0}".format(title284)
+					#elif self.link == "favorite":
+					#	display_text = "{0}".format(title284)
 					else:
 						display_text = self.MENUTEXT
 					self["menu"].setText(display_text)
 					if parseColor and self["menu"].instance:
 						m_color = "#0000ff00" if self.link == "yesterday" else "#00ffffff"
 						self["menu"].instance.setForegroundColor(parseColor(m_color))
-					self["menu2"].setText("")
+					self["menu2"].setText(_("%s") % title300)
 			else:
 				if self.link == "yesterday":
 					y_date = date.today() - timedelta(days=1)
@@ -836,15 +887,15 @@ class FootOnSat(Screen):
 				elif self.link == "tomorrow":
 					tm_date = date.today() + timedelta(days=1)
 					display_text = "{0} - {1} - {2}".format(title296, tm_date.strftime('%A'), tm_date.strftime('%d-%m-%Y'))
-				elif self.link == "favorite":
-						display_text = "{0}".format(title284)
+				#elif self.link == "favorite":
+				#		display_text = "{0}".format(title284)
 				else:
 					display_text = self.MENUTEXT
 				self["menu"].setText(display_text)
 				if parseColor and self["menu"].instance:
 					m_color = "#0000ff00" if self.link == "yesterday" else "#00ffffff"
 					self["menu"].instance.setForegroundColor(parseColor(m_color))
-				self["menu2"].setText("")
+				self["menu2"].setText(_("%s") % title300)
 
 		if self.selectedList == self["list2"]:
 			self.updateChannelData()

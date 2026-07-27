@@ -15,5 +15,6 @@
 		<key id="KEY_MENU" mapto="menu" flags="m" />
 		<key id="KEY_NEXT" mapto="Forward" flags="mr" />
 		<key id="KEY_PREVIOUS" mapto="Backward" flags="mr" />
+		<key id="KEY_INFO" mapto="info" flags="m" />
 	</map>
 </keymap>
