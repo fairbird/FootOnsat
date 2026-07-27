@@ -365,16 +365,34 @@ class FootOnsatLauncher(Screen):
 				system("mkdir -p /tmp/b_ext && tar -xzf /tmp/b.tar.gz -C /tmp/b_ext")
 				root_dir = os.listdir("/tmp/b_ext")[0]
 				src_root = join("/tmp/b_ext", root_dir)
+
+				# banners
 				dest = join(PLUGINPATH, "assets/compet")
 				system("cp -af %s %s" % (join(src_root, "banners/package.json"), join(dest, "package.json")))
 				src_banners = join(src_root, "banners")
 				if not exists(join(dest, "FHD")): os.makedirs(join(dest, "FHD"))
 				system("cp -rf %s/* %s/" % (join(src_banners, "FHD"), join(dest, "FHD")))
+
+				# teamlog
+				src_teamlog = join(src_root, "teamlog")
+				if exists(src_teamlog):
+					dest_teamlog = join(PLUGINPATH, "assets/teamlog")
+					if not exists(dest_teamlog): os.makedirs(dest_teamlog)
+					system("cp -rf %s/* %s/" % (src_teamlog, dest_teamlog))
+
+				# standings
+				src_standings = join(src_root, "standings")
+				if exists(src_standings):
+					dest_standings = join(PLUGINPATH, "assets/standings")
+					if not exists(dest_standings): os.makedirs(dest_standings)
+					system("cp -rf %s/* %s/" % (src_standings, dest_standings))
+
 				with open(self.sha_file, "w") as f: f.write(self.latest_sha)
 				#self.session.open(MessageBox, _("Some banners updated successfully.\nPlease restart Enigma2 to apply changes."), MessageBox.TYPE_INFO, timeout=10)
 			except: pass
 			finally:
 				system("rm -f /tmp/b.tar.gz && rm -rf /tmp/b_ext")
+
 		def check_commit(data):
 			try:
 				if PY3: data = data.decode("utf-8")
