@@ -1105,7 +1105,37 @@ class FootOnSat(Screen):
 		if self.is_closed:
 			if debug_Fetch_Live: logdata("FootOnSat", "SKIP: callAPI blocked. Plugin already closed.")
 			return
-		url_link = "tomorrow" if self.link == "tomorrow" else ("today" if self.link in ["live", "end", "favorite"] else self.link)
+		if self.link == "favorite":
+			api_url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/api.json'
+			def _got_api(api_data):
+				try:
+					if not PY3 and isinstance(api_data, str):
+						api_data = api_data.decode("utf-8", "ignore")
+					keys = json.loads(api_data).keys()
+					sections = [k for k in keys if k not in ["favorite", "live", "end"]]
+				except:
+					sections = ["yesterday", "today", "tomorrow"]
+				deferreds = []
+				for s in sections:
+					u = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/{}.json'.format(s)
+					sniFactory = WebClientContextFactory(u)
+					deferreds.append(getPage(str.encode(u), contextFactory=sniFactory, timeout=10))
+				def _got_all_favs(results):
+					combined = []
+					for success, data in results:
+						if success:
+							try:
+								if not PY3 and isinstance(data, str):
+									data = data.decode("utf-8", "ignore")
+								parsed = json.loads(data)
+								combined.extend(parsed.get('footonsat', []))
+							except: pass
+					self.getData(json.dumps({'footonsat': combined}))
+				defer.DeferredList(deferreds, consumeErrors=True).addCallback(_got_all_favs)
+			sniFactory = WebClientContextFactory(api_url)
+			getPage(str.encode(api_url), contextFactory=sniFactory, timeout=10).addCallback(_got_api).addErrback(self.error)
+			return
+		url_link = "tomorrow" if self.link == "tomorrow" else ("today" if self.link in ["live", "end"] else self.link)
 		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/{}.json'.format(url_link)
 		sniFactory = WebClientContextFactory(url)
 		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
@@ -2207,14 +2237,14 @@ class FootOnSat(Screen):
 			if debug_favorite: logdata("showSuggestions", "Suggestions received for: " + str(search_term))
 			display_list = []
 			if search_term:
-				display_list.append((str(search_term).title(), str(search_term).title()))
+				display_list.append((str(search_term.title()), str(search_term.title())))
 			if suggestions:
 				for s in suggestions:
-					s_title = str(s).title()
+					s_title = str(s.title())
 					if (s_title, s_title) not in display_list:
 						display_list.append((s_title, s_title))
 			if not display_list and search_term:
-				display_list.append((str(search_term).title(), str(search_term).title()))
+				display_list.append((str(search_term.title()), str(search_term.title())))
 			if display_list:
 				self.session.openWithCallback(self.addFavorite, TeamListScreen, list_data=display_list, title_text=_("%s") % title287)
 			else:
