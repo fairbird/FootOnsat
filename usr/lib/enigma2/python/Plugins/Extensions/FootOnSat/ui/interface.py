@@ -344,13 +344,28 @@ class FootOnSat(Screen):
 								if parseColor and self["menu2"].instance:
 									self["menu2"].instance.setForegroundColor(parseColor("#ff0000"))
 							else:
-								self["menu2"].setText(_("%s") % title300)
+								if not self.link == "favorite":
+									self["menu2"].setText(_("%s") % title300)
+									if parseColor and self["menu2"].instance:
+										self["menu2"].instance.setForegroundColor(parseColor("#ffffff"))
+								else:
+									self["menu2"].setText("")
 						else:
 							if debug_ZAP: logdata("iniMenu ZAP_DEBUG", "No zap ref found for match → '%s'" % key)
-							self["menu2"].setText(_("%s") % title300)
+							if not self.link == "favorite":
+								self["menu2"].setText(_("%s") % title300)
+								if parseColor and self["menu2"].instance:
+									self["menu2"].instance.setForegroundColor(parseColor("#ffffff"))
+							else:
+								self["menu2"].setText("")
 					except Exception as e:
 						if debug_ZAP: logdata("iniMenu ZAP_DEBUG", "Error fetching zap ref: %s" % str(e))
-						self["menu2"].setText(_("%s") % title300)
+						if not self.link == "favorite":
+							self["menu2"].setText(_("%s") % title300)
+							if parseColor and self["menu2"].instance:
+								self["menu2"].instance.setForegroundColor(parseColor("#ffffff"))
+						else:
+							self["menu2"].setText("")
 				else:
 					# Force update based on current link
 					if self.link == "yesterday":
@@ -371,7 +386,12 @@ class FootOnSat(Screen):
 					if parseColor and self["menu"].instance:
 						m_color = "#0000ff00" if self.link == "yesterday" else "#00ffffff"
 						self["menu"].instance.setForegroundColor(parseColor(m_color))
-					self["menu2"].setText(_("%s") % title300)
+					if not self.link == "favorite":
+						self["menu2"].setText(_("%s") % title300)
+						if parseColor and self["menu2"].instance:
+							self["menu2"].instance.setForegroundColor(parseColor("#ffffff"))
+					else:
+						self["menu2"].setText("")
 			else:
 				# Same logic for the second branch to ensure sync
 				if self.link == "yesterday":
@@ -392,7 +412,12 @@ class FootOnSat(Screen):
 				if parseColor and self["menu"].instance:
 					m_color = "#0000ff00" if self.link == "yesterday" else "#00ffffff"
 					self["menu"].instance.setForegroundColor(parseColor(m_color))
-				self["menu2"].setText(_("%s") % title300)
+				if not self.link == "favorite":
+					self["menu2"].setText(_("%s") % title300)
+					if parseColor and self["menu2"].instance:
+						self["menu2"].instance.setForegroundColor(parseColor("#ffffff"))
+				else:
+					self["menu2"].setText("")
 
 			if isUHD():
 				self["list1"].l.setFont(0, gFont('Regular', 36))
@@ -851,13 +876,28 @@ class FootOnSat(Screen):
 								if parseColor and self["menu2"].instance:
 									self["menu2"].instance.setForegroundColor(parseColor("#ff0000"))
 							else:
-								self["menu2"].setText(_("%s") % title300)
+								if not self.link == "favorite":
+									self["menu2"].setText(_("%s") % title300)
+									if parseColor and self["menu2"].instance:
+										self["menu2"].instance.setForegroundColor(parseColor("#ffffff"))
+								else:
+									self["menu2"].setText("")
 						else:
 							if debug_ZAP: logdata("updateMenuWidgets ZAP_DEBUG", "No zap ref found for match → '%s'" % key)
-							self["menu2"].setText(_("%s") % title300)
+							if not self.link == "favorite":
+								self["menu2"].setText(_("%s") % title300)
+								if parseColor and self["menu2"].instance:
+									self["menu2"].instance.setForegroundColor(parseColor("#ffffff"))
+							else:
+								self["menu2"].setText("")
 					except Exception as e:
 						if debug_ZAP: logdata("updateMenuWidgets ZAP_DEBUG", "Error fetching zap ref: %s" % str(e))
-						self["menu2"].setText(_("%s") % title300)
+						if not self.link == "favorite":
+							self["menu2"].setText(_("%s") % title300)
+							if parseColor and self["menu2"].instance:
+								self["menu2"].instance.setForegroundColor(parseColor("#ffffff"))
+						else:
+							self["menu2"].setText("")
 				else:
 					if self.link == "yesterday":
 						y_date = date.today() - timedelta(days=1)
@@ -876,8 +916,14 @@ class FootOnSat(Screen):
 					if parseColor and self["menu"].instance:
 						m_color = "#0000ff00" if self.link == "yesterday" else "#00ffffff"
 						self["menu"].instance.setForegroundColor(parseColor(m_color))
-					self["menu2"].setText(_("%s") % title300)
+					if not self.link == "favorite":
+						self["menu2"].setText(_("%s") % title300)
+						if parseColor and self["menu2"].instance:
+							self["menu2"].instance.setForegroundColor(parseColor("#ffffff"))
+					else:
+						self["menu2"].setText("")
 			else:
+				self["list2"].setList([])
 				if self.link == "yesterday":
 					y_date = date.today() - timedelta(days=1)
 					display_text = "{0} - {1} - {2}".format(title114, y_date.strftime('%A'), y_date.strftime('%d-%m-%Y'))
@@ -895,7 +941,12 @@ class FootOnSat(Screen):
 				if parseColor and self["menu"].instance:
 					m_color = "#0000ff00" if self.link == "yesterday" else "#00ffffff"
 					self["menu"].instance.setForegroundColor(parseColor(m_color))
-				self["menu2"].setText(_("%s") % title300)
+				if not self.link == "favorite":
+					self["menu2"].setText(_("%s") % title300)
+					if parseColor and self["menu2"].instance:
+						self["menu2"].instance.setForegroundColor(parseColor("#ffffff"))
+				else:
+					self["menu2"].setText("")
 
 		if self.selectedList == self["list2"]:
 			self.updateChannelData()
