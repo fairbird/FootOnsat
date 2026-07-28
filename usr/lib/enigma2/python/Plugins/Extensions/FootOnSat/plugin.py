@@ -7,7 +7,7 @@ from enigma import addFont, getDesktop
 
 from Plugins.Extensions.FootOnSat.ui.setup import *
 from Plugins.Extensions.FootOnSat.ui.interface import FootOnSatNotifDialog
-from Plugins.Extensions.FootOnSat.ui.launcher import FootOnsatLauncher
+from Plugins.Extensions.FootOnSat.ui.launcher import FootOnsatLauncher, pSignal
 
 addFont("/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/fonts/miso-bold.ttf", "FootFont", 100, 0)
 addFont("/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/fonts/font_default.otf", "ArabicFont", 100, 0)
@@ -40,6 +40,7 @@ def main(session, **kwargs):
 def sessionstart(reason, **kwargs):
 	if reason == 0 and not isHD():
 		FootOnSatNotifDialog.startNotif(kwargs["session"])
+		pSignal.gotSession(kwargs["session"])
 
 description = _("FootOnSat")
 ICON = "logo/%s.png" % config.plugins.FootOnSat.pluginicon.value

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from enigma import getDesktop
+from enigma import getDesktop, eActionMap, eRCInput
 from Screens.Screen import Screen
 from Screens.Standby import TryQuitMainloop
 from Screens.MessageBox import MessageBox
@@ -13,7 +13,7 @@ from Components.Sources.List import List
 from Components.Harddisk import harddiskmanager
 from Components.ConfigList import ConfigListScreen
 from Components.PluginComponent import plugins
-from Components.config import config, ConfigYesNo, ConfigInteger, ConfigSubsection, ConfigSelection, getConfigListEntry, configfile, ConfigText
+from Components.config import config, ConfigYesNo, ConfigInteger, ConfigSubsection, ConfigNumber, ConfigSelection, getConfigListEntry, configfile, ConfigText
 from Tools.LoadPixmap import LoadPixmap
 from Tools.Directories import resolveFilename, SCOPE_PLUGINS
 from Plugins.Extensions.FootOnSat.ui.Console import Console
@@ -130,6 +130,8 @@ except:
 	from Plugins.Extensions.FootOnSat.assets.languages.en import *
 #############################
 config.plugins.FootOnSat.showplugin = ConfigText(default="")
+config.plugins.FootOnSat.keyname = ConfigText(default="KEY_TEXT")
+config.plugins.FootOnSat.keysection = ConfigText(default="live")
 config.plugins.FootOnSat.devicepath = ConfigSelection(default=default_data_dir,choices=mounted_devices)
 config.plugins.FootOnSat.sort = ConfigDictionarySet(default={"footmenu": {"footsubmenu": {}}})
 config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
@@ -263,6 +265,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 
 		self["Picture"] = Pixmap()
 		self["help"] = StaticText()
+		self.keyname = config.plugins.FootOnSat.keyname.value
 		self.lang = config.plugins.FootOnSat.lang.value
 		self.old_notiffile = config.plugins.FootOnSat.notiffile.value
 		self.old_WakingUp = config.plugins.FootOnSat.WakingUp.value
@@ -285,6 +288,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.list.append(getConfigListEntry(title91))
 		self.list.append(getConfigListEntry(_("%s") % title31, config.plugins.FootOnSat.lang, _("%s") % title32))
 		self.list.append(getConfigListEntry(_("%s") % title33, config.plugins.FootOnSat.showplugin, _("%s") % title34))
+		self.list.append(getConfigListEntry(_("%s") % title301, config.plugins.FootOnSat.keyname, _("%s") % title34))
 		self.list.append(getConfigListEntry(_("%s") % title35, config.plugins.FootOnSat.updateonline, _("%s") % title36))
 		self.list.append(getConfigListEntry(_("%s") % title37, config.plugins.FootOnSat.updatebannersonline, _("%s") % title38))
 		self.list.append(getConfigListEntry(_("%s") % title39, config.plugins.FootOnSat.pluginicon, _("%s") % title40))
@@ -335,8 +339,53 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self["config"].onSelectionChanged.append(self.Picture)
 		self.onShow.append(self.Picture)
 
+	def sectionSelected(self, choice):
+		if choice:
+			config.plugins.FootOnSat.keysection.value = choice[0]
+			config.plugins.FootOnSat.keysection.save()
+			self.keySave()
+			self.createSetup()
+
+	def keyCaptured(self, keyname=None):
+		if keyname:
+			config.plugins.FootOnSat.keyname.value = keyname
+			config.plugins.FootOnSat.keyname.save()
+			sections = [
+				("live", _("Live")),
+				("today", _("Today")),
+				("yesterday", _("Yesterday")),
+				("tomorrow", _("Tomorrow")),
+				("end", _("Finished")),
+				("favorite", _("Favorite")),
+				("basketball", _("Basketball")),
+				("nba", _("NBA")),
+				("hockey", _("Hockey")),
+				("nfl", _("NFL")),
+				("championsleague", _("Champions League")),
+				("europaleague", _("Europa League")),
+				("ConferenceLeague", _("Conference League")),
+				("premierleague", _("Premier League")),
+				("laliga", _("La Liga")),
+				("laliga2", _("La Liga 2")),
+				("championship", _("Championship")),
+				("seriea", _("Serie A")),
+				("ligue1", _("Ligue 1")),
+				("eredivisie", _("Eredivisie")),
+				("saudiarabia", _("Saudi Arabia")),
+				("bundesliga", _("Bundesliga")),
+				("bundesliga2", _("Bundesliga 2")),
+				("belgianpro", _("Belgian Pro League")),
+				("superLig", _("Super Lig")),
+				("liganos", _("Liga NOS")),
+				("afcchampions", _("AFC Champions")),
+				("afcchampionstwo", _("AFC Champions Two"))
+			]
+			self.session.openWithCallback(self.sectionSelected, ChoiceBox, title=_("Select section to open"), list=sections)
+
 	def keyOk(self):
 		cur = self["config"].getCurrent()
+		if cur and len(cur) > 1 and cur[1] == config.plugins.FootOnSat.keyname:
+			self.session.openWithCallback(self.keyCaptured, KeyCaptureScreen)
 		if cur and len(cur) > 1 and cur[1] == config.plugins.FootOnSat.showplugin:
 			self.session.open(SelectionScreen)
 		if cur and len(cur) > 1 and cur[1] == config.plugins.FootOnSat.notiffile:
@@ -345,6 +394,18 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 				self.session.openWithCallback(self.saveToneSelection, ChoiceBox, title=_("%s") % title101, list=tone_list)
 			else:
 				self.session.open(MessageBox, _("%s") % title102, MessageBox.TYPE_INFO)
+
+	def keySave(self):
+		try:
+			data_dir, _, _ = get_data_paths()
+			if not exists(data_dir):
+				os.makedirs(data_dir)
+			keymap_path = os.path.join(data_dir, "keymap.xml")
+			keyfile = open(keymap_path, "w")
+			keyfile.write('<keymap>\n\t<map context="GlobalActions">\n\t\t<key id="%s" mapto="showFootOnSatLive" flags="m" />\n\t</map>\n</keymap>' % config.plugins.FootOnSat.keyname.value)
+			keyfile.close()
+		except Exception as error:
+			logdata("keySave keymap error:", error)
 
 	@staticmethod
 	def getToneFile():
@@ -514,6 +575,9 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 					changed = True
 					break
 
+		# Save Hotkey
+		self.keySave()
+
 		# Check if debug has actually changed
 		if self.debug_ZAP != config.plugins.FootOnSat.debug_ZAP.value: Restart_changed = True
 		if self.debug_Notif != config.plugins.FootOnSat.debug_Notif.value: Restart_changed = True
@@ -524,6 +588,9 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		if self.debug_MatchMedia != config.plugins.FootOnSat.debug_MatchMedia.value: Restart_changed = True
 		if self.debug_MatchDetails != config.plugins.FootOnSat.debug_MatchDetails.value: Restart_changed = True
 		if self.debug_MatchStatistics != config.plugins.FootOnSat.debug_MatchStatistics.value: Restart_changed = True
+
+		# Check if keyname has actually changed
+		if self.keyname != config.plugins.FootOnSat.keyname.value: Restart_changed = True
 
 		# Check if languages has actually changed
 		if self.lang != config.plugins.FootOnSat.lang.value: Restart_changed = True
@@ -710,3 +777,70 @@ class SelectionScreen(Screen, ConfigListScreen):
                         self.session.open(TryQuitMainloop, 3)
                 else:
                         self.close(True)
+
+
+class KeyCaptureScreen(Screen):
+	skin = """<screen position="center,center" size="500,100" title="" flags="wfNoBorder">
+	<widget name="label" position="10,10" size="480,80" font="Regular;35" halign="center" valign="center"/>
+	</screen>"""
+	def __init__(self, session):
+		Screen.__init__(self, session)
+		self["label"] = Label(title303)
+		self.key_caught = False
+		self["actions"] = ActionMap(["SetupActions", "WizardActions", "MenuActions"], 
+			{
+				"cancel": self.close,
+				"ok": self.dummy,
+				"up": self.dummy,
+				"down": self.dummy,
+				"left": self.dummy,
+				"right": self.dummy
+			}, -100)
+		self.onFirstExecBegin.append(self.startHook)
+		self.onClose.append(self.stopHook)
+
+	def dummy(self):
+		return 1
+
+	def startHook(self):
+		try:
+			self.hook_slot = eActionMap.getInstance().bindAction('', -2147483648, self.keyPressed)
+		except:
+			pass
+
+	def stopHook(self):
+		try:
+			if hasattr(self, 'hook_slot'):
+				self.hook_slot = None
+				eActionMap.getInstance().unbindAction('', self.keyPressed)
+		except:
+			pass
+
+	def keyPressed(self, key, flag):
+		if flag == 1:
+			keyname = self.resolveKeyName(key)
+			if keyname:
+				if keyname in ("KEY_EXIT", "KEY_ESC"):
+					self.close(None)
+					return 1
+				if not self.key_caught:
+					self.key_caught = True
+					self.close(keyname)
+					return 1
+		return 1
+
+	def resolveKeyName(self, key):
+		try:
+			from keyids import KEYIDS
+			for name, k_id in KEYIDS.items():
+				if k_id == key:
+					return name
+		except:
+			pass
+		try:
+			rc = eRCInput.getInstance()
+			if hasattr(rc, 'getLabel'): return rc.getLabel(key)
+			if hasattr(rc, 'getKeyName'): return rc.getKeyName(key)
+		except:
+			pass
+		return None

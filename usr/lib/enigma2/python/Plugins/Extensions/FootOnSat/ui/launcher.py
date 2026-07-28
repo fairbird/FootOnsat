@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from enigma import eActionMap, eRCInput
 from Screens.Screen import Screen
 from Screens.MessageBox import MessageBox
 from Components.ActionMap import ActionMap
@@ -19,6 +20,9 @@ from sys import version_info
 from .compat import *
 from .setup import *
 from Plugins.Extensions.FootOnSat.__init__ import __version__
+from keymapparser import readKeymap
+from GlobalActions import globalActionMap
+from Tools.Directories import resolveFilename, SCOPE_PLUGINS
 
 VER = float(__version__)
 
@@ -406,3 +410,109 @@ class FootOnsatLauncher(Screen):
 			except: pass
 		try: getPage(b"https://api.github.com/repos/fairbird/Banners_FootOnSat/commits?path=banners&per_page=1", agent=b"Enigma2").addCallback(check_commit)
 		except: pass
+
+
+class KeyCaptureScreen(Screen):
+	skin = """<screen position="center,center" size="500,100" title="" flags="wfNoBorder">
+	<widget name="label" position="10,10" size="480,80" font="Regular;35" halign="center" valign="center"/>
+	</screen>"""
+	def __init__(self, session):
+		Screen.__init__(self, session)
+		self["label"] = Label(title100)
+		self.key_caught = False
+		self["actions"] = ActionMap(["SetupActions", "WizardActions", "MenuActions"], 
+			{
+				"cancel": self.close,
+				"ok": self.dummy,
+				"up": self.dummy,
+				"down": self.dummy,
+				"left": self.dummy,
+				"right": self.dummy
+			}, -100)
+		self.onFirstExecBegin.append(self.startHook)
+		self.onClose.append(self.stopHook)
+
+	def dummy(self):
+		return 1
+
+	def startHook(self):
+		try:
+			self.hook_slot = eActionMap.getInstance().bindAction('', -2147483648, self.keyPressed)
+		except:
+			pass
+
+	def stopHook(self):
+		try:
+			if hasattr(self, 'hook_slot'):
+				self.hook_slot = None
+				eActionMap.getInstance().unbindAction('', self.keyPressed)
+		except:
+			pass
+
+	def keyPressed(self, key, flag):
+		if flag == 1:
+			keyname = self.resolveKeyName(key)
+			if keyname:
+				if keyname in ("KEY_EXIT", "KEY_ESC"):
+					self.close(None)
+					return 1
+				if not self.key_caught:
+					self.key_caught = True
+					self.close(keyname)
+					return 1
+		return 1
+
+	def resolveKeyName(self, key):
+		try:
+			from keyids import KEYIDS
+			for name, k_id in KEYIDS.items():
+				if k_id == key:
+					return name
+		except:
+			pass
+		try:
+			rc = eRCInput.getInstance()
+			if hasattr(rc, 'getLabel'): return rc.getLabel(key)
+			if hasattr(rc, 'getKeyName'): return rc.getKeyName(key)
+		except:
+			pass
+		return None
+
+class FootOnSatLive():
+	def __init__(self):
+		self.dialog = None
+
+	def gotSession(self, session):
+		self.session = session
+		self.FootOnSatLive = None
+		try:
+			data_dir, _, _ = get_data_paths()
+			if not exists(data_dir):
+				os.makedirs(data_dir)
+			keymap = os.path.join(data_dir, "keymap.xml")
+			if not exists(keymap):
+				try:
+					keyfile = open(keymap, "w")
+					keyfile.write('<keymap>\n\t<map context="GlobalActions">\n\t\t<key id="%s" mapto="showFootOnSatLive" flags="m" />\n\t</map>\n</keymap>' % config.plugins.FootOnSat.keyname.value)
+					keyfile.close()
+				except Exception:
+					pass
+		except Exception:
+			keymap = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/db/keymap.xml")
+		global globalActionMap
+		try:
+			readKeymap(keymap)
+		except Exception:
+			pass
+		if 'showFootOnSatLive' in globalActionMap.actions:
+			del globalActionMap.actions['showFootOnSatLive']
+		globalActionMap.actions['showFootOnSatLive'] = self.ShowHide
+
+	def ShowHide(self):
+		try:
+			section = config.plugins.FootOnSat.keysection.value if hasattr(config.plugins.FootOnSat, "keysection") else "live"
+			self.session.open(FootOnSat, section)
+		except Exception:
+			pass
+
+pSignal = FootOnSatLive()
