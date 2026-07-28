@@ -304,6 +304,14 @@ class FootOnSat(Screen):
 
 	def iniMenu(self):
 		LIVECOLORE = int(config.plugins.FootOnSat.livecolor.value, 16)
+		if self.link == "favorite" and len(self.matches) > 0:
+			seen = set()
+			uniq = []
+			for m in self.matches:
+				if (m[0], m[1]) not in seen:
+					seen.add((m[0], m[1]))
+					uniq.append(m)
+			self.matches = uniq
 		if len(self.matches) > 0:
 			# This code only for test 
 			#self.matches[0][5] = "6"
