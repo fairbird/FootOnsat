@@ -1,16 +1,33 @@
 # -*- coding: utf-8 -*-
 from os.path import join, exists
-from Plugins.Extensions.FootOnSat.ui.setup import *
-
+from Components.config import config
 
 def DreamOS():
 	if exists('/var/lib/dpkg/status'):
 		return True
 	return False
 
+if config.plugins.FootOnSat.backcolor.value == "default":
+	Box_on="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/Box_on.png"
+elif config.plugins.FootOnSat.backcolor.value == "rad":
+	Box_on="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/Box_on_red.png"
+elif config.plugins.FootOnSat.backcolor.value == "blue":
+	Box_on="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/Box_on_blue.png"
+elif config.plugins.FootOnSat.backcolor.value == "white":
+	Box_on="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/Box_on_white.png"
+elif config.plugins.FootOnSat.backcolor.value == "black":
+	Box_on="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/Box_on_black.png"
+elif config.plugins.FootOnSat.backcolor.value == "yellow":
+	Box_on="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/Box_on_yellow.png"
+elif config.plugins.FootOnSat.backcolor.value == "green":
+	Box_on="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/Box_on_green.png"
+else:
+	Box_on="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/Box_on.png"
+
+
 SKIN_launcher = """
 <screen name="FootOnsatLauncher" position="0,0" size="2560,1440" backgroundColor="transparent" flags="wfNoBorder" title="MenuLauncher">
-    <widget name="menu" boxSize="300" activeSize="330" panelheight="760" itemPerPage="12" margin="30" itemPixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/Box_off.png" selPixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/Box_on.png" position="300,center" size="2214,780" transparent="1"/>
+    <widget name="menu" boxSize="300" activeSize="330" panelheight="760" itemPerPage="12" margin="30" itemPixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/Box_off.png" selPixmap="%s" position="300,center" size="2214,780" transparent="1"/>
     <eLabel backgroundColor="#50494f4f" position="1218,1018" size="148,48" cornerRadius="25" zPosition="-25" />
     <eLabel backgroundColor="#80000000" position="0,1160" size="2560,174" />
     <eLabel backgroundColor="#494f4f" position="0,1334" size="2560,174" />
@@ -29,13 +46,13 @@ SKIN_launcher = """
     </widget>
     <ePixmap alphatest="off" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/play_topbg.png" position="0,0" size="2560,267" zPosition="-12" transparent="1" />
     <widget backgroundColor="#ff2c2d2b" font="FootFont;147" foregroundColor="#00ffffff" halign="right" position="2120,50" render="Label" size="200,200" source="global.CurrentTime" transparent="1" valign="top" zPosition="20">
-        <convert type="ClockToText">Format: %H</convert>
+        <convert type="ClockToText">Format: %%H</convert>
     </widget>
     <widget backgroundColor="#ff2c2d2b" font="FootFont;74" foregroundColor="#00ffffff" halign="left" position="2345,67" render="Label" size="134,74" source="global.CurrentTime" transparent="1" valign="top" zPosition="20">
-        <convert type="ClockToText">Format: %M</convert>
+        <convert type="ClockToText">Format: %%M</convert>
     </widget>
     <widget backgroundColor="#ff2c2d2b" font="FootFont;40" foregroundColor="#00ffffff" halign="left" position="2340,154" render="Label" size="134,67" source="global.CurrentTime" transparent="1" valign="top" zPosition="20">
-        <convert type="ClockToText">Format: %b %d</convert>
+        <convert type="ClockToText">Format: %%b %%d</convert>
     </widget>
     <eLabel backgroundColor="#00ffffff" position="2330,147" size="100,4" zPosition="20" />
     <eLabel text="FootOnsat" position="79,78" size="236,64" zPosition="1" font="FootFont;64" halign="left" foregroundColor="#00ffffff" backgroundColor="#ff2c2d2b" transparent="1" />
@@ -49,7 +66,7 @@ SKIN_launcher = """
     <eLabel backgroundColor="blue" position="1920,1434" size="640,7" zPosition="2" />
     <widget backgroundColor="#494f4f" font="FootFont;34" foregroundColor="foreground" halign="center" name="blue" position="1920,1334" size="640,100" transparent="0" valign="center" zPosition="2" />
 </screen>
-"""
+""" % Box_on
 
 SKIN_interface = """
 <screen name="footonsat" position="0,0" size="2560,1440" backgroundColor="transparent" flags="wfNoBorder" title="FootOnSat">

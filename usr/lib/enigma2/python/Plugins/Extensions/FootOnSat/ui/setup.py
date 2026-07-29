@@ -150,6 +150,15 @@ config.plugins.FootOnSat.debug_Fetch_Live = ConfigYesNo(default=False)
 config.plugins.FootOnSat.debug_MatchMedia = ConfigYesNo(default=False)
 config.plugins.FootOnSat.debug_MatchDetails = ConfigYesNo(default=False)
 config.plugins.FootOnSat.debug_MatchStatistics = ConfigYesNo(default=False)
+config.plugins.FootOnSat.backcolor = ConfigSelection(default = "default", choices = [
+	("default", "%s" % title21),
+	("rad", "%s" % title1),
+	("blue", "%s" % title5),
+	("white", "%s" % title2),
+	("black", "%s" % title4),
+	("yellow", "%s" % title307),
+	("green", "%s" % title3)
+	])
 config.plugins.FootOnSat.pluginicon = ConfigSelection(default = "logo1", choices = [
 	("logo1", "%s 1" % title0),
 	("logo2", "%s 2" % title0),
@@ -270,6 +279,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.old_notiffile = config.plugins.FootOnSat.notiffile.value
 		self.old_WakingUp = config.plugins.FootOnSat.WakingUp.value
 		self.icons_value = config.plugins.FootOnSat.icons.value
+		self.backcolor = config.plugins.FootOnSat.backcolor.value
 		self.pluginicon = config.plugins.FootOnSat.pluginicon.value
 		self.debug_ZAP = config.plugins.FootOnSat.debug_ZAP.value
 		self.debug_Notif = config.plugins.FootOnSat.debug_Notif.value
@@ -292,6 +302,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.list.append(getConfigListEntry(_("%s") % title35, config.plugins.FootOnSat.updateonline, _("%s") % title36))
 		self.list.append(getConfigListEntry(_("%s") % title37, config.plugins.FootOnSat.updatebannersonline, _("%s") % title38))
 		self.list.append(getConfigListEntry(_("%s") % title39, config.plugins.FootOnSat.pluginicon, _("%s") % title40))
+		self.list.append(getConfigListEntry(_("%s") % title304, config.plugins.FootOnSat.backcolor, _("%s") % title305))
 		self.list.append(getConfigListEntry(_("%s") % title41, config.plugins.FootOnSat.icons, _("%s") % title42))
 		self.list.append(getConfigListEntry(title92))
 		self.list.append(getConfigListEntry(_("%s") % title43, config.plugins.FootOnSat.enableflag, _("%s") % title44))
@@ -503,6 +514,20 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo/logo6.png')
 			elif index == "logo7":
 				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/logo/logo7.png')
+			elif index == "default":
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/icon/Box_on.png')
+			elif index == "rad":
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/icon/Box_on_red.png')
+			elif index == "blue":
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/icon/Box_on_blue.png')
+			elif index == "white":
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/icon/Box_on_white.png')
+			elif index == "black":
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/icon/Box_on_black.png')
+			elif index == "yellow":
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/icon/Box_on_yellow.png')
+			elif index == "green":
+				pic = resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/icon/Box_on_green.png')
 			if pic and self['Picture'].instance and exists(pic):
 				self["Picture"].instance.setScale(1)
 				self["Picture"].instance.setPixmapFromFile(pic)
@@ -600,6 +625,9 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 
 		# Check if plugin icon has actually changed
 		if self.pluginicon != config.plugins.FootOnSat.pluginicon.value: Restart_changed = True
+
+		# Check if plugin backcolor has actually changed
+		if self.backcolor != config.plugins.FootOnSat.backcolor.value: Restart_changed = True
 
 		# Handle icons download and set Restart_changed flag
 		if self.icons_value != config.plugins.FootOnSat.icons.value:
