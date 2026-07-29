@@ -65,6 +65,7 @@ SKIN_launcher = """
     <widget backgroundColor="#494f4f" font="FootFont;34" foregroundColor="foreground" halign="center" name="yellow" position="1280,1334" size="640,100" transparent="0" valign="center" zPosition="2" />
     <eLabel backgroundColor="blue" position="1920,1434" size="640,7" zPosition="2" />
     <widget backgroundColor="#494f4f" font="FootFont;34" foregroundColor="foreground" halign="center" name="blue" position="1920,1334" size="640,100" transparent="0" valign="center" zPosition="2" />
+    <ePixmap alphatest="off" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/menu_UHD.png" position="19,1366" size="110,50" zPosition="5" transparent="1"/>
 </screen>
 """ % Box_on
 
