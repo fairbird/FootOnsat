@@ -574,10 +574,25 @@ class FootOnSat(Screen):
 							res.append(MultiContentEntryText(pos=(1092, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team2_score), color=LIVECOLORE))
 				# Competition banner
 				if self.link not in (SPORTS | FOOTBALL):
+					banner_png = None
 					try:
-						res.append(MultiContentEntryPixmapAlphaBlend(pos=(65, 6), size=(320, 163), png=loadPNG(banner), flags=BT_SCALE))
-					except TypeError:
-						res.append(MultiContentEntryPixmapAlphaBlend(pos=(65, 6), size=(320, 163), png=loadPNG(banner)))
+						banner_path = FootOnSat._native_path(banner)
+						if not banner_path:
+							banner_path = FootOnSat.setCompet("")
+						banner_png = loadPNG(banner_path)
+					except Exception:
+						banner_png = None
+					if banner_png is None:
+						try:
+							fallback_banner = FootOnSat._native_path(resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/default/FHD/default.png"))
+							banner_png = loadPNG(fallback_banner)
+						except Exception:
+							banner_png = None
+					if banner_png is not None:
+						try:
+							res.append(MultiContentEntryPixmapAlphaBlend(pos=(65, 6), size=(320, 163), png=banner_png, flags=BT_SCALE))
+						except TypeError:
+							res.append(MultiContentEntryPixmapAlphaBlend(pos=(65, 6), size=(320, 163), png=banner_png))
 				# Notification icon
 				if self.link not in ["live", "end", "yesterday"]:
 					res.append(MultiContentEntryPixmapAlphaBlend(pos=(-20, 63), size=(70, 50), png=loadPNG(notif)))
@@ -1201,15 +1216,165 @@ class FootOnSat(Screen):
 			calc = (datetime.strptime(match_date, '%H:%M - %Y-%m-%d') - timedelta(hours=dif)).strftime('%H:%M - %Y-%m-%d')
 		return calc
 
+	@staticmethod
+	def _native_path(path):
+		try:
+			if path is None:
+				return None
+			if not PY3:
+				try:
+					if isinstance(path, unicode):
+						return path.encode('utf-8', 'ignore')
+				except Exception:
+					pass
+			return path
+		except Exception:
+			return None
+
 	@classmethod
 	def setCompet(cls, compet):
-		with open('/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/compet/package.json', 'r') as f:
-			data = json.load(f)
-		for c in data['compet']:
-			if c['label'] in compet:
-				return resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/FHD/{}.png".format(c['banner']))
-		banner = random.choice(['default', 'default1', 'default2', 'default3'])
-		return resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/default/FHD/{}.png".format(banner))
+		def _to_text(value):
+			try:
+				if value is None:
+					return u"" if not PY3 else ""
+				if not PY3:
+					try:
+						if isinstance(value, str):
+							return value.decode('utf-8', 'ignore')
+					except Exception:
+						pass
+				return value
+			except Exception:
+				try:
+					return str(value)
+				except Exception:
+					return u"" if not PY3 else ""
+
+		def _lower(value):
+			try:
+				return _to_text(value).lower()
+			except Exception:
+				return ""
+
+		def _normalize(value):
+			value = _lower(value)
+			try:
+				value = normalize('NFKD', value).encode('ascii', 'ignore')
+				if PY3:
+					value = value.decode('ascii', 'ignore')
+			except Exception:
+				pass
+			try:
+				value = value.replace('&', ' and ')
+				value = re.sub(r"[\(\[].*?[\)\]]", " ", value)
+				value = re.sub(r"[^a-z0-9]+", " ", value)
+				value = re.sub(r"\b(round|group|week|matchday|stage|leg|city|venue|of|the)\b", " ", value)
+				return " ".join(value.split())
+			except Exception:
+				return ""
+
+		def _default_banner():
+			defaults = ['default', 'default1', 'default2', 'default3']
+			try:
+				idx = sum([ord(ch) for ch in _lower(compet)]) % len(defaults)
+			except Exception:
+				idx = random.randint(0, len(defaults) - 1)
+			return resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/default/FHD/%s.png" % defaults[idx])
+
+		def _banner_file(banner_name):
+			if not hasattr(cls, '_compet_banner_cache'):
+				cls._compet_banner_cache = {}
+			key = _normalize(banner_name)
+			if key in cls._compet_banner_cache:
+				return cls._native_path(cls._compet_banner_cache[key])
+
+			banner_dir = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/FHD")
+			candidates = []
+			try:
+				candidates.append(resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/FHD/%s.png" % _to_text(banner_name)))
+			except Exception:
+				pass
+			try:
+				norm_name = _normalize(banner_name)
+				if norm_name:
+					candidates.append(resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/FHD/%s.png" % norm_name))
+			except Exception:
+				pass
+
+			for path in candidates:
+				try:
+					if path and (fileExists(path) or exists(path)):
+						cls._compet_banner_cache[key] = path
+						return path
+				except Exception:
+					pass
+
+			try:
+				if exists(banner_dir):
+					for filename in os.listdir(banner_dir):
+						if not _lower(filename).endswith('.png'):
+							continue
+						stem = filename[:-4]
+						stem_norm = _normalize(stem)
+						if key and stem_norm and (stem_norm == key or stem_norm in key or key in stem_norm):
+							path = join(banner_dir, filename)
+							path = cls._native_path(path)
+							cls._compet_banner_cache[key] = path
+							return path
+			except Exception:
+				pass
+
+			cls._compet_banner_cache[key] = None
+			return None
+
+		compet_raw = _lower(compet)
+		compet_norm = _normalize(compet)
+		if not compet_norm and not compet_raw:
+			return _default_banner()
+
+		try:
+			if not hasattr(cls, '_compet_package_cache'):
+				cls._compet_package_cache = None
+			if cls._compet_package_cache is None:
+				package_file = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/package.json")
+				with open(package_file, 'r') as f:
+					cls._compet_package_cache = json.load(f)
+			data = cls._compet_package_cache or {}
+			items = data.get('compet', [])
+		except Exception:
+			items = []
+
+		matches = []
+		for c in items:
+			try:
+				label = c.get('label', '')
+				banner_name = c.get('banner', label)
+				label_raw = _lower(label)
+				label_norm = _normalize(label)
+				if not label_norm:
+					continue
+				score = 0
+				if label_raw and (label_raw in compet_raw or compet_raw in label_raw):
+					score = 3000 + len(label_norm)
+				elif label_norm and (label_norm in compet_norm or compet_norm in label_norm):
+					score = 2000 + len(label_norm)
+				else:
+					label_words = set(label_norm.split())
+					compet_words = set(compet_norm.split())
+					if len(label_words) >= 2 and label_words.issubset(compet_words):
+						score = 1000 + len(label_words)
+				if score:
+					path = _banner_file(banner_name)
+					if path:
+						matches.append((score, path))
+			except Exception:
+				pass
+
+		if matches:
+			matches.sort(reverse=True)
+			return matches[0][1]
+
+		return _default_banner()
 
 	def callAPI(self):
 		if self.is_closed:
@@ -4676,8 +4841,8 @@ class FootOnsatNotifScreen(Screen):
 			self['live'].show()
 			self['message'].setText("")
 
-		banner = FootOnSat.setCompet(compet.lower())
-		self['compet'].instance.setPixmapFromFile(banner)
+		if banner:
+			self['compet'].instance.setPixmapFromFile(banner)
 
 		flag1 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/%s.png" % team1)
 		flag2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/%s.png" % team2)
