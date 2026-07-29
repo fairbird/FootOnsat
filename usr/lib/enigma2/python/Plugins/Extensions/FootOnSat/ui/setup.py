@@ -298,7 +298,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.list.append(getConfigListEntry(title91))
 		self.list.append(getConfigListEntry(_("%s") % title31, config.plugins.FootOnSat.lang, _("%s") % title32))
 		self.list.append(getConfigListEntry(_("%s") % title33, config.plugins.FootOnSat.showplugin, _("%s") % title34))
-		self.list.append(getConfigListEntry(_("%s") % title301, config.plugins.FootOnSat.keyname, _("%s") % title34))
+		self.list.append(getConfigListEntry(_("%s") % title301, config.plugins.FootOnSat.keyname, _("%s") % title302))
 		self.list.append(getConfigListEntry(_("%s") % title35, config.plugins.FootOnSat.updateonline, _("%s") % title36))
 		self.list.append(getConfigListEntry(_("%s") % title37, config.plugins.FootOnSat.updatebannersonline, _("%s") % title38))
 		self.list.append(getConfigListEntry(_("%s") % title39, config.plugins.FootOnSat.pluginicon, _("%s") % title40))
