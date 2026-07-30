@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from os.path import join, exists
 from Components.config import config
+from Plugins.Extensions.FootOnSat.ui.setup import * # Do not remove it important for langauges codes
 
 def DreamOS():
 	if exists('/var/lib/dpkg/status'):
