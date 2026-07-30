@@ -302,8 +302,9 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.list.append(getConfigListEntry(_("%s") % title35, config.plugins.FootOnSat.updateonline, _("%s") % title36))
 		self.list.append(getConfigListEntry(_("%s") % title37, config.plugins.FootOnSat.updatebannersonline, _("%s") % title38))
 		self.list.append(getConfigListEntry(_("%s") % title39, config.plugins.FootOnSat.pluginicon, _("%s") % title40))
-		self.list.append(getConfigListEntry(_("%s") % title304, config.plugins.FootOnSat.backcolor, _("%s") % title305))
 		self.list.append(getConfigListEntry(_("%s") % title41, config.plugins.FootOnSat.icons, _("%s") % title42))
+		if config.plugins.FootOnSat.icons.value != "icons_renkli":
+			self.list.append(getConfigListEntry(_("%s") % title304, config.plugins.FootOnSat.backcolor, _("%s") % title305))
 		self.list.append(getConfigListEntry(title92))
 		self.list.append(getConfigListEntry(_("%s") % title43, config.plugins.FootOnSat.enableflag, _("%s") % title44))
 		self.list.append(getConfigListEntry(_("%s") % title45, config.plugins.FootOnSat.devicepath, _("%s") % title46))
