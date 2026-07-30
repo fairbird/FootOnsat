@@ -130,7 +130,7 @@ except:
 	from Plugins.Extensions.FootOnSat.assets.languages.en import *
 #############################
 config.plugins.FootOnSat.showplugin = ConfigText(default="")
-config.plugins.FootOnSat.keyname = ConfigText(default="KEY_TEXT")
+config.plugins.FootOnSat.keyname = ConfigText(default="KEY_5")
 config.plugins.FootOnSat.keysection = ConfigText(default="live")
 config.plugins.FootOnSat.devicepath = ConfigSelection(default=default_data_dir,choices=mounted_devices)
 config.plugins.FootOnSat.sort = ConfigDictionarySet(default={"footmenu": {"footsubmenu": {}}})
