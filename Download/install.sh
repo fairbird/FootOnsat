@@ -432,8 +432,12 @@ if [ -f "$BANNERS_TMP_TAR" ]; then
     tar -xzf "$BANNERS_TMP_TAR" -C "$BANNERS_TMP_DIR"
     SRC_PATH=$(ls -d $BANNERS_TMP_DIR/* | head -n 1)/banners
     cp -r "$SRC_PATH/package.json" "$PLUGIN_PATH/assets/compet/"
-    mkdir -p "$PLUGIN_PATH/assets/compet/FHD"
+    [ ! -d "$PLUGIN_PATH/assets/compet/FHD" ] && mkdir -p "$PLUGIN_PATH/assets/compet/FHD"
+    [ ! -d "$PLUGIN_PATH/assets/standings" ] && mkdir -p "$PLUGIN_PATH/assets/standings"
+    [ ! -d "$PLUGIN_PATH/assets/teamlog" ] && mkdir -p "$PLUGIN_PATH/assets/teamlog"
     cp -r "$SRC_PATH/FHD/"*.png "$PLUGIN_PATH/assets/compet/FHD/"
+    cp -r "$SRC_PATH/standings/"*.png "$PLUGIN_PATH/assets/standings/"
+    cp -r "$SRC_PATH/teamlog/"*.png "$PLUGIN_PATH/assets/teamlog/"
     CUR_SHA=$(curl -s "https://api.github.com/repos/fairbird/Banners_FootOnSat/commits?path=banners&per_page=1" | grep '"sha"' | head -n 1 | cut -d '"' -f 4)
     if [ -n "$CUR_SHA" ]; then
         echo "$CUR_SHA" > "$BANNERS_SHA_FILE"
