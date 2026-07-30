@@ -364,11 +364,14 @@ class FootOnsatLauncher(Screen):
 
 	def checkbannersupdates(self):
 		self.sha_file = join(PLUGINPATH, "assets/compet/.last_commit.sha")
+		if not exists(self.sha_file): system("touch " + self.sha_file)
 		def process_all(result):
 			try:
+				print("[CheckBannersUpdates] Starting extraction and copying process...")
 				system("mkdir -p /tmp/b_ext && tar -xzf /tmp/b.tar.gz -C /tmp/b_ext")
 				root_dir = os.listdir("/tmp/b_ext")[0]
 				src_root = join("/tmp/b_ext", root_dir)
+				print("[CheckBannersUpdates] Root dir found:", root_dir)
 
 				# banners
 				dest = join(PLUGINPATH, "assets/compet")
@@ -376,26 +379,31 @@ class FootOnsatLauncher(Screen):
 				src_banners = join(src_root, "banners")
 				if not exists(join(dest, "FHD")): os.makedirs(join(dest, "FHD"))
 				system("cp -rf %s/* %s/" % (join(src_banners, "FHD"), join(dest, "FHD")))
+				print("[CheckBannersUpdates] Banners copied successfully.")
 
 				# teamlog
-				src_teamlog = join(src_root, "teamlog")
+				src_teamlog = join(src_root, "banners/teamlog")
 				if exists(src_teamlog):
 					dest_teamlog = join(PLUGINPATH, "assets/teamlog")
 					if not exists(dest_teamlog): os.makedirs(dest_teamlog)
 					system("cp -rf %s/* %s/" % (src_teamlog, dest_teamlog))
+					print("[CheckBannersUpdates] Teamlog copied successfully.")
 
 				# standings
-				src_standings = join(src_root, "standings")
+				src_standings = join(src_root, "banners/standings")
 				if exists(src_standings):
 					dest_standings = join(PLUGINPATH, "assets/standings")
 					if not exists(dest_standings): os.makedirs(dest_standings)
 					system("cp -rf %s/* %s/" % (src_standings, dest_standings))
+					print("[CheckBannersUpdates] Standings copied successfully.")
 
 				with open(self.sha_file, "w") as f: f.write(self.latest_sha)
-				#self.session.open(MessageBox, _("Some banners updated successfully.\nPlease restart Enigma2 to apply changes."), MessageBox.TYPE_INFO, timeout=10)
-			except: pass
+				print("[CheckBannersUpdates] Update completed and SHA written:", self.latest_sha)
+			except Exception as e:
+				print("[CheckBannersUpdates] ERROR:", str(e))
 			finally:
 				system("rm -f /tmp/b.tar.gz && rm -rf /tmp/b_ext")
+				print("[CheckBannersUpdates] Cleanup finished.")
 
 		def check_commit(data):
 			try:
