@@ -4841,6 +4841,7 @@ class FootOnsatNotifScreen(Screen):
 			self['live'].show()
 			self['message'].setText("")
 
+		banner = FootOnSat.setCompet(str(compet).lower())
 		if banner:
 			self['compet'].instance.setPixmapFromFile(banner)
 
