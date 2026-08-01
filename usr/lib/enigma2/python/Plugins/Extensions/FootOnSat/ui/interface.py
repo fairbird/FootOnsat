@@ -1210,17 +1210,21 @@ class FootOnSat(Screen):
 			comp_val = compet.decode('utf-8', 'ignore').lower()
 		except Exception:
 			comp_val = compet.lower()
-		try:
-			comp_val = comp_val.split(u' - ')[0].strip()
-		except Exception:
-			comp_val = comp_val.split(' - ')[0].strip()
+		for c in data['compet']:
+			try:
+				lbl = c['label'].decode('utf-8', 'ignore').lower()
+			except Exception:
+				lbl = c['label'].lower()
+			if lbl == comp_val:
+				if debug_Fetch_Live: logdata("FootOnSat", "DEBUG: exact matched -> %s with banner %s" % (c['label'], c['banner']))
+				return resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/FHD/{}.png".format(c['banner']))
 		for c in data['compet']:
 			try:
 				lbl = c['label'].decode('utf-8', 'ignore').lower()
 			except Exception:
 				lbl = c['label'].lower()
 			if lbl in comp_val or comp_val in lbl:
-				if debug_Fetch_Live: logdata("FootOnSat", "DEBUG: matched -> %s with banner %s" % (c['label'], c['banner']))
+				if debug_Fetch_Live: logdata("FootOnSat", "DEBUG: partial matched -> %s with banner %s" % (c['label'], c['banner']))
 				return resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/FHD/{}.png".format(c['banner']))
 		if debug_Fetch_Live: logdata("FootOnSat", "DEBUG: no match found, using random default")
 		banner = random.choice(['default', 'default1', 'default2', 'default3'])
