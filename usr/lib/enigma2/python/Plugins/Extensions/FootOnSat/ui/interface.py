@@ -18,6 +18,7 @@ from Components.ActionMap import ActionMap
 from Components.NimManager import nimmanager
 from Components.config import config
 from Components.PluginComponent import plugins
+from Components.Sources.StaticText import StaticText
 from Screens.Screen import Screen
 from Screens.InfoBar import InfoBar, MoviePlayer
 from Screens.ChoiceBox import ChoiceBox
@@ -295,6 +296,10 @@ class FootOnSat(Screen):
 		self.items_per_page = 5 if isUHD() else 4
 		self.create_table()
 		self.callAPI()
+
+	def createSummary(self):
+		print("[FootOnSat] createSummary called")
+		return FootOnSatSummary
 
 	def onWindowShow(self):
 		self["list1"].onSelectionChanged.append(self.getChannels)
@@ -1203,7 +1208,7 @@ class FootOnSat(Screen):
 
 	@classmethod
 	def setCompet(cls, compet):
-		if debug_Fetch_Live: logdata("FootOnSat", "DEBUG: searching for compet -> %s" % compet)
+#		if debug_Fetch_Live: logdata("FootOnSat", "DEBUG: searching for compet -> %s" % compet)
 		with open(resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/package.json"), 'r') as f:
 			data = json.load(f)
 		try:
@@ -1216,7 +1221,7 @@ class FootOnSat(Screen):
 			except Exception:
 				lbl = c['label'].lower()
 			if lbl == comp_val:
-				if debug_Fetch_Live: logdata("FootOnSat", "DEBUG: exact matched -> %s with banner %s" % (c['label'], c['banner']))
+#				if debug_Fetch_Live: logdata("FootOnSat", "DEBUG: exact matched -> %s with banner %s" % (c['label'], c['banner']))
 				return resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/FHD/{}.png".format(c['banner']))
 		for c in data['compet']:
 			try:
@@ -1224,9 +1229,9 @@ class FootOnSat(Screen):
 			except Exception:
 				lbl = c['label'].lower()
 			if lbl in comp_val or comp_val in lbl:
-				if debug_Fetch_Live: logdata("FootOnSat", "DEBUG: partial matched -> %s with banner %s" % (c['label'], c['banner']))
+#				if debug_Fetch_Live: logdata("FootOnSat", "DEBUG: partial matched -> %s with banner %s" % (c['label'], c['banner']))
 				return resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/FHD/{}.png".format(c['banner']))
-		if debug_Fetch_Live: logdata("FootOnSat", "DEBUG: no match found, using random default")
+#		if debug_Fetch_Live: logdata("FootOnSat", "DEBUG: no match found, using random default")
 		banner = random.choice(['default', 'default1', 'default2', 'default3'])
 		return resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/default/FHD/{}.png".format(banner))
 
@@ -1302,8 +1307,6 @@ class FootOnSat(Screen):
 			selected_date = date.today().isoformat()
 		if debug_Fetch_Live: logdata("fetch_live_results", "Current Link: %s" % self.link)
 		if debug_Fetch_Live: logdata("fetch_live_results", "Selected Date: %s" % selected_date)
-		url1 = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}/'.format(selected_date)
-		url2 = 'https://api.sofascore.com/api/v1/sport/football/scheduled-events/{0}/inverse'.format(selected_date)
 
 		# === Headers/Agent (Minimal and robust headers) ===
 		AGENT = b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
@@ -1360,6 +1363,7 @@ class FootOnSat(Screen):
 							_fetch_page(page + 1, urls, d_final)
 						else:
 							urls_unique = list(set(urls))
+							if debug_Fetch_Live: logdata("fetch_live_results", "DISCOVERY DONE: %d tournament URLs found in %.2fs" % (len(urls_unique), time.time() - self.fetch_timestamp))
 							deferreds = [getPage(str.encode(u), contextFactory=sniFactory, timeout=20, headers=twisted_live_headers) for u in urls_unique]
 							if not deferreds:
 								d_final.callback([b'{"events":[]}'])
@@ -1455,6 +1459,7 @@ class FootOnSat(Screen):
 			if self.fetch_timestamp != current_ts: return
 			if debug_Fetch_Live: logdata("fetch_live_results", "MATCHES BEFORE: %d" % len(self.matches))
 			process_start = time.time()
+			if debug_Fetch_Live: logdata("fetch_live_results", "NETWORK FETCH done (all tournaments) in %.2fs, %d responses" % (process_start - self.fetch_timestamp, len(raw_list)))
 			all_events = []
 			# Decode and JSON Load
 			for idx, raw in enumerate(raw_list):
@@ -1488,6 +1493,8 @@ class FootOnSat(Screen):
 					# Log any other unexpected decode/general error
 					if debug_Fetch_Live: logdata("fetch_live_results", "Decode/General error: %s" % str(e))
 					continue # Continue to the next response in the list
+
+			if debug_Fetch_Live: logdata("fetch_live_results", "JSON DECODE/EXTRACT done in %.2fs, total events=%d" % (time.time() - process_start, len(all_events)))
 
 			if not all_events:
 				self.matches = [list(m) for m in self.matches]
@@ -1602,6 +1609,8 @@ class FootOnSat(Screen):
 				except Exception as e:
 					if debug_Fetch_Live: logdata("fetch_live_results", "Error building live_matches for an event: %s" % str(e))
 					continue
+
+			if debug_Fetch_Live: logdata("fetch_live_results", "EVENT BUILD done in %.2fs, live_matches=%d" % (time.time() - build_start, len(live_matches)))
 
 			# === STEP 2: INSTANT UI DRAW ===
 			matches_list = [list(m) for m in self.matches]
@@ -1774,12 +1783,14 @@ class FootOnSat(Screen):
 					except Exception as e:
 						continue
 
+				if debug_Fetch_Live: logdata("fetch_live_results", "FUZZY MATCH done in %.2fs for matches_list=%d against live_matches=%d" % (time.time() - match_perf_start, len(matches_list), len(live_matches)))
 				return matches_list
 
 			def _matching_complete(updated_matches_list):
 				if self.fetch_timestamp != current_ts:
 					if debug_Fetch_Live: logdata("fetch_live_results", "DROP: Ignoring outdated results from previous session.")
 					return
+				if debug_Fetch_Live: logdata("fetch_live_results", "TOTAL fetch_live_results elapsed: %.2fs" % (time.time() - self.fetch_timestamp))
 				# Do not remove, Move or change this import (It is important like this)
 				from .launcher import get_terminated_file
 				cache_file, terminated_cache, changed, final_list = get_terminated_file(), {}, False, []
@@ -4986,3 +4997,16 @@ class FootOnsatNotifScreen(Screen):
 		"""Standard hide function used by the queue processor."""
 		self.is_displaying = False
 		FootOnSatNotifDialog.dialog.hide()
+
+
+class FootOnSatSummary(Screen):
+	skin = """
+	<screen name="FootOnSatSummary" position="0,0" size="400,240">
+		<widget source="entry" render="Label" position="0,center" size="400,60" font="FdLcD;48" halign="center" />
+	</screen>"""
+
+	def __init__(self, session, parent):
+		Screen.__init__(self, session, parent=parent)
+		print("[FootOnSatSummary] __init__ called with parent: %s" % str(parent))
+		link = str(getattr(parent, "link", "")) if parent else ""
+		self["entry"] = StaticText(link if link else "FootOnSat")

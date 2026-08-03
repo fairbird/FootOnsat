@@ -6,6 +6,7 @@ from Components.ActionMap import ActionMap
 from Components.Pixmap import Pixmap
 from Components.Label import Label
 from Components.Sources.List import List
+from Components.Sources.StaticText import StaticText
 from Components.PluginComponent import plugins
 from Components.config import config, NoSave
 from Components.FootMenu import FlexibleMenu
@@ -212,6 +213,12 @@ class FootOnsatLauncher(Screen):
 				self["yellow"].setText(title207)
 		else:
 			self["yellow"].setText("")
+		if len(self.menuList) > 0:
+			curr = self["menu"].getCurrent()
+			if curr:
+				for summary in self.summaries:
+					if "entry" in summary:
+						summary["entry"].setText(str(curr[0]))
 
 	def keyBlue(self):
 		if len(self.menuList) > 0:
@@ -419,6 +426,9 @@ class FootOnsatLauncher(Screen):
 		try: getPage(b"https://api.github.com/repos/fairbird/Banners_FootOnSat/commits?path=banners&per_page=1", agent=b"Enigma2").addCallback(check_commit)
 		except: pass
 
+	def createSummary(self):
+		return FootOnSatSummary
+
 
 class KeyCaptureScreen(Screen):
 	skin = """<screen position="center,center" size="500,100" title="" flags="wfNoBorder">
@@ -486,6 +496,7 @@ class KeyCaptureScreen(Screen):
 			pass
 		return None
 
+
 class FootOnSatLive():
 	def __init__(self):
 		self.dialog = None
@@ -524,3 +535,15 @@ class FootOnSatLive():
 			pass
 
 pSignal = FootOnSatLive()
+
+
+class FootOnSatSummary(Screen):
+        skin = """
+        <screen name="FootOnSatSummary" position="0,0" size="400,240">
+        	<widget source="entry" render="Label" position="0,center" size="400,60" font="FdLcD;48" halign="center" />
+        </screen>"""
+
+        def __init__(self, session, parent):
+                Screen.__init__(self, session, parent=parent)
+                curr = parent["menu"].getCurrent() if parent and "menu" in parent else None
+                self["entry"] = StaticText(str(curr[0]) if curr else "FootOnSat")
