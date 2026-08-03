@@ -5001,12 +5001,14 @@ class FootOnsatNotifScreen(Screen):
 
 class FootOnSatSummary(Screen):
 	skin = """
-	<screen name="FootOnSatSummary" position="0,0" size="400,240">
-		<widget source="entry" render="Label" position="0,center" size="400,60" font="FdLcD;48" halign="center" />
-	</screen>"""
+        <screen name="FootOnSatSummary" position="0,0" size="400,240">
+        	<widget source="entry" render="Label" position="0,40" size="400,40" font="FdLcD;48" valign="center" halign="center" />
+        	<widget source="global.CurrentTime" render="Label" position="center,110" size="225,100" font="FdLcD;85" halign="center" >
+			<convert type="ClockToText">Format:%H:%M</convert>
+		</widget>
+        </screen>"""
 
 	def __init__(self, session, parent):
 		Screen.__init__(self, session, parent=parent)
-		print("[FootOnSatSummary] __init__ called with parent: %s" % str(parent))
-		link = str(getattr(parent, "link", "")) if parent else ""
+		link = "%s %s" % (str(getattr(parent, "link", "")).capitalize(), title143) if parent and getattr(parent, "link", "") else ""
 		self["entry"] = StaticText(link if link else "FootOnSat")

@@ -218,7 +218,7 @@ class FootOnsatLauncher(Screen):
 			if curr:
 				for summary in self.summaries:
 					if "entry" in summary:
-						summary["entry"].setText(str(curr[0]))
+						summary["entry"].setText("%s %s" % (str(curr[0]).capitalize(), str(title143)))
 
 	def keyBlue(self):
 		if len(self.menuList) > 0:
@@ -540,10 +540,14 @@ pSignal = FootOnSatLive()
 class FootOnSatSummary(Screen):
         skin = """
         <screen name="FootOnSatSummary" position="0,0" size="400,240">
-        	<widget source="entry" render="Label" position="0,center" size="400,60" font="FdLcD;48" halign="center" />
+        	<widget source="entry" render="Label" position="0,40" size="400,40" font="FdLcD;48" valign="center" halign="center" />
+        	<widget source="global.CurrentTime" render="Label" position="center,110" size="225,100" font="FdLcD;85" halign="center" >
+			<convert type="ClockToText">Format:%H:%M</convert>
+		</widget>
         </screen>"""
 
         def __init__(self, session, parent):
                 Screen.__init__(self, session, parent=parent)
                 curr = parent["menu"].getCurrent() if parent and "menu" in parent else None
-                self["entry"] = StaticText(str(curr[0]) if curr else "FootOnSat")
+                text = "%s %s" % (str(curr[0]).capitalize(), str(title143)) if curr and len(curr) > 0 else "FootOnSat"
+                self["entry"] = StaticText(text)
