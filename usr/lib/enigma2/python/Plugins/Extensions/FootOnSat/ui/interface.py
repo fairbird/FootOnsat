@@ -1524,6 +1524,8 @@ class FootOnSat(Screen):
 						away = compat_str(away_team.get('name', 'Unknown Away'))
 						if home == 'Unknown Home' or away == 'Unknown Away':
 							continue
+						if debug_Fetch_Live and len(live_matches) < 5:
+							logdata("fetch_live_results", "SAMPLE home_team country field='%s', away_team country field='%s'" % (str(home_team.get('country')), str(away_team.get('country'))))
 					except Exception as e:
 						if debug_Fetch_Live: logdata("fetch_live_results", "Team name parse error: %s" % str(e))
 						continue
@@ -1595,6 +1597,10 @@ class FootOnSat(Screen):
 						else:
 							status = ''
 
+					tournament_name = ev.get('tournament', {}).get('name', '') or ev.get('uniqueTournament', {}).get('name', '')
+					if debug_Fetch_Live and len(live_matches) < 5:
+						logdata("fetch_live_results", "SAMPLE tournament_name='%s' for match='%s'" % (tournament_name, match_name))
+
 					live_matches.append({
 						"match_name": match_name,
 						"team1": home,
@@ -1604,7 +1610,8 @@ class FootOnSat(Screen):
 						"match_status": status,
 						"match_dt": match_dt,
 						"raw_descr": descr,
-						"id": ev.get('id', '')
+						"id": ev.get('id', ''),
+						"tournament_name": tournament_name
 					})
 				except Exception as e:
 					if debug_Fetch_Live: logdata("fetch_live_results", "Error building live_matches for an event: %s" % str(e))
@@ -1678,9 +1685,11 @@ class FootOnSat(Screen):
 						continue
 				# ===================================================================================
 
-				for match in matches_list:
+				for match_idx, match in enumerate(matches_list):
 					if getattr(self, 'is_closed', True): return
 					try:
+						if debug_Fetch_Live and match_idx < 5:
+							logdata("fetch_live_results", "SAMPLE local competition field match[2]='%s', match[3]='%s', match[4]='%s'" % (compat_str(match[2]), compat_str(match[3]) if len(match) > 3 else 'N/A', compat_str(match[4]) if len(match) > 4 else 'N/A'))
 						time_str = compat_str(match[1])
 						try:
 							local_dt = datetime.strptime(time_str.split(' - ')[1] + ' ' + time_str.split(' - ')[0], "%Y-%m-%d %H:%M")
@@ -1779,6 +1788,8 @@ class FootOnSat(Screen):
 							else:
 								match[5] = match[6] = match[7] = ""
 						else:
+							if debug_Fetch_Live:
+								logdata("fetch_live_results", "NO MATCH: local='%s' country=(%s,%s) candidates_checked=%d best_sim=%.2f (threshold=%.2f)" % (local_name, compat_str(match[3]) if len(match) > 3 else 'N/A', compat_str(match[4]) if len(match) > 4 else 'N/A', len(relevant_live_events), best_sim, THRESHOLD))
 							match[5] = match[6] = match[7] = ""
 					except Exception as e:
 						continue
