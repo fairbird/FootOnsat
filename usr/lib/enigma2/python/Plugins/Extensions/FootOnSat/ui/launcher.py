@@ -540,8 +540,8 @@ pSignal = FootOnSatLive()
 class FootOnSatSummary(Screen):
         skin = """
         <screen name="FootOnSatSummary" position="0,0" size="400,240">
-        	<widget source="entry" render="Label" position="0,40" size="400,40" font="FdLcD;48" valign="center" halign="center" />
-        	<widget source="global.CurrentTime" render="Label" position="center,110" size="225,100" font="FdLcD;85" halign="center" >
+        	<widget source="entry" render="Label" position="0,40" size="400,50" font="Regular;45" valign="center" halign="center" />
+        	<widget source="global.CurrentTime" render="Label" position="center,110" size="225,100" font="Regular;85" halign="center" >
 			<convert type="ClockToText">Format:%H:%M</convert>
 		</widget>
         </screen>"""
