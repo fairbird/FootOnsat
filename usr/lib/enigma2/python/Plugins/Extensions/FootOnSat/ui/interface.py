@@ -471,6 +471,7 @@ class FootOnSat(Screen):
 					'HALFTIME': (title129, title123),
 					'DELAYED':  (title215, title123),
 					'DELAY':    (title215, title123),
+					'INTERRUPTED': (title299, title123),
 				}
 				if clean_status in STATUS_DISPLAY:
 					status_text, prefix_key = STATUS_DISPLAY[clean_status]
@@ -1553,6 +1554,8 @@ class FootOnSat(Screen):
 					elif stype == 'postponed':
 						status = title152
 						h_score = a_score = ''
+					elif stype == 'interrupted':
+						status = title299
 					elif stype == 'inprogress':
 						m = re.search(r'(\d{1,3}[\'+]*\+?\d*)\s*\'', descr)
 						if m:
@@ -1585,7 +1588,7 @@ class FootOnSat(Screen):
 					# === CRITICAL DATA INTEGRITY FIREWALL (Preserved) ===
 					
 					# 1. Clear score/status if the match is scheduled to start in the next 10 minutes or later.
-					if match_dt > now + timedelta(minutes=10) and stype not in ['inprogress', 'canceled', 'postponed', 'afterextra', 'penaltyshootout']:
+					if match_dt > now + timedelta(minutes=10) and stype not in ['inprogress', 'canceled', 'postponed', 'afterextra', 'penaltyshootout', 'interrupted']:
 						h_score = a_score = ''
 						status = ''
 
@@ -1641,7 +1644,7 @@ class FootOnSat(Screen):
 					pass
 				name = compat_str(name).strip().lower()
 				name = re.sub(r'[^a-z\s]', ' ', name, flags=re.IGNORECASE) 
-				NOISE = r'\b(nk|afc|fc|cf|as|ac|sk|fk|tsv|national|squad|sport|calcio|ploie[șs]ti|ploiești|ploieshti|aif|ifk|goteborg|göteborg|kf|ks|af|seinajoki|peshkopi)\b'
+				NOISE = r'\b(nk|afc|fc|cf|as|ac|sk|fk|tsv|national|squad|sport|calcio|ploie[șs]ti|ploiești|ploieshti|aif|ifk|kf|ks|af|seinajoki|peshkopi)\b'
 				name = re.sub(NOISE, ' ', name, flags=re.IGNORECASE)
 				name = re.sub(r'\s+', ' ', name).strip()
 				#logdata("FuzzyDebug", "CLEANED NAME: %s" % repr(name))
@@ -1723,6 +1726,14 @@ class FootOnSat(Screen):
 							if abs(live["match_dt"] - local_dt) <= TIME_WINDOW
 						]
 
+						# Reused SequenceMatcher objects: l_t1_clean/l_t2_clean
+						# are fixed for this whole inner loop, so their internal
+						# comparison index is built ONCE instead of being
+						# rebuilt from scratch on every single candidate.
+						# Same comparisons, same results — just cheaper per call.
+						sm1 = SequenceMatcher(None, l_t1_clean, "")
+						sm2 = SequenceMatcher(None, l_t2_clean, "")
+
 						for live in relevant_live_events:
 							s_t1 = compat_str(live["team1"]).strip()
 							s_t2 = compat_str(live["team2"]).strip()
@@ -1747,12 +1758,16 @@ class FootOnSat(Screen):
 							#	l_t1_clean, l_t2_clean,
 							#	s_t1_clean, s_t2_clean))
 
-							sim1 = SequenceMatcher(None, l_t1_clean, s_t1_clean).ratio()
-							sim2 = SequenceMatcher(None, l_t2_clean, s_t2_clean).ratio()
+							sm1.set_seq2(s_t1_clean)
+							sim1 = sm1.ratio()
+							sm2.set_seq2(s_t2_clean)
+							sim2 = sm2.ratio()
 							avg_straight = (sim1 + sim2) / 2.0
 
-							sim1s = SequenceMatcher(None, l_t1_clean, s_t2_clean).ratio()
-							sim2s = SequenceMatcher(None, l_t2_clean, s_t1_clean).ratio()
+							sm1.set_seq2(s_t2_clean)
+							sim1s = sm1.ratio()
+							sm2.set_seq2(s_t1_clean)
+							sim2s = sm2.ratio()
 							avg_swap = (sim1s + sim2s) / 2.0
 
 							cur_sim = max(avg_straight, avg_swap)
@@ -2723,6 +2738,7 @@ class MatchDetailsScreen(Screen):
 				"Postponed":   title213,
 				"Canceled":    title214,
 				"Delayed":     title215,
+				"Interrupted": title299,
 				"Extra Time":  title216,
 				"Penalties":   title217,
 				"Not started": title218,
