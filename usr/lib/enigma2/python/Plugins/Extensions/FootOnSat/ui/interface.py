@@ -1525,6 +1525,7 @@ class FootOnSat(Screen):
 						away = compat_str(away_team.get('name', 'Unknown Away'))
 						if home == 'Unknown Home' or away == 'Unknown Away':
 							continue
+						ev_country = home_team.get('country', {}).get('name', '') or away_team.get('country', {}).get('name', '')
 						if debug_Fetch_Live and len(live_matches) < 5:
 							logdata("fetch_live_results", "SAMPLE home_team country field='%s', away_team country field='%s'" % (str(home_team.get('country')), str(away_team.get('country'))))
 					except Exception as e:
@@ -1614,7 +1615,8 @@ class FootOnSat(Screen):
 						"match_dt": match_dt,
 						"raw_descr": descr,
 						"id": ev.get('id', ''),
-						"tournament_name": tournament_name
+						"tournament_name": tournament_name,
+						"country": ev_country
 					})
 				except Exception as e:
 					if debug_Fetch_Live: logdata("fetch_live_results", "Error building live_matches for an event: %s" % str(e))
@@ -1643,7 +1645,8 @@ class FootOnSat(Screen):
 				except:
 					pass
 				name = compat_str(name).strip().lower()
-				name = re.sub(r'[^a-z\s]', ' ', name, flags=re.IGNORECASE) 
+				name = name.replace('.', '')  # "U.C.D." -> "ucd", not "u c d"
+				name = re.sub(r'[^a-z\s]', ' ', name, flags=re.IGNORECASE)
 				NOISE = r'\b(nk|afc|fc|cf|as|ac|sk|fk|tsv|national|squad|sport|calcio|ploie[șs]ti|ploiești|ploieshti|aif|ifk|kf|ks|af|seinajoki|peshkopi)\b'
 				name = re.sub(NOISE, ' ', name, flags=re.IGNORECASE)
 				name = re.sub(r'\s+', ' ', name).strip()
@@ -1665,7 +1668,48 @@ class FootOnSat(Screen):
 						live_clean_cache[s_t1] = _clean_name(s_t1)
 					if s_t2 not in live_clean_cache:
 						live_clean_cache[s_t2] = _clean_name(s_t2)
-						
+
+				# --- Country bucket index (biggest candidate-pool
+				# reduction): group live_matches by country so each local
+				# match only scans events from its own country instead of
+				# all 5000+. Handles reordered compound names (local
+				# 'koreasouth' vs SofaScore 'South Korea') via an anagram
+				# check on letters-only keys — deterministic, not a guess.
+				# Falls back to the FULL live_matches list whenever a
+				# country can't be resolved, so nothing is ever silently
+				# dropped because of this bucketing. ---
+				def _country_key(s):
+					return re.sub(r'[^a-z]', '', compat_str(s).strip().lower())
+
+				COUNTRY_ALIASES = {
+					'usa': 'unitedstates', 'uk': 'unitedkingdom', 'uae': 'unitedarabemirates',
+				}
+				def _canonical_key(raw):
+					k = _country_key(raw)
+					return COUNTRY_ALIASES.get(k, k)
+
+				live_by_country = {}
+				for live in live_matches:
+					ck = _canonical_key(live.get('country', ''))
+					if ck:
+						live_by_country.setdefault(ck, []).append(live)
+				distinct_sofa_keys = list(live_by_country.keys())
+				local_country_resolve_cache = {}
+
+				def _resolve_country_bucket(raw_country):
+					if raw_country in local_country_resolve_cache:
+						return local_country_resolve_cache[raw_country]
+					key = _canonical_key(raw_country)
+					bucket = live_by_country.get(key)
+					if bucket is None and key:
+						sorted_key = sorted(key)
+						for sofa_key in distinct_sofa_keys:
+							if sorted(sofa_key) == sorted_key:
+								bucket = live_by_country.get(sofa_key)
+								break
+					local_country_resolve_cache[raw_country] = bucket
+					return bucket
+
 				# === RESTORED SPEED OPTIMIZATION: Pre-calculate schedule clean cache ONCE ===
 				schedule_clean_cache = {}
 				for match in matches_list:
@@ -1719,10 +1763,24 @@ class FootOnSat(Screen):
 
 						best_sim = 0.0
 						best_live = None
-						
+
+						# --- Country Pre-Filter (Tier 0, biggest reduction) ---
+						local_country1 = compat_str(match[3]) if len(match) > 3 else ''
+						local_country2 = compat_str(match[4]) if len(match) > 4 else ''
+						bucket1 = _resolve_country_bucket(local_country1) if local_country1 else None
+						bucket2 = _resolve_country_bucket(local_country2) if local_country2 else None
+						if bucket1 is not None or bucket2 is not None:
+							search_pool = list(bucket1 or [])
+							if bucket2 is not None and bucket2 is not bucket1:
+								search_pool += bucket2
+						else:
+							# Country couldn't be resolved with confidence —
+							# fall back to the full list, exactly as before.
+							search_pool = live_matches
+
 						# --- Time-based Pre-Filter (Tier 1 Speed) ---
 						relevant_live_events = [
-							live for live in live_matches 
+							live for live in search_pool
 							if abs(live["match_dt"] - local_dt) <= TIME_WINDOW
 						]
 
@@ -1775,6 +1833,7 @@ class FootOnSat(Screen):
 
 							if cur_sim > best_sim:
 								best_sim = cur_sim
+								best_live_name_debug = "%s vs %s" % (s_t1, s_t2)
 								if avg_straight >= avg_swap:
 									best_live = {
 										"team1_score": live["team1_score"],
@@ -1803,8 +1862,9 @@ class FootOnSat(Screen):
 							else:
 								match[5] = match[6] = match[7] = ""
 						else:
-							if debug_Fetch_Live:
-								logdata("fetch_live_results", "NO MATCH: local='%s' country=(%s,%s) candidates_checked=%d best_sim=%.2f (threshold=%.2f)" % (local_name, compat_str(match[3]) if len(match) > 3 else 'N/A', compat_str(match[4]) if len(match) > 4 else 'N/A', len(relevant_live_events), best_sim, THRESHOLD))
+							if debug_Fetch_Live and best_sim > 0.30:
+								best_name = best_live_name_debug if 'best_live_name_debug' in dir() else 'N/A'
+								if debug_Fetch_Live: logdata("fetch_live_results", "NO MATCH: local='%s' country=(%s,%s) candidates_checked=%d best_sim=%.2f (threshold=%.2f) closest_sofascore='%s'" % (local_name, compat_str(match[3]) if len(match) > 3 else 'N/A', compat_str(match[4]) if len(match) > 4 else 'N/A', len(relevant_live_events), best_sim, THRESHOLD, best_name))
 							match[5] = match[6] = match[7] = ""
 					except Exception as e:
 						continue
