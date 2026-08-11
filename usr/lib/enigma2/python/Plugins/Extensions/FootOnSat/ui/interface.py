@@ -1522,11 +1522,10 @@ class FootOnSat(Screen):
 					try:
 						home_team = ev.get('homeTeam') or {}
 						away_team = ev.get('awayTeam') or {}
-						home = compat_str(home_team.get('name', 'Unknown Home'))
-						away = compat_str(away_team.get('name', 'Unknown Away'))
+						home = compat_str(home_team.get('shortName') or home_team.get('name', 'Unknown Home'))
+						away = compat_str(away_team.get('shortName') or away_team.get('name', 'Unknown Away'))
 						if home == 'Unknown Home' or away == 'Unknown Away':
 							continue
-						ev_country = home_team.get('country', {}).get('name', '') or away_team.get('country', {}).get('name', '')
 						if debug_Fetch_Live and len(live_matches) < 5:
 							logdata("fetch_live_results", "SAMPLE home_team country field='%s', away_team country field='%s'" % (str(home_team.get('country')), str(away_team.get('country'))))
 					except Exception as e:
@@ -1616,8 +1615,7 @@ class FootOnSat(Screen):
 						"match_dt": match_dt,
 						"raw_descr": descr,
 						"id": ev.get('id', ''),
-						"tournament_name": tournament_name,
-						"country": ev_country
+						"tournament_name": tournament_name
 					})
 				except Exception as e:
 					if debug_Fetch_Live: logdata("fetch_live_results", "Error building live_matches for an event: %s" % str(e))
@@ -1657,7 +1655,7 @@ class FootOnSat(Screen):
 			def _do_fuzzy_matching(matches_list, live_matches, now_adj):
 				match_perf_start = time.time()			
 				# --- FIX: THRESHOLD ADJUSTMENT for maximum accuracy ---
-				THRESHOLD = 0.50 # Lowered from 0.60 to 0.55 to ensure all challenging names match
+				THRESHOLD = 0.45 # Lowered from 0.60 to 0.55 to ensure all challenging names match
 				TIME_WINDOW = timedelta(hours=4)
 				
 				# --- Caching for Live Matches ---
@@ -1669,48 +1667,7 @@ class FootOnSat(Screen):
 						live_clean_cache[s_t1] = _clean_name(s_t1)
 					if s_t2 not in live_clean_cache:
 						live_clean_cache[s_t2] = _clean_name(s_t2)
-
-				# --- Country bucket index (biggest candidate-pool
-				# reduction): group live_matches by country so each local
-				# match only scans events from its own country instead of
-				# all 5000+. Handles reordered compound names (local
-				# 'koreasouth' vs SofaScore 'South Korea') via an anagram
-				# check on letters-only keys — deterministic, not a guess.
-				# Falls back to the FULL live_matches list whenever a
-				# country can't be resolved, so nothing is ever silently
-				# dropped because of this bucketing. ---
-				def _country_key(s):
-					return re.sub(r'[^a-z]', '', compat_str(s).strip().lower())
-
-				COUNTRY_ALIASES = {
-					'usa': 'unitedstates', 'uk': 'unitedkingdom', 'uae': 'unitedarabemirates',
-				}
-				def _canonical_key(raw):
-					k = _country_key(raw)
-					return COUNTRY_ALIASES.get(k, k)
-
-				live_by_country = {}
-				for live in live_matches:
-					ck = _canonical_key(live.get('country', ''))
-					if ck:
-						live_by_country.setdefault(ck, []).append(live)
-				distinct_sofa_keys = list(live_by_country.keys())
-				local_country_resolve_cache = {}
-
-				def _resolve_country_bucket(raw_country):
-					if raw_country in local_country_resolve_cache:
-						return local_country_resolve_cache[raw_country]
-					key = _canonical_key(raw_country)
-					bucket = live_by_country.get(key)
-					if bucket is None and key:
-						sorted_key = sorted(key)
-						for sofa_key in distinct_sofa_keys:
-							if sorted(sofa_key) == sorted_key:
-								bucket = live_by_country.get(sofa_key)
-								break
-					local_country_resolve_cache[raw_country] = bucket
-					return bucket
-
+						
 				# === RESTORED SPEED OPTIMIZATION: Pre-calculate schedule clean cache ONCE ===
 				schedule_clean_cache = {}
 				for match in matches_list:
@@ -1764,24 +1721,10 @@ class FootOnSat(Screen):
 
 						best_sim = 0.0
 						best_live = None
-
-						# --- Country Pre-Filter (Tier 0, biggest reduction) ---
-						local_country1 = compat_str(match[3]) if len(match) > 3 else ''
-						local_country2 = compat_str(match[4]) if len(match) > 4 else ''
-						bucket1 = _resolve_country_bucket(local_country1) if local_country1 else None
-						bucket2 = _resolve_country_bucket(local_country2) if local_country2 else None
-						if bucket1 is not None or bucket2 is not None:
-							search_pool = list(bucket1 or [])
-							if bucket2 is not None and bucket2 is not bucket1:
-								search_pool += bucket2
-						else:
-							# Country couldn't be resolved with confidence —
-							# fall back to the full list, exactly as before.
-							search_pool = live_matches
-
+						
 						# --- Time-based Pre-Filter (Tier 1 Speed) ---
 						relevant_live_events = [
-							live for live in search_pool
+							live for live in live_matches 
 							if abs(live["match_dt"] - local_dt) <= TIME_WINDOW
 						]
 
@@ -1806,10 +1749,9 @@ class FootOnSat(Screen):
 							len_l2 = len(l_t2_clean)
 							len_s2 = len(s_t2_clean)
 
-							# Loosened tolerance to 15 to eliminate only extreme mismatches
-							straight_possible = (abs(len_l1 - len_s1) <= 15 and abs(len_l2 - len_s2) <= 15)
-							swap_possible = (abs(len_l1 - len_s2) <= 15 and abs(len_l2 - len_s1) <= 15)
-
+							# Loosened tolerance to 20 to eliminate only extreme mismatches
+							straight_possible = (abs(len_l1 - len_s1) <= 20 and abs(len_l2 - len_s2) <= 20)
+							swap_possible = (abs(len_l1 - len_s2) <= 20 and abs(len_l2 - len_s1) <= 20)
 							if not (straight_possible or swap_possible):
 								continue	
 
