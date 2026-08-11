@@ -7,8 +7,9 @@ from unicodedata import normalize
 from difflib import SequenceMatcher
 from datetime import date, datetime, timedelta
 from os.path import join, exists
-from enigma import eSize, eTimer, gRGB, loadPNG, gPixmapPtr, RT_WRAP, ePoint, RT_HALIGN_CENTER, RT_HALIGN_LEFT, RT_VALIGN_CENTER, eListboxPythonMultiContent, \
-				gFont, eConsoleAppContainer, eServiceCenter, eServiceReference
+from enigma import eSize, eTimer, gRGB, loadPNG, gPixmapPtr, RT_WRAP, ePoint, gFont, \
+			RT_HALIGN_CENTER, RT_HALIGN_LEFT, RT_VALIGN_CENTER, \
+			eListboxPythonMultiContent, eConsoleAppContainer, eServiceCenter, eServiceReference
 from Components.MultiContent import MultiContentEntryText, MultiContentEntryPixmap, MultiContentEntryPixmapAlphaBlend
 from Components.MenuList import MenuList
 from Components.Label import Label
@@ -590,7 +591,7 @@ class FootOnSat(Screen):
 				# Match name
 				if isUHD():
 					if self.link in (SPORTS | FOOTBALL):
-						res.append(MultiContentEntryText(pos=(332, 69), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_HALIGN_CENTER, text=str(match)))
+						res.append(MultiContentEntryText(pos=(350, 69), size=(1070, 40), font=0, flags=RT_HALIGN_LEFT | RT_HALIGN_CENTER, text=str(match)))
 					else:
 						res.append(MultiContentEntryText(pos=(550, 69), size=(900, 40), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str(match)))
 				else:
@@ -619,7 +620,7 @@ class FootOnSat(Screen):
 						KICKOFF = "%s : %s" % (title133, match_date)
 					if isUHD():
 						if self.link in (SPORTS | FOOTBALL):
-							res.append(MultiContentEntryText(pos=(430, 120), size=(1000, 48), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(KICKOFF)))
+							res.append(MultiContentEntryText(pos=(350, 120), size=(600, 48), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(KICKOFF)))
 						else:
 							res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 48), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(KICKOFF)))
 					else:
@@ -630,9 +631,9 @@ class FootOnSat(Screen):
 				# Competition name
 				if isUHD():
 					if self.link in (SPORTS | FOOTBALL):
-						res.append(MultiContentEntryText(pos=(430, 15), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
+						res.append(MultiContentEntryText(pos=(350, 15), size=(1070, 40), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 					else:
-						res.append(MultiContentEntryText(pos=(420, 15), size=(1000, 40), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
+						res.append(MultiContentEntryText(pos=(420, 15), size=(1180, 40), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
 				else:
 					if self.link in (SPORTS | FOOTBALL):
 						res.append(MultiContentEntryText(pos=(320, 15), size=(650, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(compet)))
@@ -2939,8 +2940,10 @@ class MatchDetailsScreen(Screen):
 				# --- Incident List Row Information ---
 				res = [MultiContentEntryText()]
 				if itype == 'separator_line':
-					sep_w = 2100 if isUHD() else 1750
-					res.append(MultiContentEntryText(pos=(0, 0), size=(sep_w, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=text, color=color))
+					sep_w = 2462 if isUHD() else 1750
+					sep_x = 20 if isUHD() else 0
+					sep_y = 11 if isUHD() else 0
+					res.append(MultiContentEntryText(pos=(sep_x, sep_y), size=(sep_w, ITEM_H), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text=text, color=color))
 					gList.append(res)
 					continue
 				if isUHD():
