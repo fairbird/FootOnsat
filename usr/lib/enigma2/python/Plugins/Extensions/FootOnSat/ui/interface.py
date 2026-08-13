@@ -1652,6 +1652,20 @@ class FootOnSat(Screen):
 				#logdata("FuzzyDebug", "CLEANED NAME: %s" % repr(name))
 				return name
 
+			def _token_containment(a, b):
+				# 1.0 if the shorter name's words are essentially all
+				# present in the longer name — handles "AEK" (shortName)
+				# vs "AEK Athens" (local), "Fram" vs "Fram Reykjavik", etc.
+				# Character-level SequenceMatcher punishes the length
+				# difference hard; this doesn't, since it only cares
+				# about word overlap.
+				wa = set(a.split())
+				wb = set(b.split())
+				if not wa or not wb:
+					return 0.0
+				overlap = len(wa & wb)
+				return overlap / float(min(len(wa), len(wb)))
+
 			def _do_fuzzy_matching(matches_list, live_matches, now_adj):
 				match_perf_start = time.time()			
 				# --- FIX: THRESHOLD ADJUSTMENT for maximum accuracy ---
@@ -1760,15 +1774,15 @@ class FootOnSat(Screen):
 							#	s_t1_clean, s_t2_clean))
 
 							sm1.set_seq2(s_t1_clean)
-							sim1 = sm1.ratio()
+							sim1 = max(sm1.ratio(), _token_containment(l_t1_clean, s_t1_clean))
 							sm2.set_seq2(s_t2_clean)
-							sim2 = sm2.ratio()
+							sim2 = max(sm2.ratio(), _token_containment(l_t2_clean, s_t2_clean))
 							avg_straight = (sim1 + sim2) / 2.0
 
 							sm1.set_seq2(s_t2_clean)
-							sim1s = sm1.ratio()
+							sim1s = max(sm1.ratio(), _token_containment(l_t1_clean, s_t2_clean))
 							sm2.set_seq2(s_t1_clean)
-							sim2s = sm2.ratio()
+							sim2s = max(sm2.ratio(), _token_containment(l_t2_clean, s_t1_clean))
 							avg_swap = (sim1s + sim2s) / 2.0
 
 							cur_sim = max(avg_straight, avg_swap)
