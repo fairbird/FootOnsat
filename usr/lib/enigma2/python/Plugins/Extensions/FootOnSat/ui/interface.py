@@ -655,7 +655,7 @@ class FootOnSat(Screen):
 				self['key_green'].hide()
 				self['key_blue'].hide()
 			elif self.link in ["end", "yesterday"]:
-				if getattr(self, 'is_yesterday', False):
+				if self.link == "yesterday" or getattr(self, 'is_yesterday', False):
 					self['key_red'].show()
 					self['key_red'].setText(_("%s") % title134)
 					self['key_green'].hide()
@@ -731,7 +731,7 @@ class FootOnSat(Screen):
 					self['key_green'].hide()
 				else:
 					self['key_green'].show()
-					self['key_green'].setText(title114)
+					self['key_green'].setText(_("%s") % title114)
 			elif self.link in json_urls:
 				self['key_green'].show()
 				self['key_green'].setText(_("%s") % title135)
@@ -2475,7 +2475,7 @@ class FootOnSat(Screen):
 			self.callAPI()
 
 	def keyRed(self):
-		if getattr(self, 'is_yesterday', False) and self.link == "end":
+		if self.link == "yesterday" or getattr(self, 'is_yesterday', False):
 			self.is_yesterday = False
 			self['key_red'].hide()
 			self.close()
