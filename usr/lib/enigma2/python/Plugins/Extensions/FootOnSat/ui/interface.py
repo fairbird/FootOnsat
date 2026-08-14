@@ -97,47 +97,47 @@ else:
 ## url for Standings table
 json_urls = {
 	# Champions league
-	"championsleague": "https://www.sofascore.com/tournament/football/europe/uefa-champions-league/7#id:76953",
+	"championsleague": "https://www.sofascore.com/tournament/football/europe/uefa-champions-league/7#id:96518",
 	# Europa league
-	"europaleague": "https://www.sofascore.com/tournament/football/europe/uefa-europa-league/679#id:76984",
+	"europaleague": "https://www.sofascore.com/tournament/football/europe/uefa-europa-league/679#id:96522",
 	# Conference league
-	"ConferenceLeague": "https://www.sofascore.com/tournament/football/europe/uefa-europa-conference-league/17015#id:76960",
+	"ConferenceLeague": "https://www.sofascore.com/tournament/football/europe/uefa-europa-conference-league/17015#id:96529",
 	# England league
-	"premierleague": "https://www.sofascore.com/tournament/football/england/premier-league/17#id:76986",
+	"premierleague": "https://www.sofascore.com/tournament/football/england/premier-league/17#id:96668",
 	# champion ship league
-	"championship": "https://www.sofascore.com/tournament/football/england/championship/18#id:77347",
+	"championship": "https://www.sofascore.com/tournament/football/england/championship/18#id:97037",
 	# Italy league
-	"seriea": "https://www.sofascore.com/tournament/football/italy/serie-a/23#id:76457",
+	"seriea": "https://www.sofascore.com/tournament/football/italy/serie-a/23#id:95836",
 	# France league
-	"ligue1": "https://www.sofascore.com/tournament/football/france/ligue-1/34#id:77356",
+	"ligue1": "https://www.sofascore.com/tournament/football/france/ligue-1/34#id:96127",
 	# Spain league 1 + 2
-	"laliga": "https://www.sofascore.com/tournament/football/spain/laliga/8#id:77559",
-	"laliga2": "https://www.sofascore.com/tournament/football/spain/laliga-2/54#id:77558",
+	"laliga": "https://www.sofascore.com/tournament/football/spain/laliga/8#id:97268",
+	"laliga2": "https://www.sofascore.com/tournament/football/spain/laliga-2/54#id:97280",
 	# Germany league 1 + 2
-	"bundesliga": "https://www.sofascore.com/tournament/football/germany/bundesliga/35#id:77333",
-	"bundesliga2": "https://www.sofascore.com/tournament/football/germany/2-bundesliga/44#id:77354",
+	"bundesliga": "https://www.sofascore.com/tournament/football/germany/bundesliga/35#id:97464",
+	"bundesliga2": "https://www.sofascore.com/tournament/football/germany/2-bundesliga/44#id:97406",
 	# Portugal league
-	"liganos": "https://www.sofascore.com/tournament/football/portugal/liga-portugal-betclic/238#id:77806",
+	"liganos": "https://www.sofascore.com/tournament/football/portugal/liga-portugal-betclic/238#id:97436",
 	# Belgium league
-	"belgianpro": "https://www.sofascore.com/tournament/football/belgium/pro-league/38#id:77040",
+	"belgianpro": "https://www.sofascore.com/tournament/football/belgium/pro-league/38#id:96616",
 	# Turkey league
-	"superLig": "https://www.sofascore.com/tournament/football/turkey/trendyol-super-lig/52#id:77805",
+	"superLig": "https://www.sofascore.com/tournament/football/turkey/trendyol-super-lig/52#id:98080",
 	# Netherlands league
-	"eredivisie": "https://www.sofascore.com/tournament/football/netherlands/eredivisie/37#id:77012",
+	"eredivisie": "https://www.sofascore.com/tournament/football/netherlands/eredivisie/37#id:96143",
 	# Saudi Arabia league
-	"saudiarabia": "https://www.sofascore.com/tournament/football/saudi-arabia/saudi-pro-league/955#id:80443",
+	"saudiarabia": "https://www.sofascore.com/tournament/football/saudi-arabia/saudi-pro-league/955#id:99275",
 	# Asia Champions league Elite
-	"afcchampions": "https://www.sofascore.com/tournament/football/asia/afc-champions-league/463#id:77010",
+	"afcchampions": "https://www.sofascore.com/tournament/football/asia/afc-champions-league/463#id:99217",
 	# Asia Champions league two
-	"afcchampionstwo": "https://www.sofascore.com/tournament/football/asia/afc-cup/668#id:77009",
+	"afcchampionstwo": "https://www.sofascore.com/tournament/football/asia/afc-cup/668#id:97465",
 	# euroleague basketball
-	"basketball": "https://www.sofascore.com/tournament/basketball/international/euroleague/138#id:78545",	
+	"basketball": "https://www.sofascore.com/tournament/basketball/international/euroleague/138#id:99582",	
 	# nba basketball
-	"nba": "https://www.sofascore.com/tournament/basketball/usa/nba/132#id:80229",
+	"nba": "https://www.sofascore.com/tournament/basketball/usa/nba/132#id:100772",
 	# hockey
-	"hockey": "https://www.sofascore.com/tournament/ice-hockey/usa/nhl/234#id:78476",
+	"hockey": "https://www.sofascore.com/tournament/ice-hockey/usa/nhl/234#id:98450",
 	# american football
-	"nfl": "https://www.sofascore.com/tournament/american-football/usa/nfl/9464#id:75522",
+	"nfl": "https://www.sofascore.com/tournament/american-football/usa/nfl/9464#id:94366",
 	# World Cup
 	#"worldcup": "https://www.sofascore.com/football/tournament/world/world-championship/16#id:58210",
 }
