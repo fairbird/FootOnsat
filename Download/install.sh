@@ -321,6 +321,36 @@ if [ "$OS" = "DreamOS" ] && ! grep -q "$UJSON" "$STATUS"; then
 	cd ..
 fi
 
+if [ "$OS" = "DreamOS" ] && ! grep -q "$SOUP4" "$STATUS"; then
+	cd /tmp
+	if [ "$DEVICE" = "arm" ]; then
+		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-beautifulsoup4_4.8.2-r0.0_armhf.deb"
+	elif [ "$DEVICE" = "mips" ]; then
+		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-beautifulsoup4_4.8.2-r0.1_mipsel.deb"
+	elif [ "$DEVICE" = "arm64" ]; then
+		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-beautifulsoup4_4.8.2-r0.0_arm64.deb"
+		echo ""
+	fi
+	dpkg -i --force-overwrite *.deb > /dev/null 2>&1
+	apt-get install -f -y > /dev/null 2>&1
+	cd ..
+fi
+
+if [ "$OS" = "DreamOS" ] && ! grep -q "$PLI" "$STATUS"; then
+	cd /tmp
+	if [ "$DEVICE" = "arm" ]; then
+		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-imaging_1.1.7-r5.4_armhf.deb"
+	elif [ "$DEVICE" = "mips" ]; then
+		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-imaging_1.1.7-r5.4_mipsel.deb"
+	elif [ "$DEVICE" = "arm64" ]; then
+		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-imaging_1.1.7-r5.0_arm64.deb"
+		echo ""
+	fi
+	dpkg -i --force-overwrite *.deb > /dev/null 2>&1
+	apt-get install -f -y > /dev/null 2>&1
+	cd ..
+fi
+
 MISSING_PKGS=""
 check_pkg() {
 	if ! grep -q "$1" "$STATUS"; then
