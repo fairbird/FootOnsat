@@ -330,20 +330,26 @@ if [ "$OS" = "DreamOS" ] && ! grep -q "$SOUP4" "$STATUS"; then
 		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-soupsieve_1.9.4-r0.1_armhf.deb"
 		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-lxml_3.6.0-r0.1_armhf.deb"
 		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-html5lib_0.9999999-r0.1_armhf.deb"
+		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-backports-functools-lru-cache_1.6.1-r0.0_armhf.deb"
+		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-backports-init_1.0-r0.0_armhf.deb"
 	elif [ "$DEVICE" = "mips" ]; then
 		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-beautifulsoup4_4.8.2-r0.1_mipsel.deb"
 		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-soupsieve_1.9.4-r0.0_mipsel.deb"
 		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-lxml_3.6.0-r0.1_mipsel.deb"
 		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-html5lib_0.9999999-r0.1_mipsel.deb"
+		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-backports-functools-lru-cache_1.6.1-r0.2_mipsel.deb"
+		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-backports-init_1.0-r0.1_mipsel.deb"
 	elif [ "$DEVICE" = "arm64" ]; then
 		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-beautifulsoup4_4.8.2-r0.0_arm64.deb"
 		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-soupsieve_1.9.4-r0.0_arm64.deb"
 		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-lxml_3.7.3-r0.0_arm64.deb"
 		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-html5lib_0.999999999-r0.0_arm64.deb"
+		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-backports-functools-lru-cache_1.6.1-r0.0_arm64.deb"
+		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-backports-init_1.0-r0.0_arm64.deb"
 		echo ""
 	fi
-	dpkg -i --force-overwrite *.deb #> /dev/null 2>&1
-	apt-get install -f -y #> /dev/null 2>&1
+	dpkg -i --force-overwrite *.deb > /dev/null 2>&1
+	apt-get install -f -y > /dev/null 2>&1
 	rm -f *.deb > /dev/null 2>&1
 	cd ..
 fi
