@@ -1370,7 +1370,21 @@ class FootOnSat(Screen):
 							if not deferreds:
 								d_final.callback([b'{"events":[]}'])
 							else:
-								defer.gatherResults(deferreds, consumeErrors=True).chainDeferred(d_final)
+								# gatherResults() ALWAYS uses fireOnOneErrback=True
+								# internally, even with consumeErrors=True — one
+								# slow tournament (a single 20s timeout out of
+								# 1000+ requests) was silently discarding every
+								# other already-successful response and aborting
+								# the WHOLE batch. Plain DeferredList keeps every
+								# result — successes AND failures — so one bad
+								# request no longer throws away 900+ good ones.
+								def _unwrap_deferred_list(dl_results):
+									out = []
+									for ok, value in dl_results:
+										if ok and value:
+											out.append(value)
+									return out or [b'{"events":[]}']
+								defer.DeferredList(deferreds, consumeErrors=True).addCallback(_unwrap_deferred_list).chainDeferred(d_final)
 					except:
 						d_final.callback([b'{"events":[]}'])
 				def _eb(err):
@@ -1526,6 +1540,7 @@ class FootOnSat(Screen):
 						away = compat_str(away_team.get('shortName') or away_team.get('name', 'Unknown Away'))
 						if home == 'Unknown Home' or away == 'Unknown Away':
 							continue
+						ev_country = home_team.get('country', {}).get('name', '') or away_team.get('country', {}).get('name', '')
 						if debug_Fetch_Live and len(live_matches) < 5:
 							logdata("fetch_live_results", "SAMPLE home_team country field='%s', away_team country field='%s'" % (str(home_team.get('country')), str(away_team.get('country'))))
 					except Exception as e:
@@ -1615,7 +1630,8 @@ class FootOnSat(Screen):
 						"match_dt": match_dt,
 						"raw_descr": descr,
 						"id": ev.get('id', ''),
-						"tournament_name": tournament_name
+						"tournament_name": tournament_name,
+						"country": ev_country
 					})
 				except Exception as e:
 					if debug_Fetch_Live: logdata("fetch_live_results", "Error building live_matches for an event: %s" % str(e))
@@ -1681,7 +1697,67 @@ class FootOnSat(Screen):
 						live_clean_cache[s_t1] = _clean_name(s_t1)
 					if s_t2 not in live_clean_cache:
 						live_clean_cache[s_t2] = _clean_name(s_t2)
-						
+
+				# --- Country bucket index (the big win): group live_matches
+				# by country so each local match only scans events from its
+				# own country instead of the full ±4h window across ALL
+				# 6000+ matches. Handles reordered compound names (local
+				# 'koreasouth' vs SofaScore 'South Korea') via an anagram
+				# check on letters-only keys. ALWAYS falls back to the full
+				# live_matches list whenever a country can't be resolved,
+				# so nothing is ever silently dropped because of this. ---
+				def _country_key(s):
+					return re.sub(r'[^a-z]', '', compat_str(s).strip().lower())
+
+				COUNTRY_ALIASES = {
+					'usa': 'unitedstates', 'uk': 'unitedkingdom', 'uae': 'unitedarabemirates',
+				}
+				def _canonical_key(raw):
+					k = _country_key(raw)
+					return COUNTRY_ALIASES.get(k, k)
+
+				live_by_country = {}
+				for live in live_matches:
+					ck = _canonical_key(live.get('country', ''))
+					if ck:
+						live_by_country.setdefault(ck, []).append(live)
+				distinct_sofa_keys = list(live_by_country.keys())
+				local_country_resolve_cache = {}
+
+				def _resolve_country_bucket(raw_country):
+					if raw_country in local_country_resolve_cache:
+						return local_country_resolve_cache[raw_country]
+					key = _canonical_key(raw_country)
+					bucket = live_by_country.get(key)
+					if bucket is None and key:
+						sorted_key = sorted(key)
+						for sofa_key in distinct_sofa_keys:
+							if sorted(sofa_key) == sorted_key:
+								bucket = live_by_country.get(sofa_key)
+								break
+					local_country_resolve_cache[raw_country] = bucket
+					return bucket
+
+				# --- Word index WITHIN each country bucket: big footballing
+				# nations (England, Italy, Germany...) can have hundreds of
+				# matches in one country bucket alone — still slow to scan
+				# one by one. Indexing by significant words (e.g. "andorra",
+				# "ceuta") narrows this further to just the handful of
+				# SofaScore entries sharing an actual word with the local
+				# team names. Falls back to the unchanged country+time scan
+				# whenever no word overlap is found, so nothing is ever
+				# silently dropped — this only ever speeds things up. ---
+				word_index_by_country = {}
+				for ck, bucket in live_by_country.items():
+					idx = {}
+					for live in bucket:
+						for nm in (live_clean_cache[compat_str(live["team1"]).strip()], live_clean_cache[compat_str(live["team2"]).strip()]):
+							for w in nm.split():
+								if len(w) < 3:
+									continue
+								idx.setdefault(w, []).append(live)
+					word_index_by_country[ck] = idx
+
 				# === RESTORED SPEED OPTIMIZATION: Pre-calculate schedule clean cache ONCE ===
 				schedule_clean_cache = {}
 				for match in matches_list:
@@ -1735,10 +1811,47 @@ class FootOnSat(Screen):
 
 						best_sim = 0.0
 						best_live = None
-						
+
+						# --- Country Pre-Filter (Tier 0, biggest reduction) ---
+						local_country1 = compat_str(match[3]) if len(match) > 3 else ''
+						local_country2 = compat_str(match[4]) if len(match) > 4 else ''
+						bucket1 = _resolve_country_bucket(local_country1) if local_country1 else None
+						bucket2 = _resolve_country_bucket(local_country2) if local_country2 else None
+						if bucket1 is not None or bucket2 is not None:
+							search_pool = list(bucket1 or [])
+							if bucket2 is not None and bucket2 is not bucket1:
+								search_pool += bucket2
+						else:
+							# Country couldn't be resolved with confidence —
+							# fall back to the full list, exactly as before.
+							search_pool = live_matches
+
+						# --- Word Pre-Filter (Tier 0.5): within the country
+						# bucket, narrow further to entries sharing a real
+						# word with either local team name. Only used when
+						# an actual word overlap is found — otherwise
+						# search_pool (already computed above) is used
+						# unchanged, so this never removes coverage. ---
+						word_candidates = None
+						for ck_try in filter(None, [
+							_canonical_key(local_country1) if bucket1 is not None else None,
+							_canonical_key(local_country2) if bucket2 is not None else None,
+						]):
+							idx = word_index_by_country.get(ck_try, {})
+							for w in (l_t1_clean.split() + l_t2_clean.split()):
+								if len(w) < 3:
+									continue
+								for live in idx.get(w, []):
+									if word_candidates is None:
+										word_candidates = []
+									if live not in word_candidates:
+										word_candidates.append(live)
+						if word_candidates:
+							search_pool = word_candidates
+
 						# --- Time-based Pre-Filter (Tier 1 Speed) ---
 						relevant_live_events = [
-							live for live in live_matches 
+							live for live in search_pool
 							if abs(live["match_dt"] - local_dt) <= TIME_WINDOW
 						]
 
