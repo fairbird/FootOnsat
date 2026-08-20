@@ -1317,9 +1317,7 @@ class FootOnSat(Screen):
 		# is fixed network-fetch overhead that happens no matter how
 		# small the local list is, unless we shrink WHAT gets fetched. ---
 		def _early_country_key(raw):
-			k = re.sub(r'[^a-z]', '', compat_str(raw).strip().lower())
-			aliases = {'usa': 'unitedstates', 'uk': 'unitedkingdom', 'uae': 'unitedarabemirates'}
-			return aliases.get(k, k)
+			return re.sub(r'[^a-z]', '', compat_str(raw).strip().lower())
 		needed_country_keys = set()
 		for m in self.matches:
 			if len(m) > 3 and m[3]:
@@ -1670,7 +1668,7 @@ class FootOnSat(Screen):
 				return live_matches
 
 			def _clean_name(name):
-				#logdata("FuzzyDebug", "RAW NAME    : %s" % repr(name))
+				#if debug_Fetch_Live: logdata("FuzzyDebug", "RAW NAME    : %s" % repr(name))
 				if not PY3 and isinstance(name, str):
 					name = name.decode('ascii', 'ignore')
 				try:
@@ -1679,14 +1677,17 @@ class FootOnSat(Screen):
 					else:
 						name = normalize('NFKD', name.decode('utf-8')).encode('ascii', 'ignore')
 				except:
+					#if debug_Fetch_Live: logdata("FuzzyDebug", "Normalize Error: %s" % str(e))
 					pass
 				name = compat_str(name).strip().lower()
 				name = name.replace('.', '')  # "U.C.D." -> "ucd", not "u c d"
+				#if debug_Fetch_Live: logdata("FuzzyDebug", "DEBUG DOT   : %s" % repr(name))
 				name = re.sub(r'[^a-z\s]', ' ', name, flags=re.IGNORECASE)
+				#if debug_Fetch_Live: logdata("FuzzyDebug", "DEBUG REGEX : %s" % repr(name))
 				NOISE = r'\b(nk|afc|fc|cf|as|ac|sk|fk|tsv|national|squad|sport|calcio|ploie[șs]ti|ploiești|ploieshti|aif|ifk|kf|ks|af|seinajoki|peshkopi)\b'
 				name = re.sub(NOISE, ' ', name, flags=re.IGNORECASE)
 				name = re.sub(r'\s+', ' ', name).strip()
-				#logdata("FuzzyDebug", "CLEANED NAME: %s" % repr(name))
+				#if debug_Fetch_Live: logdata("FuzzyDebug", "CLEANED NAME: %s" % repr(name))
 				return name
 
 			def _token_containment(a, b):
@@ -1696,9 +1697,12 @@ class FootOnSat(Screen):
 				# Character-level SequenceMatcher punishes the length
 				# difference hard; this doesn't, since it only cares
 				# about word overlap.
+				#if debug_Fetch_Live: logdata("FuzzyDebug", "DEBUG MATCH A: %s | B: %s" % (repr(a), repr(b)))
 				wa = set(a.split())
 				wb = set(b.split())
+				#if debug_Fetch_Live: logdata("FuzzyDebug", "DEBUG SET WA: %s | SET WB: %s" % (repr(wa), repr(wb)))
 				if not wa or not wb:
+					#if debug_Fetch_Live: logdata("FuzzyDebug", "DEBUG SCORE: 0.0")
 					return 0.0
 				overlap = len(wa & wb)
 				return overlap / float(min(len(wa), len(wb)))
@@ -1730,12 +1734,8 @@ class FootOnSat(Screen):
 				def _country_key(s):
 					return re.sub(r'[^a-z]', '', compat_str(s).strip().lower())
 
-				COUNTRY_ALIASES = {
-					'usa': 'unitedstates', 'uk': 'unitedkingdom', 'uae': 'unitedarabemirates',
-				}
 				def _canonical_key(raw):
-					k = _country_key(raw)
-					return COUNTRY_ALIASES.get(k, k)
+					return _country_key(raw)
 
 				live_by_country = {}
 				for live in live_matches:
@@ -1838,15 +1838,14 @@ class FootOnSat(Screen):
 						local_country2 = compat_str(match[4]) if len(match) > 4 else ''
 						bucket1 = _resolve_country_bucket(local_country1) if local_country1 else None
 						bucket2 = _resolve_country_bucket(local_country2) if local_country2 else None
-						if bucket1 is not None or bucket2 is not None:
-							search_pool = list(bucket1 or [])
-							if bucket2 is not None and bucket2 is not bucket1:
+						if bucket1 is not None and bucket2 is not None:
+							search_pool = list(bucket1)
+							if bucket2 is not bucket1:
 								search_pool += bucket2
 						else:
 							# Country couldn't be resolved with confidence —
 							# fall back to the full list, exactly as before.
 							search_pool = live_matches
-
 						# --- Word Pre-Filter (Tier 0.5): within the country
 						# bucket, narrow further to entries sharing a real
 						# word with either local team name. Only used when
