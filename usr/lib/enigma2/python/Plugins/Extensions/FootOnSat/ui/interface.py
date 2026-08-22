@@ -1310,22 +1310,6 @@ class FootOnSat(Screen):
 		if debug_Fetch_Live: logdata("fetch_live_results", "Current Link: %s" % self.link)
 		if debug_Fetch_Live: logdata("fetch_live_results", "Selected Date: %s" % selected_date)
 
-		# --- Compute needed countries BEFORE fetching anything, so
-		# discovery only fetches tournaments relevant to what's actually
-		# on screen instead of every tournament worldwide. This is the
-		# real fix for "2-3 matches still takes 30+ seconds" — that time
-		# is fixed network-fetch overhead that happens no matter how
-		# small the local list is, unless we shrink WHAT gets fetched. ---
-		def _early_country_key(raw):
-			return re.sub(r'[^a-z]', '', compat_str(raw).strip().lower())
-		needed_country_keys = set()
-		for m in self.matches:
-			if len(m) > 3 and m[3]:
-				needed_country_keys.add(_early_country_key(m[3]))
-			if len(m) > 4 and m[4]:
-				needed_country_keys.add(_early_country_key(m[4]))
-		if debug_Fetch_Live: logdata("fetch_live_results", "Needed countries: %s" % str(needed_country_keys))
-
 		# === Headers/Agent (Minimal and robust headers) ===
 		AGENT = b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
 		USER_AGENTS = [
@@ -1374,17 +1358,6 @@ class FootOnSat(Screen):
 						scheduled = data.get("scheduled", [])
 						for item in scheduled:
 							t = item.get("tournament", {})
-							# Skip tournaments whose country we don't need.
-							# International competitions (World Cup, UEFA
-							# competitions, etc.) have no single country and
-							# are ALWAYS kept, since they could feature any
-							# team. This is the discovery-time filter that
-							# shrinks network fetch from 1000+ requests down
-							# to only what's relevant to the current list.
-							cat_country_name = t.get("category", {}).get("country", {}).get("name", "")
-							if needed_country_keys and cat_country_name:
-								if _early_country_key(cat_country_name) not in needed_country_keys:
-									continue
 							ut = t.get("uniqueTournament")
 							if ut and ut.get("id"): urls.append("https://www.sofascore.com/api/v1/unique-tournament/{0}/scheduled-events/{1}".format(ut["id"], selected_date))
 							elif t.get("id"): urls.append("https://www.sofascore.com/api/v1/tournament/{0}/scheduled-events/{1}".format(t["id"], selected_date))
@@ -1669,6 +1642,7 @@ class FootOnSat(Screen):
 
 			def _clean_name(name):
 				#if debug_Fetch_Live: logdata("FuzzyDebug", "RAW NAME    : %s" % repr(name))
+				name = name.replace('ø', 'o').replace('æ', 'ae').replace('å', 'a').replace('Ø', 'O').replace('Æ', 'AE').replace('Å', 'A')
 				if not PY3 and isinstance(name, str):
 					name = name.decode('ascii', 'ignore')
 				try:
@@ -1684,7 +1658,7 @@ class FootOnSat(Screen):
 				#if debug_Fetch_Live: logdata("FuzzyDebug", "DEBUG DOT   : %s" % repr(name))
 				name = re.sub(r'[^a-z\s]', ' ', name, flags=re.IGNORECASE)
 				#if debug_Fetch_Live: logdata("FuzzyDebug", "DEBUG REGEX : %s" % repr(name))
-				NOISE = r'\b(nk|afc|fc|cf|as|ac|sk|fk|tsv|national|squad|sport|calcio|ploie[șs]ti|ploiești|ploieshti|aif|ifk|kf|ks|af|seinajoki|peshkopi)\b'
+				NOISE = r'\b(nk|afc|fc|cf|as|ac|sk|fk|tsv|national|squad|sport|calcio|ploie[șs]ti|ploiești|ploieshti|aif|ifk|kf|ks|af|seinajoki|peshkopi|cd|real|nicosia)\b'
 				name = re.sub(NOISE, ' ', name, flags=re.IGNORECASE)
 				name = re.sub(r'\s+', ' ', name).strip()
 				#if debug_Fetch_Live: logdata("FuzzyDebug", "CLEANED NAME: %s" % repr(name))
