@@ -1540,7 +1540,8 @@ class FootOnSat(Screen):
 							away = compat_str(away_team.get('shortName') or away_team.get('name', 'Unknown Away'))
 							if home == 'Unknown Home' or away == 'Unknown Away':
 								continue
-							ev_country = home_team.get('country', {}).get('name', '') or away_team.get('country', {}).get('name', '')
+							tourn_cat = (ev.get('tournament') or {}).get('category', {}) or (ev.get('uniqueTournament') or {}).get('category', {})
+							ev_country = tourn_cat.get('country', {}).get('name', '') or home_team.get('country', {}).get('name', '') or away_team.get('country', {}).get('name', '')
 							if debug_Fetch_Live and len(live_matches) < 5:
 								logdata("fetch_live_results", "SAMPLE home_team country field='%s', away_team country field='%s'" % (str(home_team.get('country')), str(away_team.get('country'))))
 						except Exception as e:
