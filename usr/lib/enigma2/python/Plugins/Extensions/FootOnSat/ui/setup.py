@@ -192,6 +192,10 @@ config.plugins.FootOnSat.livescore = ConfigSelection(default = "2", choices = [
 	("1", "%s" % title8),
 	("2", "%s" % title9)
 	])
+config.plugins.FootOnSat.livescoresearchlevel = ConfigSelection(default = "2", choices = [
+	("1", "%s" % title308),
+	("2", "%s" % title309)
+	])
 config.plugins.FootOnSat.livescoresections = ConfigSelection(default = "1", choices = [
 	("1", "%s" % title10),
 	("2", "%s" % title11),
@@ -311,6 +315,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.list.append(getConfigListEntry(title93))
 		self.list.append(getConfigListEntry(_("%s") % title47, config.plugins.FootOnSat.livescore, _("%s") % title48))
 		if config.plugins.FootOnSat.livescore.value in ["2"]:
+			self.list.append(getConfigListEntry(_("%s") % title310, config.plugins.FootOnSat.livescoresearchlevel, _("%s") % title311))
 			self.list.append(getConfigListEntry(_("%s") % title49, config.plugins.FootOnSat.livescoresections, _("%s") % title50))
 			self.list.append(getConfigListEntry(_("%s") % title51, config.plugins.FootOnSat.finished, _("%s") % title52))
 			self.list.append(getConfigListEntry(_("%s") % title53, config.plugins.FootOnSat.livecolor, _("%s") % title54))

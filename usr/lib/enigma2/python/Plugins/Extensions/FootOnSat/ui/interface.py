@@ -1361,7 +1361,8 @@ class FootOnSat(Screen):
 							ut = t.get("uniqueTournament")
 							if ut and ut.get("id"): urls.append("https://www.sofascore.com/api/v1/unique-tournament/{0}/scheduled-events/{1}".format(ut["id"], selected_date))
 							elif t.get("id"): urls.append("https://www.sofascore.com/api/v1/tournament/{0}/scheduled-events/{1}".format(t["id"], selected_date))
-						if data.get("hasNextPage", False):
+						search_level = config.plugins.FootOnSat.livescoresearchlevel.value
+						if data.get("hasNextPage", False) and search_level == "2":
 							_fetch_page(page + 1, urls, d_final)
 						else:
 							urls_unique = list(set(urls))
@@ -1437,7 +1438,8 @@ class FootOnSat(Screen):
 								urls.append("https://www.sofascore.com/api/v1/unique-tournament/{0}/scheduled-events/{1}".format(ut["id"], selected_date))
 							elif t.get("id"):
 								urls.append("https://www.sofascore.com/api/v1/tournament/{0}/scheduled-events/{1}".format(t["id"], selected_date))
-						has_next = data.get("hasNextPage", False)
+						search_level = config.plugins.FootOnSat.livescoresearchlevel.value
+						has_next = data.get("hasNextPage", False) and search_level == "2"
 						page += 1
 					except:
 						break
