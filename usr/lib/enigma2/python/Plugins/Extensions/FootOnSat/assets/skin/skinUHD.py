@@ -8,6 +8,11 @@ def DreamOS():
 		return True
 	return False
 
+try:
+	STREACH="stretch"
+except:
+	STREACH="streach"
+
 if config.plugins.FootOnSat.backcolor.value == "default":
 	Box_on="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/Box_on.png"
 elif config.plugins.FootOnSat.backcolor.value == "rad":
@@ -72,8 +77,8 @@ SKIN_launcher = """
 
 SKIN_interface = """
 <screen name="footonsat" position="0,0" size="2560,1440" backgroundColor="transparent" flags="wfNoBorder" title="FootOnSat">
-    <ePixmap position="0,0" zPosition="-1" size="2560,1440" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/bglist.png" scale="streach" />
-    <ePixmap position="0,0" zPosition="1" size="2560,94" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/infobar_top.png" alphatest="blend" scale="streach" />
+    <ePixmap position="0,0" zPosition="-1" size="2560,1440" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/bglist.png" scale="%s" />
+    <ePixmap position="0,0" zPosition="1" size="2560,94" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/infobar_top.png" alphatest="blend" scale="%s" />
     <eLabel position="1774,782" zPosition="5" size="80,80" text="" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;80" transparent="1" />
     <eLabel position="1774,894" zPosition="5" size="80,85" text="" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;80" transparent="1" />
     <eLabel position="1776,1011" zPosition="5" size="80,85" text="" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;80" transparent="1" />
@@ -91,13 +96,13 @@ SKIN_interface = """
     <widget name="list1" position="76,194" size="1627,875" scrollbarMode="showNever" selectionPixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/button1450x175.png" foregroundColor="#00ffffff" foregroundColorSelected="#00F9C731" backgroundColorSelected="#0000FF" enableWrapAround="1" transparent="1" zPosition="2" /> 
     <widget name="list2" position="1754,200" size="747,456" scrollbarMode="showNever" selectionPixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/list22selectionpixmap.png" foregroundColor="#00ffffff" foregroundColorSelected="#00F9C731" backgroundColorSelected="#0000FF" enableWrapAround="1" transparent="1" zPosition="3" />
     <widget font="Regular;42" foregroundColor="#00ffffff" backgroundColor="#16000000" halign="center" position="center,13" render="Label" size="473,70" source="global.CurrentTime" transparent="1" valign="center" zPosition="5">
-        <convert type="ClockToText">Format:%H:%M  %a. %d.%m.%Y</convert>
+        <convert type="ClockToText">Format:%%H:%%M  %%a. %%d.%%m.%%Y</convert>
     </widget>
     <widget name="counter" foregroundColor="#00ffffff" backgroundColor="#16000000" position="756,1167" halign="center" size="309,70" font="Regular;38" transparent="1" valign="center" zPosition="5" />
     <ePixmap position="767,1180" zPosition="6" size="43,43" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/spin-down.png" alphatest="blend" />
     <ePixmap position="1011,1180" zPosition="6" size="43,43" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/spin-up.png" alphatest="blend" />
 </screen>
-"""
+""" % (STREACH, STREACH)
 
 SKIN_FootOnsatNotif = """
 <screen name="LiveOnsatNotifScreen" position="734,54" zPosition="10" size="1200,234" title="Notif" backgroundColor="#262626" flags="wfNoBorder">
@@ -200,8 +205,8 @@ SKIN_MatchMedia = """
 if DreamOS():
 	SKIN_MenuFootOnSat = """
 		<screen name="MenuFootOnSat" position="0,0" size="2560,1440" backgroundColor="transparent" flags="wfNoBorder" title="MenuFootOnSat">
-		<ePixmap position="0,0" zPosition="-1" size="2560,1440" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/bglist.png" scale="streach" />
-		<ePixmap position="0,0" zPosition="1" size="2560,94" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/infobar_top.png" alphatest="blend" scale="streach" />
+		<ePixmap position="0,0" zPosition="-1" size="2560,1440" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/bglist.png" scale="%s" />
+		<ePixmap position="0,0" zPosition="1" size="2560,94" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/infobar_top.png" alphatest="blend" scale="%s" />
 		<eLabel position="76,194" size="1627,875" backgroundColor="#262626" zPosition="0" />
 		<eLabel position="226,1235" size="300,3" backgroundColor="#FF0000" zPosition="5" />
 		<eLabel position="740,1235" size="300,3" backgroundColor="#00FF00" zPosition="5" />
@@ -213,15 +218,15 @@ if DreamOS():
 		<widget source="help" render="Label" position="1760,389" size="710,188" font="Regular;29" foregroundColor="#00e5b243" backgroundColor="#16000000" halign="center" transparent="1" zPosition="5" />
 		<widget name="Picture" position="1900,830" size="480,340" zPosition="5" alphatest="blend" />
 		<widget font="Regular;47" foregroundColor="#00ffffff" backgroundColor="#16000000" halign="center" position="center,13" render="Label" size="811,70" source="global.CurrentTime" transparent="1" valign="center" zPosition="5">
-			<convert type="ClockToText">Format:%H:%M:%S</convert>
+			<convert type="ClockToText">Format:%%H:%%M:%%S</convert>
 			</widget>
 		</screen>
-	"""
+	""" % (STREACH, STREACH)
 else:
 	SKIN_MenuFootOnSat = """
 		<screen name="MenuFootOnSat" position="0,0" size="2560,1440" backgroundColor="transparent" flags="wfNoBorder" title="MenuFootOnSat">
-			<ePixmap position="0,0" zPosition="-1" size="2560,1440" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/bglist.png" scale="streach" />
-			<ePixmap position="0,0" zPosition="1" size="2560,94" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/infobar_top.png" alphatest="blend" scale="streach" />
+			<ePixmap position="0,0" zPosition="-1" size="2560,1440" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/bglist.png" scale="%s" />
+			<ePixmap position="0,0" zPosition="1" size="2560,94" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/infobar_top.png" alphatest="blend" scale="%s" />
 			<eLabel position="76,194" size="1627,875" backgroundColor="#262626" zPosition="0" />
 			<eLabel position="326,1235" size="300,3" backgroundColor="#FF0000" zPosition="5" />
 			<eLabel position="785,1235" size="300,3" backgroundColor="#00FF00" zPosition="5" />
@@ -233,10 +238,10 @@ else:
 			<widget source="help" render="Label" position="1760,389" size="710,188" font="Regular;29" foregroundColor="#00e5b243" backgroundColor="#16000000" halign="center" transparent="1" zPosition="5" />
 			<widget name="Picture" position="1900,830" size="480,340" zPosition="5" alphatest="blend" />
 			<widget font="Regular;47" foregroundColor="#00ffffff" backgroundColor="#16000000" halign="center" position="center,13" render="Label" size="811,70" source="global.CurrentTime" transparent="1" valign="center" zPosition="5">
-				<convert type="ClockToText">Format:%d-%m-%Y     %H:%M:%S</convert>
+				<convert type="ClockToText">Format:%%d-%%m-%%Y     %%H:%%M:%%S</convert>
 			</widget>
 		</screen>
-	"""
+	""" % (STREACH, STREACH)
 
 SKIN_SelectionScreen = """
 <screen name="SelectionScreen" position="center,center" size="738,524" title="Select Options">
