@@ -227,6 +227,19 @@ class WebClientContextFactory(ClientContextFactory):
 		return ctx
 
 
+class TLSAdapter(requests.adapters.HTTPAdapter):
+	def init_poolmanager(self, *args, **kwargs):
+		import ssl
+		ctx = ssl.create_default_context()
+		try:
+			ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+		except AttributeError:
+			pass
+		ctx.set_ciphers('DEFAULT@SECLEVEL=1')
+		kwargs['ssl_context'] = ctx
+		return super(TLSAdapter, self).init_poolmanager(*args, **kwargs)
+
+
 class FootOnSat(Screen):
 	def __init__(self, session, link, *args):
 		#logdata("FootOnSat", "Plugin initialization started.")
@@ -1330,32 +1343,43 @@ class FootOnSat(Screen):
 		# === Twisted HTTP Request Handling (with Py3 compatibility) ===
 		deferred_list = []
 		if PY3:
-			base_url = 'https://www.sofascore.com'
-			try:
-				sniFactory = WebClientContextFactory(base_url)
-			except Exception as e:
-				if debug_Fetch_Live: logdata("fetch_live_results", "Failed to create WebClientContextFactory: %s" % str(e))
-				self.matches = [list(m) for m in self.matches]
-				self.iniMenu()
-				return
-
-			twisted_live_headers = {
-				b'User-Agent': [AGENT],
-				b'Connection': [b'close'],
-				b'Accept': [b'application/json, text/plain, */*'],
-				b'Referer': [b'https://www.sofascore.com/'],
-				b'Origin': [b'https://www.sofascore.com'],
-				b'Cache-Control': [b'no-cache'],
+			_py3_headers = {
+				'User-Agent': ua,
+				'Accept': '*/*',
+				'Origin': 'https://www.sofascore.com',
+				'Referer': 'https://www.sofascore.com/',
+				'Cache-Control': 'no-cache',
+				'Accept-Encoding': 'gzip, deflate',
+				'Connection': 'keep-alive',
 			}
+
+			_py3_session = requests.Session()
+			_py3_session.mount("https://", TLSAdapter())
+			_py3_session.headers.update(_py3_headers)
+
+			def _py3_get(url, timeout=20):
+				url_str = url.decode('utf-8') if isinstance(url, bytes) else url
+				def _worker():
+					r = _py3_session.get(url_str, timeout=timeout)
+					if r.status_code == 204:
+						return b'{"scheduled":[],"hasNextPage":false}'
+					if r.status_code != 200:
+						raise Exception("HTTP_%s" % r.status_code)
+					return r.content
+				d = defer.Deferred()
+				deferToThread(_worker).addCallback(d.callback).addErrback(d.errback)
+				return d
 
 			d = defer.Deferred()
 
 			def _fetch_page(page, urls, d_final):
 				url = 'https://www.sofascore.com/api/v1/sport/football/scheduled-tournaments/{0}/page/{1}'.format(selected_date, page)
 				def _cb(raw):
+					if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_CB_RAW: type=%s len=%s preview=%s" % (type(raw).__name__, len(raw) if raw else 0, (raw[:200] if raw else b'')))
 					try:
 						data = json.loads(raw.decode('utf-8', 'ignore'))
 						scheduled = data.get("scheduled", [])
+						if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_CB_PARSED: scheduled_count=%d hasNextPage=%s keys=%s" % (len(scheduled), data.get("hasNextPage", False), list(data.keys())[:10]))
 						for item in scheduled:
 							t = item.get("tournament", {})
 							ut = t.get("uniqueTournament")
@@ -1367,106 +1391,177 @@ class FootOnSat(Screen):
 						else:
 							urls_unique = list(set(urls))
 							if debug_Fetch_Live: logdata("fetch_live_results", "DISCOVERY DONE: %d tournament URLs found in %.2fs" % (len(urls_unique), time.time() - self.fetch_timestamp))
-							deferreds = [getPage(str.encode(u), contextFactory=sniFactory, timeout=20, headers=twisted_live_headers) for u in urls_unique]
+							if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_URLS_SAMPLE: first_5=%s" % (urls_unique[:5],))
+							deferreds = [_py3_get(u, timeout=20) for u in urls_unique]
 							if not deferreds:
 								d_final.callback([b'{"events":[]}'])
 							else:
-								# gatherResults() ALWAYS uses fireOnOneErrback=True
-								# internally, even with consumeErrors=True — one
-								# slow tournament (a single 20s timeout out of
-								# 1000+ requests) was silently discarding every
-								# other already-successful response and aborting
-								# the WHOLE batch. Plain DeferredList keeps every
-								# result — successes AND failures — so one bad
-								# request no longer throws away 900+ good ones.
 								def _unwrap_deferred_list(dl_results):
 									out = []
+									failed = 0
 									for ok, value in dl_results:
 										if ok and value:
 											out.append(value)
+										else:
+											failed += 1
+											if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_ITEM_FAILED: ok=%s err=%s" % (ok, str(value)[:200]))
+									if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_DEFERRED_LIST: total=%d ok=%d failed=%d" % (len(dl_results), len(out), failed))
+									if out and debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_FIRST_ITEM_LEN: %d preview=%s" % (len(out[0]), out[0][:200]))
 									return out or [b'{"events":[]}']
 								defer.DeferredList(deferreds, consumeErrors=True).addCallback(_unwrap_deferred_list).chainDeferred(d_final)
 					except:
 						d_final.callback([b'{"events":[]}'])
 				def _eb(err):
+					if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_DISCOVERY_ERR: %s" % str(err))
 					d_final.callback([b'{"events":[]}'])
-				getPage(str.encode(url), contextFactory=sniFactory, timeout=20, headers=twisted_live_headers).addCallback(_cb).addErrback(_eb)
+				_py3_get(url, timeout=20).addCallback(_cb).addErrback(_eb)
 
 			_fetch_page(1, [], d)
 			self.fetch_deferred = d
 
 			def process_results(results):
+				if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_PROCESS_RESULTS: received %d items" % len(results))
 				if self.is_closed:
 					if debug_Fetch_Live: logdata("fetch_live_results", "ABORTED: Background process stopped because plugin is closed.")
 					return [b'{"events":[]}']
 				valid = []
-				for r in results:
+				for i, r in enumerate(results):
 					if r and not isinstance(r, Failure):
 						valid.append(r)
+						if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_PR_ITEM_%d: type=%s len=%s preview=%s" % (i, type(r).__name__, len(r) if r else 0, (r[:150] if r else b'')))
+					else:
+						if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_PR_ITEM_%d_DROPPED: type=%s val=%s" % (i, type(r).__name__, str(r)[:200]))
 				if not valid:
 					valid = [b'{"events":[]}']
 				return valid
 
 			d.addCallback(process_results)
-
 		else:
 			# PY2 version — fixed with Session and Referer
 			def _fetch_smart():
 				if self.is_closed:
-					if debug_Fetch_Live: logdata("fetch_live_results", "ABORTED: Background process stopped because plugin is closed.")
 					return []
-				results = []
-				s = requests.Session()
-				s.headers.update(headers2)
-				page = 1
-				has_next = True
-				urls = []
-				while has_next:
-					main_url = "https://www.sofascore.com/api/v1/sport/football/scheduled-tournaments/{0}/page/{1}".format(selected_date, page)
-					try:
-						r = s.get(main_url, timeout=10)
-						if r.status_code != 200:
-							break
-						data = r.json()
-						scheduled = data.get("scheduled", [])
-						if not scheduled:
-							break
-						for item in scheduled:
-							t = item.get("tournament", {})
-							ut = t.get("uniqueTournament")
-							if ut and ut.get("id"):
-								urls.append("https://www.sofascore.com/api/v1/unique-tournament/{0}/scheduled-events/{1}".format(ut["id"], selected_date))
-							elif t.get("id"):
-								urls.append("https://www.sofascore.com/api/v1/tournament/{0}/scheduled-events/{1}".format(t["id"], selected_date))
-						search_level = config.plugins.FootOnSat.livescoresearchlevel.value
-						has_next = data.get("hasNextPage", False) and search_level == "2"
-						page += 1
-					except:
-						break
-				urls = list(set(urls))
+				import socket, ssl, threading
+
 				try:
-					from multiprocessing.dummy import Pool as ThreadPool
-					pool = ThreadPool(10)
-					def _fetch_url(u):
+					_ssl_ctx = ssl.create_default_context()
+				except AttributeError:
+					_ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
+				_ssl_ctx.check_hostname = False
+				_ssl_ctx.verify_mode = ssl.CERT_NONE
+				try:
+					_ssl_ctx.set_ciphers('ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:!aNULL:!MD5:!DSS')
+				except Exception:
+					pass
+				try:
+					_ssl_ctx.set_alpn_protocols(['http/1.1'])
+				except Exception:
+					pass
+
+				def _https_get(url):
+					try:
+						u = url[8:] if url.startswith('https://') else url[7:]
+						if '/' in u:
+							host, path = u.split('/', 1)
+							path = '/' + path
+						else:
+							host, path = u, '/'
+						if ':' in host:
+							host = host.split(':')[0]
+						sock = socket.create_connection((host, 443), timeout=10)
 						try:
-							r = s.get(u, timeout=10)
-							if r.status_code == 200: return r.content
-						except: pass
+							ssock = _ssl_ctx.wrap_socket(sock, server_hostname=host)
+						except TypeError:
+							ssock = _ssl_ctx.wrap_socket(sock)
+						req = ("GET " + path + " HTTP/1.1\r\n"
+							"Host: " + host + "\r\n"
+							"User-Agent: " + ua + "\r\n"
+							"Accept: application/json, text/plain, */*\r\n"
+							"Origin: https://www.sofascore.com\r\n"
+							"Referer: https://www.sofascore.com/\r\n"
+							"X-Requested-With: XMLHttpRequest\r\n"
+							"Connection: close\r\n"
+							"\r\n")
+						ssock.sendall(req.encode('utf-8'))
+						data = b''
+						while True:
+							chunk = ssock.recv(65536)
+							if not chunk:
+								break
+							data += chunk
+						ssock.close()
+						parts = data.split(b'\r\n\r\n', 1)
+						if len(parts) == 2:
+							status_line = parts[0].split(b'\r\n')[0]
+							if b' 200 ' in status_line:
+								body = parts[1]
+								if b'Transfer-Encoding: chunked' in parts[0] or b'transfer-encoding: chunked' in parts[0]:
+									decoded = b''
+									idx = 0
+									while idx < len(body):
+										end = body.find(b'\r\n', idx)
+										if end == -1:
+											break
+										try:
+											size = int(body[idx:end], 16)
+										except Exception:
+											break
+										if size == 0:
+											break
+										decoded += body[end+2:end+2+size]
+										idx = end + 2 + size + 2
+									return decoded
+								return body
+							else:
+								if debug_Fetch_Live: logdata("fetch_live_results", "PY2_SSL_STATUS: %s" % status_line[:80])
 						return None
-					res_list = pool.map(_fetch_url, urls)
-					pool.close()
-					pool.join()
-					for r in res_list:
-						if r: results.append(r)
-				except:
-					for u in urls:
-						try:
-							r = s.get(u, timeout=10)
-							if r.status_code == 200:
-								results.append(r.content)
-						except:
-							pass
-				valid = [r for r in results if r is not None]
+					except Exception as e:
+						if debug_Fetch_Live: logdata("fetch_live_results", "PY2_SSL_EXC: %s" % str(e)[:100])
+						return None
+
+				urls = []
+				page = 1
+				while True:
+					main_url = "https://www.sofascore.com/api/v1/sport/football/scheduled-tournaments/{0}/page/{1}".format(selected_date, page)
+					raw = _https_get(main_url)
+					if not raw:
+						break
+					try:
+						data = json.loads(raw.decode('utf-8', 'ignore'))
+					except Exception:
+						break
+					scheduled = data.get("scheduled", [])
+					if not scheduled:
+						break
+					for item in scheduled:
+						t = item.get("tournament", {})
+						ut = t.get("uniqueTournament")
+						if ut and ut.get("id"):
+							urls.append("https://www.sofascore.com/api/v1/unique-tournament/{0}/scheduled-events/{1}".format(ut["id"], selected_date))
+						elif t.get("id"):
+							urls.append("https://www.sofascore.com/api/v1/tournament/{0}/scheduled-events/{1}".format(t["id"], selected_date))
+					if not (data.get("hasNextPage", False) and config.plugins.FootOnSat.livescoresearchlevel.value == "2"):
+						break
+					page += 1
+
+				urls = list(set(urls))
+				if debug_Fetch_Live: logdata("fetch_live_results", "PY2_SSL_URLS: %d" % len(urls))
+				if not urls:
+					return [b'{"events":[]}']
+
+				results = [None] * len(urls)
+				def worker(start):
+					for i in range(start, len(urls), 30):
+						results[i] = _https_get(urls[i])
+
+				threads = [threading.Thread(target=worker, args=(i,)) for i in range(30)]
+				for t in threads:
+					t.start()
+				for t in threads:
+					t.join()
+
+				valid = [r for r in results if r]
+				if debug_Fetch_Live: logdata("fetch_live_results", "PY2_SSL_RESULTS: %d of %d" % (len(valid), len(urls)))
 				return valid or [b'{"events":[]}']
 
 			self.fetch_deferred = deferToThread(_fetch_smart)
@@ -1478,6 +1573,9 @@ class FootOnSat(Screen):
 			if debug_Fetch_Live: logdata("fetch_live_results", "MATCHES BEFORE: %d" % len(self.matches))
 			process_start = time.time()
 			if debug_Fetch_Live: logdata("fetch_live_results", "NETWORK FETCH done (all tournaments) in %.2fs, %d responses" % (process_start - self.fetch_timestamp, len(raw_list)))
+			if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_RAW_LIST_TYPES: total=%d types=%s" % (len(raw_list), list(set(type(x).__name__ for x in raw_list))))
+			for _i, _r in enumerate(raw_list):
+				if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_RAW_LIST_%d: len=%s preview=%s" % (_i, len(_r) if _r else 0, (_r[:200] if _r else b'')))
 			# === STEP 2: INSTANT UI DRAW — moved to run FIRST, immediately.
 			# It doesn't depend on decode/build results at all (it just
 			# re-shows the current self.matches), so there's no reason to
