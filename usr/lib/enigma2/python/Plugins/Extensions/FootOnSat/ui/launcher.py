@@ -27,8 +27,6 @@ from Tools.Directories import resolveFilename, SCOPE_PLUGINS
 
 VER = float(__version__)
 
-debug_Fetch_Live = config.plugins.FootOnSat.debug_Fetch_Live.value
-
 if isUHD():
         from Plugins.Extensions.FootOnSat.assets.skin.skinUHD import *
 else:

@@ -22,6 +22,11 @@ from os.path import join, exists, splitext, isfile
 import re, os, json, sys, io
 from .compat import *
 import importlib
+from twisted.web.client import getPage
+from twisted.internet.ssl import ClientContextFactory
+from twisted.internet._sslverify import ClientTLSOptions
+from twisted.python.failure import Failure
+
 
 def logdata(label_name = "", data = None):
 	try:
@@ -196,10 +201,16 @@ config.plugins.FootOnSat.livescoresearchlevel = ConfigSelection(default = "2", c
 	("1", "%s" % title308),
 	("2", "%s" % title309)
 	])
+config.plugins.FootOnSat.source = ConfigSelection(default = "espn", choices = [
+	("sofascore", "%s" % title314),
+	("espn", "%s" % title316),
+#	("sportscore", "%s" % title315),
+	])
 config.plugins.FootOnSat.livescoresections = ConfigSelection(default = "1", choices = [
 	("1", "%s" % title10),
 	("2", "%s" % title11),
 	])
+config.plugins.FootOnSat.espn_limit = ConfigInteger(default=500, limits=(50, 1000))
 config.plugins.FootOnSat.notify_zap = ConfigSelection(default = "1", choices = [
 	("1", "%s" % title12),
 	("2", "%s" % title13),
@@ -236,13 +247,24 @@ else:
 		("5002", "%s" % title30)
 	])
 
+# debug
+debug_Notif = config.plugins.FootOnSat.debug_Notif.value
+debug_Standings = config.plugins.FootOnSat.debug_Standings.value
+debug_MatchMedia = config.plugins.FootOnSat.debug_MatchMedia.value
+debug_MatchStatistics = config.plugins.FootOnSat.debug_MatchStatistics.value
+debug_MatchDetails = config.plugins.FootOnSat.debug_MatchDetails.value
+debug_ZAP = config.plugins.FootOnSat.debug_ZAP.value
+debug_Fetch_Live = config.plugins.FootOnSat.debug_Fetch_Live.value
+debug_Ignore = config.plugins.FootOnSat.debug_Ignore.value
+debug_favorite = config.plugins.FootOnSat.debug_favorite.value
+
 def getDesktopSize():
 	s = getDesktop(0).size()
 	return (s.width(), s.height())
 
 def isUHD():
 	desktopSize = getDesktopSize()
-	return desktopSize[0] >= 2560
+	return desktopSize[0] == 2560 or desktopSize[0] == 3840
 
 def isFHD():
 	desktopSize = getDesktopSize()
@@ -252,6 +274,22 @@ if isUHD():
 	from Plugins.Extensions.FootOnSat.assets.skin.skinUHD import SKIN_MenuFootOnSat, SKIN_SelectionScreen
 else:
 	from Plugins.Extensions.FootOnSat.assets.skin.skinFHD import SKIN_MenuFootOnSat, SKIN_SelectionScreen
+
+
+# The CRITICAL class for TLS SNI support
+class WebClientContextFactory(ClientContextFactory):
+	def __init__(self, url=None):
+		domain = compat_urlparse(url).netloc
+		self.hostname = domain.split(':')[0] if ':' in domain else domain
+
+	def getContext(self, hostname=None, port=None):
+		ctx = ClientContextFactory.getContext(self)
+		if self.hostname and ClientTLSOptions is not None:
+			try:
+				ClientTLSOptions(self.hostname, ctx)
+			except Exception:
+				pass
+		return ctx
 
 
 class MenuFootOnSat(ConfigListScreen, Screen):
@@ -315,7 +353,11 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.list.append(getConfigListEntry(title93))
 		self.list.append(getConfigListEntry(_("%s") % title47, config.plugins.FootOnSat.livescore, _("%s") % title48))
 		if config.plugins.FootOnSat.livescore.value in ["2"]:
-			self.list.append(getConfigListEntry(_("%s") % title310, config.plugins.FootOnSat.livescoresearchlevel, _("%s") % title311))
+			self.list.append(getConfigListEntry(_("%s") % title312, config.plugins.FootOnSat.source, _("%s") % title313))
+			if config.plugins.FootOnSat.source.value == "espn":
+				self.list.append(getConfigListEntry(_("%s") % title318, config.plugins.FootOnSat.espn_limit, _("%s") % title319))
+			else:
+				self.list.append(getConfigListEntry(_("%s") % title310, config.plugins.FootOnSat.livescoresearchlevel, _("%s") % title311))
 			self.list.append(getConfigListEntry(_("%s") % title49, config.plugins.FootOnSat.livescoresections, _("%s") % title50))
 			self.list.append(getConfigListEntry(_("%s") % title51, config.plugins.FootOnSat.finished, _("%s") % title52))
 			self.list.append(getConfigListEntry(_("%s") % title53, config.plugins.FootOnSat.livecolor, _("%s") % title54))

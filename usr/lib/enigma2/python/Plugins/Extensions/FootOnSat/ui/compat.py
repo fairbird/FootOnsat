@@ -31,6 +31,7 @@ if version_info[0] == 2:
 	from urlparse import urlparse as compat_urlparse
 	from urlparse import urlunparse as compat_urlunparse
 	from httplib import HTTPException as compat_HTTPException
+	from cookielib import MozillaCookieJar as compat_MozillaCookieJar
 
 
 	def _unquote_to_bytes(string):
@@ -108,6 +109,7 @@ else:
 	from urllib.parse import parse_qs as compat_parse_qs
 	from urllib.parse import urlunparse as compat_urlunparse
 	from http.client import HTTPException as compat_HTTPException
+	from http.cookiejar import MozillaCookieJar as compat_MozillaCookieJar
 
 if version_info >= (3, 4):
 	from collections import ChainMap as compat_chain_map
@@ -182,3 +184,30 @@ def compat_urlopen(url, timeout=5):
 	if compat_urlopen.error:
 		raise compat_urlopen.error
 	return compat_urlopen.response
+
+
+def compat_parse_iso(s):
+	"""Parse ISO 8601 datetime string to epoch seconds (UTC). Works in Py2 and Py3."""
+	import re as _re
+	import calendar as _cal
+	if not s:
+		return 0
+	s = str(s).strip()
+	m = _re.match(r'^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?(?:(Z)|([+-])(\d{2}):?(\d{2}))?$', s)
+	if not m:
+		return 0
+	try:
+		year = int(m.group(1))
+		month = int(m.group(2))
+		day = int(m.group(3))
+		hour = int(m.group(4))
+		minute = int(m.group(5))
+		sec = int(m.group(6)) if m.group(6) else 0
+		offset_sec = 0
+		if m.group(8) and m.group(9) and m.group(10):
+			sign = 1 if m.group(8) == '+' else -1
+			offset_sec = sign * (int(m.group(9)) * 3600 + int(m.group(10)) * 60)
+		dt = datetime(year, month, day, hour, minute, sec)
+		return _cal.timegm(dt.timetuple()) - offset_sec
+	except Exception:
+		return 0

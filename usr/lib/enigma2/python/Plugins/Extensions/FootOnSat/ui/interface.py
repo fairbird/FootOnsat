@@ -36,9 +36,11 @@ from twisted.internet.threads import deferToThread
 from twisted.internet._sslverify import ClientTLSOptions
 from twisted.internet.threads import blockingCallFromThread
 from twisted.web.client import getPage, downloadPage
+from .fetch_sources import WebClientContextFactory, TLSAdapter, get_live_fetcher
 from .YouTubeVideoUrl import YouTubeVideoUrl
 from .compat import *
 from .setup import *
+from .fetch_details import *
 
 try:
 	from skin import parseColor
@@ -56,17 +58,6 @@ OPENBH2="/usr/lib/enigma2/python/Screens/BpBlue.pyc"
 OPENVIX="/usr/lib/enigma2/python/Plugins/SystemPlugins/ViX"
 
 PLUGINPATH="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
-
-# debug
-debug_Notif = config.plugins.FootOnSat.debug_Notif.value
-debug_Standings = config.plugins.FootOnSat.debug_Standings.value
-debug_MatchMedia = config.plugins.FootOnSat.debug_MatchMedia.value
-debug_MatchStatistics = config.plugins.FootOnSat.debug_MatchStatistics.value
-debug_MatchDetails = config.plugins.FootOnSat.debug_MatchDetails.value
-debug_ZAP = config.plugins.FootOnSat.debug_ZAP.value
-debug_Fetch_Live = config.plugins.FootOnSat.debug_Fetch_Live.value
-debug_Ignore = config.plugins.FootOnSat.debug_Ignore.value
-debug_favorite = config.plugins.FootOnSat.debug_favorite.value
 
 # Check for PIL availability first, and import if found
 try:
@@ -93,54 +84,6 @@ if isUHD():
         from Plugins.Extensions.FootOnSat.assets.skin.skinUHD import *
 else:
         from Plugins.Extensions.FootOnSat.assets.skin.skinFHD import *
-
-## url for Standings table
-json_urls = {
-	# Champions league
-	"championsleague": "https://www.sofascore.com/tournament/football/europe/uefa-champions-league/7#id:96518",
-	# Europa league
-	"europaleague": "https://www.sofascore.com/tournament/football/europe/uefa-europa-league/679#id:96522",
-	# Conference league
-	"ConferenceLeague": "https://www.sofascore.com/tournament/football/europe/uefa-europa-conference-league/17015#id:96529",
-	# England league
-	"premierleague": "https://www.sofascore.com/tournament/football/england/premier-league/17#id:96668",
-	# champion ship league
-	"championship": "https://www.sofascore.com/tournament/football/england/championship/18#id:97037",
-	# Italy league
-	"seriea": "https://www.sofascore.com/tournament/football/italy/serie-a/23#id:95836",
-	# France league
-	"ligue1": "https://www.sofascore.com/tournament/football/france/ligue-1/34#id:96127",
-	# Spain league 1 + 2
-	"laliga": "https://www.sofascore.com/tournament/football/spain/laliga/8#id:97268",
-	"laliga2": "https://www.sofascore.com/tournament/football/spain/laliga-2/54#id:97280",
-	# Germany league 1 + 2
-	"bundesliga": "https://www.sofascore.com/tournament/football/germany/bundesliga/35#id:97464",
-	"bundesliga2": "https://www.sofascore.com/tournament/football/germany/2-bundesliga/44#id:97406",
-	# Portugal league
-	"liganos": "https://www.sofascore.com/tournament/football/portugal/liga-portugal-betclic/238#id:97436",
-	# Belgium league
-	"belgianpro": "https://www.sofascore.com/tournament/football/belgium/pro-league/38#id:96616",
-	# Turkey league
-	"superLig": "https://www.sofascore.com/tournament/football/turkey/trendyol-super-lig/52#id:98080",
-	# Netherlands league
-	"eredivisie": "https://www.sofascore.com/tournament/football/netherlands/eredivisie/37#id:96143",
-	# Saudi Arabia league
-	"saudiarabia": "https://www.sofascore.com/tournament/football/saudi-arabia/saudi-pro-league/955#id:99275",
-	# Asia Champions league Elite
-	"afcchampions": "https://www.sofascore.com/tournament/football/asia/afc-champions-league/463#id:99217",
-	# Asia Champions league two
-	"afcchampionstwo": "https://www.sofascore.com/tournament/football/asia/afc-cup/668#id:97465",
-	# euroleague basketball
-	"basketball": "https://www.sofascore.com/tournament/basketball/international/euroleague/138#id:99582",	
-	# nba basketball
-	"nba": "https://www.sofascore.com/tournament/basketball/usa/nba/132#id:100772",
-	# hockey
-	"hockey": "https://www.sofascore.com/tournament/ice-hockey/usa/nhl/234#id:98450",
-	# american football
-	"nfl": "https://www.sofascore.com/tournament/american-football/usa/nfl/9464#id:94366",
-	# World Cup
-	#"worldcup": "https://www.sofascore.com/football/tournament/world/world-championship/16#id:58210",
-}
 
 # Use thess url to download missing log of team (Extra code)
 log_urls = {
@@ -211,35 +154,6 @@ def sanitize_team_name(team):
 	return name
 
 
-# The CRITICAL class for TLS SNI support
-class WebClientContextFactory(ClientContextFactory):
-	def __init__(self, url=None):
-		domain = compat_urlparse(url).netloc
-		self.hostname = domain.split(':')[0] if ':' in domain else domain
-
-	def getContext(self, hostname=None, port=None):
-		ctx = ClientContextFactory.getContext(self)
-		if self.hostname and ClientTLSOptions is not None:
-			try:
-				ClientTLSOptions(self.hostname, ctx)
-			except Exception:
-				pass
-		return ctx
-
-
-class TLSAdapter(requests.adapters.HTTPAdapter):
-	def init_poolmanager(self, *args, **kwargs):
-		import ssl
-		ctx = ssl.create_default_context()
-		try:
-			ctx.minimum_version = ssl.TLSVersion.TLSv1_2
-		except AttributeError:
-			pass
-		ctx.set_ciphers('DEFAULT@SECLEVEL=1')
-		kwargs['ssl_context'] = ctx
-		return super(TLSAdapter, self).init_poolmanager(*args, **kwargs)
-
-
 class FootOnSat(Screen):
 	def __init__(self, session, link, *args):
 		#logdata("FootOnSat", "Plugin initialization started.")
@@ -260,7 +174,7 @@ class FootOnSat(Screen):
 			self.MENUTEXT = "{0} - {1} - {2}".format(title296, day_name, tm_date.strftime('%d-%m-%Y'))
 #		elif self.link == "favorite":
 #			self.MENUTEXT = "{0}".format(title284)
-		elif self.link not in json_urls:
+		elif is_standings_available(config.plugins.FootOnSat.source.value, self.link):
 			self.MENUTEXT = _("%s") % title116
 		else:
 			self.MENUTEXT = _("%s") % title116
@@ -675,7 +589,7 @@ class FootOnSat(Screen):
 				else:
 					self['key_green'].show()
 					self['key_green'].setText(_("%s") % title114)
-			elif self.link in json_urls:
+			elif is_standings_available(config.plugins.FootOnSat.source.value, self.link):
 				self['key_red'].hide()
 				self['key_yellow'].hide()
 				self['key_green'].show()
@@ -745,7 +659,7 @@ class FootOnSat(Screen):
 				else:
 					self['key_green'].show()
 					self['key_green'].setText(_("%s") % title114)
-			elif self.link in json_urls:
+			elif is_standings_available(config.plugins.FootOnSat.source.value, self.link):
 				self['key_green'].show()
 				self['key_green'].setText(_("%s") % title135)
 			else:
@@ -1109,7 +1023,11 @@ class FootOnSat(Screen):
 					current_match[4])
 				return
 			else:
-				self.session.open(MessageBox,  title146, MessageBox.TYPE_INFO, timeout=3)
+				src = config.plugins.FootOnSat.source.value
+				if src == "sportscore":
+					self.session.open(MessageBox, title317, MessageBox.TYPE_INFO, timeout=3)
+				else:
+					self.session.open(MessageBox, title146, MessageBox.TYPE_INFO, timeout=3)
 				return
 
 		if PY3:
@@ -1302,824 +1220,11 @@ class FootOnSat(Screen):
 			self.session.openWithCallback(self.exit, MessageBox, error_msg, MessageBox.TYPE_ERROR, timeout=10)
 
 	def fetch_live_results(self):
-		self.fetch_timestamp = time.time()
-		current_ts = self.fetch_timestamp
-		if not self.matches:
-			self.onWindowShow()
-			return
-		# Define the fixed time windows
-		LIVE_DURATION = timedelta(hours=4) # 4 hours limit for finished matches
-		TIME_WINDOW = timedelta(hours=4) # Generous fuzzy matching time tolerance
-		
-		live_start_time = time.time()
-		if debug_Fetch_Live: logdata("fetch_live_results", "fetch_live_results initiated.")
-
-		index = self['list1'].getSelectionIndex()
-		current_match = self.matches[index]
-		if self.link == "yesterday":
-			selected_date = current_match[1].split(' - ')[1]
-		else:
-			selected_date = date.today().isoformat()
-		if debug_Fetch_Live: logdata("fetch_live_results", "Current Link: %s" % self.link)
-		if debug_Fetch_Live: logdata("fetch_live_results", "Selected Date: %s" % selected_date)
-
-		# === Headers/Agent (Minimal and robust headers) ===
-		AGENT = b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
-		USER_AGENTS = [
-			'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36',
-			'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
-			'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Safari/605.1.15',
-		]
-		ua = random.choice(USER_AGENTS)
-
-		headers2 = {
-			'User-Agent': ua,
-			'Accept': 'application/json, text/plain, */*',
-			'Referer': 'https://www.sofascore.com/',
-			'Origin': 'https://www.sofascore.com',
-			'Cache-Control': 'no-cache',
-		}
-
-		# === Twisted HTTP Request Handling (with Py3 compatibility) ===
-		deferred_list = []
-		if PY3:
-			_py3_headers = {
-				'User-Agent': ua,
-				'Accept': '*/*',
-				'Origin': 'https://www.sofascore.com',
-				'Referer': 'https://www.sofascore.com/',
-				'Cache-Control': 'no-cache',
-				'Accept-Encoding': 'gzip, deflate',
-				'Connection': 'keep-alive',
-			}
-
-			_py3_session = requests.Session()
-			_py3_session.mount("https://", TLSAdapter())
-			_py3_session.headers.update(_py3_headers)
-
-			def _py3_get(url, timeout=20):
-				url_str = url.decode('utf-8') if isinstance(url, bytes) else url
-				def _worker():
-					r = _py3_session.get(url_str, timeout=timeout)
-					if r.status_code == 204:
-						return b'{"scheduled":[],"hasNextPage":false}'
-					if r.status_code != 200:
-						raise Exception("HTTP_%s" % r.status_code)
-					return r.content
-				d = defer.Deferred()
-				deferToThread(_worker).addCallback(d.callback).addErrback(d.errback)
-				return d
-
-			d = defer.Deferred()
-
-			def _fetch_page(page, urls, d_final):
-				url = 'https://www.sofascore.com/api/v1/sport/football/scheduled-tournaments/{0}/page/{1}'.format(selected_date, page)
-				def _cb(raw):
-					if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_CB_RAW: type=%s len=%s preview=%s" % (type(raw).__name__, len(raw) if raw else 0, (raw[:200] if raw else b'')))
-					try:
-						data = json.loads(raw.decode('utf-8', 'ignore'))
-						scheduled = data.get("scheduled", [])
-						if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_CB_PARSED: scheduled_count=%d hasNextPage=%s keys=%s" % (len(scheduled), data.get("hasNextPage", False), list(data.keys())[:10]))
-						for item in scheduled:
-							t = item.get("tournament", {})
-							ut = t.get("uniqueTournament")
-							if ut and ut.get("id"): urls.append("https://www.sofascore.com/api/v1/unique-tournament/{0}/scheduled-events/{1}".format(ut["id"], selected_date))
-							elif t.get("id"): urls.append("https://www.sofascore.com/api/v1/tournament/{0}/scheduled-events/{1}".format(t["id"], selected_date))
-						search_level = config.plugins.FootOnSat.livescoresearchlevel.value
-						if data.get("hasNextPage", False) and search_level == "2":
-							_fetch_page(page + 1, urls, d_final)
-						else:
-							urls_unique = list(set(urls))
-							if debug_Fetch_Live: logdata("fetch_live_results", "DISCOVERY DONE: %d tournament URLs found in %.2fs" % (len(urls_unique), time.time() - self.fetch_timestamp))
-							if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_URLS_SAMPLE: first_5=%s" % (urls_unique[:5],))
-							deferreds = [_py3_get(u, timeout=20) for u in urls_unique]
-							if not deferreds:
-								d_final.callback([b'{"events":[]}'])
-							else:
-								def _unwrap_deferred_list(dl_results):
-									out = []
-									failed = 0
-									for ok, value in dl_results:
-										if ok and value:
-											out.append(value)
-										else:
-											failed += 1
-											if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_ITEM_FAILED: ok=%s err=%s" % (ok, str(value)[:200]))
-									if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_DEFERRED_LIST: total=%d ok=%d failed=%d" % (len(dl_results), len(out), failed))
-									if out and debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_FIRST_ITEM_LEN: %d preview=%s" % (len(out[0]), out[0][:200]))
-									return out or [b'{"events":[]}']
-								defer.DeferredList(deferreds, consumeErrors=True).addCallback(_unwrap_deferred_list).chainDeferred(d_final)
-					except:
-						d_final.callback([b'{"events":[]}'])
-				def _eb(err):
-					if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_DISCOVERY_ERR: %s" % str(err))
-					d_final.callback([b'{"events":[]}'])
-				_py3_get(url, timeout=20).addCallback(_cb).addErrback(_eb)
-
-			_fetch_page(1, [], d)
-			self.fetch_deferred = d
-
-			def process_results(results):
-				if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_PROCESS_RESULTS: received %d items" % len(results))
-				if self.is_closed:
-					if debug_Fetch_Live: logdata("fetch_live_results", "ABORTED: Background process stopped because plugin is closed.")
-					return [b'{"events":[]}']
-				valid = []
-				for i, r in enumerate(results):
-					if r and not isinstance(r, Failure):
-						valid.append(r)
-						if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_PR_ITEM_%d: type=%s len=%s preview=%s" % (i, type(r).__name__, len(r) if r else 0, (r[:150] if r else b'')))
-					else:
-						if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_PR_ITEM_%d_DROPPED: type=%s val=%s" % (i, type(r).__name__, str(r)[:200]))
-				if not valid:
-					valid = [b'{"events":[]}']
-				return valid
-
-			d.addCallback(process_results)
-		else:
-			# PY2 version — fixed with Session and Referer
-			def _fetch_smart():
-				if self.is_closed:
-					return []
-				import socket, ssl, threading
-
-				try:
-					_ssl_ctx = ssl.create_default_context()
-				except AttributeError:
-					_ssl_ctx = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
-				_ssl_ctx.check_hostname = False
-				_ssl_ctx.verify_mode = ssl.CERT_NONE
-				try:
-					_ssl_ctx.set_ciphers('ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:!aNULL:!MD5:!DSS')
-				except Exception:
-					pass
-				try:
-					_ssl_ctx.set_alpn_protocols(['http/1.1'])
-				except Exception:
-					pass
-
-				def _https_get(url):
-					try:
-						u = url[8:] if url.startswith('https://') else url[7:]
-						if '/' in u:
-							host, path = u.split('/', 1)
-							path = '/' + path
-						else:
-							host, path = u, '/'
-						if ':' in host:
-							host = host.split(':')[0]
-						sock = socket.create_connection((host, 443), timeout=10)
-						try:
-							ssock = _ssl_ctx.wrap_socket(sock, server_hostname=host)
-						except TypeError:
-							ssock = _ssl_ctx.wrap_socket(sock)
-						req = ("GET " + path + " HTTP/1.1\r\n"
-							"Host: " + host + "\r\n"
-							"User-Agent: " + ua + "\r\n"
-							"Accept: application/json, text/plain, */*\r\n"
-							"Origin: https://www.sofascore.com\r\n"
-							"Referer: https://www.sofascore.com/\r\n"
-							"X-Requested-With: XMLHttpRequest\r\n"
-							"Connection: close\r\n"
-							"\r\n")
-						ssock.sendall(req.encode('utf-8'))
-						data = b''
-						while True:
-							chunk = ssock.recv(65536)
-							if not chunk:
-								break
-							data += chunk
-						ssock.close()
-						parts = data.split(b'\r\n\r\n', 1)
-						if len(parts) == 2:
-							status_line = parts[0].split(b'\r\n')[0]
-							if b' 200 ' in status_line:
-								body = parts[1]
-								if b'Transfer-Encoding: chunked' in parts[0] or b'transfer-encoding: chunked' in parts[0]:
-									decoded = b''
-									idx = 0
-									while idx < len(body):
-										end = body.find(b'\r\n', idx)
-										if end == -1:
-											break
-										try:
-											size = int(body[idx:end], 16)
-										except Exception:
-											break
-										if size == 0:
-											break
-										decoded += body[end+2:end+2+size]
-										idx = end + 2 + size + 2
-									return decoded
-								return body
-							else:
-								if debug_Fetch_Live: logdata("fetch_live_results", "PY2_SSL_STATUS: %s" % status_line[:80])
-						return None
-					except Exception as e:
-						if debug_Fetch_Live: logdata("fetch_live_results", "PY2_SSL_EXC: %s" % str(e)[:100])
-						return None
-
-				urls = []
-				page = 1
-				while True:
-					main_url = "https://www.sofascore.com/api/v1/sport/football/scheduled-tournaments/{0}/page/{1}".format(selected_date, page)
-					raw = _https_get(main_url)
-					if not raw:
-						break
-					try:
-						data = json.loads(raw.decode('utf-8', 'ignore'))
-					except Exception:
-						break
-					scheduled = data.get("scheduled", [])
-					if not scheduled:
-						break
-					for item in scheduled:
-						t = item.get("tournament", {})
-						ut = t.get("uniqueTournament")
-						if ut and ut.get("id"):
-							urls.append("https://www.sofascore.com/api/v1/unique-tournament/{0}/scheduled-events/{1}".format(ut["id"], selected_date))
-						elif t.get("id"):
-							urls.append("https://www.sofascore.com/api/v1/tournament/{0}/scheduled-events/{1}".format(t["id"], selected_date))
-					if not (data.get("hasNextPage", False) and config.plugins.FootOnSat.livescoresearchlevel.value == "2"):
-						break
-					page += 1
-
-				urls = list(set(urls))
-				if debug_Fetch_Live: logdata("fetch_live_results", "PY2_SSL_URLS: %d" % len(urls))
-				if not urls:
-					return [b'{"events":[]}']
-
-				results = [None] * len(urls)
-				def worker(start):
-					for i in range(start, len(urls), 30):
-						results[i] = _https_get(urls[i])
-
-				threads = [threading.Thread(target=worker, args=(i,)) for i in range(30)]
-				for t in threads:
-					t.start()
-				for t in threads:
-					t.join()
-
-				valid = [r for r in results if r]
-				if debug_Fetch_Live: logdata("fetch_live_results", "PY2_SSL_RESULTS: %d of %d" % (len(valid), len(urls)))
-				return valid or [b'{"events":[]}']
-
-			self.fetch_deferred = deferToThread(_fetch_smart)
-			d = self.fetch_deferred
-		
-		# === _process_response (Twisted Callback from network fetch) ===
-		def _process_response(raw_list): # <--- Argument changed from 'raw' to 'raw_list'
-			if self.fetch_timestamp != current_ts: return
-			if debug_Fetch_Live: logdata("fetch_live_results", "MATCHES BEFORE: %d" % len(self.matches))
-			process_start = time.time()
-			if debug_Fetch_Live: logdata("fetch_live_results", "NETWORK FETCH done (all tournaments) in %.2fs, %d responses" % (process_start - self.fetch_timestamp, len(raw_list)))
-			if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_RAW_LIST_TYPES: total=%d types=%s" % (len(raw_list), list(set(type(x).__name__ for x in raw_list))))
-			for _i, _r in enumerate(raw_list):
-				if debug_Fetch_Live: logdata("fetch_live_results", "DEBUG_RAW_LIST_%d: len=%s preview=%s" % (_i, len(_r) if _r else 0, (_r[:200] if _r else b'')))
-			# === STEP 2: INSTANT UI DRAW — moved to run FIRST, immediately.
-			# It doesn't depend on decode/build results at all (it just
-			# re-shows the current self.matches), so there's no reason to
-			# make it wait behind the heavy JSON decode work below. ===
-			matches_list = [list(m) for m in self.matches]
-			try:
-				self.iniMenu()
-				#logdata("FootOnSat-PERF", "LIVESCORE: Initial UI drawn instantly with schedule data.")
-			except Exception as e:
-				pass
-
-			# === Decode + Event Build now run in a background thread.
-			# Previously this ~4s of JSON parsing and event-building ran
-			# SYNCHRONOUSLY on the main/reactor thread — the same thread
-			# that handles Enigma2's screen redraws and remote-control key
-			# presses. That's why navigation felt sluggish for the ENTIRE
-			# fetch duration, not just during fuzzy matching: any time
-			# spent here was time the remote couldn't be processed at all.
-			# Moving it into deferToThread (same pattern already used for
-			# fuzzy matching) frees the main thread completely. ===
-			def _decode_and_build(raw_list):
-				all_events = []
-				for idx, raw in enumerate(raw_list):
-					if self.is_closed: return None
-					if raw is None:
-						continue
-					try:
-						data_str = raw.decode('utf-8', errors='ignore')
-						data = json.loads(data_str)
-						events = data.get('events', [])
-						all_events.extend(events)
-					except ValueError as e:
-						if debug_Fetch_Live: logdata("fetch_live_results", "JSON parse error (ValueError): %s" % str(e))
-						if debug_Fetch_Live: logdata("fetch_live_results", "Corrupt Data Snippet: %s..." % data_str[:256].replace('\n', ' '))
-						continue
-					except Exception as e:
-						if debug_Fetch_Live: logdata("fetch_live_results", "Decode/General error: %s" % str(e))
-						continue
-
-				if debug_Fetch_Live: logdata("fetch_live_results", "JSON DECODE/EXTRACT done in %.2fs, total events=%d" % (time.time() - process_start, len(all_events)))
-
-				if not all_events:
-					return []
-
-				events = all_events
-
-				# === STEP 1: EVENT BUILDING & STRICT FILTERING (background thread) ===
-				now = datetime.now()
-				now_adj = now - timedelta(minutes=3)
-
-				live_matches = []
-				build_start = time.time()
-				for ev in events:
-					if self.is_closed:
-						if debug_Fetch_Live: logdata("fetch_live_results", "TERMINATED: Loop broken mid-process. System is now safe for Restart.")
-						break
-					try:
-						try:
-							home_team = ev.get('homeTeam') or {}
-							away_team = ev.get('awayTeam') or {}
-							home = compat_str(home_team.get('shortName') or home_team.get('name', 'Unknown Home'))
-							away = compat_str(away_team.get('shortName') or away_team.get('name', 'Unknown Away'))
-							if home == 'Unknown Home' or away == 'Unknown Away':
-								continue
-							tourn_cat = (ev.get('tournament') or {}).get('category', {}) or (ev.get('uniqueTournament') or {}).get('category', {})
-							ev_country = tourn_cat.get('country', {}).get('name', '') or home_team.get('country', {}).get('name', '') or away_team.get('country', {}).get('name', '')
-							if debug_Fetch_Live and len(live_matches) < 5:
-								logdata("fetch_live_results", "SAMPLE home_team country field='%s', away_team country field='%s'" % (str(home_team.get('country')), str(away_team.get('country'))))
-						except Exception as e:
-							if debug_Fetch_Live: logdata("fetch_live_results", "Team name parse error: %s" % str(e))
-							continue
-						match_name = "{0} vs {1}".format(home, away)
-
-						h_score_raw = compat_str(ev.get('homeScore', {}).get('current', '')) or ''
-						a_score_raw = compat_str(ev.get('awayScore', {}).get('current', '')) or ''
-
-						h_score = h_score_raw
-						a_score = a_score_raw
-
-						status_obj = ev.get('status', {})
-						stype = status_obj.get('type', '')
-						descr = status_obj.get('description', '')
-
-						ts = ev.get('startTimestamp')
-						match_dt = datetime.fromtimestamp(ts) if ts else now_adj
-
-						# --- Status Logic (Match Time Calculation) ---
-						status = ''
-						if stype == 'canceled':
-							status = title214
-						elif stype == 'finished':
-							status = title125
-						elif stype == 'postponed':
-							status = title152
-							h_score = a_score = ''
-						elif stype == 'interrupted':
-							status = title299
-						elif stype == 'inprogress':
-							m = re.search(r'(\d{1,3}[\'+]*\+?\d*)\s*\'', descr)
-							if m:
-								status = '{0} min'.format(m.group(1))
-							elif 'extra time' in descr.lower():
-								status = title153
-							elif 'penalties' in descr.lower():
-								status = title154
-							elif descr.lower() in ['half time', 'halftime']:
-								status = title155
-							elif 'delayed' in descr.lower():
-								status = title156
-							else:
-								try:
-									status_time_ts = ev.get('statusTime', {}).get('timestamp')
-									if status_time_ts:
-										minutes_diff = int((datetime.now() - datetime.fromtimestamp(status_time_ts)).total_seconds() // 60)
-										if descr.lower() == '2nd half':
-											minutes_diff += 45
-										status = '{0} min'.format(minutes_diff)
-									else:
-										status = ''
-								except:
-									status = ''
-						elif stype == 'notstarted':
-							status = ''
-						else:
-							status = ''
-
-						# === CRITICAL DATA INTEGRITY FIREWALL (Preserved) ===
-
-						# 1. Clear score/status if the match is scheduled to start in the next 10 minutes or later.
-						if match_dt > now + timedelta(minutes=10) and stype not in ['inprogress', 'canceled', 'postponed', 'afterextra', 'penaltyshootout', 'interrupted']:
-							h_score = a_score = ''
-							status = ''
-
-						# 2. Ensure 'notstarted' or 'canceled' matches show no score.
-						elif stype in ['notstarted', 'canceled']:
-							h_score = a_score = ''
-							if stype == 'canceled':
-								status = '%s' % title124
-							else:
-								status = ''
-
-						tournament_name = ev.get('tournament', {}).get('name', '') or ev.get('uniqueTournament', {}).get('name', '')
-						if debug_Fetch_Live and len(live_matches) < 5:
-							logdata("fetch_live_results", "SAMPLE tournament_name='%s' for match='%s'" % (tournament_name, match_name))
-
-						live_matches.append({
-							"match_name": match_name,
-							"team1": home,
-							"team2": away,
-							"team1_score": h_score,
-							"team2_score": a_score,
-							"match_status": status,
-							"match_dt": match_dt,
-							"raw_descr": descr,
-							"id": ev.get('id', ''),
-							"tournament_name": tournament_name,
-							"country": ev_country
-						})
-					except Exception as e:
-						if debug_Fetch_Live: logdata("fetch_live_results", "Error building live_matches for an event: %s" % str(e))
-						continue
-
-				if debug_Fetch_Live: logdata("fetch_live_results", "EVENT BUILD done in %.2fs, live_matches=%d" % (time.time() - build_start, len(live_matches)))
-				return live_matches
-
-			def _clean_name(name):
-				#if debug_Fetch_Live: logdata("FuzzyDebug", "RAW NAME    : %s" % repr(name))
-				name = name.replace('ø', 'o').replace('æ', 'ae').replace('å', 'a').replace('Ø', 'O').replace('Æ', 'AE').replace('Å', 'A')
-				if not PY3 and isinstance(name, str):
-					name = name.decode('ascii', 'ignore')
-				try:
-					if PY3:
-						name = normalize('NFKD', name).encode('ascii', 'ignore').decode('ascii')
-					else:
-						name = normalize('NFKD', name.decode('utf-8')).encode('ascii', 'ignore')
-				except:
-					#if debug_Fetch_Live: logdata("FuzzyDebug", "Normalize Error: %s" % str(e))
-					pass
-				name = compat_str(name).strip().lower()
-				name = name.replace('.', '')  # "U.C.D." -> "ucd", not "u c d"
-				#if debug_Fetch_Live: logdata("FuzzyDebug", "DEBUG DOT   : %s" % repr(name))
-				name = re.sub(r'[^a-z\s]', ' ', name, flags=re.IGNORECASE)
-				#if debug_Fetch_Live: logdata("FuzzyDebug", "DEBUG REGEX : %s" % repr(name))
-				NOISE = r'\b(nk|afc|fc|cf|as|ac|sk|fk|tsv|national|squad|sport|calcio|ploie[șs]ti|ploiești|ploieshti|aif|ifk|kf|ks|af|seinajoki|peshkopi|cd|real|nicosia)\b'
-				name = re.sub(NOISE, ' ', name, flags=re.IGNORECASE)
-				name = re.sub(r'\s+', ' ', name).strip()
-				#if debug_Fetch_Live: logdata("FuzzyDebug", "CLEANED NAME: %s" % repr(name))
-				return name
-
-			def _token_containment(a, b):
-				# 1.0 if the shorter name's words are essentially all
-				# present in the longer name — handles "AEK" (shortName)
-				# vs "AEK Athens" (local), "Fram" vs "Fram Reykjavik", etc.
-				# Character-level SequenceMatcher punishes the length
-				# difference hard; this doesn't, since it only cares
-				# about word overlap.
-				#if debug_Fetch_Live: logdata("FuzzyDebug", "DEBUG MATCH A: %s | B: %s" % (repr(a), repr(b)))
-				wa = set(a.split())
-				wb = set(b.split())
-				#if debug_Fetch_Live: logdata("FuzzyDebug", "DEBUG SET WA: %s | SET WB: %s" % (repr(wa), repr(wb)))
-				if not wa or not wb:
-					#if debug_Fetch_Live: logdata("FuzzyDebug", "DEBUG SCORE: 0.0")
-					return 0.0
-				overlap = len(wa & wb)
-				return overlap / float(min(len(wa), len(wb)))
-
-			def _do_fuzzy_matching(matches_list, live_matches, now_adj):
-				match_perf_start = time.time()			
-				# --- FIX: THRESHOLD ADJUSTMENT for maximum accuracy ---
-				THRESHOLD = 0.45 # Lowered from 0.60 to 0.55 to ensure all challenging names match
-				TIME_WINDOW = timedelta(hours=4)
-				
-				# --- Caching for Live Matches ---
-				live_clean_cache = {}
-				for live in live_matches:
-					s_t1 = compat_str(live["team1"]).strip()
-					s_t2 = compat_str(live["team2"]).strip()
-					if s_t1 not in live_clean_cache:
-						live_clean_cache[s_t1] = _clean_name(s_t1)
-					if s_t2 not in live_clean_cache:
-						live_clean_cache[s_t2] = _clean_name(s_t2)
-
-				# --- Country bucket index (the big win): group live_matches
-				# by country so each local match only scans events from its
-				# own country instead of the full ±4h window across ALL
-				# 6000+ matches. Handles reordered compound names (local
-				# 'koreasouth' vs SofaScore 'South Korea') via an anagram
-				# check on letters-only keys. ALWAYS falls back to the full
-				# live_matches list whenever a country can't be resolved,
-				# so nothing is ever silently dropped because of this. ---
-				def _country_key(s):
-					return re.sub(r'[^a-z]', '', compat_str(s).strip().lower())
-
-				def _canonical_key(raw):
-					return _country_key(raw)
-
-				live_by_country = {}
-				for live in live_matches:
-					ck = _canonical_key(live.get('country', ''))
-					if ck:
-						live_by_country.setdefault(ck, []).append(live)
-				distinct_sofa_keys = list(live_by_country.keys())
-				local_country_resolve_cache = {}
-
-				def _resolve_country_bucket(raw_country):
-					if raw_country in local_country_resolve_cache:
-						return local_country_resolve_cache[raw_country]
-					key = _canonical_key(raw_country)
-					bucket = live_by_country.get(key)
-					if bucket is None and key:
-						sorted_key = sorted(key)
-						for sofa_key in distinct_sofa_keys:
-							if sorted(sofa_key) == sorted_key:
-								bucket = live_by_country.get(sofa_key)
-								break
-					local_country_resolve_cache[raw_country] = bucket
-					return bucket
-
-				# --- Word index WITHIN each country bucket: big footballing
-				# nations (England, Italy, Germany...) can have hundreds of
-				# matches in one country bucket alone — still slow to scan
-				# one by one. Indexing by significant words (e.g. "andorra",
-				# "ceuta") narrows this further to just the handful of
-				# SofaScore entries sharing an actual word with the local
-				# team names. Falls back to the unchanged country+time scan
-				# whenever no word overlap is found, so nothing is ever
-				# silently dropped — this only ever speeds things up. ---
-				word_index_by_country = {}
-				for ck, bucket in live_by_country.items():
-					idx = {}
-					for live in bucket:
-						for nm in (live_clean_cache[compat_str(live["team1"]).strip()], live_clean_cache[compat_str(live["team2"]).strip()]):
-							for w in nm.split():
-								if len(w) < 3:
-									continue
-								idx.setdefault(w, []).append(live)
-					word_index_by_country[ck] = idx
-
-				# === RESTORED SPEED OPTIMIZATION: Pre-calculate schedule clean cache ONCE ===
-				schedule_clean_cache = {}
-				for match in matches_list:
-					if getattr(self, 'is_closed', True): return
-					try:
-						local_name = compat_str(match[0])
-						#teams = re.split(r'\s+vs\s+|\s+-\s+', local_name)
-						teams = re.split(r'\s+(?:vs\.|vs|v\.|v|VS|Vs|VS\.)\s+|\s+-\s+', local_name, flags=re.IGNORECASE)
-						if len(teams) != 2:
-							continue
-							
-						l_t1 = compat_str(teams[0]).strip()
-						l_t2 = compat_str(teams[1]).strip()
-						
-						if l_t1 not in schedule_clean_cache:
-							schedule_clean_cache[l_t1] = _clean_name(l_t1)
-						if l_t2 not in schedule_clean_cache:
-							schedule_clean_cache[l_t2] = _clean_name(l_t2)
-					except:
-						continue
-				# ===================================================================================
-
-				for match_idx, match in enumerate(matches_list):
-					if getattr(self, 'is_closed', True): return
-					try:
-						if debug_Fetch_Live and match_idx < 5:
-							logdata("fetch_live_results", "SAMPLE local competition field match[2]='%s', match[3]='%s', match[4]='%s'" % (compat_str(match[2]), compat_str(match[3]) if len(match) > 3 else 'N/A', compat_str(match[4]) if len(match) > 4 else 'N/A'))
-						time_str = compat_str(match[1])
-						try:
-							local_dt = datetime.strptime(time_str.split(' - ')[1] + ' ' + time_str.split(' - ')[0], "%Y-%m-%d %H:%M")
-						except:
-							local_dt = now_adj
-
-						local_name = compat_str(match[0])
-						#teams = re.split(r'\s+vs\s+|\s+-\s+', local_name)
-						teams = re.split(r'\s+(?:vs\.|vs|v\.|v|VS|Vs|VS\.)\s+|\s+-\s+', local_name, flags=re.IGNORECASE)
-						if len(teams) != 2:
-							match[5] = match[6] = match[7] = ""
-							continue
-
-						l_t1 = compat_str(teams[0]).strip()
-						l_t2 = compat_str(teams[1]).strip()
-						
-						# Retrieve pre-calculated clean names
-						l_t1_clean = schedule_clean_cache.get(l_t1, "")
-						l_t2_clean = schedule_clean_cache.get(l_t2, "")
-						
-						if not l_t1_clean or not l_t2_clean:
-							match[5] = match[6] = match[7] = ""
-							continue
-
-						best_sim = 0.0
-						best_live = None
-
-						# --- Country Pre-Filter (Tier 0, biggest reduction) ---
-						local_country1 = compat_str(match[3]) if len(match) > 3 else ''
-						local_country2 = compat_str(match[4]) if len(match) > 4 else ''
-						bucket1 = _resolve_country_bucket(local_country1) if local_country1 else None
-						bucket2 = _resolve_country_bucket(local_country2) if local_country2 else None
-						if bucket1 is not None and bucket2 is not None:
-							search_pool = list(bucket1)
-							if bucket2 is not bucket1:
-								search_pool += bucket2
-						else:
-							# Country couldn't be resolved with confidence —
-							# fall back to the full list, exactly as before.
-							search_pool = live_matches
-						# --- Word Pre-Filter (Tier 0.5): within the country
-						# bucket, narrow further to entries sharing a real
-						# word with either local team name. Only used when
-						# an actual word overlap is found — otherwise
-						# search_pool (already computed above) is used
-						# unchanged, so this never removes coverage. ---
-						word_candidates = None
-						seen_ids = set()
-						for ck_try in filter(None, [
-							_canonical_key(local_country1) if bucket1 is not None else None,
-							_canonical_key(local_country2) if bucket2 is not None else None,
-						]):
-							idx = word_index_by_country.get(ck_try, {})
-							for w in (l_t1_clean.split() + l_t2_clean.split()):
-								if len(w) < 3:
-									continue
-								for live in idx.get(w, []):
-									live_id = id(live)
-									if live_id not in seen_ids:
-										seen_ids.add(live_id)
-										if word_candidates is None:
-											word_candidates = []
-										word_candidates.append(live)
-						if word_candidates:
-							search_pool = word_candidates
-
-						# --- Time-based Pre-Filter (Tier 1 Speed) ---
-						relevant_live_events = [
-							live for live in search_pool
-							if abs(live["match_dt"] - local_dt) <= TIME_WINDOW
-						]
-
-						# Reused SequenceMatcher objects: l_t1_clean/l_t2_clean
-						# are fixed for this whole inner loop, so their internal
-						# comparison index is built ONCE instead of being
-						# rebuilt from scratch on every single candidate.
-						# Same comparisons, same results — just cheaper per call.
-						sm1 = SequenceMatcher(None, l_t1_clean, "")
-						sm2 = SequenceMatcher(None, l_t2_clean, "")
-
-						for live in relevant_live_events:
-							s_t1 = compat_str(live["team1"]).strip()
-							s_t2 = compat_str(live["team2"]).strip()
-							
-							s_t1_clean = live_clean_cache[s_t1]
-							s_t2_clean = live_clean_cache[s_t2]
-
-							# === FIX: Reintroducing a very loose length filter for speed optimization (Tier 2) ===
-							len_l1 = len(l_t1_clean)
-							len_s1 = len(s_t1_clean)
-							len_l2 = len(l_t2_clean)
-							len_s2 = len(s_t2_clean)
-
-							# Loosened tolerance to 20 to eliminate only extreme mismatches
-							straight_possible = (abs(len_l1 - len_s1) <= 20 and abs(len_l2 - len_s2) <= 20)
-							swap_possible = (abs(len_l1 - len_s2) <= 20 and abs(len_l2 - len_s1) <= 20)
-							if not (straight_possible or swap_possible):
-								continue	
-
-							#if debug_Fetch_Live: logdata("fetch_live_results FuzzyDebug","COMPARE | SCHED: '%s' vs '%s' | LIVE: '%s' vs '%s'" % (
-							#	l_t1_clean, l_t2_clean,
-							#	s_t1_clean, s_t2_clean))
-
-							sm1.set_seq2(s_t1_clean)
-							sim1 = max(sm1.ratio(), _token_containment(l_t1_clean, s_t1_clean))
-							sm2.set_seq2(s_t2_clean)
-							sim2 = max(sm2.ratio(), _token_containment(l_t2_clean, s_t2_clean))
-							avg_straight = (sim1 + sim2) / 2.0
-
-							sm1.set_seq2(s_t2_clean)
-							sim1s = max(sm1.ratio(), _token_containment(l_t1_clean, s_t2_clean))
-							sm2.set_seq2(s_t1_clean)
-							sim2s = max(sm2.ratio(), _token_containment(l_t2_clean, s_t1_clean))
-							avg_swap = (sim1s + sim2s) / 2.0
-
-							cur_sim = max(avg_straight, avg_swap)
-							#if debug_Fetch_Live: logdata("fetch_live_results FuzzyDebug", "Match '%s': sim=%.2f (straight=%.2f, swap=%.2f)" % (local_name, cur_sim, avg_straight, avg_swap))
-
-							if cur_sim > best_sim:
-								best_sim = cur_sim
-								best_live_name_debug = "%s vs %s" % (s_t1, s_t2)
-								if avg_straight >= avg_swap:
-									best_live = {
-										"team1_score": live["team1_score"],
-										"team2_score": live["team2_score"],
-										"match_status": live["match_status"],
-										"id": live.get("id", "")
-									}
-								else:
-									best_live = {
-										"team1_score": live["team2_score"],
-										"team2_score": live["team1_score"],
-										"match_status": live["match_status"],
-										"id": live.get("id", "")
-									}
-
-						if best_sim >= THRESHOLD and best_live:
-							if config.plugins.FootOnSat.livescore.value == "2":
-								match[5] = compat_str(best_live["team1_score"]).strip()
-								match[6] = compat_str(best_live["team2_score"]).strip()
-								match[7] = compat_str(best_live["match_status"]).strip()
-								# Append ID safely at the end (Index 8)
-								if len(match) > 8:
-									match[8] = str(best_live["id"])
-								else:
-									match.append(str(best_live["id"]))
-							else:
-								match[5] = match[6] = match[7] = ""
-						else:
-							if debug_Fetch_Live and best_sim > 0.30:
-								best_name = best_live_name_debug if 'best_live_name_debug' in dir() else 'N/A'
-								if debug_Fetch_Live: logdata("fetch_live_results", "NO MATCH: local='%s' country=(%s,%s) candidates_checked=%d best_sim=%.2f (threshold=%.2f) closest_sofascore='%s'" % (local_name, compat_str(match[3]) if len(match) > 3 else 'N/A', compat_str(match[4]) if len(match) > 4 else 'N/A', len(relevant_live_events), best_sim, THRESHOLD, best_name))
-							match[5] = match[6] = match[7] = ""
-					except Exception as e:
-						continue
-
-				if debug_Fetch_Live: logdata("fetch_live_results", "FUZZY MATCH done in %.2fs for matches_list=%d against live_matches=%d" % (time.time() - match_perf_start, len(matches_list), len(live_matches)))
-				return matches_list
-
-			def _matching_complete(updated_matches_list):
-				if self.fetch_timestamp != current_ts:
-					if debug_Fetch_Live: logdata("fetch_live_results", "DROP: Ignoring outdated results from previous session.")
-					return
-				if debug_Fetch_Live: logdata("fetch_live_results", "TOTAL fetch_live_results elapsed: %.2fs" % (time.time() - self.fetch_timestamp))
-				# Do not remove, Move or change this import (It is important like this)
-				from .launcher import get_terminated_file
-				cache_file, terminated_cache, changed, final_list = get_terminated_file(), {}, False, []
-				try:
-					if exists(cache_file):
-						with open(cache_file, 'r') as f:
-							data = json.load(f)
-							terminated_cache = data if isinstance(data, dict) else {name: datetime.now().strftime("%H:%M - %Y-%m-%d") for name in data}
-				except: pass
-				now_dt = datetime.now()
-				cleaned_cache = {}
-				for name, ts in terminated_cache.items():
-					try:
-						# Match your getTime format: '%H:%M - %Y-%m-%d'
-						record_dt = datetime.strptime(ts, "%H:%M - %Y-%m-%d")
-						if record_dt.date() == now_dt.date() or (now_dt - record_dt < timedelta(hours=4)):
-							cleaned_cache[name] = ts
-						else: changed = True
-					except: changed = True
-				terminated_cache = cleaned_cache
-				for m in updated_matches_list:
-					m_name, m_status = str(m[0]), str(m[7]).upper()
-					# Apply getTime to match what user sees on screen
-					m_time_str = self.getTime(str(m[1]))
-					if 'DELAYED' in m_status:
-						m_time_str = "%s - %s" % (title130, m_time_str.split(' - ')[1])
-					is_term = any(x in m_status for x in ('FINISHED', 'CANCELED', 'POSTPONED'))
-					in_cache = m_name in terminated_cache
-					if getattr(self, 'link', None) == "live":
-						if is_term and not in_cache:
-							terminated_cache[m_name] = m_time_str
-							changed = True
-						if is_term or in_cache: continue
-					elif getattr(self, 'link', None) == "end":
-						if not (is_term or in_cache): continue
-					final_list.append(m)
-				if debug_Fetch_Live: logdata("fetch_live_results", "MATCHES AFTER: %d" % len(final_list))
-				self.matches = final_list
-				if changed and self.link == "live":
-					try:
-						with open(cache_file, 'w') as f: json.dump(terminated_cache, f, ensure_ascii=False)
-					except: pass
-				try: self.iniMenu()
-				except: pass
-
-			def _decode_build_complete(live_matches):
-				if self.fetch_timestamp != current_ts:
-					if debug_Fetch_Live: logdata("fetch_live_results", "DROP: Ignoring outdated decode/build results from previous session.")
-					return
-				if live_matches is None:
-					# Plugin closed mid-decode — nothing further to do.
-					return
-				if not live_matches:
-					self.matches = [list(m) for m in self.matches]
-					try:
-						self.iniMenu()
-					except Exception as e:
-						pass
-					return
-				now_adj = datetime.now() - timedelta(minutes=3)
-				d_match = deferToThread(_do_fuzzy_matching, matches_list, live_matches, now_adj)
-				d_match.addCallback(_matching_complete)
-				d_match.addErrback(lambda f: logdata("fetch_live_results", "Fuzzy matching thread failed: %s" % f.getErrorMessage()) if not getattr(self, 'is_closed', True) else None)
-
-			deferToThread(_decode_and_build, raw_list).addCallback(_decode_build_complete).addErrback(lambda f: logdata("fetch_live_results", "Decode/build thread failed: %s" % f.getErrorMessage()) if not getattr(self, 'is_closed', True) else None)
-
-		def _error(failure):
-			if self.is_closed: return
-			if debug_Fetch_Live: logdata("fetch_live_results", "Twisted Request failed: %s" % failure.getErrorMessage())
-			pass
-
-		d.addCallback(_process_response)
-		d.addErrback(_error)
-		
-		#logdata("FootOnSat-PERF", "LIVESCORE: Network request fired. Time elapsed until non-blocking request: %.3f s." % (time.time() - live_start_time))
+		source = config.plugins.FootOnSat.source.value
+		if debug_Fetch_Live:
+			logdata("fetch_live_results", "Source: %s" % source)
+		fetcher = get_live_fetcher(source, self)
+		fetcher.fetch()
 
 	def getData(self, data):
 		list = []
@@ -2411,9 +1516,12 @@ class FootOnSat(Screen):
 			self['list1'].setList([])
 			self['key_green'].setText(title283)
 			self.fetchYesterdayData(yesterday=True)
-		elif self.link in json_urls:
-			if debug_Standings: logdata("keyGreen", "Opening Standings for: %s" % str(self.link))
-			self.session.open(StandingsScreen, self.link, json_urls[self.link])
+		else:
+			source = config.plugins.FootOnSat.source.value
+			standings_url = get_standings_url(source, self.link)
+			if standings_url is not None:
+				if debug_Standings: logdata("keyGreen", "Opening Standings for: %s (source=%s)" % (str(self.link), source))
+				self.session.open(StandingsScreen, self.link, standings_url)
 
 	def fetchYesterdayData(self, yesterday=True):
 		self.is_yesterday = yesterday
@@ -2904,57 +2012,11 @@ class MatchDetailsScreen(Screen):
 		self["details_list"].down()
 
 	def fetch_details(self):
-		url_incidents = "https://api.sofascore.com/api/v1/event/{}/incidents".format(self.event_id)
-		url_event = "https://api.sofascore.com/api/v1/event/{}".format(self.event_id)
-		
-		if PY3:
-			sniFactory = WebClientContextFactory(url_incidents)
-			headers = {
-				b'User-Agent': [b'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36'],
-				b'Accept': [b'application/json'],
-				b'Referer': [b'https://www.sofascore.com/'],
-				b'Origin': [b'https://www.sofascore.com'],
-				b'X-Requested-With': [b'XMLHttpRequest']
-			}
-			
-			d1 = getPage(str.encode(url_incidents), contextFactory=sniFactory, timeout=25, headers=headers)
-			d2 = getPage(str.encode(url_event), contextFactory=sniFactory, timeout=25, headers=headers)
-			
-			d = defer.gatherResults([d1, d2], consumeErrors=True)
-			
-			def process_twisted(results):
-				raw = [r if not isinstance(r, Failure) else None for r in results]
-				if all(x is None for x in raw): return self.process_data(None)
-				try:
-					return self.process_data([json.loads(r.decode('utf-8')) for r in raw if r])
-				except: return self.process_data(None)
-			
-			d.addCallback(process_twisted)
-			
-		else:
-			def _get_data():
-				s = requests.Session()
-				s.headers.update({
-					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36',
-					'Referer': 'https://www.sofascore.com/',
-					'Origin': 'https://www.sofascore.com',
-					'Accept': 'application/json',
-					'X-Requested-With': 'XMLHttpRequest'
-				})
-				try:
-					s.get('https://www.sofascore.com', timeout=10)
-					results = []
-					for u in [url_incidents, url_event]:
-						r = s.get(u, timeout=25)
-						r.raise_for_status()
-						results.append(json.loads(r.content.decode('utf-8')))
-					return results
-				except Exception as e:
-					if debug_MatchDetails: logdata("MatchDetails", "Error: %s" % str(e))
-					return None
-			
-			d = deferToThread(_get_data)
-			d.addCallback(self.process_data)
+		source = config.plugins.FootOnSat.source.value
+		if debug_MatchDetails:
+			logdata("MatchDetails", "Source: %s" % source)
+		fetcher = get_match_details_fetcher(source, self, self.event_id)
+		fetcher.fetch()
 
 	def process_data(self, data):
 		if not data:
@@ -3197,29 +2259,11 @@ class MatchStatisticsScreen(Screen):
 		self["stats_list"].down()
 
 	def fetch_stats(self):
-		url = "https://api.sofascore.com/api/v1/event/{}/statistics".format(self.event_id)
-		headers = {
-			'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36',
-			'Referer': 'https://www.sofascore.com/',
-			'Origin': 'https://www.sofascore.com',
-			'Accept': 'application/json',
-			'X-Requested-With': 'XMLHttpRequest'
-		}
-
-		if PY3:
-			d = getPage(str.encode(url), contextFactory=WebClientContextFactory(url), timeout=25, headers={k.encode(): [v.encode()] for k, v in headers.items()})
-			d.addCallback(lambda raw: self.process_stats(json.loads(raw.decode('utf-8'))))
-			d.addErrback(lambda _: self.process_stats(None))
-		else:
-			def _get():
-				s = requests.Session()
-				s.headers.update(headers)
-				s.get('https://www.sofascore.com', timeout=10)
-				r = s.get(url, timeout=25)
-				return json.loads(r.content.decode('utf-8')) if r.status_code == 200 else None
-			d = deferToThread(_get)
-			d.addCallback(self.process_stats)
-			d.addErrback(lambda _: self.process_stats(None))
+		source = config.plugins.FootOnSat.source.value
+		if debug_MatchStatistics:
+			logdata("MatchStatistics", "Source: %s" % source)
+		fetcher = get_match_statistics_fetcher(source, self, self.event_id)
+		fetcher.fetch()
 
 	def process_stats(self, data):
 		gList = []
@@ -3415,29 +2459,11 @@ class MatchMediaScreen(Screen):
 			self.close()
 
 	def fetch_media(self):
-		url = "https://api.sofascore.com/api/v1/event/{}/media".format(self.event_id)
-		headers = {
-			'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36',
-			'Referer': 'https://www.sofascore.com/',
-			'Origin': 'https://www.sofascore.com',
-			'Accept': 'application/json',
-			'X-Requested-With': 'XMLHttpRequest'
-		}
-
-		if PY3:
-			d = getPage(str.encode(url), contextFactory=WebClientContextFactory(url), timeout=25, headers={k.encode(): [v.encode()] for k, v in headers.items()})
-			d.addCallback(lambda raw: self.process_media(json.loads(raw.decode('utf-8'))))
-			d.addErrback(lambda _: self.process_media(None))
-		else:
-			def _get():
-				s = requests.Session()
-				s.headers.update(headers)
-				s.get('https://www.sofascore.com', timeout=10)
-				r = s.get(url, timeout=25)
-				return json.loads(r.content.decode('utf-8')) if r.status_code == 200 else None
-			d = deferToThread(_get)
-			d.addCallback(self.process_media)
-			d.addErrback(lambda _: self.process_media(None))
+		source = config.plugins.FootOnSat.source.value
+		if debug_MatchMedia:
+			logdata("MatchMedia", "Source: %s" % source)
+		fetcher = get_match_media_fetcher(source, self, self.event_id)
+		fetcher.fetch()
 
 	def process_media(self, data):
 		gList = []
@@ -4129,118 +3155,11 @@ class StandingsScreen(Screen):
 		self.onShown.append(self.fetch_standings)
 
 	def fetch_standings (self):
-		# 1. Start parsing the URL to get IDs
-		url_to_parse = self.url
-		if not isinstance(url_to_parse, compat_str):
-			url_to_parse = str(url_to_parse)
-
-		parsed_url = compat_urlparse(url_to_parse)
-		path_parts = [p for p in parsed_url.path.split('/') if p]
-
-		tournament_id = None
-		season_id = None
-		
-		try:
-			# Tournament ID is the number at the end of the URL path (e.g., '7')
-			if path_parts and path_parts[-1].isdigit():
-				tournament_id = path_parts[-1]
-				
-			# Season ID is the number after '#id:' in the fragment (e.g., '76953')
-			if parsed_url.fragment and parsed_url.fragment.startswith('id:'):
-				season_id = parsed_url.fragment.split(':')[-1]
-			
-		except Exception as e:
-			if debug_Standings: logdata("StandingsScreen", "ERROR during URL parsing: %s" % str(e))
-			pass
-			#trace_error()
-			
-		if not tournament_id or not season_id or not tournament_id.isdigit() or not season_id.isdigit():
-			if debug_Standings: logdata("StandingsScreen", "CRITICAL ERROR: Failed to extract numeric IDs. T-ID:'%s', S-ID:'%s'." % (tournament_id, season_id))
-			self.standings_data = []
-			self.display_standings()
-			return
-
-		# 2. Construct the JSON API URL
-		api_url = "https://api.sofascore.com/api/v1/unique-tournament/{}/season/{}/standings/total".format(
-			tournament_id, season_id
-		)
-			
-		if debug_Standings: logdata("StandingsScreen", "Using SofaScore API URL: %s" % api_url)
-		AGENT = b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
-
-		# =================================================================
-		# === PY3/PY2 SPLIT: Only necessary structural change to fix Py2 ===
-		# =================================================================
-		
-		if PY3:
-			try:
-				sniFactory = WebClientContextFactory(api_url)
-			except Exception as e:
-				if debug_Standings: logdata("StandingsScreen", "Failed to create WebClientContextFactory: %s" % str(e))
-				self.display_standings()
-				return
-
-			# DEBUG: Log the attempt
-			if debug_Standings: logdata("StandingsScreen", "Attempting fetch (Twisted/SNI FIX) for API: %s" % api_url)
-
-			# Fetch using Twisted's getPage
-			# Add headers for robust 403 prevention (Cloudflare challenge)
-			headers = {
-				b'User-Agent': [AGENT],
-				b'Accept': [b'application/json, text/plain, */*'],
-				b'Accept-Language': [b'en-US,en;q=0.9'],
-				b'Connection': [b'close'],
-				b'Referer': [b'https://www.sofascore.com/'],
-				b'Origin': [b'https://www.sofascore.com'],
-				b'Cache-Control': [b'no-cache'],
-			}
-
-			d = getPage(
-				str.encode(api_url),
-				contextFactory=sniFactory,
-				timeout=10,
-				headers=headers
-			)
-
-		else:
-			# === Python 2 (Requests/deferToThread Logic for 403 bypass) ===
-			try:
-				from twisted.internet.threads import deferToThread
-				import requests
-			except ImportError as e:
-				if debug_Standings: logdata("StandingsScreen", "CRITICAL ERROR: Py2 requirements missing: %s" % str(e))
-				self.display_standings()
-				return None
-
-			if debug_Standings: logdata("StandingsScreen", "Attempting fetch (Py2 Requests FIX) for API: %s" % api_url)
-			
-			headers2 = {
-				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36',
-				'Referer': 'https://www.sofascore.com/',
-				'Origin': 'https://www.sofascore.com',
-				'Accept': 'application/json'
-			}
-
-			def _fetch_with_requests_py2():
-				try:
-					s = requests.Session()
-					s.headers.update(headers2)
-					s.get('https://www.sofascore.com')
-					r = s.get(api_url, timeout=10)
-					if r.status_code == 403:
-						s.headers.update({'X-Requested-With': 'XMLHttpRequest'})
-						r = s.get(api_url, timeout=10)
-					r.raise_for_status()
-					return r.content 
-				except Exception as e:
-					if debug_Standings: logdata("StandingsScreen", "Python 2 Requests fetch failed: %s" % str(e))
-					raise Exception("SofaScore fetch failed: %s" % str(e))
-
-			d = deferToThread(_fetch_with_requests_py2)
-
-		# === Wire the callbacks (Shared for both PY3 and PY2 deferred 'd') ===
-		d.addCallback(self._parse_standings_data)
-		d.addErrback(self._standing_error_handler, api_url)
+		source = config.plugins.FootOnSat.source.value
+		if debug_Standings:
+			logdata("StandingsScreen", "Source: %s" % source)
+		fetcher = get_standings_fetcher(source, self, self.league, self.url)
+		fetcher.fetch()
 		
 	def _parse_standings_data(self, raw_json_content):
 		standings = []
@@ -4359,11 +3278,13 @@ class StandingsScreen(Screen):
 			self.display_standings()
 
 	def _standing_error_handler(self, failure, url):
-		# This handles errors from getPage (e.g., Timeout, 403, DNS errors)
 		error_message = failure.getErrorMessage()
 		if debug_Standings: logdata("StandingsScreen", "Twisted Fetch Error on %s: %s" % (url, error_message))
 		self.standings_data = []
-		self.display_standings() # Display empty standings
+		try:
+			self.display_standings()
+		except (KeyError, AttributeError):
+			pass
 
 	def check_and_download_logos(self):
 		headers = self.headers.copy() # Use headers from init
