@@ -418,8 +418,12 @@ class LiveFetchBase(object):
 				if is_term or in_cache:
 					continue
 			elif getattr(self.screen, 'link', None) == "end":
-				if not (is_term or in_cache):
-					continue
+				# Do not re-filter here. The initial "end" filter is already
+				# applied in getData() based on JSON data (stype / match date).
+				# Re-filtering based on live-event status would wrongly remove
+				# matches whose events could not be matched in the current
+				# live data (e.g. leagues not covered by the selected source).
+				pass
 			final_list.append(m)
 		if debug_Fetch_Live:
 			logdata("fetch_live_results", "MATCHES AFTER: %d" % len(final_list))
