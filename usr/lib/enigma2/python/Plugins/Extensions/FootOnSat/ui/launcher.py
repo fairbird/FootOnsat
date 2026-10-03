@@ -402,6 +402,14 @@ class FootOnsatLauncher(Screen):
 					system("cp -rf %s/* %s/" % (src_standings, dest_standings))
 					print("[CheckBannersUpdates] Standings copied successfully.")
 
+				# flags
+				src_flags = join(src_root, "banners/flags")
+				if exists(src_flags):
+					dest_flags = join(PLUGINPATH, "assets/flags")
+					if not exists(dest_flags): os.makedirs(dest_flags)
+					system("cp -rf %s/* %s/" % (src_flags, dest_flags))
+					print("[CheckBannersUpdates] Flags copied successfully.")
+
 				with open(self.sha_file, "w") as f: f.write(self.latest_sha)
 				print("[CheckBannersUpdates] Update completed and SHA written:", self.latest_sha)
 			except Exception as e:
