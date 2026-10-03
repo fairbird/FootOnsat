@@ -208,6 +208,10 @@
             "label": "australian w-league",
             "banner": "australian w-league"
     },
+		{
+            "label": "austrian frauen bundesliga",
+            "banner": "austrian frauen bundesliga"
+    },
         {
             "label": "austrian 2. liga",
             "banner": "austrian 2. liga"
@@ -568,6 +572,10 @@
             "label": "colombian torneo aquila",
             "banner": "colombian torneo aquila"
     },
+		{
+            "label": "concacaf u-20 championships",
+            "banner": "concacaf u-20 championships"
+    },
         {
             "label": "concacaf caribbean club cup",
             "banner": "concacaf caribbean club cup"
@@ -706,7 +714,7 @@
     },
         {
             "label": "cymru premier",
-            "banner": "welsh premier league"
+            "banner": "cymru premier"
     },
         {
             "label": "cypriot 1. division",
@@ -720,6 +728,10 @@
             "label": "cypriot cup",
             "banner": "cypriot cup"
     },
+		{
+            "label": "cypriot super cup",
+            "banner": "cypriot super cup"
+    },
         {
             "label": "cypriot womens cup",
             "banner": "cypriot womens cup"
@@ -728,9 +740,17 @@
             "label": "cyprus women's cup",
             "banner": "cyprus women's cup"
     },
+    	 {
+            "label": "czech národní liga",
+            "banner": "czech národní liga"
+    },
         {
             "label": "czech 1. liga women",
             "banner": "czech 1. liga women"
+    },
+        {
+            "label": "czech liga",
+            "banner": "czech liga"
     },
         {
             "label": "czech cup",
@@ -775,6 +795,10 @@
         {
             "label": "dutch cup",
             "banner": "dutch cup"
+    },
+    	{
+            "label": "dutch eerste divisie",
+            "banner": "dutch eerste divisie"
     },
         {
             "label": "dutch eerste divisie (2nd)",
@@ -839,6 +863,10 @@
         {
             "label": "egyptian premier league",
             "banner": "egyptian premier league"
+    },
+        {
+            "label": "egyptian division 2a",
+            "banner": "egyptian division 2a"
     },
         {
             "label": "egyptian super cup",
@@ -960,6 +988,10 @@
             "label": "english wsl 2",
             "banner": "english wsl 2"
     },
+		{
+            "label": "english pl 2",
+            "banner": "english pl 2"
+    },
         {
             "label": "english w/super cup (community shield)",
             "banner": "english wsuper cup (community shield)"
@@ -1027,6 +1059,10 @@
         {            
             "label": "fifa u-20 womens world cup 2025",
             "banner": "fifa u-20 womens world cup 2025"
+    },
+		{            
+            "label": "fifa u-20 women's world cup",
+            "banner": "fifa u-20 women's world cup"
     },
         {            
             "label": "fifa/uefa wc 2026 qualifiers",
@@ -1099,6 +1135,10 @@
         {
             "label": "french ligue 2",
             "banner": "french ligue 2"
+    },
+		 {
+            "label": "french ligue 3",
+            "banner": "french ligue 3"
     },
         {
             "label": "french national 1",
@@ -1284,6 +1324,10 @@
             "label": "german womens regionalliga",
             "banner": "german womens regionalliga"
     },
+		{
+            "label": "german womens super cup",
+            "banner": "german womens super cup"
+    },
         {
             "label": "gibraltar premier division",
             "banner": "gibraltar premier division"
@@ -1295,6 +1339,10 @@
         {
             "label": "greek cup",
             "banner": "greek cup"
+    },
+		{
+            "label": "greek super cup",
+            "banner": "greek super cup"
     },
         {
             "label": "greek super league 1",
@@ -1311,6 +1359,14 @@
         {
             "label": "greek womens a division",
             "banner": "greek womens a division"
+    },
+		{
+            "label": "hungarian nb 1",
+            "banner": "hungarian nb 1"
+    },
+        {
+            "label": "hungarian nb 1",
+            "banner": "hungarian nb 1"
     },
         {
             "label": "hungarian cup",
@@ -1475,6 +1531,10 @@
         {
             "label": "italian womens cup",
             "banner": "italian wcup (coppa italia)"
+    },
+		{
+            "label": "italian womens serie a",
+            "banner": "italian womens serie a"
     },
         {
             "label": "italian w/serie a",
@@ -1868,6 +1928,10 @@
             "label": "polish womens ekstraliga",
             "banner": "polish womens ekstraliga"
     },
+		{
+            "label": "portuguese liga next gen",
+            "banner": "portuguese liga next gen"
+    },
         {
             "label": "portuguese campeonato nacional u-19",
             "banner": "portuguese campeonato nacional u-19"
@@ -1884,9 +1948,13 @@
             "label": "portuguese league cup",
             "banner": "portuguese league cup"
     },
-        {
-            "label": "portuguese liga portugal 2",
-            "banner": "portuguese liga portugal 2"
+	{
+            "label": "portuguese liga 1",
+            "banner": "portuguese liga 1"
+    },
+	{
+            "label": "portuguese liga 2",
+            "banner": "portuguese liga 2"
     },
         {
             "label": "portuguese liga 3",
@@ -1895,6 +1963,10 @@
         {
             "label": "portuguese liga portugal",
             "banner": "portuguese liga portugal"
+    },
+        {
+            "label": "portuguese liga portugal 2",
+            "banner": "portuguese liga portugal 2"
     },
         {
             "label": "portuguese liga revelação u-23",
@@ -2128,6 +2200,10 @@
             "label": "serbian 1st league",
             "banner": "serbian 1st league"
     },
+		 {
+            "label": "serbian superliga",
+            "banner": "serbian superliga"
+    },
         {
             "label": "serbian cup",
             "banner": "serbian cup"
@@ -2147,6 +2223,14 @@
         {
             "label": "serbian womens cup",
             "banner": "serbian womens cup"
+    },
+        {
+            "label": "serbian super league žene",
+            "banner": "serbian super league žene"
+    },
+        {
+            "label": "serbian superliga žene",
+            "banner": "serbian superliga žene"
     },
         {
             "label": "shebelieves cup",
@@ -2195,6 +2279,10 @@
         {
             "label": "slovenian cup",
             "banner": "slovenian cup"
+    },
+		{
+            "label": "slovenian 1. sznl liga",
+            "banner": "slovenian 1. sznl liga"
     },
         {
             "label": "south african 8 cup",
@@ -2629,104 +2717,100 @@
             "banner": "euroleague"
     },
         {
-            "label": "formula 1 grand prix - round 2",
-            "banner": "formula 1 grand prix - round 2"
-    },
-        {
-            "label": "formula 1 grand prix - round 3",
-            "banner": "formula 1 grand prix - round 3"
-    },
-        {
-            "label": "formula 1 grand prix - round 4",
-            "banner": "formula 1 grand prix - round 4"
-    },
-        {
-            "label": "formula 1 grand prix - round 5",
-            "banner": "formula 1 grand prix - round 5"
-    },
-        {
-            "label": "formula 1 grand prix - round 6",
-            "banner": "formula 1 grand prix - round 6"
-    },
-        {
-            "label": "formula 1 grand prix - round 7",
-            "banner": "formula 1 grand prix - round 7"
-    },
-        {
-            "label": "formula 1 grand prix - round 8",
-            "banner": "formula 1 grand prix - round 8"
-    },
-        {
-            "label": "formula 1 grand prix - round 9",
-            "banner": "formula 1 grand prix - round 9"
-    },
-        {
-            "label": "formula 1 grand prix - round 10",
-            "banner": "formula 1 grand prix - round 10"
-    },
-        {
-            "label": "formula 1 grand prix - round 11",
-            "banner": "formula 1 grand prix - round 11"
-    },
-        {
-            "label": "formula 1 grand prix - round 12",
-            "banner": "formula 1 grand prix - round 12"
-    },
-        {
-            "label": "formula 1 grand prix - round 13",
-            "banner": "formula 1 grand prix - round 13"
-    },
-        {
-            "label": "formula 1 grand prix - round 14",
-            "banner": "formula 1 grand prix - round 14"
-    },
-        {
-            "label": "formula 1 grand prix - round 15",
-            "banner": "formula 1 grand prix - round 15"
-    },
-        {
-            "label": "formula 1 grand prix - round 16",
-            "banner": "formula 1 grand prix - round 16"
-    },
-        {
-            "label": "formula 1 grand prix - round 17",
-            "banner": "formula 1 grand prix - round 17"
-    },
-        {
-            "label": "formula 1 grand prix - round 18",
-            "banner": "formula 1 grand prix - round 18"
-    },
-        {
-            "label": "formula 1 grand prix - round 19",
-            "banner": "formula 1 grand prix - round 19"
-    },
-        {
-            "label": "formula 1 grand prix - round 20",
-            "banner": "formula 1 grand prix - round 20"
-    },
-        {
-            "label": "formula 1 grand prix - round 21",
-            "banner": "formula 1 grand prix - round 21"
-    },
-        {
-            "label": "formula 1 grand prix - round 22",
-            "banner": "formula 1 grand prix - round 22"
-    },
-        {
-            "label": "formula 1 grand prix - round 23",
-            "banner": "formula 1 grand prix - round 23"
-    },
-        {
-            "label": "formula 1 grand prix - round 24",
-            "banner": "formula 1 grand prix - round 24"
+            "label": "formula 1",
+            "banner": "f1"
     },
         {
             "label": "formula 1 grand prix - round 1",
-            "banner": "formula 1 grand prix - round 1"
+            "banner": "australia-f1"
     },
         {
-            "label": "formula 1",
-            "banner": "f1"
-        }
+            "label": "formula 1 grand prix - round 2",
+            "banner": "china-f1"
+    },
+        {
+            "label": "formula 1 grand prix - round 3",
+            "banner": "japan-f1"
+    },
+        {
+            "label": "formula 1 grand prix - round 4",
+            "banner": "miami-f1"
+    },
+        {
+            "label": "formula 1 grand prix - round 5",
+            "banner": "canada-f1"
+    },
+        {
+            "label": "formula 1 grand prix - round 6",
+            "banner": "monaco-f1"
+    },
+        {
+            "label": "formula 1 grand prix - round 7",
+            "banner": "barcelona-f1"
+    },
+        {
+            "label": "formula 1 grand prix - round 8",
+            "banner": "austria-f1"
+    },
+        {
+            "label": "formula 1 grand prix - round 9",
+            "banner": "great-britain-f1"
+    },
+        {
+            "label": "formula 1 grand prix - round 10",
+            "banner": "belgium-f1"
+    },
+        {
+            "label": "formula 1 grand prix - round 11",
+            "banner": "hungary-f1"
+    },
+        {
+            "label": "formula 1 grand prix - round 12",
+            "banner": "netherlands-f1"
+    },
+        {
+            "label": "formula 1 grand prix - round 13",
+            "banner": "italy-f1"
+    },
+        {
+            "label": "formula 1 grand prix - round 14",
+            "banner": "spain-f1"
+    },
+        {
+            "label": "formula 1 grand prix - round 15",
+            "banner": "azerbaijan-f1"
+    },
+        {
+            "label": "formula 1 grand prix - round 16",
+            "banner": "bahrain-f1"
+    },
+        {
+            "label": "formula 1 grand prix - round 17",
+            "banner": "singapore-f1"
+    },
+        {
+            "label": "formula 1 grand prix - round 18",
+            "banner": "united-states-f1"
+    },
+        {
+            "label": "formula 1 grand prix - round 19",
+            "banner": "mexico-f1"
+    },
+        {
+            "label": "formula 1 grand prix - round 20",
+            "banner": "brazil-f1"
+    },
+        {
+            "label": "formula 1 grand prix - round 21",
+            "banner": "las-vegas-f1"
+    },
+        {
+            "label": "formula 1 grand prix - round 22",
+            "banner": "qatar-f1"
+    },
+        {
+            "label": "formula 1 grand prix - round 23",
+            "banner": "abu-dhabi-f1"
+    }
     ]
 }
