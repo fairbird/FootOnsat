@@ -235,7 +235,8 @@ class LiveFetchBase(object):
 						logdata("fetch_live_results", "NY_MED_DEBUG local_raw='%s' country1='%s' country2='%s'" % (compat_str(match[0]), compat_str(match[3]) if len(match) > 3 else '', compat_str(match[4]) if len(match) > 4 else ''))
 				time_str = compat_str(match[1])
 				try:
-					local_dt = datetime.strptime(time_str.split(' - ')[1] + ' ' + time_str.split(' - ')[0], "%Y-%m-%d %H:%M")
+					time_str_local = self.screen.getTime(time_str)
+					local_dt = datetime.strptime(time_str_local.split(' - ')[1] + ' ' + time_str_local.split(' - ')[0], "%Y-%m-%d %H:%M")
 				except Exception:
 					local_dt = now_adj
 
@@ -294,13 +295,10 @@ class LiveFetchBase(object):
 				if word_candidates:
 					search_pool = word_candidates
 
-				if bucket1 is not None or bucket2 is not None:
-					relevant_live_events = [
-						live for live in search_pool
-						if abs(live["match_dt"] - local_dt) <= TIME_WINDOW
-					]
-				else:
-					relevant_live_events = list(search_pool)
+				relevant_live_events = [
+					live for live in search_pool
+					if abs(live["match_dt"] - local_dt) <= TIME_WINDOW
+				]
 
 				sm1 = SequenceMatcher(None, l_t1_clean, "")
 				sm2 = SequenceMatcher(None, l_t2_clean, "")
@@ -600,10 +598,6 @@ class LiveFetchBase(object):
 		for _i, _r in enumerate(raw_list):
 			if debug_Fetch_Live:
 				logdata("fetch_live_results", "DEBUG_RAW_LIST_%d: len=%s preview=%s" % (_i, len(_r) if _r else 0, (_r[:200] if _r else b'')))
-		try:
-			self.screen.iniMenu()
-		except Exception:
-			pass
 
 		def _decode_wrapper(raw_list):
 			if self.screen.is_closed:
