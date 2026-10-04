@@ -271,7 +271,10 @@ class ESPNStandings(StandingsFetcherBase):
 		for child in children:
 			group_name = child.get("name", "")
 			if group_name:
-				standings.append("Table %s" % group_name)
+				title = "Table %s" % group_name
+				if not PY3:
+					title = title.encode("utf-8")
+				standings.append(title)
 			table = child.get("standings", {})
 			entries = table.get("entries", [])
 			if debug_Standings:
