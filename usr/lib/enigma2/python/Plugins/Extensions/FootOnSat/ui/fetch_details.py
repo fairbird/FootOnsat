@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 import json
 import re
+import os
+import subprocess
+import time
 import requests
 import ssl
 from twisted.internet import defer
@@ -90,6 +93,46 @@ def _make_sofa_session_py2():
 
 	return session
 
+
+def _ss_ensure_cookies():
+	cookie_file = "/tmp/ss_cf_cookies.txt"
+	if os.path.exists(cookie_file) and (time.time() - os.path.getmtime(cookie_file)) < 1500:
+		return cookie_file
+	try:
+		subprocess.call([
+			"/usr/bin/curl_chrome150", "-s", "-L", "-k",
+			"--max-time", "15",
+			"-c", cookie_file,
+			"https://www.sofascore.com/",
+			"-o", "/dev/null"
+		], stderr=subprocess.PIPE)
+	except Exception:
+		pass
+	return cookie_file
+
+
+def _curl_ss(url, timeout=25):
+	cookie_file = _ss_ensure_cookies()
+	url_str = url.decode('utf-8') if isinstance(url, bytes) else url
+	try:
+		out = subprocess.check_output([
+			"/usr/bin/curl_chrome150", "-s", "-L", "-k",
+			"--max-time", str(timeout),
+			"-b", cookie_file,
+			"-H", "X-Requested-With: XMLHttpRequest",
+			"-H", "Accept: application/json, text/plain, */*",
+			"-H", "Referer: https://www.sofascore.com/",
+			"-H", "Origin: https://www.sofascore.com",
+			url_str
+		], stderr=subprocess.PIPE)
+		if not out:
+			logdata("SofaSession", "DEBUG _curl_ss empty for %s" % url_str[:80])
+		return out
+	except Exception as e:
+		logdata("SofaSession", "DEBUG _curl_ss EXC: %s | url=%s" % (str(e)[:200], url_str[:80]))
+		return None
+
+
 def is_standings_available(source, link):
 	if source == "espn":
 		return link.lower() in ESPN_SLUGS
@@ -147,28 +190,15 @@ class SofaScoreStandings(StandingsFetcherBase):
 			self.screen.standings_data = []
 			self.screen.display_standings()
 			return
-		api_url = "https://api.sofascore.com/api/v1/unique-tournament/{}/season/{}/standings/total".format(tournament_id, season_id)
+		api_url = "https://www.sofascore.com/api/v1/unique-tournament/{}/season/{}/standings/total".format(tournament_id, season_id)
 		if debug_Standings:
 			logdata("StandingsScreen", "Using SofaScore API URL: %s" % api_url)
-		AGENT = b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
 		if PY3:
-			try:
-				sniFactory = WebClientContextFactory(api_url)
-			except Exception as e:
-				if debug_Standings:
-					logdata("StandingsScreen", "Failed to create WebClientContextFactory: %s" % str(e))
-				self.screen.display_standings()
-				return
-			headers = {
-				b'User-Agent': [AGENT],
-				b'Accept': [b'application/json, text/plain, */*'],
-				b'Accept-Language': [b'en-US,en;q=0.9'],
-				b'Connection': [b'close'],
-				b'Referer': [b'https://www.sofascore.com/'],
-				b'Origin': [b'https://www.sofascore.com'],
-				b'Cache-Control': [b'no-cache'],
-			}
-			d = getPage(str.encode(api_url), contextFactory=sniFactory, timeout=10, headers=headers)
+			def _fetch_standings_py3():
+				return _curl_ss(api_url, timeout=15)
+			d = deferToThread(_fetch_standings_py3)
+			d.addCallback(self.screen._parse_standings_data)
+			d.addErrback(self.screen._standing_error_handler, api_url)
 		else:
 			headers2 = {
 				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36',
@@ -193,8 +223,8 @@ class SofaScoreStandings(StandingsFetcherBase):
 						logdata("StandingsScreen", "PY2 fetch failed: %s" % str(e))
 					raise Exception("SofaScore fetch failed: %s" % str(e))
 			d = deferToThread(_fetch_with_requests_py2)
-		d.addCallback(self.screen._parse_standings_data)
-		d.addErrback(self.screen._standing_error_handler, api_url)
+			d.addCallback(self.screen._parse_standings_data)
+			d.addErrback(self.screen._standing_error_handler, api_url)
 
 
 class ESPNStandings(StandingsFetcherBase):
@@ -271,10 +301,7 @@ class ESPNStandings(StandingsFetcherBase):
 		for child in children:
 			group_name = child.get("name", "")
 			if group_name:
-				title = "Table %s" % group_name
-				if not PY3:
-					title = title.encode("utf-8")
-				standings.append(title)
+				standings.append("Table %s" % group_name)
 			table = child.get("standings", {})
 			entries = table.get("entries", [])
 			if debug_Standings:
@@ -350,46 +377,36 @@ class SofaScoreMatchDetails(MatchDetailsFetcherBase):
 	def fetch(self):
 		if debug_MatchDetails:
 			logdata("MatchDetails", "SofaScore.fetch started | event_id=%s" % self.event_id)
-		url_incidents = "https://api.sofascore.com/api/v1/event/{}/incidents".format(self.event_id)
-		url_event = "https://api.sofascore.com/api/v1/event/{}".format(self.event_id)
+		url_incidents = "https://www.sofascore.com/api/v1/event/{}/incidents".format(self.event_id)
+		url_event = "https://www.sofascore.com/api/v1/event/{}".format(self.event_id)
 		if debug_MatchDetails:
 			logdata("MatchDetails", "URL incidents=%s" % url_incidents)
 			logdata("MatchDetails", "URL event=%s" % url_event)
 		if PY3:
-			sniFactory = WebClientContextFactory(url_incidents)
-			headers = {
-				b'User-Agent': [b'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36'],
-				b'Accept': [b'application/json'],
-				b'Referer': [b'https://www.sofascore.com/'],
-				b'Origin': [b'https://www.sofascore.com'],
-				b'X-Requested-With': [b'XMLHttpRequest']
-			}
-			d1 = getPage(str.encode(url_incidents), contextFactory=sniFactory, timeout=25, headers=headers)
-			d2 = getPage(str.encode(url_event), contextFactory=sniFactory, timeout=25, headers=headers)
-			d = defer.gatherResults([d1, d2], consumeErrors=True)
-			def _process(results):
-				raw = [r if not isinstance(r, Failure) else None for r in results]
-				if debug_MatchDetails:
-					logdata("MatchDetails", "PY3 gather results: len=%d, all_none=%s" % (len(raw), all(x is None for x in raw)))
-				if all(x is None for x in raw):
-					return self.screen.process_data(None)
-				try:
-					parsed = [json.loads(r.decode('utf-8')) for r in raw if r]
-					if debug_MatchDetails:
-						logdata("MatchDetails", "PY3 parsed items=%d" % len(parsed))
-					return self.screen.process_data(parsed)
-				except Exception as e:
-					if debug_MatchDetails:
-						logdata("MatchDetails", "PY3 parse error: %s" % str(e))
-					return self.screen.process_data(None)
-			d.addCallback(_process)
+			def _fetch_details_py3():
+				r1 = _curl_ss(url_incidents, timeout=25)
+				r2 = _curl_ss(url_event, timeout=25)
+				parsed = []
+				if r1:
+					try:
+						parsed.append(json.loads(r1.decode('utf-8')))
+					except Exception:
+						pass
+				if r2:
+					try:
+						parsed.append(json.loads(r2.decode('utf-8')))
+					except Exception:
+						pass
+				return parsed if parsed else None
+			d = deferToThread(_fetch_details_py3)
+			d.addCallback(self.screen.process_data)
 		else:
 			def _get_data():
 				s = _make_sofa_session_py2()
 				s.headers.update({
 					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36',
-					'Referer': 'https://api.sofascore.com/',
-					'Origin': 'https://api.sofascore.com',
+					'Referer': 'https://www.sofascore.com/',
+					'Origin': 'https://www.sofascore.com',
 					'Accept': 'application/json',
 					'X-Requested-With': 'XMLHttpRequest'
 				})
@@ -639,19 +656,27 @@ class SofaScoreMatchStatistics(MatchStatisticsFetcherBase):
 	def fetch(self):
 		if debug_MatchStatistics:
 			logdata("MatchStatistics", "SofaScore.fetch started | event_id=%s" % self.event_id)
-		url = "https://api.sofascore.com/api/v1/event/{}/statistics".format(self.event_id)
+		url = "https://www.sofascore.com/api/v1/event/{}/statistics".format(self.event_id)
 		if debug_MatchStatistics:
 			logdata("MatchStatistics", "URL=%s" % url)
 		headers = {
 			'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36',
-			'Referer': 'https://api.sofascore.com/',
-			'Origin': 'https://api.sofascore.com',
+			'Referer': 'https://www.sofascore.com/',
+			'Origin': 'https://www.sofascore.com',
 			'Accept': 'application/json',
 			'X-Requested-With': 'XMLHttpRequest'
 		}
 		if PY3:
-			d = getPage(str.encode(url), contextFactory=WebClientContextFactory(url), timeout=25, headers={k.encode(): [v.encode()] for k, v in headers.items()})
-			d.addCallback(lambda raw: self.screen.process_stats(json.loads(raw.decode('utf-8'))))
+			def _fetch_stats_py3():
+				raw = _curl_ss(url, timeout=25)
+				if raw:
+					try:
+						return json.loads(raw.decode('utf-8'))
+					except Exception:
+						return None
+				return None
+			d = deferToThread(_fetch_stats_py3)
+			d.addCallback(self.screen.process_stats)
 			d.addErrback(lambda f: self._err(f))
 		else:
 			def _get():
@@ -862,19 +887,27 @@ class SofaScoreMatchMedia(MatchMediaFetcherBase):
 	def fetch(self):
 		if debug_MatchMedia:
 			logdata("MatchMedia", "SofaScore.fetch started | event_id=%s" % self.event_id)
-		url = "https://api.sofascore.com/api/v1/event/{}/media".format(self.event_id)
+		url = "https://www.sofascore.com/api/v1/event/{}/media".format(self.event_id)
 		if debug_MatchMedia:
 			logdata("MatchMedia", "URL=%s" % url)
 		headers = {
 			'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36',
-			'Referer': 'https://api.sofascore.com/',
-			'Origin': 'https://api.sofascore.com',
+			'Referer': 'https://www.sofascore.com/',
+			'Origin': 'https://www.sofascore.com',
 			'Accept': 'application/json',
 			'X-Requested-With': 'XMLHttpRequest'
 		}
 		if PY3:
-			d = getPage(str.encode(url), contextFactory=WebClientContextFactory(url), timeout=25, headers={k.encode(): [v.encode()] for k, v in headers.items()})
-			d.addCallback(lambda raw: self.screen.process_media(json.loads(raw.decode('utf-8'))))
+			def _fetch_media_py3():
+				raw = _curl_ss(url, timeout=25)
+				if raw:
+					try:
+						return json.loads(raw.decode('utf-8'))
+					except Exception:
+						return None
+				return None
+			d = deferToThread(_fetch_media_py3)
+			d.addCallback(self.screen.process_media)
 			d.addErrback(lambda f: self._err(f))
 		else:
 			def _get():

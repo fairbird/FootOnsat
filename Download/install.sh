@@ -111,6 +111,7 @@ if python --version 2>&1 | grep -q '^Python 3\.'; then
    DATETIME='python3-datetime'
    FFMPEG='ffmpeg'
    CURL='curl'
+   CURL_impersonate='curl-impersonate'
    MPEGTSMUX='gstreamer1.0-plugins-bad-mpegtsmux'
 else
    echo "You have Python2 image"
@@ -130,11 +131,16 @@ else
    GDB='gdb'
    FFMPEG='ffmpeg'
    CURL='curl'
+   CURL_impersonate='curl-impersonate'
    MPEGTSMUX='gstreamer1.0-plugins-bad-mpegtsmux'
 fi
 
 if grep -q "$CURL" "$STATUS"; then
     curl='Installed'
+fi
+
+if grep -q "$CURL_impersonate" "$STATUS"; then
+    curl_impersonate='Installed'
 fi
 
 if grep -q "$MPEGTSMUX" "$STATUS"; then
@@ -220,7 +226,7 @@ fi
 if [ "$sqlite" = "Installed" -a "$six" = "Installed" -a "$aplay" = "Installed" -a "$beautifulsoup4" = "Installed" -a \
       "$difflib" = "Installed" -a "$threading" = "Installed" -a "$pil" = "Installed" -a "$requestes" = "Installed" -a \
       "$json" = "Installed" -a "$ujson" = "Installed" -a "$io" = "Installed" -a "$datetime" = "Installed" -a "$email" = "Installed" -a \
-      "$ffmpeg" = "Installed" -a "$curl" = "Installed" -a "$mpegtsmux" = "Installed" -a "$gdb" = "Installed" ]; then
+      "$ffmpeg" = "Installed" -a "$curl" = "Installed" -a "$curl_impersonate" = "Installed" -a "$mpegtsmux" = "Installed" -a "$gdb" = "Installed" ]; then
      echo ""
 else
 
@@ -237,6 +243,7 @@ else
         echo "========================================================================"
         echo "========================================================================"
         opkg install $CURL > /dev/null 2>&1
+        opkg install $CURL_impersonate > /dev/null 2>&1
         opkg install $FFMPEG > /dev/null 2>&1
         opkg install $MPEGTSMUX > /dev/null 2>&1
         opkg install $SQLITE3 > /dev/null 2>&1
@@ -264,6 +271,7 @@ else
         echo "========================================================================"
         echo "========================================================================"
         apt-get install $CURL -y > /dev/null 2>&1
+        apt-get install $CURL_impersonate -y > /dev/null 2>&1
         apt-get install $FFMPEG -y > /dev/null 2>&1
         apt-get install $MPEGTSMUX -y > /dev/null 2>&1
         apt-get install $SQLITE3 -y > /dev/null 2>&1
@@ -377,12 +385,13 @@ check_pkg() {
 		echo "#           $1 Not found in feed           #"
 		echo "####################################################"
 
-		if [ "$1" != "$UJSON" ] && [ "$1" != "$MPEGTSMUX" ]; then
+		if [ "$1" != "$UJSON" ] && [ "$1" != "$MPEGTSMUX" ] && [ "$1" != "$CURL_impersonate" ]; then
 			MISSING_PKGS="true"
 		fi
 	fi
 }
 check_pkg "$CURL"
+check_pkg "$CURL_impersonate"
 check_pkg "$SQLITE3"
 check_pkg "$PYSIX"
 check_pkg "$SOUP4"

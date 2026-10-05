@@ -1,3 +1,1 @@
-- Add support skins of WQHD For open source images
-- Fix again fetch data for www.sofascore.com (But does not work smothly)
-- Add new option for change the source of live data (ESPN (New) default)
+- Fix www.sofascore.com protection with usring (curl-impersonate)

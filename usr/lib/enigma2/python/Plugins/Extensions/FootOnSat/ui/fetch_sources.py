@@ -3,6 +3,7 @@ import time
 import json
 import re
 import random
+import subprocess
 import requests
 from datetime import date, datetime, timedelta
 from unicodedata import normalize
@@ -617,20 +618,48 @@ class LiveFetchBase(object):
 
 
 class SofaScoreFetcher(LiveFetchBase):
-	def _py3_get(self, url, timeout=20):
+	def _ss_bootstrap(self, cookie_file):
+		try:
+			os.remove(cookie_file)
+		except Exception:
+			pass
+		try:
+			subprocess.call([
+				"/usr/bin/curl_chrome150", "-s", "-L", "-k",
+				"--max-time", "15",
+				"-c", cookie_file,
+				"https://www.sofascore.com/",
+				"-o", "/dev/null"
+			], stderr=subprocess.PIPE)
+		except Exception:
+			pass
+
+	def _ss_get(self, url, cookie_file, timeout=20):
 		url_str = url.decode('utf-8') if isinstance(url, bytes) else url
 		def _worker():
-			r = self._py3_session.get(url_str, timeout=timeout)
-			if r.status_code == 204:
-				return b'{"scheduled":[],"hasNextPage":false}'
-			if r.status_code != 200:
-				raise Exception("HTTP_%s" % r.status_code)
-			return r.content
+			try:
+				out = subprocess.check_output([
+					"/usr/bin/curl_chrome150", "-s", "-L", "-k",
+					"--max-time", str(timeout),
+					"-b", cookie_file,
+					"-H", "X-Requested-With: XMLHttpRequest",
+					"-H", "Accept: application/json, text/plain, */*",
+					"-H", "Referer: https://www.sofascore.com/",
+					"-H", "Origin: https://www.sofascore.com",
+					url_str
+				], stderr=subprocess.PIPE)
+				return out
+			except Exception:
+				return None
 		d = defer.Deferred()
 		deferToThread(_worker).addCallback(d.callback).addErrback(d.errback)
 		return d
 
 	def fetch(self):
+		if not os.path.exists("/usr/bin/curl_chrome150"):
+			if debug_Fetch_Live:
+				logdata("fetch_live_results", "WARNING: curl-impersonate not installed, live data will be unavailable")
+			return
 		if not self.screen.matches:
 			self.screen.onWindowShow()
 			return
@@ -649,211 +678,17 @@ class SofaScoreFetcher(LiveFetchBase):
 			logdata("fetch_live_results", "Current Link: %s" % self.screen.link)
 			logdata("fetch_live_results", "Selected Date: %s" % selected_date)
 
-		AGENT = b'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36'
-		USER_AGENTS = [
-			'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36',
-			'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
-			'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Safari/605.1.15',
-		]
-		ua = random.choice(USER_AGENTS)
+		cookie_file = "/tmp/ss_cf_cookies.txt"
+		self._ss_bootstrap(cookie_file)
 
-		if PY3:
-			_py3_headers = {
-				'User-Agent': ua,
-				'Accept': '*/*',
-				'Origin': 'https://www.sofascore.com',
-				'Referer': 'https://www.sofascore.com/',
-				'Cache-Control': 'no-cache',
-				'Accept-Encoding': 'gzip, deflate',
-				'Connection': 'keep-alive',
-			}
-			self._py3_session = requests.Session()
-			self._py3_session.mount("https://", TLSAdapter())
-			self._py3_session.headers.update(_py3_headers)
+		d = defer.Deferred()
 
-			_load_ss_cookies(self._py3_session)
-
-			cookie_file = _get_ss_cookie_file()
-			cookie_age = 0
-			if os.path.exists(cookie_file):
-				cookie_age = time.time() - os.path.getmtime(cookie_file)
-			if cookie_age > SS_COOKIE_MAX_AGE or not os.path.exists(cookie_file):
-				if debug_Fetch_Live:
-					logdata("fetch_live_results", "Refreshing cookies (age=%ds)" % int(cookie_age))
+		def _fetch_page(page, urls, d_final):
+			url = 'https://www.sofascore.com/api/v1/sport/football/scheduled-tournaments/{0}/page/{1}'.format(selected_date, page)
+			def _cb(raw):
 				try:
-					self._py3_session.get("https://www.sofascore.com/", timeout=10)
-				except Exception:
-					pass
-				_save_ss_cookies(self._py3_session)
-
-			d = defer.Deferred()
-
-			def _fetch_page(page, urls, d_final):
-				url = 'https://www.sofascore.com/api/v1/sport/football/scheduled-tournaments/{0}/page/{1}'.format(selected_date, page)
-				def _cb(raw):
-					if debug_Fetch_Live:
-						logdata("fetch_live_results", "DEBUG_CB_RAW: type=%s len=%s" % (type(raw).__name__, len(raw) if raw else 0))
-					try:
-						data = json.loads(raw.decode('utf-8', 'ignore'))
-						scheduled = data.get("scheduled", [])
-						if debug_Fetch_Live:
-							logdata("fetch_live_results", "DEBUG_CB_PARSED: scheduled_count=%d hasNextPage=%s" % (len(scheduled), data.get("hasNextPage", False)))
-						for item in scheduled:
-							t = item.get("tournament", {})
-							ut = t.get("uniqueTournament")
-							if ut and ut.get("id"):
-								urls.append("https://www.sofascore.com/api/v1/unique-tournament/{0}/scheduled-events/{1}".format(ut["id"], selected_date))
-							elif t.get("id"):
-								urls.append("https://www.sofascore.com/api/v1/tournament/{0}/scheduled-events/{1}".format(t["id"], selected_date))
-						search_level = config.plugins.FootOnSat.livescoresearchlevel.value
-						if data.get("hasNextPage", False) and search_level == "2":
-							_fetch_page(page + 1, urls, d_final)
-						else:
-							urls_unique = list(set(urls))
-							if debug_Fetch_Live:
-								logdata("fetch_live_results", "DISCOVERY DONE: %d tournament URLs" % len(urls_unique))
-							deferreds = [self._py3_get(u, timeout=20) for u in urls_unique]
-							if not deferreds:
-								d_final.callback([b'{"events":[]}'])
-							else:
-								def _unwrap(dl_results):
-									out = []
-									failed = 0
-									for ok, value in dl_results:
-										if ok and value:
-											out.append(value)
-										else:
-											failed += 1
-									if debug_Fetch_Live:
-										logdata("fetch_live_results", "DEBUG_DEFERRED_LIST: total=%d ok=%d failed=%d" % (len(dl_results), len(out), failed))
-									return out or [b'{"events":[]}']
-								defer.DeferredList(deferreds, consumeErrors=True).addCallback(_unwrap).chainDeferred(d_final)
-					except Exception:
-						d_final.callback([b'{"events":[]}'])
-				def _eb(err):
-					if debug_Fetch_Live:
-						logdata("fetch_live_results", "DEBUG_DISCOVERY_ERR: %s" % str(err))
-					d_final.callback([b'{"events":[]}'])
-				self._py3_get(url, timeout=20).addCallback(_cb).addErrback(_eb)
-
-			_fetch_page(1, [], d)
-			self.screen.fetch_deferred = d
-
-			def process_results(results):
-				if debug_Fetch_Live:
-					logdata("fetch_live_results", "DEBUG_PROCESS_RESULTS: received %d items" % len(results))
-				if self.screen.is_closed:
-					return [b'{"events":[]}']
-				valid = []
-				for i, r in enumerate(results):
-					if r and not isinstance(r, Failure):
-						valid.append(r)
-					else:
-						if debug_Fetch_Live:
-							logdata("fetch_live_results", "DEBUG_PR_ITEM_%d_DROPPED" % i)
-				if not valid:
-					valid = [b'{"events":[]}']
-				return valid
-
-			def _save_cookies_after(result):
-				try:
-					_save_ss_cookies(self._py3_session)
-				except Exception:
-					pass
-				return result
-
-			d.addCallback(process_results)
-			d.addCallback(_save_cookies_after)
-		else:
-			def _fetch_smart():
-				if self.screen.is_closed:
-					return []
-				import threading
-				import ssl
-
-				session = requests.Session()
-
-				class _SofaTLSAdapterPY2(requests.adapters.HTTPAdapter):
-					def init_poolmanager(self, *args, **kwargs):
-						try:
-							ctx = ssl.create_default_context()
-							ctx.check_hostname = False
-							ctx.verify_mode = ssl.CERT_NONE
-						except Exception:
-							try:
-								ctx = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
-								ctx.check_hostname = False
-								ctx.verify_mode = ssl.CERT_NONE
-							except Exception:
-								ctx = None
-						if ctx is not None:
-							try:
-								ctx.set_ciphers('DEFAULT@SECLEVEL=1')
-							except Exception:
-								try:
-									ctx.set_ciphers('ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:!aNULL:!MD5:!DSS')
-								except Exception:
-									pass
-							try:
-								ctx.set_alpn_protocols(['http/1.1'])
-							except Exception:
-								pass
-							kwargs['ssl_context'] = ctx
-						return super(_SofaTLSAdapterPY2, self).init_poolmanager(*args, **kwargs)
-
-				try:
-					session.mount("https://", TLSAdapter())
-				except Exception:
-					pass
-
-				session.headers.update({
-					'User-Agent': ua,
-					'Accept': 'application/json, text/plain, */*',
-					'Origin': 'https://www.sofascore.com',
-					'Referer': 'https://www.sofascore.com/',
-					'Cache-Control': 'no-cache',
-					'X-Requested-With': 'XMLHttpRequest',
-				})
-
-				_load_ss_cookies(session)
-
-				cookie_file = _get_ss_cookie_file()
-				cookie_age = 0
-				if os.path.exists(cookie_file):
-					try:
-						cookie_age = time.time() - os.path.getmtime(cookie_file)
-					except Exception:
-						cookie_age = 0
-				if cookie_age > SS_COOKIE_MAX_AGE or not os.path.exists(cookie_file):
-					if debug_Fetch_Live:
-						logdata("fetch_live_results", "PY2 refreshing cookies (age=%ds)" % int(cookie_age))
-					try:
-						session.get("https://www.sofascore.com/", timeout=10, verify=False)
-					except Exception:
-						pass
-
-				urls = []
-				page = 1
-				while True:
-					if self.screen.is_closed:
-						break
-					main_url = "https://www.sofascore.com/api/v1/sport/football/scheduled-tournaments/{0}/page/{1}".format(selected_date, page)
-					try:
-						r = session.get(main_url, timeout=20, verify=False)
-						if debug_Fetch_Live:
-							logdata("fetch_live_results", "PY2 DISCOVERY page=%d status=%d" % (page, r.status_code))
-						if r.status_code != 200:
-							if debug_Fetch_Live:
-								logdata("fetch_live_results", "PY2 DISCOVERY aborted (status=%d) body=%s" % (r.status_code, (r.content or b'')[:200]))
-							break
-						data = json.loads(r.content.decode('utf-8', 'ignore'))
-					except Exception as _de:
-						if debug_Fetch_Live:
-							logdata("fetch_live_results", "PY2 DISCOVERY EXC: %s" % str(_de)[:200])
-						break
+					data = json.loads(raw.decode('utf-8', 'ignore'))
 					scheduled = data.get("scheduled", [])
-					if not scheduled:
-						break
 					for item in scheduled:
 						t = item.get("tournament", {})
 						ut = t.get("uniqueTournament")
@@ -861,52 +696,43 @@ class SofaScoreFetcher(LiveFetchBase):
 							urls.append("https://www.sofascore.com/api/v1/unique-tournament/{0}/scheduled-events/{1}".format(ut["id"], selected_date))
 						elif t.get("id"):
 							urls.append("https://www.sofascore.com/api/v1/tournament/{0}/scheduled-events/{1}".format(t["id"], selected_date))
-					if not (data.get("hasNextPage", False) and config.plugins.FootOnSat.livescoresearchlevel.value == "2"):
-						break
-					page += 1
+					if data.get("hasNextPage", False) and config.plugins.FootOnSat.livescoresearchlevel.value == "2":
+						_fetch_page(page + 1, urls, d_final)
+					else:
+						urls_unique = list(set(urls))
+						if debug_Fetch_Live:
+							logdata("fetch_live_results", "DISCOVERY DONE: %d tournament URLs" % len(urls_unique))
+						deferreds = [self._ss_get(u, cookie_file, timeout=20) for u in urls_unique]
+						if not deferreds:
+							d_final.callback([b'{"events":[]}'])
+						else:
+							def _unwrap(dl_results):
+								out = []
+								for ok, value in dl_results:
+									if ok and value:
+										out.append(value)
+								return out or [b'{"events":[]}']
+							defer.DeferredList(deferreds, consumeErrors=True).addCallback(_unwrap).chainDeferred(d_final)
+				except Exception:
+					d_final.callback([b'{"events":[]}'])
+			def _eb(err):
+				if debug_Fetch_Live:
+					logdata("fetch_live_results", "DISCOVERY_ERR: %s" % str(err))
+				d_final.callback([b'{"events":[]}'])
+			self._ss_get(url, cookie_file, timeout=20).addCallback(_cb).addErrback(_eb)
 
-				urls = list(set(urls))
-				if not urls:
-					_save_ss_cookies(session)
-					return [b'{"events":[]}']
+		_fetch_page(1, [], d)
+		self.screen.fetch_deferred = d
 
-				results = [None] * len(urls)
+		def process_results(results):
+			valid = []
+			for r in results:
+				if r and not isinstance(r, Failure):
+					valid.append(r)
+			return valid or [b'{"events":[]}']
 
-				def worker(start):
-					for i in range(start, len(urls), 30):
-						if self.screen.is_closed:
-							return
-						try:
-							r = session.get(urls[i], timeout=20, verify=False)
-							if r.status_code == 200:
-								results[i] = r.content
-							elif r.status_code == 204:
-								results[i] = b'{"events":[]}'
-							elif debug_Fetch_Live:
-								logdata("fetch_live_results", "PY2 HTTP %d for %s" % (r.status_code, urls[i][:100]))
-						except Exception as _we:
-							if debug_Fetch_Live:
-								logdata("fetch_live_results", "PY2 GET ERR: %s | url=%s" % (str(_we)[:150], urls[i][:100]))
+		d.addCallback(process_results)
 
-				threads = []
-				for i in range(30):
-					t = threading.Thread(target=worker, args=(i,))
-					t.daemon = True
-					threads.append(t)
-				for t in threads:
-					t.start()
-				for t in threads:
-					t.join()
-
-				_save_ss_cookies(session)
-
-				valid = [r for r in results if r]
-				if not valid:
-					return [b'{"events":[]}']
-				return valid
-
-			self.screen.fetch_deferred = deferToThread(_fetch_smart)
-			d = self.screen.fetch_deferred
 		def _error(failure):
 			if self.screen.is_closed:
 				return
