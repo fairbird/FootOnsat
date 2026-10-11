@@ -461,14 +461,30 @@ class ESPNMatchDetails(MatchDetailsFetcherBase):
 				if debug_MatchDetails:
 					logdata("MatchDetails", "ESPN summary fetch error: %s" % str(e)[:200])
 			try:
-				r = requests.get(plays_url, timeout=15, verify=False, headers={
-					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-					'Accept': 'application/json',
-				})
-				if r.status_code == 200:
-					results['plays'] = r.content
-				elif debug_MatchDetails:
-					logdata("MatchDetails", "ESPN plays HTTP status=%d" % r.status_code)
+				all_items = []
+				page = 1
+				while page <= 20:
+					page_url = plays_url + "&page=" + str(page)
+					r = requests.get(page_url, timeout=15, verify=False, headers={
+						'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+						'Accept': 'application/json',
+					})
+					if r.status_code != 200:
+						if debug_MatchDetails:
+							logdata("MatchDetails", "ESPN plays HTTP status=%d page=%d" % (r.status_code, page))
+						break
+					page_data = r.json()
+					page_items = page_data.get('items', []) or []
+					if debug_MatchDetails:
+						logdata("MatchDetails", "ESPN plays page=%d items=%d pageCount=%s" % (page, len(page_items), page_data.get('pageCount', '?')))
+					if not page_items:
+						break
+					all_items.extend(page_items)
+					page_count = page_data.get('pageCount', 1) or 1
+					if page >= page_count:
+						break
+					page += 1
+				results['plays'] = json.dumps({"items": all_items}).encode('utf-8')
 			except Exception as e:
 				if debug_MatchDetails:
 					logdata("MatchDetails", "ESPN plays fetch error: %s" % str(e)[:200])
@@ -568,9 +584,14 @@ class ESPNMatchDetails(MatchDetailsFetcherBase):
 
 						text = str(play.get('text', ''))
 						player_name = ""
-						pm = re.match(r'^\s*([^(]+?)\s*\(', text)
-						if pm:
-							player_name = pm.group(1).strip()
+						if text.startswith('Goal!') or text.startswith('Own Goal!') or text.startswith('Penalty!'):
+							pm = re.search(r'\.\s*([^(]+?)(?:\s*\(|$)', text)
+							if pm:
+								player_name = pm.group(1).strip()
+						if not player_name:
+							pm = re.match(r'^\s*([^(]+?)\s*\(', text)
+							if pm:
+								player_name = pm.group(1).strip()
 
 						combined = (type_key + " " + type_text).replace('-', ' ')
 
@@ -614,11 +635,17 @@ class ESPNMatchDetails(MatchDetailsFetcherBase):
 							})
 							continue
 
-						if 'goal' in combined and 'disallow' not in combined and 'no goal' not in combined:
+						_tl = text.lower()
+						_is_real_goal = play.get('scoringPlay', False) or text.startswith('Goal!') or text.startswith('Own Goal!')
+						if not play.get('scoringPlay', False):
+							if 'goal kick' in _tl or 'goalkeeper' in _tl or 'goal attempt' in _tl or 'goal saved' in _tl or 'goal disallowed' in _tl or 'no goal' in _tl:
+								_is_real_goal = False
+
+						if _is_real_goal:
 							incident_class = "regular"
-							if 'own goal' in combined:
+							if play.get('ownGoal', False) or 'own goal' in combined:
 								incident_class = "owngoal"
-							elif 'penalty' in combined:
+							elif play.get('penaltyKick', False) or 'penalty' in combined:
 								incident_class = "penalty"
 							incidents.append({
 								"incidentType": "goal",
