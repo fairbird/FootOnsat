@@ -440,25 +440,41 @@ class ESPNMatchDetails(MatchDetailsFetcherBase):
 			self.screen.process_data(None)
 			return
 		league_slug, ev_id = self.event_id.split("|", 1)
-		url = "https://site.web.api.espn.com/apis/site/v2/sports/soccer/{}/summary?event={}".format(league_slug, ev_id)
+
+		summary_url = "https://site.web.api.espn.com/apis/site/v2/sports/soccer/{}/summary?event={}".format(league_slug, ev_id)
+		plays_url = "https://sports.core.api.espn.com/v2/sports/soccer/leagues/{}/events/{}/competitions/{}/plays?limit=1000".format(league_slug, ev_id, ev_id)
+
 		if debug_MatchDetails:
-			logdata("MatchDetails", "ESPN URL=%s" % url)
-		def _fetch():
+			logdata("MatchDetails", "ESPN summary URL=%s" % summary_url)
+			logdata("MatchDetails", "ESPN plays URL=%s" % plays_url)
+
+		def _fetch_all():
+			results = {"summary": None, "plays": None}
 			try:
-				r = requests.get(url, timeout=15, verify=False, headers={
+				r = requests.get(summary_url, timeout=15, verify=False, headers={
 					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
 					'Accept': 'application/json',
 				})
-				if debug_MatchDetails:
-					logdata("MatchDetails", "ESPN HTTP status=%d len=%d" % (r.status_code, len(r.content) if r.content else 0))
 				if r.status_code == 200:
-					return r.content
-				return None
+					results['summary'] = r.content
 			except Exception as e:
 				if debug_MatchDetails:
-					logdata("MatchDetails", "ESPN fetch error: %s" % str(e)[:200])
-				return None
-		d = deferToThread(_fetch)
+					logdata("MatchDetails", "ESPN summary fetch error: %s" % str(e)[:200])
+			try:
+				r = requests.get(plays_url, timeout=15, verify=False, headers={
+					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+					'Accept': 'application/json',
+				})
+				if r.status_code == 200:
+					results['plays'] = r.content
+				elif debug_MatchDetails:
+					logdata("MatchDetails", "ESPN plays HTTP status=%d" % r.status_code)
+			except Exception as e:
+				if debug_MatchDetails:
+					logdata("MatchDetails", "ESPN plays fetch error: %s" % str(e)[:200])
+			return results
+
+		d = deferToThread(_fetch_all)
 		d.addCallback(self._convert)
 		d.addErrback(self._err)
 
@@ -467,25 +483,29 @@ class ESPNMatchDetails(MatchDetailsFetcherBase):
 			logdata("MatchDetails", "ESPN deferred errback: %s" % failure.getErrorMessage())
 		self.screen.process_data(None)
 
-	def _convert(self, raw):
+	def _convert(self, results):
 		if debug_MatchDetails:
-			logdata("MatchDetails", "ESPN._convert started | raw_len=%d" % (len(raw) if raw else 0))
-		if not raw:
+			logdata("MatchDetails", "ESPN._convert started")
+
+		summary_raw = results.get('summary') if results else None
+		plays_raw = results.get('plays') if results else None
+
+		if not summary_raw:
 			if debug_MatchDetails:
-				logdata("MatchDetails", "ESPN._convert: no raw data")
+				logdata("MatchDetails", "ESPN._convert: no summary data")
 			self.screen.process_data(None)
 			return
+
 		try:
-			data = json.loads(raw.decode('utf-8', 'ignore'))
+			data = json.loads(summary_raw.decode('utf-8', 'ignore'))
 		except Exception as e:
 			if debug_MatchDetails:
-				logdata("MatchDetails", "ESPN._convert JSON error: %s" % str(e))
+				logdata("MatchDetails", "ESPN summary JSON error: %s" % str(e))
 			self.screen.process_data(None)
 			return
 
 		if debug_MatchDetails:
-			logdata("MatchDetails", "ESPN TOP_KEYS: %s" % list(data.keys()))
-			logdata("MatchDetails", "ESPN keyEvents=%d commentary=%d videos=%d" % (len(data.get("keyEvents", [])), len(data.get("commentary", [])), len(data.get("videos", []))))
+			logdata("MatchDetails", "ESPN summary loaded, plays_raw=%s" % ("yes" if plays_raw else "no"))
 
 		header = data.get("header", {})
 		comps = header.get("competitions", [{}])
@@ -509,119 +529,147 @@ class ESPNMatchDetails(MatchDetailsFetcherBase):
 
 		incidents = []
 		home_team_id = str(home.get("team", {}).get("id", ""))
-
-		raw_events = data.get("keyEvents") or []
-		if not raw_events:
-			raw_events = data.get("commentary") or []
-		if not raw_events:
-			raw_events = data.get("plays") or []
+		away_team_id = str(away.get("team", {}).get("id", ""))
 
 		if debug_MatchDetails:
-			logdata("MatchDetails", "ESPN processing raw_events=%d" % len(raw_events))
+			logdata("MatchDetails", "ESPN home_team_id=%s away_team_id=%s" % (home_team_id, away_team_id))
 
-		for ev in raw_events:
+		if plays_raw:
 			try:
-				ev_type_obj = ev.get("type", {})
-				ev_type_text = str(ev_type_obj.get("text", "")).lower()
-				ev_text = str(ev.get("text", "")).lower()
-				combined = ev_type_text + " " + ev_text
+				plays_data = json.loads(plays_raw.decode('utf-8', 'ignore'))
+				items = plays_data.get('items', []) or []
 
-				clock_obj = ev.get("clock", {})
-				clock = str(clock_obj.get("displayValue", ""))
-				m_time = re.search(r'(\d+)', clock)
-				time_int = int(m_time.group(1)) if m_time else 0
+				if debug_MatchDetails:
+					logdata("MatchDetails", "ESPN plays items=%d" % len(items))
 
-				team_obj = ev.get("team", {})
-				team_id = str(team_obj.get("id", ""))
-				is_home = (team_id == home_team_id) if team_id else True
+				for play in items:
+					try:
+						play_type = play.get('type', {}) or {}
+						type_text = str(play_type.get('text', '')).lower()
+						type_key = str(play_type.get('type', '')).lower()
 
-				participants = ev.get("participants", []) or []
-				player_name = ""
-				player_in = ""
-				player_out = ""
+						clock = play.get('clock', {}) or {}
+						time_str = str(clock.get('displayValue', ''))
+						time_int = 0
+						m = re.search(r'(\d+)', time_str)
+						if m:
+							time_int = int(m.group(1))
 
-				for idx, p in enumerate(participants):
-					if not isinstance(p, dict):
+						team_ref = ""
+						team_obj = play.get('team') or {}
+						if isinstance(team_obj, dict):
+							team_ref = team_obj.get('$ref', '')
+						is_home = True
+						if team_ref and home_team_id:
+							tid_match = re.search(r'/teams/(\d+)', team_ref)
+							if tid_match:
+								tid = tid_match.group(1)
+								is_home = (tid == home_team_id)
+
+						text = str(play.get('text', ''))
+						player_name = ""
+						pm = re.match(r'^\s*([^(]+?)\s*\(', text)
+						if pm:
+							player_name = pm.group(1).strip()
+
+						combined = (type_key + " " + type_text).replace('-', ' ')
+
+						if re.search(r'\bsecond\s+yellow\b', combined) or 'yellowred' in combined:
+							incidents.append({
+								"incidentType": "card",
+								"incidentClass": "red",
+								"isHome": is_home,
+								"time": time_int,
+								"player": {"name": player_name},
+							})
+							continue
+
+						if re.search(r'\byellow\b', combined) and not re.search(r'\bred\b', combined):
+							incidents.append({
+								"incidentType": "card",
+								"incidentClass": "yellow",
+								"isHome": is_home,
+								"time": time_int,
+								"player": {"name": player_name},
+							})
+							continue
+
+						if re.search(r'\bred\b', combined) and not re.search(r'\byellow\b', combined):
+							incidents.append({
+								"incidentType": "card",
+								"incidentClass": "red",
+								"isHome": is_home,
+								"time": time_int,
+								"player": {"name": player_name},
+							})
+							continue
+
+						if 'penalty' in combined and 'scored' in combined and 'miss' not in combined:
+							incidents.append({
+								"incidentType": "goal",
+								"incidentClass": "penalty",
+								"isHome": is_home,
+								"time": time_int,
+								"player": {"name": player_name},
+							})
+							continue
+
+						if 'goal' in combined and 'disallow' not in combined and 'no goal' not in combined:
+							incident_class = "regular"
+							if 'own goal' in combined:
+								incident_class = "owngoal"
+							elif 'penalty' in combined:
+								incident_class = "penalty"
+							incidents.append({
+								"incidentType": "goal",
+								"incidentClass": incident_class,
+								"isHome": is_home,
+								"time": time_int,
+								"player": {"name": player_name},
+							})
+							continue
+
+						if 'substitution' in combined:
+							player_in = ""
+							player_out = player_name
+
+							rm = re.search(r'(.+?)\s+replaces\s+(.+)', text, re.IGNORECASE)
+							if rm:
+								player_in = rm.group(1).strip()
+								player_out = rm.group(2).strip()
+							else:
+								participants = play.get('participants', []) or []
+								for p in participants:
+									if not isinstance(p, dict):
+										continue
+									p_name = p.get('athlete', {}).get('displayName', '')
+									if p_name and p_name != player_out:
+										player_in = p_name
+										break
+
+							incidents.append({
+								"incidentType": "substitution",
+								"isHome": is_home,
+								"time": time_int,
+								"playerIn": {"name": player_in},
+								"playerOut": {"name": player_out},
+							})
+							continue
+
+					except Exception as pe:
+						if debug_MatchDetails:
+							logdata("MatchDetails", "ESPN play parse error: %s" % str(pe)[:150])
 						continue
-					athlete = p.get("athlete", {})
-					if not isinstance(athlete, dict):
-						continue
-					name = athlete.get("displayName", "")
-					if idx == 0:
-						player_name = name
-					elif idx == 1:
-						if "substitution" in combined:
-							player_in = player_name
-							player_out = name
-						else:
-							player_out = name
 
-				if "substitution" in combined:
-					incidents.append({
-						"incidentType": "substitution",
-						"isHome": is_home,
-						"time": time_int,
-						"playerIn": {"name": player_in},
-						"playerOut": {"name": player_out},
-					})
-					continue
+				if debug_MatchDetails:
+					logdata("MatchDetails", "ESPN._convert produced incidents=%d" % len(incidents))
 
-				if "own goal" in combined:
-					incidents.append({
-						"incidentType": "goal",
-						"incidentClass": "owngoal",
-						"isHome": is_home,
-						"time": time_int,
-						"player": {"name": player_name},
-					})
-					continue
-
-				if "penalty" in combined and "goal" in combined and "miss" not in combined:
-					incidents.append({
-						"incidentType": "goal",
-						"incidentClass": "penalty",
-						"isHome": is_home,
-						"time": time_int,
-						"player": {"name": player_name},
-					})
-					continue
-
-				if "goal" in combined and "disallow" not in combined and "no goal" not in combined:
-					incidents.append({
-						"incidentType": "goal",
-						"incidentClass": "regular",
-						"isHome": is_home,
-						"time": time_int,
-						"player": {"name": player_name},
-					})
-					continue
-
-				if "yellow" in combined and "red" not in combined:
-					incidents.append({
-						"incidentType": "card",
-						"incidentClass": "yellow",
-						"isHome": is_home,
-						"time": time_int,
-						"player": {"name": player_name},
-					})
-					continue
-
-				if "red" in combined:
-					incidents.append({
-						"incidentType": "card",
-						"incidentClass": "red",
-						"isHome": is_home,
-						"time": time_int,
-						"player": {"name": player_name},
-					})
-					continue
 			except Exception as e:
 				if debug_MatchDetails:
-					logdata("MatchDetails", "ESPN event parse error: %s" % str(e)[:150])
-				continue
-
-		if debug_MatchDetails:
-			logdata("MatchDetails", "ESPN._convert produced incidents=%d" % len(incidents))
+					logdata("MatchDetails", "ESPN plays JSON error: %s" % str(e))
+		else:
+			if debug_MatchDetails:
+				logdata("MatchDetails", "ESPN._convert: no plays data")
 
 		inc_js = {"incidents": incidents}
 		self.screen.process_data([inc_js, ev_js])

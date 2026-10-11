@@ -1112,7 +1112,15 @@ class ESPNFetcher(LiveFetchBase):
 		ts = 0
 		date_str = ev.get("date")
 		if date_str:
-			ts = compat_parse_iso(date_str)
+			try:
+				_c = date_str[:-1] if date_str.endswith("Z") else date_str
+				_dt_utc = datetime.strptime(_c, "%Y-%m-%dT%H:%M")
+				_match_date_str = _dt_utc.strftime("%H:%M - %Y-%m-%d")
+				_local_str = self.screen.getTime(_match_date_str)
+				_local_dt = datetime.strptime(_local_str, "%H:%M - %Y-%m-%d")
+				ts = int(time.mktime(_local_dt.timetuple()))
+			except Exception:
+				ts = 0
 
 		return {
 			"homeTeam": {"name": home_name, "shortName": home_short},
@@ -1142,12 +1150,13 @@ class ESPNFetcher(LiveFetchBase):
 
 		date_prev = (selected_date - timedelta(days=1)).strftime("%Y%m%d")
 		date_next = (selected_date + timedelta(days=1)).strftime("%Y%m%d")
+		date_dates = [(selected_date + timedelta(days=_i)).strftime("%Y%m%d") for _i in range(-2, 3)]
 		try:
 			limit = config.plugins.FootOnSat.espn_limit.value
 		except Exception:
 			limit = "500"
 		if debug_Fetch_Live:
-			logdata("fetch_live_results", "ESPN dates: %s/%s/%s limit: %s" % (date_prev, date_compact, date_next, limit))
+			logdata("fetch_live_results", "ESPN dates: %s limit: %s" % (",".join(date_dates), limit))
 
 		leagues_data = self._espn_get("https://sports.core.api.espn.com/v2/sports/soccer/leagues?limit={0}".format(limit))
 		if debug_Fetch_Live:
@@ -1190,12 +1199,17 @@ class ESPNFetcher(LiveFetchBase):
 					return
 				events = []
 				seen_local = set()
-				for d in (date_prev, date_compact, date_next):
+				for d in date_dates:
 					scoreboard_url = "https://site.api.espn.com/apis/site/v2/sports/soccer/{0}/scoreboard?dates={1}".format(slug, d)
 					data = self._espn_get(scoreboard_url, timeout=15)
 					if not data:
+						if debug_Fetch_Live:
+							logdata("fetch_live_results", "ESPN_DATE_EMPTY [%s] date=%s" % (slug, d))
 						continue
-					for ev in data.get("events", []):
+					date_events = data.get("events", [])
+					if debug_Fetch_Live and date_events:
+						logdata("fetch_live_results", "ESPN_DATE_HIT [%s] date=%s events=%d" % (slug, d, len(date_events)))
+					for ev in date_events:
 						ev_id = str(ev.get("id", ""))
 						if ev_id and ev_id in seen_local:
 							continue
@@ -1206,20 +1220,21 @@ class ESPNFetcher(LiveFetchBase):
 					return
 				if debug_Fetch_Live and events:
 					logdata("fetch_live_results", "ESPN_LEAGUE_HIT [%s/%s]: %d events" % (slug, name, len(events)))
-					if slug in ("col.1", "usa.1"):
-						for _ev in events:
-							try:
-								_comps = _ev.get("competitions", [{}])[0]
-								_competitors = _comps.get("competitors", [])
-								_h = next((c for c in _competitors if c.get("homeAway") == "home"), {})
-								_a = next((c for c in _competitors if c.get("homeAway") == "away"), {})
-								_hn = _h.get("team", {}).get("displayName", "?")
-								_an = _a.get("team", {}).get("displayName", "?")
-								_dt = _ev.get("date", "?")
-								_st = _comps.get("status", {}).get("type", {}).get("state", "?")
-								logdata("fetch_live_results", "ESPN_SAMPLE [%s] %s vs %s | date=%s | state=%s" % (slug, _hn, _an, _dt, _st))
-							except Exception:
-								continue
+					for _ev in events:
+						try:
+							_comps = _ev.get("competitions", [{}])[0]
+							_competitors = _comps.get("competitors", [])
+							_h = next((c for c in _competitors if c.get("homeAway") == "home"), {})
+							_a = next((c for c in _competitors if c.get("homeAway") == "away"), {})
+							_hn = _h.get("team", {}).get("displayName", "?")
+							_an = _a.get("team", {}).get("displayName", "?")
+							_dt = _ev.get("date", "?")
+							_st = _comps.get("status", {}).get("type", {}).get("state", "?")
+							_hs = _h.get("score", "")
+							_as = _a.get("score", "")
+							logdata("fetch_live_results", "ESPN_SAMPLE [%s] %s vs %s | score=%s-%s | date=%s | state=%s" % (slug, _hn, _an, _hs, _as, _dt, _st))
+						except Exception:
+							continue
 				local_converted = []
 				for ev in events:
 					ev_id = str(ev.get("id", ""))
@@ -1252,6 +1267,28 @@ class ESPNFetcher(LiveFetchBase):
 					t.start()
 				for t in batch:
 					t.join()
+			if debug_Fetch_Live:
+				by_date = {}
+				by_league = {}
+				by_state = {}
+				for _ev in all_events:
+					_ts = _ev.get("startTimestamp", 0)
+					try:
+						_d = datetime.fromtimestamp(_ts).strftime("%Y-%m-%d")
+					except Exception:
+						_d = "unknown"
+					by_date[_d] = by_date.get(_d, 0) + 1
+					_t = (_ev.get("tournament") or {}).get("name", "?")
+					by_league[_t] = by_league.get(_t, 0) + 1
+					_s = (_ev.get("status") or {}).get("type", "?")
+					by_state[_s] = by_state.get(_s, 0) + 1
+				logdata("fetch_live_results", "ESPN_SUMMARY: total_leagues=%d total_events=%d" % (len(league_items), len(all_events)))
+				for _k in sorted(by_date.keys()):
+					logdata("fetch_live_results", "ESPN_SUMMARY_BY_DATE: %s count=%d" % (_k, by_date[_k]))
+				for _k in sorted(by_state.keys()):
+					logdata("fetch_live_results", "ESPN_SUMMARY_BY_STATE: %s count=%d" % (_k, by_state[_k]))
+				for _k in sorted(by_league.keys()):
+					logdata("fetch_live_results", "ESPN_SUMMARY_BY_LEAGUE: %s count=%d" % (_k, by_league[_k]))
 			return all_events
 
 		def _done(events):

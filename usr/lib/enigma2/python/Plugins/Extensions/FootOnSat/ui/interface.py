@@ -2143,8 +2143,9 @@ class MatchDetailsScreen(Screen):
 						icon_name = "goal.png"
 				elif itype == 'card':
 					ic_class = str(inc.get('incidentClass', '')).lower()
-					p_id = inc.get('player', {}).get('id', 'unknown')
-					text = str(inc.get('player', {}).get('name', ''))
+					p_name = str(inc.get('player', {}).get('name', 'unknown'))
+					p_id = (p_name, inc.get('isHome', True))
+					text = p_name
 					if 'yellow' in ic_class:
 						player_cards[p_id] = player_cards.get(p_id, 0) + 1
 						if player_cards[p_id] >= 2:
