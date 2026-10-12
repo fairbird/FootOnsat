@@ -385,49 +385,23 @@ class SofaScoreMatchDetails(MatchDetailsFetcherBase):
 		if debug_MatchDetails:
 			logdata("MatchDetails", "URL incidents=%s" % url_incidents)
 			logdata("MatchDetails", "URL event=%s" % url_event)
-		if PY3:
-			def _fetch_details_py3():
-				r1 = _curl_ss(url_incidents, timeout=25)
-				r2 = _curl_ss(url_event, timeout=25)
-				parsed = []
-				if r1:
-					try:
-						parsed.append(json.loads(r1.decode('utf-8')))
-					except Exception:
-						pass
-				if r2:
-					try:
-						parsed.append(json.loads(r2.decode('utf-8')))
-					except Exception:
-						pass
-				return parsed if parsed else None
-			d = deferToThread(_fetch_details_py3)
-			d.addCallback(self.screen.process_data)
-		else:
-			def _get_data():
-				s = _make_sofa_session_py2()
-				s.headers.update({
-					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36',
-					'Referer': 'https://www.sofascore.com/',
-					'Origin': 'https://www.sofascore.com',
-					'Accept': 'application/json',
-					'X-Requested-With': 'XMLHttpRequest'
-				})
+		def _fetch_details():
+			r1 = _curl_ss(url_incidents, timeout=25)
+			r2 = _curl_ss(url_event, timeout=25)
+			parsed = []
+			if r1:
 				try:
-					results = []
-					for u in [url_incidents, url_event]:
-						r = s.get(u, timeout=25, verify=False)
-						if debug_MatchDetails:
-							logdata("MatchDetails", "PY2 GET %s status=%d" % (u, r.status_code))
-						r.raise_for_status()
-						results.append(json.loads(r.content.decode('utf-8')))
-					return results
-				except Exception as e:
-					if debug_MatchDetails:
-						logdata("MatchDetails", "PY2 fetch error: %s" % str(e))
-					return None
-			d = deferToThread(_get_data)
-			d.addCallback(self.screen.process_data)
+					parsed.append(json.loads(r1.decode('utf-8')))
+				except Exception:
+					pass
+			if r2:
+				try:
+					parsed.append(json.loads(r2.decode('utf-8')))
+				except Exception:
+					pass
+			return parsed if parsed else None
+		d = deferToThread(_fetch_details)
+		d.addCallback(self.screen.process_data)
 
 
 class ESPNMatchDetails(MatchDetailsFetcherBase):
@@ -744,29 +718,17 @@ class SofaScoreMatchStatistics(MatchStatisticsFetcherBase):
 			'Accept': 'application/json',
 			'X-Requested-With': 'XMLHttpRequest'
 		}
-		if PY3:
-			def _fetch_stats_py3():
-				raw = _curl_ss(url, timeout=25)
-				if raw:
-					try:
-						return json.loads(raw.decode('utf-8'))
-					except Exception:
-						return None
-				return None
-			d = deferToThread(_fetch_stats_py3)
-			d.addCallback(self.screen.process_stats)
-			d.addErrback(lambda f: self._err(f))
-		else:
-			def _get():
-				s = _make_sofa_session_py2()
-				s.headers.update(headers)
-				r = s.get(url, timeout=25, verify=False)
-				if debug_MatchStatistics:
-					logdata("MatchStatistics", "PY2 status=%d" % r.status_code)
-				return json.loads(r.content.decode('utf-8')) if r.status_code == 200 else None
-			d = deferToThread(_get)
-			d.addCallback(self.screen.process_stats)
-			d.addErrback(lambda f: self._err(f))
+		def _fetch_stats():
+			raw = _curl_ss(url, timeout=25)
+			if raw:
+				try:
+					return json.loads(raw.decode('utf-8'))
+				except Exception:
+					return None
+			return None
+		d = deferToThread(_fetch_stats)
+		d.addCallback(self.screen.process_stats)
+		d.addErrback(lambda f: self._err(f))
 
 	def _err(self, failure):
 		if debug_MatchStatistics:
@@ -975,29 +937,17 @@ class SofaScoreMatchMedia(MatchMediaFetcherBase):
 			'Accept': 'application/json',
 			'X-Requested-With': 'XMLHttpRequest'
 		}
-		if PY3:
-			def _fetch_media_py3():
-				raw = _curl_ss(url, timeout=25)
-				if raw:
-					try:
-						return json.loads(raw.decode('utf-8'))
-					except Exception:
-						return None
-				return None
-			d = deferToThread(_fetch_media_py3)
-			d.addCallback(self.screen.process_media)
-			d.addErrback(lambda f: self._err(f))
-		else:
-			def _get():
-				s = _make_sofa_session_py2()
-				s.headers.update(headers)
-				r = s.get(url, timeout=25, verify=False)
-				if debug_MatchMedia:
-					logdata("MatchMedia", "PY2 status=%d" % r.status_code)
-				return json.loads(r.content.decode('utf-8')) if r.status_code == 200 else None
-			d = deferToThread(_get)
-			d.addCallback(self.screen.process_media)
-			d.addErrback(lambda f: self._err(f))
+		def _fetch_media():
+			raw = _curl_ss(url, timeout=25)
+			if raw:
+				try:
+					return json.loads(raw.decode('utf-8'))
+				except Exception:
+					return None
+			return None
+		d = deferToThread(_fetch_media)
+		d.addCallback(self.screen.process_media)
+		d.addErrback(lambda f: self._err(f))
 
 	def _err(self, failure):
 		if debug_MatchMedia:

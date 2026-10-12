@@ -1,1 +1,2 @@
 - Fix ESPN fetch and append result data
+- Building standalone binaries (curl-impersonate) to bypass Sofascore's source protection.

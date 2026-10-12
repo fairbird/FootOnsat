@@ -139,7 +139,7 @@ if grep -q "$CURL" "$STATUS"; then
     curl='Installed'
 fi
 
-if grep -q "$CURL_impersonate" "$STATUS"; then
+if grep -q "$CURL_impersonate" "$STATUS" || [ -f "/usr/bin/curl-impersonate" ]; then
     curl_impersonate='Installed'
 fi
 
@@ -376,6 +376,28 @@ if [ "$OS" = "DreamOS" ] && ! grep -q "$PLI" "$STATUS"; then
 	apt-get install -f -y > /dev/null 2>&1
 	rm -f *.deb > /dev/null 2>&1
 	cd ..
+fi
+
+if ! grep -q "$CURL_impersonate" "$STATUS" || [ ! -f "/usr/bin/curl-impersonate" ]; then
+	cd /tmp
+	if [ "$DEVICE" = "arm" ]; then
+		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/curl-impersonate-armv7.tar.gz"
+		PACKAGE="curl-impersonate-armv7.tar.gz"
+	elif [ "$DEVICE" = "mips" ]; then
+		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/curl-impersonate-mipsel.tar.gz"
+		PACKAGE="curl-impersonate-mipsel.tar.gz"
+	elif [ "$DEVICE" = "arm64" ]; then
+		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/curl-impersonate-arm64.tar.gz"
+		PACKAGE="curl-impersonate-arm64.tar.gz"
+	fi
+
+	if [ -f "/tmp/$PACKAGE" ]; then
+		cd /tmp
+		tar -xzf $PACKAGE -C /usr/bin/ > /dev/null 2>&1
+		chmod +x /usr/bin/curl-impersonate /usr/bin/curl_chrome150 > /dev/null 2>&1
+		rm -f $PACKAGE
+		cd ..
+	fi
 fi
 
 MISSING_PKGS=""
