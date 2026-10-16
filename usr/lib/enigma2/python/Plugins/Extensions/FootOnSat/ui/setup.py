@@ -197,11 +197,11 @@ config.plugins.FootOnSat.livescore = ConfigSelection(default = "2", choices = [
 	("1", "%s" % title8),
 	("2", "%s" % title9)
 	])
-config.plugins.FootOnSat.livescoresearchlevel = ConfigSelection(default = "2", choices = [
+config.plugins.FootOnSat.livescoresearchlevel = ConfigSelection(default = "1", choices = [
 	("1", "%s" % title308),
 	("2", "%s" % title309)
 	])
-config.plugins.FootOnSat.source = ConfigSelection(default = "espn", choices = [
+config.plugins.FootOnSat.source = ConfigSelection(default = "sofascore", choices = [
 	("sofascore", "%s" % title314),
 	("espn", "%s" % title316),
 #	("sportscore", "%s" % title315),
