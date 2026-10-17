@@ -542,10 +542,7 @@ if [ "$SKIP_INSTALL" = "false" ]; then
     echo " ** Download and install FootOnsat ** "
     echo ""
     
-    # Use /media/hdd instead of /tmp to prevent RAM limit crashes
-    WORK_DIR="/media/hdd"
-    if [ ! -d "$WORK_DIR" ]; then WORK_DIR="/tmp"; fi
-    
+    WORK_DIR="/tmp"
     cd "$WORK_DIR"
     rm -rf *main* >/dev/null 2>&1
     rm -rf *FootOnsat* >/dev/null 2>&1
