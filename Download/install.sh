@@ -22,8 +22,9 @@ fi
 # If a path is saved in settings, use it directly without asking
 if [ -n "$SAVED_PATH" ]; then
     if echo "$SAVED_PATH" | grep -q "^/media/"; then
+        BASE_DIR=$(echo "$SAVED_PATH" | sed -E 's#/[Ff]oot[Oo]n[Ss]at/?$##g')
+        EXTERNAL_PATH="$BASE_DIR/FootOnSat"
         INSTALL_CHOICE="2"
-        EXTERNAL_PATH="$SAVED_PATH"
         echo "Using saved external path: $EXTERNAL_PATH"
     else
         INSTALL_CHOICE="1"
