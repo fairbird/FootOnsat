@@ -16,7 +16,7 @@ MOUNTS=$(df -h | awk '$6 ~ /^\/media\// && $1 ~ /^\/dev\// {print $6}' | sort -u
 SETTINGS_FILE="/etc/enigma2/settings"
 SAVED_PATH=""
 if [ -f "$SETTINGS_FILE" ]; then
-    SAVED_PATH=$(grep "^config.plugins.FootOnSat.devicepath=" "$SETTINGS_FILE" | cut -d'=' -f2)
+    SAVED_PATH=$(grep "^config.plugins.FootOnSat.installpath=" "$SETTINGS_FILE" | cut -d'=' -f2)
 fi
 
 # If a path is saved in settings, use it directly without asking
