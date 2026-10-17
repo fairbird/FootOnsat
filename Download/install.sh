@@ -1,551 +1,559 @@
-#!/bin/sh
+# -*- coding: utf-8 -*-
+from enigma import eActionMap, eRCInput
+from Screens.Screen import Screen
+from Screens.MessageBox import MessageBox
+from Components.ActionMap import ActionMap
+from Components.Pixmap import Pixmap
+from Components.Label import Label
+from Components.Sources.List import List
+from Components.Sources.StaticText import StaticText
+from Components.PluginComponent import plugins
+from Components.config import config, NoSave
+from Components.FootMenu import FlexibleMenu
+from Plugins.Extensions.FootOnSat.ui.Console import Console
+from Plugins.Extensions.FootOnSat.ui.interface import FootOnSat, WebClientContextFactory
+from Plugins.Extensions.FootOnSat.component.configs import ConfigDictionarySet
+from twisted.web.client import getPage, downloadPage
+from os.path import join, exists
+import re, os, json, sys
+from os import system
+from sys import version_info
+from .compat import *
+from .setup import *
+from Plugins.Extensions.FootOnSat.__init__ import __version__
+from keymapparser import readKeymap
+from GlobalActions import globalActionMap
+from Tools.Directories import resolveFilename, SCOPE_PLUGINS
 
-#wget -q "--no-check-certificate" https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh
-VERSION=10.8
-PLUGIN_PATH="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
-DB_FILE="$PLUGIN_PATH/db/footonsat.db"
-ASSETS_PATH="$PLUGIN_PATH/assets"
-IGNORE_PATH="$PLUGIN_PATH/ignore"
-TMP_DB="/tmp/footonsat.db"
-TMP_ASSETS="/tmp/assets"
+VER = float(__version__)
 
-E2Settings='/etc/enigma2/settings'
-SETTING_NAME="config.plugins.FootOnSat.icons"
-CURRENT_VALUE=$(
-    grep "^$SETTING_NAME=" "$E2Settings" \
-    | awk -F '=' '{print $2}' \
-    | tr -d '\n\r' \
-    | sed 's#s/##'
-)
+if isUHD():
+        from Plugins.Extensions.FootOnSat.assets.skin.skinUHD import *
+else:
+        from Plugins.Extensions.FootOnSat.assets.skin.skinFHD import *
 
-[ -z "$CURRENT_VALUE" ] && CURRENT_VALUE="icons_default"
+PLUGINPATH="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
 
-if [ -f /etc/apt/apt.conf ] ; then
-	STATUS='/var/lib/dpkg/status'
-	OS='DreamOS'
-elif [ -f /etc/opkg/opkg.conf ] ; then
-	STATUS='/var/lib/opkg/status'
-	OS='Opensource'
-fi
 
-ARCH=$(uname -m)
+class FootOnsatLauncher(Screen):
 
-if echo "$ARCH" | grep -qi 'armv7l'; then
-	echo ':Your Device IS ARM processor ...'
-	DEVICE="arm"
-elif echo "$ARCH" | grep -qi 'aarch64'; then
-	echo ':Your Device IS AARCH64 processor ...'
-	DEVICE="arm64"
-elif echo "$ARCH" | grep -qi 'mips'; then
-	echo ':Your Device IS MIPS processor ...'
-	DEVICE="mips"
-elif echo "$ARCH" | grep -qi 'sh4'; then
-	echo ':Your Device IS SH4 processor ...'
-	DEVICE="sh4"
-else
-	echo 'Unknown Device'
-	DEVICE="unknown"
-fi
+	def __init__(self, session, *args):
+		self.session = session
+		Screen.__init__(self, session)
+		self.skin = SKIN_launcher
+		self["setupActions"] = ActionMap(["FootOnsatActions"],
+		{
+			'left': self.left,
+			'right': self.right,
+			'up': self.up,
+			'down': self.down,
+			'ok': self.ok,
+			'blue': self.keyBlue,
+			'green': self.ok,
+			'red': self.exit,
+			"yellow": self.keyYellow,
+			"cancel": self.exit,
+			"menu": self.showMenu,
+		}, -1)
+		self['menu'] = FlexibleMenu([])
+		self["menu"].onSelectionChanged.append(self.selectionChanged)
+		self["red"] = Label()
+		self["red"].setText("V {}".format(__version__))
+		self["green"] = Label()
+		self["yellow"] = Label()
+		self["blue"] = Label()
+		self.menuList = []
+		self.sort_mode = False
+		self.selected_entry = None
+		self.onLayoutFinish.append(self.callAPI)
 
-# Find the highest python3.xx version in /usr/bin
-PYTHON_BIN=$(ls /usr/bin/python3.*[0-9] 2>/dev/null | \
-    sed 's/[^0-9]*\([0-9]\+\)$/\1/' | sort -n | tail -n 1 | \
-    xargs -I{} ls /usr/bin/python3.{} 2>/dev/null | head -n 1)
-if [ -n "$PYTHON_BIN" ]; then
-    PYTHON_VERSION=$(basename "$PYTHON_BIN")
-    # Check if /usr/bin/python3 symlink exists
-    if [ ! -L /usr/bin/python3 ]; then
-        echo "Creating symlink: /usr/bin/python3 -> $PYTHON_BIN"
-        sudo ln -sf "$PYTHON_BIN" /usr/bin/python3
-    else
-        echo "/usr/bin/python3 symlink already exists"
-    fi
-	echo ""
-    # Check if /usr/bin/python symlink exists
-    if [ ! -L /usr/bin/python ]; then
-        echo "Creating symlink: /usr/bin/python -> $PYTHON_BIN"
-        sudo ln -sf "$PYTHON_BIN" /usr/bin/python
-    else
-        echo "/usr/bin/python symlink already exists"
-    fi
-	echo ""
-fi
+	def showMenu(self):
+		self.session.openWithCallback(self.closeLauncher, MenuFootOnSat)
 
-if [ -d $PLUGIN_PATH ]; then
+	def closeLauncher(self, result=None):
+		if result == "exit_launcher":
+			self.close()
 
-	if [ -f "$DB_FILE" ]; then
-		echo ""
-		echo "Backup old db..."
-		cp -a "$DB_FILE" "$TMP_DB" >/dev/null 2>&1
-	fi
-	echo ""
-#	echo "Backup current style ..."
-#	mkdir -p "$TMP_ASSETS/compet" >/dev/null 2>&1
-#	mkdir -p "$TMP_ASSETS/skin" >/dev/null 2>&1
-#	cp -a "$ASSETS_PATH/compet/icons" "$TMP_ASSETS/compet" >/dev/null 2>&1
-#	cp -a "$ASSETS_PATH/skin" "$TMP_ASSETS" >/dev/null 2>&1
-#	cp -a "$ASSETS_PATH/icon" "$TMP_ASSETS" >/dev/null 2>&1
-#    echo "Remove old version."
-#    if [ "$OS" = "Opensource" ]; then
-#        opkg remove enigma2-plugin-extensions-footonsat
-#    else
-#       apt-get purge --auto-remove enigma2-plugin-extensions-footonsat
-#    fi
+	def callAPI(self):
+		if config.plugins.FootOnSat.updateonline.value:
+			self.checkupdates()
+		elif config.plugins.FootOnSat.updatebannersonline.value:
+			self.checkbannersupdates()
+		url = 'https://raw.githubusercontent.com/fairbird/footonsat-api/main/api.json'
+		sniFactory = WebClientContextFactory(url)
+		getPage(str.encode(url), contextFactory=sniFactory).addCallback(self.getData).addErrback(self.error)
 
-fi
-echo ""
-if python --version 2>&1 | grep -q '^Python 3\.'; then
-   echo "You have Python3 image"
-   PYTHON='PY3'
-   SQLITE3='python3-sqlite3'
-   PYSIX='python3-six'
-   SOUP4='python3-beautifulsoup4'
-   DIFFLIB='python3-difflib'
-   THREADING='python3-threading'
-   PLI='python3-pillow'
-   REQUESTES='python3-requests'
-   JSON='python3-json'
-   UJSON='python3-ujson'
-   IO='python3-io'
-   EMAIL='python3-email'
-   DATETIME='python3-datetime'
-   FFMPEG='ffmpeg'
-   CURL='curl'
-   CURL_impersonate='curl-impersonate'
-   MPEGTSMUX='gstreamer1.0-plugins-bad-mpegtsmux'
-else
-   echo "You have Python2 image"
-   PYTHON='PY2'
-   SQLITE3='python-sqlite3'
-   PYSIX='python-six'
-   SOUP4='python-beautifulsoup4'
-   DIFFLIB='python-difflib'
-   THREADING='python-threading'
-   PLI='python-imaging'
-   REQUESTES='python-requests'
-   JSON='python-json'
-   UJSON='python-ujson'
-   IO='python-io'
-   EMAIL='python-email'
-   DATETIME='python-datetime'
-   GDB='gdb'
-   FFMPEG='ffmpeg'
-   CURL='curl'
-   CURL_impersonate='curl-impersonate'
-   MPEGTSMUX='gstreamer1.0-plugins-bad-mpegtsmux'
-fi
+	def getData(self, data):
+		if not PY3:
+			data = data.decode("utf-8")
+		try:
+			compet = json.loads(data).keys()
+		except Exception as e:
+			if debug_Fetch_Live: logdata("launcher", "getData : %s" % str(e))
+			self.error("JSON parsing failed: " + str(e))
+			return
+		ordering = ["favorite", "live", "end", "today", "tomorrow", "championsleague", "europaleague", "ConferenceLeague", "premierleague", "laliga", "seriea",
+		"bundesliga", "bundesliga2", "ligue1", "saudiarabia", "worldcup", "afcchampions", "afcchampionstwo","championship", "cafchampions", "superLig",
+		"belgianpro", "eredivisie", "laliga2", "liganos", "basketball", "nba", "hockey", "nfl", "formula1"]
+		# Ensure "live" is always present even if not in JSON
+		if config.plugins.FootOnSat.livescore.value == "2":
+			compet = list(compet)
+			if "favorite" not in compet:
+				compet.append("favorite")
+			if "live" not in compet:
+				compet.append("live")
+			if "end" not in compet:
+				compet.append("end")
+		# Keep only items in ordering, then sort according to ordering
+		# filtered_compet = [c for c in ordering if c in compet]
+		# self.menuList = self.custom_sort(ordering, filtered_compet)
+		self.menuList = self.custom_sort(ordering, compet)
 
-if grep -q "$CURL" "$STATUS"; then
-    curl='Installed'
-fi
+		self.sub_menu_sort = NoSave(ConfigDictionarySet())
+		self.sub_menu_sort.value = config.plugins.FootOnSat.sort.getConfigValue("footmenu", "footsubmenu") or {}
+		idx = 0
+		i = 10
+		for _ in self.menuList:
+			entry = [self.menuList.pop(idx)]
+			m_weight = self.sub_menu_sort.getConfigValue("".join(entry), "sort") or i
+			entry.append(m_weight)
+			self.menuList.insert(idx, tuple(entry))
+			self.sub_menu_sort.changeConfigValue(entry[0], "sort", m_weight)
+			idx += 1
+			i += 10
+		self.full_list = list(self.menuList)
+		self["blue"].setText(title190)
+		try:
+			self.hide_show_entries()
+			self["menu"].setList(self.menuList)
+			self.selectionChanged()
+		except Exception as e:
+			if debug_Fetch_Live: logdata("launcher", "getData : %s" % str(e))
+			self.error("Menu rendering failed: " + str(e))
 
-if grep -q "$CURL_impersonate" "$STATUS" || [ -f "/usr/bin/curl-impersonate" ]; then
-    curl_impersonate='Installed'
-fi
+	def custom_sort(self, ordem_custom, origin):
+		list_order_equals = [c for c in ordem_custom if (c in origin)]
+		#list_no_equals = [c for c in origin if (not c in ordem_custom)] ## This follow # Keep only items in ordering in getData
+		#list_order = list_order_equals + list_no_equals
+		#return list_order
+		return list_order_equals
 
-if grep -q "$MPEGTSMUX" "$STATUS"; then
-    mpegtsmux='Installed'
-fi
+	def error(self, error=None):
+		if error:
+			if debug_Fetch_Live: logdata("launcher", "API-error : %s" % str(e))
+			self.session.openWithCallback(self.exit, MessageBox, title191 + ': %s' % str(error), MessageBox.TYPE_ERROR, timeout=10)
 
-if grep -q "$SQLITE3" "$STATUS"; then
-    sqlite='Installed'
-fi
+	def ok(self):
+		if self.sort_mode and len(self.menuList):
+			m_entry = self["menu"].getCurrent()[0]
+			select = False
+			if self.selected_entry is None:
+				select = True
+			elif self.selected_entry != m_entry:
+				select = True
+			if not select:
+				self["green"].setText(title192)
+				self.selected_entry = None
+			else:
+				self["green"].setText(title193)
+			idx = 0
+			for x in self.menuList:
+				if m_entry == x[0] and select == True:
+					self.selected_entry = m_entry
+					break
+				elif m_entry == x[0] and select == False:
+					self.selected_entry = None
+					break
+				idx += 1
+		elif len(self.menuList) and not self.sort_mode:
+			compet = self['menu'].getCurrent()[0]
+			self.session.open(FootOnSat, compet)
 
-if grep -q "$PYSIX" "$STATUS"; then
-    six='Installed'
-fi
+	def left(self):
+		self.cur_idx = self["menu"].getSelectedIndex()
+		self['menu'].left()
+		if self.sort_mode and self.selected_entry is not None:
+			self.moveAction()
 
-if grep -q "$SOUP4" "$STATUS"; then
-    beautifulsoup4='Installed'
-fi
+	def right(self):
+		self.cur_idx = self["menu"].getSelectedIndex()
+		self['menu'].right()
+		if self.sort_mode and self.selected_entry is not None:
+			self.moveAction()
 
-if grep -q "$DIFFLIB" "$STATUS"; then
-    difflib='Installed'
-fi
+	def up(self):
+		self.cur_idx = self["menu"].getSelectedIndex()
+		self['menu'].up()
+		if self.sort_mode and self.selected_entry is not None:
+			self.moveAction()
 
-if grep -q "$THREADING" "$STATUS"; then
-    threading='Installed'
-fi
+	def down(self):
+		self.cur_idx = self["menu"].getSelectedIndex()
+		self['menu'].down()
+		if self.sort_mode and self.selected_entry is not None:
+			self.moveAction()
 
-if grep -q "$PLI" "$STATUS"; then
-    pil='Installed'
-fi
+	def moveAction(self):
+		if len(self.menuList) > 0:
+			tmp_list = list(self.menuList)
+			entry = tmp_list.pop(self.cur_idx)
+			newpos = self["menu"].getSelectedIndex()
+			tmp_list.insert(newpos, entry)
+			self.menuList = list(tmp_list)
+			self["menu"].setList(self.menuList)
 
-if grep -q "$REQUESTES" "$STATUS"; then
-    requestes='Installed'
-fi
+	def selectionChanged(self):
+		if self.sort_mode and len(self.menuList) > 0:
+			selection = self["menu"].getCurrent()[0]
+			if self.sub_menu_sort.getConfigValue(selection, "hidden"):
+				self["yellow"].setText(title208)
+			else:
+				self["yellow"].setText(title207)
+		else:
+			self["yellow"].setText("")
+		if len(self.menuList) > 0:
+			curr = self["menu"].getCurrent()
+			if curr:
+				for summary in self.summaries:
+					if "entry" in summary:
+						summary["entry"].setText("%s %s" % (str(curr[0]).capitalize(), str(title143)))
 
-if grep -q "$JSON" "$STATUS"; then
-    json='Installed'
-fi
+	def keyBlue(self):
+		if len(self.menuList) > 0:
+			self.toggleSortMode()
 
-if grep -q "$UJSON" "$STATUS"; then
-    ujson='Installed'
-fi
+	def keyYellow(self):
+		if self.sort_mode:
+			m_entry = self["menu"].getCurrent()[0]
+			hidden = self.sub_menu_sort.getConfigValue(m_entry, "hidden") or 0
+			if hidden:
+				self.sub_menu_sort.removeConfigValue(m_entry, "hidden")
+				self["yellow"].setText(title207)
+			else:
+				self.sub_menu_sort.changeConfigValue(m_entry, "hidden", 1)
+				self["yellow"].setText(title208)
 
-if grep -q "$IO" "$STATUS"; then
-    io='Installed'
-fi
+	def toggleSortMode(self):
+		if self.sort_mode:
+			self["green"].setText("")
+			self["yellow"].setText("")
+			self["blue"].setText(title190)
+			self.sort_mode = False
+			i = 10
+			idx = 0
+			for x in self.menuList:
+				self.sub_menu_sort.changeConfigValue(x[0], "sort", i)
+				if len(x) >= 2:
+					entry = list(x)
+					entry[1] = i
+					entry = tuple(entry)
+					self.menuList.pop(idx)
+					self.menuList.insert(idx, entry)
+				if self.selected_entry is not None:
+					if x == self.selected_entry:
+						self.selected_entry = None
+				i += 10
+				idx += 1
+			self.full_list = list(self.menuList)
+			config.plugins.FootOnSat.sort.changeConfigValue("footmenu", "footsubmenu", self.sub_menu_sort.value)
+			config.plugins.FootOnSat.sort.save()
+			self.hide_show_entries()
+			self["menu"].setList(self.menuList)
+		else:
+			self["green"].setText(title192)
+			self["blue"].setText(title276)
+			self.sort_mode = True
+			self.hide_show_entries()
+			self["menu"].setList(self.menuList)
+			self.selectionChanged()
 
-if grep -q "$EMAIL" "$STATUS"; then
-    email='Installed'
-fi
+	def hide_show_entries(self):
+		m_list = list(self.full_list)
+		if not self.sort_mode:
+			rm_list = []
+			for entry in m_list:
+				if self.sub_menu_sort.getConfigValue(entry[0], "hidden"):
+					rm_list.append(entry)
+			for entry in rm_list:
+				if entry in m_list:
+					m_list.remove(entry)
+		if not len(m_list):
+			m_list.append((self.full_list[0][0], 10))
+		m_list.sort(key=lambda listweight: int(listweight[1]))
+		self.menuList = list(m_list)
 
-if grep -q "$DATETIME" "$STATUS"; then
-    datetime='Installed'
-fi
+	def exit(self, ret=None):
+		if self.sort_mode:
+			self.toggleSortMode()
+		else:
+			self.close()
 
-if grep -q "$FFMPEG" "$STATUS"; then
-    ffmpeg='Installed'
-fi
+	def checkupdates(self):
+		try:
+			from twisted.web.client import getPage, error
+			url = b"https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh"
+			getPage(url,timeout=10).addCallback(self.parseData).addErrback(self.errBack)
+		except Exception as error:
+			logdata("launcher", "checkupdates : %s" % error)
 
-if grep -q 'enigma2-plugin-systemplugins-serviceapp' "$STATUS"; then
-    serviceapp='Installed'
-fi
+	def errBack(self,error=None):
+		logdata("launcher", "errBack-erro : %s" % error)
 
-if grep -q 'exteplayer3' "$STATUS"; then
-    exteplayer3='Installed'
-fi
+	def parseData(self, data):
+		if PY3:
+			data = data.decode("utf-8")
+		else:
+			data = data.encode("utf-8")
 
-if [ "$OS" = "Opensource" ]; then
-	if grep -q 'alsa-utils-aplay' "$STATUS"; then
-		aplay='Installed'
-	fi
-else
-	aplay='Installed'
-fi
+		# initialize defaults
+		self.new_version = None
+		self.new_description = ""
 
-if [ "$OS" = "DreamOS" ] && [ "$DEVICE" = "arm64" ]; then
-	if grep -q "$GDB" "$STATUS"; then
-		gdb='Installed'
-	fi
-else
-	gdb='Installed'
-fi
+		if data:
+			lines = data.split("\n")
+			desc_started = False
+			desc_lines = []
+			for line in lines:
+				line = line.strip()
+				if line.lower().startswith("version"):
+					parts = line.split("=")
+					if len(parts) > 1:
+						version_str = parts[1].strip().strip('"').strip("'")
+						if version_str:
+							self.new_version = version_str
+				elif line.startswith("description="):
+					desc_started = True
+					first_part = line.split("=", 1)[1].lstrip('"')
+					if first_part.endswith('"'):
+						self.new_description = first_part.rstrip('"').strip().strip('"').strip("'")
+						desc_started = False
+					else:
+						desc_lines.append(first_part)
+				elif desc_started:
+					if line.endswith('"'):
+						desc_lines.append(line.rstrip('"'))
+						desc_started = False
+						self.new_description = "\n".join(desc_lines)
+					else:
+						desc_lines.append(line)
 
-if [ "$sqlite" = "Installed" -a "$six" = "Installed" -a "$aplay" = "Installed" -a "$beautifulsoup4" = "Installed" -a \
-      "$difflib" = "Installed" -a "$threading" = "Installed" -a "$pil" = "Installed" -a "$requestes" = "Installed" -a \
-      "$json" = "Installed" -a "$ujson" = "Installed" -a "$io" = "Installed" -a "$datetime" = "Installed" -a "$email" = "Installed" -a \
-      "$ffmpeg" = "Installed" -a "$curl" = "Installed" -a "$curl_impersonate" = "Installed" -a "$mpegtsmux" = "Installed" -a "$gdb" = "Installed" ]; then
-     echo ""
-else
+			# version comparison with logging safeguard
+			if self.new_version:
+				try:
+					if float(VER) >= float(self.new_version):
+						logdata("Updates", "No new version available")
+						if config.plugins.FootOnSat.updatebannersonline.value:
+							self.checkbannersupdates()
+					else:
+						new_description = self.new_description
+						logdata("Updates", "New version %s is available" % self.new_version)
+						self.session.openWithCallback(
+							self.install, MessageBox, title194 % self.new_version, MessageBox.TYPE_YESNO)
+				except Exception as e:
+					logdata("Update-check-error", str(e))
+			else:
+				logdata("Update-check", "No version found in install.sh")
 
-    if [ "$OS" != "DreamOS" ]; then
-        echo "=========================================================================="
-        echo "Some Depends Need to Be downloaded From Feeds ...."
-        echo "=========================================================================="
-        echo "Opkg Update ..."
-        echo "========================================================================"
-        opkg update > /dev/null 2>&1
-        echo "========================================================================"
-        echo " Downloading packages depend ......"
-        opkg install alsa-utils-aplay > /dev/null 2>&1
-        echo "========================================================================"
-        echo "========================================================================"
-        opkg install $CURL > /dev/null 2>&1
-        opkg install $CURL_impersonate > /dev/null 2>&1
-        opkg install $FFMPEG > /dev/null 2>&1
-        opkg install $MPEGTSMUX > /dev/null 2>&1
-        opkg install $SQLITE3 > /dev/null 2>&1
-        opkg install $PYSIX > /dev/null 2>&1
-        opkg install $SOUP4 > /dev/null 2>&1
-        opkg install $DIFFLIB > /dev/null 2>&1
-        opkg install $THREADING > /dev/null 2>&1
-        opkg install $PLI > /dev/null 2>&1
-        opkg install $REQUESTES > /dev/null 2>&1
-        opkg install $JSON > /dev/null 2>&1
-        opkg install $UJSON > /dev/null 2>&1
-        opkg install $IO > /dev/null 2>&1
-        opkg install $EMAIL > /dev/null 2>&1
-        opkg install $DATETIME > /dev/null 2>&1
-        echo "========================================================================"
-    else
-        echo "=========================================================================="
-        echo "Some Depends Need to Be downloaded From Feeds ...."
-        echo "=========================================================================="
-        echo "apt Update ..."
-        echo "========================================================================"
-        apt-get update > /dev/null 2>&1
-        echo "========================================================================"
-        echo " Downloading packages depend ......"
-        echo "========================================================================"
-        echo "========================================================================"
-        apt-get install $CURL -y > /dev/null 2>&1
-        apt-get install $CURL_impersonate -y > /dev/null 2>&1
-        apt-get install $FFMPEG -y > /dev/null 2>&1
-        apt-get install $MPEGTSMUX -y > /dev/null 2>&1
-        apt-get install $SQLITE3 -y > /dev/null 2>&1
-        apt-get install $PYSIX -y > /dev/null 2>&1
-        apt-get install $SOUP4 -y > /dev/null 2>&1
-        apt-get install $DIFFLIB -y > /dev/null 2>&1
-        apt-get install $THREADING -y > /dev/null 2>&1
-        apt-get install $PLI -y > /dev/null 2>&1
-        apt-get install $REQUESTES -y > /dev/null 2>&1
-        apt-get install $JSON -y > /dev/null 2>&1
-        apt-get install $UJSON -y > /dev/null 2>&1
-        apt-get install $IO -y > /dev/null 2>&1
-        apt-get install $EMAIL -y > /dev/null 2>&1
-        apt-get install $DATETIME -y > /dev/null 2>&1
-        apt-get install $GDB -y > /dev/null 2>&1
-        echo "========================================================================"
-    fi
-fi
+	def install(self,answer=False):
+		try:
+			if answer:
+				cmdlist = []
+				cmd="wget -q https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh"
+				cmdlist.append(cmd)
+				self.session.open(Console, title="%s" % title105, cmdlist=cmdlist, finishedCallback=self.myCallback, closeOnSuccess=False)
+		except Exception as e:
+			logdata("launcher", "Install Error: %s" % str(e))
+	
+	def myCallback(self):
+		return
 
-if [ "$OS" != "DreamOS" ]; then
-	if [ "$serviceapp" = "Installed" -a "$exteplayer3" = "Installed" ]; then
-		echo ""
-	else
-		echo " Downloading serviceapp + exteplayer3 ......"
-		opkg update > /dev/null 2>&1
-		opkg install enigma2-plugin-systemplugins-serviceapp > /dev/null 2>&1
-		opkg install exteplayer3 > /dev/null 2>&1
-	fi
-fi
+	def checkbannersupdates(self):
+		self.sha_file = join(PLUGINPATH, "assets/compet/.last_commit.sha")
+		if not exists(self.sha_file): system("touch " + self.sha_file)
+		def process_all(result):
+			try:
+				print("[CheckBannersUpdates] Starting extraction and copying process...")
+				system("mkdir -p /tmp/b_ext && tar -xzf /tmp/b.tar.gz -C /tmp/b_ext")
+				root_dir = os.listdir("/tmp/b_ext")[0]
+				src_root = join("/tmp/b_ext", root_dir)
+				print("[CheckBannersUpdates] Root dir found:", root_dir)
 
-if ! grep -q 'alsa-utils-aplay' "$STATUS"; then
-	if [ "$OS" = "DreamOS" ] && [ "$DEVICE" = "arm64" ]; then
-		cd /tmp
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/arm64/alsa-utils-aplay.deb"
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/arm64/alsa-utils-amixer.deb"
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/arm64/alsa-utils-arecord.deb"
-		dpkg -i --force-overwrite *.deb > /dev/null 2>&1
-		apt-get install -f -y > /dev/null 2>&1
-		rm -f *.deb > /dev/null 2>&1
-		cd ..
-	fi
-fi
+				# banners
+				dest = join(PLUGINPATH, "assets/compet")
+				system("cp -af %s %s" % (join(src_root, "banners/package.json"), join(dest, "package.json")))
+				src_banners = join(src_root, "banners")
+				if not exists(join(dest, "FHD")): os.makedirs(join(dest, "FHD"))
+				system("cp -rf %s/* %s/" % (join(src_banners, "FHD"), join(dest, "FHD")))
+				print("[CheckBannersUpdates] Banners copied successfully.")
 
-if [ "$OS" = "DreamOS" ] && ! grep -q "$UJSON" "$STATUS"; then
-	cd /tmp
-	if [ "$DEVICE" = "arm" ]; then
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-ujson_1.35-r0.0_armhf.deb"
-	elif [ "$DEVICE" = "mips" ]; then
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-ujson_1.35-r0.0_mipsel.deb"
-	elif [ "$DEVICE" = "arm64" ]; then
-		#wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-ujson_1.35-r0.0_arrch664.deb"
-		echo ""
-	fi
-	dpkg -i --force-overwrite *.deb > /dev/null 2>&1
-	apt-get install -f -y > /dev/null 2>&1
-	rm -f *.deb > /dev/null 2>&1
-	cd ..
-fi
+				# teamlog
+				src_teamlog = join(src_root, "banners/teamlog")
+				if exists(src_teamlog):
+					dest_teamlog = join(PLUGINPATH, "assets/teamlog")
+					if not exists(dest_teamlog): os.makedirs(dest_teamlog)
+					system("cp -rf %s/* %s/" % (src_teamlog, dest_teamlog))
+					print("[CheckBannersUpdates] Teamlog copied successfully.")
 
-if [ "$OS" = "DreamOS" ] && ! grep -q "$SOUP4" "$STATUS"; then
-	cd /tmp
-	if [ "$DEVICE" = "arm" ]; then
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-beautifulsoup4_4.8.2-r0.0_armhf.deb"
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-soupsieve_1.9.4-r0.1_armhf.deb"
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-lxml_3.6.0-r0.1_armhf.deb"
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-html5lib_0.9999999-r0.1_armhf.deb"
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-backports-functools-lru-cache_1.6.1-r0.0_armhf.deb"
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-backports-init_1.0-r0.0_armhf.deb"
-	elif [ "$DEVICE" = "mips" ]; then
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-beautifulsoup4_4.8.2-r0.1_mipsel.deb"
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-soupsieve_1.9.4-r0.0_mipsel.deb"
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-lxml_3.6.0-r0.1_mipsel.deb"
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-html5lib_0.9999999-r0.1_mipsel.deb"
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-backports-functools-lru-cache_1.6.1-r0.2_mipsel.deb"
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-backports-init_1.0-r0.1_mipsel.deb"
-	elif [ "$DEVICE" = "arm64" ]; then
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-beautifulsoup4_4.8.2-r0.0_arm64.deb"
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-soupsieve_1.9.4-r0.0_arm64.deb"
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-lxml_3.7.3-r0.0_arm64.deb"
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-html5lib_0.999999999-r0.0_arm64.deb"
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-backports-functools-lru-cache_1.6.1-r0.0_arm64.deb"
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-backports-init_1.0-r0.0_arm64.deb"
-		echo ""
-	fi
-	dpkg -i --force-overwrite *.deb > /dev/null 2>&1
-	apt-get install -f -y > /dev/null 2>&1
-	rm -f *.deb > /dev/null 2>&1
-	cd ..
-fi
+				# standings
+				src_standings = join(src_root, "banners/standings")
+				if exists(src_standings):
+					dest_standings = join(PLUGINPATH, "assets/standings")
+					if not exists(dest_standings): os.makedirs(dest_standings)
+					system("cp -rf %s/* %s/" % (src_standings, dest_standings))
+					print("[CheckBannersUpdates] Standings copied successfully.")
 
-if [ "$OS" = "DreamOS" ] && ! grep -q "$PLI" "$STATUS"; then
-	cd /tmp
-	if [ "$DEVICE" = "arm" ]; then
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-imaging_1.1.7-r5.4_armhf.deb"
-	elif [ "$DEVICE" = "mips" ]; then
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-imaging_1.1.7-r5.4_mipsel.deb"
-	elif [ "$DEVICE" = "arm64" ]; then
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/python-imaging_1.1.7-r5.0_arm64.deb"
-		echo ""
-	fi
-	dpkg -i --force-overwrite *.deb > /dev/null 2>&1
-	apt-get install -f -y > /dev/null 2>&1
-	rm -f *.deb > /dev/null 2>&1
-	cd ..
-fi
+				# flags
+				src_flags = join(src_root, "banners/flags")
+				if exists(src_flags):
+					dest_flags = join(PLUGINPATH, "assets/flags")
+					if not exists(dest_flags): os.makedirs(dest_flags)
+					system("cp -rf %s/* %s/" % (src_flags, dest_flags))
+					print("[CheckBannersUpdates] Flags copied successfully.")
 
-if ! grep -q "$CURL_impersonate" "$STATUS" || [ ! -f "/usr/bin/curl-impersonate" ]; then
-	cd /tmp
-	if [ "$DEVICE" = "arm" ]; then
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/curl-impersonate-armv7.tar.gz"
-		PACKAGE="curl-impersonate-armv7.tar.gz"
-	elif [ "$DEVICE" = "mips" ]; then
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/curl-impersonate-mipsel.tar.gz"
-		PACKAGE="curl-impersonate-mipsel.tar.gz"
-	elif [ "$DEVICE" = "arm64" ]; then
-		wget -q "https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/Pacakges/python/curl-impersonate-arm64.tar.gz"
-		PACKAGE="curl-impersonate-arm64.tar.gz"
-	fi
+				with open(self.sha_file, "w") as f: f.write(self.latest_sha)
+				print("[CheckBannersUpdates] Update completed and SHA written:", self.latest_sha)
+			except Exception as e:
+				print("[CheckBannersUpdates] ERROR:", str(e))
+			finally:
+				system("rm -f /tmp/b.tar.gz && rm -rf /tmp/b_ext")
+				print("[CheckBannersUpdates] Cleanup finished.")
 
-	if [ -f "/tmp/$PACKAGE" ]; then
-		cd /tmp
-		tar -xzf $PACKAGE -C /usr/bin/ > /dev/null 2>&1
-		chmod +x /usr/bin/curl-impersonate /usr/bin/curl_chrome150 > /dev/null 2>&1
-		rm -f $PACKAGE
-		cd ..
-	fi
-fi
+		def check_commit(data):
+			try:
+				if PY3: data = data.decode("utf-8")
+				self.latest_sha = json.loads(data)[0]['sha']
+				local_sha = ""
+				if exists(self.sha_file):
+					with open(self.sha_file, "r") as f: local_sha = f.read().strip()
+				if not local_sha or self.latest_sha != local_sha:
+					url = "https://api.github.com/repos/fairbird/Banners_FootOnSat/tarball/main"
+					downloadPage(str.encode(url), "/tmp/b.tar.gz").addCallback(process_all)
+			except: pass
+		try: getPage(b"https://api.github.com/repos/fairbird/Banners_FootOnSat/commits?path=banners&per_page=1", agent=b"Enigma2").addCallback(check_commit)
+		except: pass
 
-MISSING_PKGS=""
-check_pkg() {
-	if ! grep -q "$1" "$STATUS"; then
-		echo "####################################################"
-		echo "#           $1 Not found in feed           #"
-		echo "####################################################"
+	def createSummary(self):
+		return FootOnSatSummary
 
-		if [ "$1" != "$UJSON" ] && [ "$1" != "$MPEGTSMUX" ] && [ "$1" != "$CURL_impersonate" ]; then
-			MISSING_PKGS="true"
-		fi
-	fi
-}
-check_pkg "$CURL"
-check_pkg "$CURL_impersonate"
-check_pkg "$SQLITE3"
-check_pkg "$PYSIX"
-check_pkg "$SOUP4"
-check_pkg "$DIFFLIB"
-check_pkg "$THREADING"
-check_pkg "$PLI"
-check_pkg "$REQUESTES"
-check_pkg "$JSON"
-check_pkg "$UJSON"
-check_pkg "$IO"
-check_pkg "$EMAIL"
-check_pkg "$DATETIME"
-check_pkg "$FFMPEG"
-check_pkg "$MPEGTSMUX"
 
-#if [ "$OS" != "DreamOS" ]; then
-#	check_pkg "enigma2-plugin-systemplugins-serviceapp"
-#	check_pkg "exteplayer3"
-#fi
+class KeyCaptureScreen(Screen):
+	skin = """<screen position="center,center" size="500,100" title="" flags="wfNoBorder">
+	<widget name="label" position="10,10" size="480,80" font="Regular;35" halign="center" valign="center"/>
+	</screen>"""
+	def __init__(self, session):
+		Screen.__init__(self, session)
+		self["label"] = Label(title100)
+		self.key_caught = False
+		self["actions"] = ActionMap(["SetupActions", "WizardActions", "MenuActions"], 
+			{
+				"cancel": self.close,
+				"ok": self.dummy,
+				"up": self.dummy,
+				"down": self.dummy,
+				"left": self.dummy,
+				"right": self.dummy
+			}, -100)
+		self.onFirstExecBegin.append(self.startHook)
+		self.onClose.append(self.stopHook)
 
-if [ "$OS" = "DreamOS" ] && [ "$DEVICE" = "arm64" ]; then
-	check_pkg "$GDB"
-fi
+	def dummy(self):
+		return 1
 
-if [ "$MISSING_PKGS" = "true" ]; then
-	exit 1
-fi
+	def startHook(self):
+		try:
+			self.hook_slot = eActionMap.getInstance().bindAction('', -2147483648, self.keyPressed)
+		except:
+			pass
 
-echo " ** Download and install FootOnsat ** "
-echo ""
-cd /tmp
-set -e
-rm -rf *main* >/dev/null 2>&1
-rm -rf *FootOnsat* >/dev/null 2>&1
-wget -q -c "--no-check-certificate" "https://github.com/fairbird/FootOnsat/archive/refs/heads/main.tar.gz" -O main.tar.gz
-if [ -s "main.tar.gz" ] && tar -ztf main.tar.gz >/dev/null 2>&1; then
-	echo "Archive verified successfully"
-	echo "remove old version"
-	echo ""
-	rm -rf $PLUGIN_PATH >/dev/null 2>&1
-	echo "Send new version"
-	echo ""
-	tar -xzf main.tar.gz
-	cp -r FootOnsat-main/usr / >/dev/null 2>&1
-else
-	echo "Download failed or corrupted, trying with curl..."
-	curl -Lk "https://github.com/fairbird/FootOnsat/archive/refs/heads/main.tar.gz" -o main.tar.gz
-	if [ -s "main.tar.gz" ] && tar -ztf main.tar.gz >/dev/null 2>&1; then
-		echo "Archive verified successfully via curl"
-		rm -rf $PLUGIN_PATH >/dev/null 2>&1
-		tar -xzf main.tar.gz
-		cp -r FootOnsat-main/usr / >/dev/null 2>&1
-	else
-		echo "Critical Error: Archive is still corrupted after retry"
-		exit 1
-	fi
-fi
-if [ -d $PLUGIN_PATH ]; then
-	if [ -f "$TMP_DB" ]; then
-		echo ""
-		echo "Restore old db ..."
-		cp -a "$TMP_DB" "$DB_FILE" >/dev/null 2>&1
-	fi
-	echo ""
-	echo "Restore current style is: $CURRENT_VALUE"
-	echo ""
-	FILE_NAME=""
-	case "$CURRENT_VALUE" in
-	    "icons_renkli")
-		  FILE_NAME="icons_renkli.tar.gz"
-		  ;;
-	    "icons_buwalla")
-		  FILE_NAME="icons_buwalla.tar.gz"
-		  ;;
-	    "icons_italia2012")
-		  FILE_NAME="icons_italia2012.tar.gz"
-		  ;;
-	    *)
-		  FILE_NAME="icons_default.tar.gz"
-		  ;;
-	esac
-	if [ -n "$FILE_NAME" ]; then
-	    cd /tmp/FootOnsat-main/Download/Style-Icons-Files
-	    tar -xzf "${FILE_NAME}" >/dev/null 2>&1
-	    cp -r assets "$PLUGIN_PATH" >/dev/null 2>&1
-	fi
-fi
+	def stopHook(self):
+		try:
+			if hasattr(self, 'hook_slot'):
+				self.hook_slot = None
+				eActionMap.getInstance().unbindAction('', self.keyPressed)
+		except:
+			pass
 
-#################
-BANNERS_TMP_TAR="/tmp/banners_main.tar.gz"
-BANNERS_TMP_DIR="/tmp/banners_extract"
-BANNERS_SHA_FILE="$PLUGIN_PATH/assets/compet/.last_commit.sha"
-wget -q "https://github.com/fairbird/Banners_FootOnSat/archive/refs/heads/main.tar.gz" -O "$BANNERS_TMP_TAR"
-if [ -f "$BANNERS_TMP_TAR" ]; then
-    mkdir -p "$BANNERS_TMP_DIR"
-    tar -xzf "$BANNERS_TMP_TAR" -C "$BANNERS_TMP_DIR"
-    SRC_PATH=$(ls -d $BANNERS_TMP_DIR/* | head -n 1)/banners
-    cp -r "$SRC_PATH/package.json" "$PLUGIN_PATH/assets/compet/"
-    [ ! -d "$PLUGIN_PATH/assets/compet/FHD" ] && mkdir -p "$PLUGIN_PATH/assets/compet/FHD"
-    [ ! -d "$PLUGIN_PATH/assets/standings" ] && mkdir -p "$PLUGIN_PATH/assets/standings"
-    [ ! -d "$PLUGIN_PATH/assets/teamlog" ] && mkdir -p "$PLUGIN_PATH/assets/teamlog"
-    cp -r "$SRC_PATH/FHD/"*.png "$PLUGIN_PATH/assets/compet/FHD/"
-    cp -r "$SRC_PATH/standings/"*.png "$PLUGIN_PATH/assets/standings/"
-    cp -r "$SRC_PATH/teamlog/"*.png "$PLUGIN_PATH/assets/teamlog/"
-    CUR_SHA=$(curl -s "https://api.github.com/repos/fairbird/Banners_FootOnSat/commits?path=banners&per_page=1" | grep '"sha"' | head -n 1 | cut -d '"' -f 4)
-    if [ -n "$CUR_SHA" ]; then
-        echo "$CUR_SHA" > "$BANNERS_SHA_FILE"
-    fi
-    rm -rf "$BANNERS_TMP_TAR" "$BANNERS_TMP_DIR"
-fi
-##################
+	def keyPressed(self, key, flag):
+		if flag == 1:
+			keyname = self.resolveKeyName(key)
+			if keyname:
+				if keyname in ("KEY_EXIT", "KEY_ESC"):
+					self.close(None)
+					return 1
+				if not self.key_caught:
+					self.key_caught = True
+					self.close(keyname)
+					return 1
+		return 1
 
-echo "clean tmp ..."
-cd /tmp
-rm -rf *FootOnsat* >/dev/null 2>&1
-rm -rf *footonsat* >/dev/null 2>&1
-rm -rf *main* >/dev/null 2>&1
-#rm -rf *assets* >/dev/null 2>&1
-#rm -rf *ui* >/dev/null 2>&1
-rm -rf "$TMP_DB" >/dev/null 2>&1
-cd ..
-echo
-echo
-echo ""
-echo "#########################################################"
-echo "#          FootOnsat INSTALLED SUCCESSFULLY             #"
-echo "#        BY ZIKO & Redouane & Raed (fairbird)           #"
-echo "#########################################################"
-echo "#                Restart Enigma2 GUI                    #"
-echo "#########################################################"
-sleep 2
-sync
-[ -w /proc/sys/vm/drop_caches ] && echo 3 > /proc/sys/vm/drop_caches
-killall -9 enigma2
-exit 0
+	def resolveKeyName(self, key):
+		try:
+			from keyids import KEYIDS
+			for name, k_id in KEYIDS.items():
+				if k_id == key:
+					return name
+		except:
+			pass
+		try:
+			rc = eRCInput.getInstance()
+			if hasattr(rc, 'getLabel'): return rc.getLabel(key)
+			if hasattr(rc, 'getKeyName'): return rc.getKeyName(key)
+		except:
+			pass
+		return None
+
+
+class FootOnSatLive():
+	def __init__(self):
+		self.dialog = None
+
+	def gotSession(self, session):
+		self.session = session
+		self.FootOnSatLive = None
+		try:
+			data_dir, _, _ = get_data_paths()
+			if not exists(data_dir):
+				os.makedirs(data_dir)
+			keymap = os.path.join(data_dir, "keymap.xml")
+			if not exists(keymap):
+				try:
+					keyfile = open(keymap, "w")
+					keyfile.write('<keymap>\n\t<map context="GlobalActions">\n\t\t<key id="%s" mapto="showFootOnSatLive" flags="m" />\n\t</map>\n</keymap>' % config.plugins.FootOnSat.keyname.value)
+					keyfile.close()
+				except Exception:
+					pass
+		except Exception:
+			keymap = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/db/keymap.xml")
+		global globalActionMap
+		try:
+			readKeymap(keymap)
+		except Exception:
+			pass
+		if 'showFootOnSatLive' in globalActionMap.actions:
+			del globalActionMap.actions['showFootOnSatLive']
+		globalActionMap.actions['showFootOnSatLive'] = self.ShowHide
+
+	def ShowHide(self):
+		try:
+			section = config.plugins.FootOnSat.keysection.value if hasattr(config.plugins.FootOnSat, "keysection") else "live"
+			self.session.open(FootOnSat, section)
+		except Exception:
+			pass
+
+pSignal = FootOnSatLive()
+
+
+class FootOnSatSummary(Screen):
+        skin = """
+        <screen name="FootOnSatSummary" position="0,0" size="400,240">
+        	<widget source="entry" render="Label" position="0,40" size="400,50" font="Regular;45" valign="center" halign="center" />
+        	<widget source="global.CurrentTime" render="Label" position="center,110" size="225,100" font="Regular;85" halign="center" >
+			<convert type="ClockToText">Format:%H:%M</convert>
+		</widget>
+        </screen>"""
+
+        def __init__(self, session, parent):
+                Screen.__init__(self, session, parent=parent)
+                curr = parent["menu"].getCurrent() if parent and "menu" in parent else None
+                text = "%s %s" % (str(curr[0]).capitalize(), str(title143)) if curr and len(curr) > 0 else "FootOnSat"
+                self["entry"] = StaticText(text)
