@@ -509,17 +509,24 @@ if [ "$MISSING_PKGS" = "true" ]; then
 	exit 1
 fi
 
-# Check if the same version is already installed externally to skip redundant downloads (useful for multiboot)
+# Check if the same version is already installed externally to skip redundant downloads
+# This check ONLY happens if running from Telnet (no arguments passed). GUI updates are always forced.
 SKIP_INSTALL="false"
-if [ "$INSTALL_CHOICE" = "2" ] && [ -d "$EXTERNAL_PATH" ]; then
-    if [ -f "$EXTERNAL_PATH/.version" ]; then
+if [ -z "$1" ] && [ "$INSTALL_CHOICE" = "2" ]; then
+    # Find where the plugin is currently installed (resolves symlinks)
+    CURRENT_ACTIVE_PATH=$(readlink -f "$PLUGIN_PATH" 2>/dev/null)
+    
+    # Only skip if the current path matches the selected path AND versions match
+    if [ "$CURRENT_ACTIVE_PATH" = "$EXTERNAL_PATH" ] && [ -f "$EXTERNAL_PATH/.version" ]; then
         INSTALLED_VER=$(cat "$EXTERNAL_PATH/.version" 2>/dev/null)
         if [ "$INSTALLED_VER" = "$VERSION" ]; then
             echo "================================================="
-            echo "Plugin version $VERSION already exists at $EXTERNAL_PATH"
+            echo "Plugin version $VERSION is already installed at:"
+            echo "$EXTERNAL_PATH"
             echo "Skipping download and installation."
             echo "================================================="
             SKIP_INSTALL="true"
+            sleep 3
         fi
     fi
 fi
