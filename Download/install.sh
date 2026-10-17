@@ -11,6 +11,52 @@ TMP_ASSETS="/tmp/assets"
 # Find only REAL mounted storage paths in /media
 EXTERNAL_PATH=""
 INSTALL_CHOICE="1"
+
+# Check if arguments are passed from Enigma2 Plugin
+if [ -n "$1" ]; then
+    INSTALL_CHOICE="$1"
+    if [ "$INSTALL_CHOICE" = "2" ] && [ -n "$2" ]; then
+        EXTERNAL_PATH="$2/FootOnSat"
+    fi
+else
+    # Fallback for Telnet interactive mode
+    if [ -n "$MOUNTS" ]; then
+        read -p "Enter choice [1-3] (default 1) / أدخل الخيار: " INSTALL_CHOICE
+    else
+        read -p "Enter choice [1 or 3] (default 1) / أدخل الخيار: " INSTALL_CHOICE
+    fi
+    if [ -z "$INSTALL_CHOICE" ]; then INSTALL_CHOICE="1"; fi
+    if [ "$INSTALL_CHOICE" = "3" ]; then
+        echo "Installation cancelled by user."
+        exit 0
+    fi
+    if [ "$INSTALL_CHOICE" = "2" ]; then
+        if [ -z "$MOUNTS" ]; then
+            echo "No external mounts found. Defaulting to internal."
+            INSTALL_CHOICE="1"
+        else
+            echo "Available Mounts:"
+            i=1
+            for m in $MOUNTS; do
+                echo "  $i) $m"
+                eval "MOUNT_$i=$m"
+                i=$((i+1))
+            done
+            echo "  $i) Cancel Installation"
+            read -p "Select mount point [1-$i]: " MOUNT_CHOICE
+            if [ "$MOUNT_CHOICE" = "$i" ]; then exit 0; fi
+            eval "SELECTED_MOUNT=\$MOUNT_$MOUNT_CHOICE"
+            if [ -z "$SELECTED_MOUNT" ] || [ ! -d "$SELECTED_MOUNT" ]; then
+                echo "Invalid selection. Defaulting to internal."
+                INSTALL_CHOICE="1"
+            else
+                EXTERNAL_PATH="$SELECTED_MOUNT/FootOnSat"
+                echo "Selected: $EXTERNAL_PATH"
+            fi
+        fi
+    fi
+fi
+
 MOUNTS=$(df -h | awk '$6 ~ /^\/media\// && $1 ~ /^\/dev\// {print $6}' | sort -u)
 
 echo "================================================="
