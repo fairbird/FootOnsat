@@ -541,10 +541,15 @@ fi
 if [ "$SKIP_INSTALL" = "false" ]; then
     echo " ** Download and install FootOnsat ** "
     echo ""
-    cd /tmp
-    set -e
+    
+    # Use /media/hdd instead of /tmp to prevent RAM limit crashes
+    WORK_DIR="/media/hdd"
+    if [ ! -d "$WORK_DIR" ]; then WORK_DIR="/tmp"; fi
+    
+    cd "$WORK_DIR"
     rm -rf *main* >/dev/null 2>&1
     rm -rf *FootOnsat* >/dev/null 2>&1
+    
     wget -q -c "--no-check-certificate" "https://github.com/fairbird/FootOnsat/archive/refs/heads/main.tar.gz" -O main.tar.gz
     if [ -s "main.tar.gz" ] && tar -ztf main.tar.gz >/dev/null 2>&1; then
         echo "Archive verified successfully"
@@ -556,15 +561,30 @@ if [ "$SKIP_INSTALL" = "false" ]; then
         echo "Send new version"
         echo ""
         tar -xzf main.tar.gz
+        
+        if [ ! -d "FootOnsat-main" ]; then
+            echo "ERROR: Extraction failed! Disk space might be full."
+            sleep 5
+            exit 1
+        fi
+        
         # Extract files to the chosen location (Internal vs External)
         if [ "$INSTALL_CHOICE" = "2" ]; then
-            # 1. Copy ALL system files (Components, Screens, etc.) to internal storage
+            OLD_ACTIVE_PATH=$(readlink -f "$PLUGIN_PATH" 2>/dev/null)
+            
+            # 1. Copy ALL system files to internal storage
             cp -r FootOnsat-main/usr / >/dev/null 2>&1
             
             # 2. Remove the internal plugin folder (it will be symlinked later)
             rm -rf $PLUGIN_PATH >/dev/null 2>&1
             
-            # 3. Move the main plugin folder to the external storage
+            # 3. Remove the old external folder if moving to a different path
+            if [ -n "$OLD_ACTIVE_PATH" ] && [ -d "$OLD_ACTIVE_PATH" ] && [ "$OLD_ACTIVE_PATH" != "$EXTERNAL_PATH" ]; then
+                echo "Moving plugin from old path: $OLD_ACTIVE_PATH"
+                rm -rf "$OLD_ACTIVE_PATH"
+            fi
+            
+            # 4. Install to the new external storage
             rm -rf "$EXTERNAL_PATH"
             mkdir -p "$EXTERNAL_PATH"
             cp -r FootOnsat-main/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/* "$EXTERNAL_PATH/"
@@ -581,14 +601,29 @@ if [ "$SKIP_INSTALL" = "false" ]; then
                 rm -rf $PLUGIN_PATH >/dev/null 2>&1
             fi
             tar -xzf main.tar.gz
+            
+            if [ ! -d "FootOnsat-main" ]; then
+                echo "ERROR: Extraction failed! Disk space might be full."
+                sleep 5
+                exit 1
+            fi
+            
             if [ "$INSTALL_CHOICE" = "2" ]; then
-                # 1. Copy ALL system files (Components, Screens, etc.) to internal storage
+                OLD_ACTIVE_PATH=$(readlink -f "$PLUGIN_PATH" 2>/dev/null)
+                
+                # 1. Copy ALL system files to internal storage
                 cp -r FootOnsat-main/usr / >/dev/null 2>&1
                 
                 # 2. Remove the internal plugin folder (it will be symlinked later)
                 rm -rf $PLUGIN_PATH >/dev/null 2>&1
                 
-                # 3. Move the main plugin folder to the external storage
+                # 3. Remove the old external folder if moving to a different path
+                if [ -n "$OLD_ACTIVE_PATH" ] && [ -d "$OLD_ACTIVE_PATH" ] && [ "$OLD_ACTIVE_PATH" != "$EXTERNAL_PATH" ]; then
+                    echo "Moving plugin from old path: $OLD_ACTIVE_PATH"
+                    rm -rf "$OLD_ACTIVE_PATH"
+                fi
+                
+                # 4. Install to the new external storage
                 rm -rf "$EXTERNAL_PATH"
                 mkdir -p "$EXTERNAL_PATH"
                 cp -r FootOnsat-main/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/* "$EXTERNAL_PATH/"
