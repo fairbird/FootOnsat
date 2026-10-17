@@ -8,13 +8,12 @@ IGNORE_PATH="$PLUGIN_PATH/ignore"
 TMP_DB="/tmp/footonsat.db"
 TMP_ASSETS="/tmp/assets"
 
-# Find only REAL mounted storage paths in /media
 EXTERNAL_PATH=""
 INSTALL_CHOICE=""
 MOUNTS=$(df -h | awk '$6 ~ /^\/media\// && $1 ~ /^\/dev\// {print $6}' | sort -u)
 
-# Detect if running interactively in Telnet (has a terminal)
-if [ -t 0 ]; then
+# Check if we have a real terminal available (Telnet)
+if (exec < /dev/tty) 2>/dev/null; then
     # Interactive mode for Telnet
     echo "================================================="
     echo "Select Installation Method / اختر طريقة التثبيت"
@@ -29,9 +28,9 @@ if [ -t 0 ]; then
     echo "================================================="
 
     if [ -n "$MOUNTS" ]; then
-        read -p "Enter choice [1-3] (default 1) / أدخل الخيار: " INSTALL_CHOICE
+        read -p "Enter choice [1-3] (default 1) / أدخل الخيار: " INSTALL_CHOICE < /dev/tty
     else
-        read -p "Enter choice [1 or 3] (default 1) / أدخل الخيار: " INSTALL_CHOICE
+        read -p "Enter choice [1 or 3] (default 1) / أدخل الخيار: " INSTALL_CHOICE < /dev/tty
     fi
     if [ -z "$INSTALL_CHOICE" ]; then INSTALL_CHOICE="1"; fi
     if [ "$INSTALL_CHOICE" = "3" ]; then
@@ -54,7 +53,7 @@ if [ -t 0 ]; then
             done
             echo "  $i) Cancel Installation"
             echo ""
-            read -p "Select mount point [1-$i]: " MOUNT_CHOICE
+            read -p "Select mount point [1-$i]: " MOUNT_CHOICE < /dev/tty
             if [ "$MOUNT_CHOICE" = "$i" ]; then exit 0; fi
             eval "SELECTED_MOUNT=\$MOUNT_$MOUNT_CHOICE"
             if [ -z "$SELECTED_MOUNT" ] || [ ! -d "$SELECTED_MOUNT" ]; then
