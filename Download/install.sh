@@ -10,19 +10,11 @@ TMP_ASSETS="/tmp/assets"
 
 # Find only REAL mounted storage paths in /media
 EXTERNAL_PATH=""
-INSTALL_CHOICE="1"
-
-# Robust mount detection for both Enigma2 and Telnet
+INSTALL_CHOICE=""
 MOUNTS=$(df -h | awk '$6 ~ /^\/media\// && $1 ~ /^\/dev\// {print $6}' | sort -u)
 
-# Check if arguments are passed from Enigma2 Plugin (GUI mode)
-if [ -n "$1" ]; then
-    INSTALL_CHOICE="$1"
-    if [ "$INSTALL_CHOICE" = "2" ] && [ -n "$2" ]; then
-        EXTERNAL_PATH="$2/FootOnSat"
-        echo "Selected: $EXTERNAL_PATH"
-    fi
-else
+# Detect if running interactively in Telnet (has a terminal)
+if [ -t 0 ]; then
     # Interactive mode for Telnet
     echo "================================================="
     echo "Select Installation Method / اختر طريقة التثبيت"
@@ -73,6 +65,28 @@ else
                 echo "Selected: $EXTERNAL_PATH"
             fi
         fi
+    fi
+else
+    # Non-interactive mode (GUI Update): Read from settings file
+    SETTINGS_FILE="/etc/enigma2/settings"
+    if [ -f "$SETTINGS_FILE" ]; then
+        SAVED_PATH=$(grep "^config.plugins.FootOnSat.installpath=" "$SETTINGS_FILE" | cut -d'=' -f2)
+        if [ -n "$SAVED_PATH" ]; then
+            if [ "$SAVED_PATH" = "internal" ]; then
+                INSTALL_CHOICE="1"
+                echo "Using saved internal path."
+            else
+                INSTALL_CHOICE="2"
+                EXTERNAL_PATH="$SAVED_PATH"
+                echo "Using saved external path: $EXTERNAL_PATH"
+            fi
+        fi
+    fi
+
+    # Fallback if no setting is found (First install)
+    if [ -z "$INSTALL_CHOICE" ]; then
+        echo "No saved setting found. Defaulting to internal."
+        INSTALL_CHOICE="1"
     fi
 fi
 
