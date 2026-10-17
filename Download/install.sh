@@ -527,6 +527,7 @@ if [ -z "$1" ] && [ "$INSTALL_CHOICE" = "2" ]; then
             echo "================================================="
             SKIP_INSTALL="true"
             sleep 3
+            exit 0
         fi
     fi
 fi
