@@ -510,9 +510,14 @@ if [ "$MISSING_PKGS" = "true" ]; then
 fi
 
 # Check if the same version is already installed externally to skip redundant downloads
-# This check ONLY happens if running from Telnet (no arguments passed). GUI updates are always forced.
+# This check ONLY happens if NOT forced by the GUI.
 SKIP_INSTALL="false"
-if [ -z "$1" ] && [ "$INSTALL_CHOICE" = "2" ]; then
+IS_FORCE="false"
+for arg in "$@"; do
+    if [ "$arg" = "force" ]; then IS_FORCE="true"; fi
+done
+
+if [ "$IS_FORCE" = "false" ] && [ "$INSTALL_CHOICE" = "2" ]; then
     # Find where the plugin is currently installed (resolves symlinks)
     CURRENT_ACTIVE_PATH=$(readlink -f "$PLUGIN_PATH" 2>/dev/null)
     
