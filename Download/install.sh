@@ -538,22 +538,34 @@ for arg in "$@"; do
     if [ "$arg" = "force" ]; then IS_FORCE="true"; fi
 done
 
-if [ "$IS_FORCE" = "false" ] && [ "$INSTALL_CHOICE" = "2" ]; then
+if [ "$IS_FORCE" = "false" ]; then
     # Find where the plugin is currently installed (resolves symlinks)
     CURRENT_ACTIVE_PATH=$(readlink -f "$PLUGIN_PATH" 2>/dev/null)
     
-    # Only skip if the current path matches the selected path AND versions match
-    if [ "$CURRENT_ACTIVE_PATH" = "$EXTERNAL_PATH" ] && [ -f "$EXTERNAL_PATH/.version" ]; then
-        INSTALLED_VER=$(cat "$EXTERNAL_PATH/.version" 2>/dev/null)
+    if [ -n "$CURRENT_ACTIVE_PATH" ] && [ -f "$CURRENT_ACTIVE_PATH/.version" ]; then
+        INSTALLED_VER=$(cat "$CURRENT_ACTIVE_PATH/.version" 2>/dev/null)
         if [ "$INSTALLED_VER" = "$VERSION" ]; then
-            echo "================================================="
-            echo "Plugin version $VERSION is already installed at:"
-            echo "$EXTERNAL_PATH"
-            echo "Skipping download and installation."
-            echo "================================================="
-            SKIP_INSTALL="true"
-            sleep 3
-            exit 0
+            if [ "$INSTALL_CHOICE" = "2" ]; then
+                # Compare paths case-insensitively
+                if echo "$CURRENT_ACTIVE_PATH" | grep -qi "^$EXTERNAL_PATH$"; then
+                    echo "================================================="
+                    echo "Plugin version $VERSION is already installed at:"
+                    echo "$CURRENT_ACTIVE_PATH"
+                    echo "Skipping download and installation."
+                    echo "================================================="
+                    SKIP_INSTALL="true"
+                    sleep 3
+                    exit 0
+                fi
+            elif [ "$INSTALL_CHOICE" = "1" ] && [ "$CURRENT_ACTIVE_PATH" = "$PLUGIN_PATH" ]; then
+                echo "================================================="
+                echo "Plugin version $VERSION is already installed internally."
+                echo "Skipping download and installation."
+                echo "================================================="
+                SKIP_INSTALL="true"
+                sleep 3
+                exit 0
+            fi
         fi
     fi
 fi
