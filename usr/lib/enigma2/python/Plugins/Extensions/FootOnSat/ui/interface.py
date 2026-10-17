@@ -2111,7 +2111,7 @@ class MatchDetailsScreen(Screen):
 				if inc.get('time', 0) < 0 or inc.get('isBenchPlayer', False):
 					continue
 				itype = inc.get('incidentType')
-				if itype not in ('goal', 'card', 'substitution', 'penaltyShootout'): continue
+				if itype not in ('goal', 'card', 'substitution', 'penaltyShootout', 'var'): continue
 				if itype == 'penaltyShootout':
 					penalty_incidents.append(inc)
 				else:
@@ -2158,14 +2158,17 @@ class MatchDetailsScreen(Screen):
 						color = 0xFF0000
 						icon_name = "redcard.png"
 				elif itype == 'substitution':
-					def shortName(name):
-						parts = name.split()
-						return "%s. %s" % (parts[0][0], parts[-1]) if len(parts) > 1 else name
-					p_in = shortName(str(inc.get('playerIn', {}).get('name', '')))
-					p_out = shortName(str(inc.get('playerOut', {}).get('name', '')))
+					p_in = str(inc.get('playerIn', {}).get('name', ''))
+					p_out = str(inc.get('playerOut', {}).get('name', ''))
 					text = "%s %s / %s %s" % (p_out, title175, p_in, title176)
 					color = 0xFFFFFF
 					icon_name = "substitution.png"
+				elif itype == 'var':
+					p_name = str(inc.get('player', {}).get('name', ''))
+					v_reason = str(inc.get('var_reason', 'VAR'))
+					text = "%s - %s" % (p_name, v_reason) if p_name else v_reason
+					color = 0xFFAA00
+					icon_name = "var.png"
 				elif itype == 'penaltyShootout':
 					ic_class = str(inc.get('incidentClass', '')).lower()
 					is_scored = 'missed' not in ic_class and 'save' not in ic_class and 'post' not in ic_class
@@ -2183,7 +2186,7 @@ class MatchDetailsScreen(Screen):
 					icon_name = "pen_scored.png" if is_scored else "pen_missed.png"
 					itime = "PEN"
 				if itype != 'separator_line':
-					itime = str(inc.get('time', '')) + "'"
+					itime = str(inc.get('time_display', inc.get('time', ''))) + "'"
 				# --- Incident List Row Information ---
 				res = [MultiContentEntryText()]
 				if itype == 'separator_line':

@@ -138,6 +138,8 @@ def is_standings_available(source, link):
 		return link.lower() in ESPN_SLUGS
 	if source == "sportscore":
 		return False
+	if source == "flashscore":
+		return link in json_urls
 	return link in json_urls
 
 
@@ -147,6 +149,46 @@ def get_standings_url(source, link):
 	if source == "sportscore":
 		return None
 	return json_urls.get(link)
+
+
+FS_BASE = "https://global.flashscore.ninja/2/x/feed/"
+FS_HEADERS = {
+	'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+	'x-fsign': 'SW9D1eZo',
+	'Referer': 'https://www.flashscore.com/',
+	'Accept': '*/*',
+}
+
+def _fs_request(endpoint, timeout=20):
+	try:
+		headers = dict(FS_HEADERS)
+		# Reuse the same fsign fetcher from fetch_sources
+		from .fetch_sources import _get_fs_fsign
+		headers['x-fsign'] = _get_fs_fsign()
+		r = requests.get(FS_BASE + endpoint, headers=headers, timeout=timeout, verify=False)
+		if r.status_code == 200:
+			return r.text
+		return None
+	except Exception:
+		return None
+
+def _fs_parse(text):
+	if not text:
+		return []
+	blocks = []
+	for chunk in text.split('~'):
+		chunk = chunk.strip()
+		if not chunk or '÷' not in chunk:
+			continue
+		fields = []
+		for f in chunk.split('¬'):
+			if '÷' not in f:
+				continue
+			k, v = f.split('÷', 1)
+			fields.append((k, v))
+		if fields:
+			blocks.append(fields)
+	return blocks
 
 
 # =========================================================
@@ -360,6 +402,8 @@ def get_standings_fetcher(source, screen, league, url):
 		return ESPNStandings(screen, league, url)
 	if source == "sportscore":
 		return SportScoreStandings(screen, league, url)
+	if source == "flashscore":
+		return FlashscoreStandings(screen, league, url)
 	return SofaScoreStandings(screen, league, url)
 
 
@@ -688,6 +732,8 @@ def get_match_details_fetcher(source, screen, event_id):
 		return ESPNMatchDetails(screen, event_id)
 	if source == "sportscore":
 		return SportScoreMatchDetails(screen, event_id)
+	if source == "flashscore":
+		return FlashscoreMatchDetails(screen, event_id)
 	return SofaScoreMatchDetails(screen, event_id)
 
 
@@ -907,6 +953,8 @@ def get_match_statistics_fetcher(source, screen, event_id):
 		return ESPNMatchStatistics(screen, event_id)
 	if source == "sportscore":
 		return SportScoreMatchStatistics(screen, event_id)
+	if source == "flashscore":
+		return FlashscoreMatchStatistics(screen, event_id)
 	return SofaScoreMatchStatistics(screen, event_id)
 
 
@@ -953,6 +1001,397 @@ class SofaScoreMatchMedia(MatchMediaFetcherBase):
 		if debug_MatchMedia:
 			logdata("MatchMedia", "SofaScore deferred errback: %s" % failure.getErrorMessage())
 		self.screen.process_media(None)
+
+
+class FlashscoreStandings(StandingsFetcherBase):
+	def fetch(self):
+		sofa = SofaScoreStandings(self.screen, self.league, self.url)
+		sofa.fetch()
+
+
+class FlashscoreMatchDetails(MatchDetailsFetcherBase):
+	def fetch(self):
+		if debug_MatchDetails:
+			logdata("MatchDetails", "Flashscore.fetch started | event_id=%s" % self.event_id)
+		def _fetch():
+			text = _fs_request("df_sui_1_{0}".format(self.event_id), timeout=25)
+			logdata("MatchDetails_RAW_SUI", "len=%d preview=%s" % (len(text) if text else 0, (text[:800] if text else "EMPTY")))
+			return _fs_parse(text) if text else []
+		d = deferToThread(_fetch)
+		d.addCallback(self._convert)
+		d.addErrback(self._err)
+
+	def _err(self, failure):
+		if debug_MatchDetails:
+			logdata("MatchDetails", "Flashscore deferred errback: %s" % failure.getErrorMessage())
+		self.screen.process_data(None)
+
+	def _detect_team_side(self, entry, home_team, away_team):
+		ict = (entry.get('ICT', '') or '').strip()
+		m = re.search(r'\(([^)]+)\)', ict)
+		if m:
+			team = m.group(1).strip().lower()
+			if home_team and team in home_team.lower():
+				return True
+			if away_team and team in away_team.lower():
+				return False
+		return None
+
+	def _parse_minute(self, s):
+		s = (s or '').replace("'", '').strip()
+		if not s:
+			return 0, ''
+		m = re.match(r'^(\d+)(?:\+(\d+))?$', s)
+		if m:
+			base = int(m.group(1))
+			extra = int(m.group(2)) if m.group(2) else 0
+			return base + extra, s
+		m = re.search(r'(\d+)', s)
+		if m:
+			return int(m.group(1)), s
+		return 0, s
+
+	def _convert(self, blocks):
+		incidents = []
+		prev_home = 0
+		prev_away = 0
+		final_home = 0
+		final_away = 0
+
+		for block in blocks:
+			context = {}
+			entries = []
+			current = None
+
+			for k, v in block:
+				kk = k
+				if kk.endswith('X') and len(kk) > 1 and kk not in ('INX', 'IOX'):
+					kk = kk[:-1]
+				if kk == 'IE':
+					if current is not None:
+						entries.append(current)
+					current = {'IE': v}
+				elif current is None:
+					context[kk] = v
+				else:
+					current[kk] = v
+			if current is not None:
+				entries.append(current)
+
+			if 'IG' in context:
+				try: final_home = int(context['IG'])
+				except Exception: pass
+			if 'IH' in context:
+				try: final_away = int(context['IH'])
+				except Exception: pass
+
+			if not entries:
+				continue
+
+			ia = context.get('IA', '')
+			ctx_is_home = True if ia == '1' else (False if ia == '2' else None)
+
+			minute, minute_raw = self._parse_minute(context.get('IB', ''))
+
+			goal_entries = []
+			card_entries = []
+			disallowed_entry = None
+			sub_in = None
+			sub_out = None
+			sub_reason = ''
+
+			for e in entries:
+				ik = (e.get('IK', '') or '').strip()
+				ik_low = ik.lower()
+				ict_low = (e.get('ICT', '') or '').strip().lower()
+				ie = e.get('IE', '')
+
+				if ie == '8' or 'assistance' in ik_low:
+					continue
+				if 'substitution' in ik_low and 'in' in ik_low:
+					sub_in = e
+					continue
+				if 'substitution' in ik_low and 'out' in ik_low:
+					sub_out = e
+					continue
+				if 'disallowed' in ik_low or 'disallowed' in ict_low or 'var' in ik_low:
+					disallowed_entry = e
+					continue
+				if 'goal' in ik_low:
+					goal_entries.append(e)
+					continue
+				if 'yellow' in ik_low or 'red' in ik_low or 'card' in ik_low:
+					card_entries.append(e)
+					continue
+
+			reason_str = ''
+			for src in (sub_out, sub_in):
+				if not src:
+					continue
+				m = re.search(r'\(([^)]+)\)', (src.get('ICT', '') or ''))
+				if m:
+					cand = m.group(1).strip()
+					if cand and cand.lower() not in ('in', 'out'):
+						reason_str = cand
+						break
+
+			if sub_in or sub_out:
+				pin = sub_in.get('IF', '') if sub_in else ''
+				pout = sub_out.get('IF', '') if sub_out else ''
+				if reason_str and pout:
+					pout = "%s (%s)" % (pout, reason_str)
+				side = ctx_is_home if ctx_is_home is not None else True
+				incidents.append({
+					"incidentType": "substitution",
+					"isHome": side,
+					"time": minute,
+					"time_display": minute_raw,
+					"playerIn": {"name": pin},
+					"playerOut": {"name": pout},
+				})
+				continue
+
+			if disallowed_entry:
+				side = ctx_is_home if ctx_is_home is not None else True
+				v_ik = disallowed_entry.get('IK', 'Goal Disallowed')
+				v_il = disallowed_entry.get('IL', '')
+				v_reason = v_ik
+				if v_il and v_il.lower() not in v_ik.lower():
+					v_reason = "%s (%s)" % (v_ik, v_il)
+				incidents.append({
+					"incidentType": "var",
+					"incidentClass": "goalDisallowed",
+					"isHome": side,
+					"time": minute,
+					"time_display": minute_raw,
+					"player": {"name": disallowed_entry.get('IF', '')},
+					"var_reason": v_reason,
+				})
+				continue
+
+			for g in goal_entries:
+				try:
+					new_home = int(g.get('INX', prev_home) or prev_home)
+					new_away = int(g.get('IOX', prev_away) or prev_away)
+				except Exception:
+					new_home = prev_home
+					new_away = prev_away
+				is_home = new_home > prev_home
+				prev_home = new_home
+				prev_away = new_away
+				ict = (g.get('ICT', '') or '').lower()
+				ik_low = (g.get('IK', '') or '').lower()
+				if 'own goal' in ict or 'own goal' in ik_low:
+					ic_class = 'owngoal'
+				elif 'penalty' in ict or 'penalty' in ik_low:
+					ic_class = 'penalty'
+				else:
+					ic_class = 'regular'
+				incidents.append({
+					"incidentType": "goal",
+					"incidentClass": ic_class,
+					"isHome": is_home,
+					"time": minute,
+					"time_display": minute_raw,
+					"player": {"name": g.get('IF', '')},
+				})
+
+			for c in card_entries:
+				ik_low = (c.get('IK', '') or '').lower()
+				card_class = 'red' if ('red card' in ik_low or 'second yellow' in ik_low) else 'yellow'
+				side = ctx_is_home if ctx_is_home is not None else True
+				incidents.append({
+					"incidentType": "card",
+					"incidentClass": card_class,
+					"isHome": side,
+					"time": minute,
+					"time_display": minute_raw,
+					"player": {"name": c.get('IF', '')},
+				})
+
+		if final_home == 0 and final_away == 0:
+			final_home = prev_home
+			final_away = prev_away
+
+		ev_js = {"event": {
+			"homeScore": {"current": final_home, "display": final_home},
+			"awayScore": {"current": final_away, "display": final_away},
+			"status": {"description": ""}
+		}}
+
+		if debug_MatchDetails:
+			logdata("MatchDetails", "Flashscore incidents=%d score=%d-%d" % (len(incidents), final_home, final_away))
+		self.screen.process_data([{"incidents": incidents}, ev_js])
+
+
+class FlashscoreMatchStatistics(MatchStatisticsFetcherBase):
+	def fetch(self):
+		if debug_MatchStatistics:
+			logdata("MatchStatistics", "Flashscore.fetch started | event_id=%s" % self.event_id)
+		def _fetch():
+			text = _fs_request("df_st_1_{0}".format(self.event_id), timeout=25)
+			logdata("MatchStatistics_RAW_ST", "len=%d preview=%s" % (len(text) if text else 0, (text[:800] if text else "EMPTY")))
+			return _fs_parse(text) if text else []
+		d = deferToThread(_fetch)
+		d.addCallback(self._convert_stats)
+		d.addErrback(self._err)
+
+	def _err(self, failure):
+		if debug_MatchStatistics:
+			logdata("MatchStatistics", "Flashscore deferred errback: %s" % failure.getErrorMessage())
+		self.screen.process_stats(None)
+
+	def _convert_stats(self, blocks):
+		GROUP_MAP = {
+			'Match': 'Match overview',
+			'Top stats': 'Match overview',
+			'Shots': 'Shots',
+			'Attack': 'Attack',
+			'Passes': 'Passes',
+			'Duels': 'Duels',
+			'Defending': 'Defending',
+			'Goalkeeping': 'Goalkeeping',
+		}
+		STAT_MAP = {
+			'Expected goals (xG)': 'Expected goals',
+			'Expected goals': 'Expected goals',
+			'Ball possession': 'Ball possession',
+			'Total shots': 'Total shots',
+			'Shots on target': 'Shots on target',
+			'Big chances': 'Big chances',
+			'Corner kicks': 'Corner kicks',
+			'Passes': 'Accurate passes',
+			'Yellow cards': 'Yellow cards',
+			'Red cards': 'Red cards',
+			'Shots off target': 'Shots off target',
+			'Blocked shots': 'Blocked shots',
+			'Shots inside the box': 'Shots inside box',
+			'Shots outside the box': 'Shots outside box',
+			'Hit the woodwork': 'Hit woodwork',
+			'Touches in opposition box': 'Touches in penalty area',
+			'Fouls': 'Fouls',
+			'Offsides': 'Offsides',
+			'Goalkeeper saves': 'Goalkeeper saves',
+			'Saves': 'Total saves',
+		}
+
+		groups = {}
+		order = []
+		current = None
+
+		for block in blocks:
+			d = {}
+			for k, v in block:
+				d.setdefault(k, []).append(v)
+
+			if 'SE' in d:
+				name = d['SE'][0]
+				mapped = GROUP_MAP.get(name, name)
+				if mapped not in groups:
+					groups[mapped] = []
+					order.append(mapped)
+				current = mapped
+				continue
+
+			if 'SF' in d:
+				name = d['SF'][0]
+				mapped = GROUP_MAP.get(name, name)
+				if mapped not in groups:
+					groups[mapped] = []
+					order.append(mapped)
+				current = mapped
+				continue
+
+			if 'SG' in d and 'SH' in d and 'SI' in d:
+				stat_name = d['SG'][0]
+				home_val = d['SH'][0]
+				away_val = d['SI'][0]
+				mapped_name = STAT_MAP.get(stat_name, stat_name)
+				if current is None:
+					current = 'Match overview'
+					if current not in groups:
+						groups[current] = []
+						order.append(current)
+				groups[current].append({
+					"name": mapped_name,
+					"home": str(home_val),
+					"away": str(away_val),
+				})
+
+		stats_groups = []
+		for gname in order:
+			if groups.get(gname):
+				stats_groups.append({
+					"groupName": gname,
+					"statisticsItems": groups[gname],
+				})
+
+		stats_json = {
+			"statistics": [{
+				"period": "ALL",
+				"groups": stats_groups,
+			}]
+		}
+		if debug_MatchStatistics:
+			logdata("MatchStatistics", "Flashscore groups=%d" % len(stats_groups))
+		self.screen.process_stats(stats_json)
+
+
+class FlashscoreMatchMedia(MatchMediaFetcherBase):
+	def _search_youtube(self, query, max_results=3):
+		if not PY3 and isinstance(query, unicode):
+			query = query.encode('utf-8', 'ignore')
+		search_url = "https://www.youtube.com/results?search_query=" + compat_quote(query)
+		try:
+			r = requests.get(search_url, timeout=15, verify=False, headers={
+				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+				'Accept-Language': 'en-US,en;q=0.9',
+			})
+			if r.status_code != 200:
+				if debug_MatchMedia:
+					logdata("MatchMedia", "Flashscore YouTube search HTTP %d" % r.status_code)
+				return []
+			html = r.text
+			video_ids = []
+			for m in re.finditer(r'"videoId":"([a-zA-Z0-9_-]{11})"', html):
+				vid = m.group(1)
+				if vid not in video_ids:
+					video_ids.append(vid)
+				if len(video_ids) >= max_results:
+					break
+			media = []
+			for vid in video_ids:
+				media.append({
+					'url': "https://www.youtube.com/watch?v=" + vid,
+					'title': query,
+					'subtitle': '',
+				})
+			if debug_MatchMedia:
+				logdata("MatchMedia", "Flashscore YouTube search found %d videos" % len(media))
+			return media
+		except Exception as e:
+			if debug_MatchMedia:
+				logdata("MatchMedia", "Flashscore YouTube search error: %s" % str(e)[:150])
+			return []
+
+	def fetch(self):
+		if debug_MatchMedia:
+			logdata("MatchMedia", "Flashscore.fetch started | event_id=%s" % self.event_id)
+		home_team = getattr(self.screen, 'home_name', '') or ''
+		away_team = getattr(self.screen, 'away_name', '') or ''
+		if not home_team or not away_team:
+			if debug_MatchMedia:
+				logdata("MatchMedia", "Flashscore: missing team names, cannot search YouTube")
+			try:
+				self.screen.process_media({"media": []})
+			except Exception:
+				self.screen.process_media(None)
+			return
+		query = "%s vs %s highlights" % (home_team, away_team)
+		if debug_MatchMedia:
+			logdata("MatchMedia", "Flashscore YouTube query: %s" % query)
+		media = self._search_youtube(query)
+		self.screen.process_media({"media": media})
 
 
 class ESPNMatchMedia(MatchMediaFetcherBase):
@@ -1111,4 +1550,6 @@ def get_match_media_fetcher(source, screen, event_id):
 		return ESPNMatchMedia(screen, event_id)
 	if source == "sportscore":
 		return SportScoreMatchMedia(screen, event_id)
+	if source == "flashscore":
+		return FlashscoreMatchMedia(screen, event_id)
 	return SofaScoreMatchMedia(screen, event_id)

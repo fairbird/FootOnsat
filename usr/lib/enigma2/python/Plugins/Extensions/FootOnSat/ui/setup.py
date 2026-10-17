@@ -204,6 +204,7 @@ config.plugins.FootOnSat.livescoresearchlevel = ConfigSelection(default = "1", c
 config.plugins.FootOnSat.source = ConfigSelection(default = "sofascore", choices = [
 	("sofascore", "%s" % title314),
 	("espn", "%s" % title316),
+	("flashscore", "%s" % title320),
 #	("sportscore", "%s" % title315),
 	])
 config.plugins.FootOnSat.livescoresections = ConfigSelection(default = "1", choices = [
@@ -356,6 +357,8 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			self.list.append(getConfigListEntry(_("%s") % title312, config.plugins.FootOnSat.source, _("%s") % title313))
 			if config.plugins.FootOnSat.source.value == "espn":
 				self.list.append(getConfigListEntry(_("%s") % title318, config.plugins.FootOnSat.espn_limit, _("%s") % title319))
+			elif config.plugins.FootOnSat.source.value == "flashscore":
+				pass
 			else:
 				self.list.append(getConfigListEntry(_("%s") % title310, config.plugins.FootOnSat.livescoresearchlevel, _("%s") % title311))
 			self.list.append(getConfigListEntry(_("%s") % title49, config.plugins.FootOnSat.livescoresections, _("%s") % title50))

@@ -116,6 +116,21 @@ class TLSAdapter(requests.adapters.HTTPAdapter):
 			return super(TLSAdapter, self).init_poolmanager(*args, **kwargs)
 
 
+def _get_fs_fsign():
+	"""Fetch current x-fsign token from Flashscore homepage."""
+	try:
+		r = requests.get("https://www.flashscore.com/", timeout=10, verify=False, headers={
+			'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36'
+		})
+		if r.status_code == 200:
+			m = re.search(r'"feed_sign":"([^"]+)"', r.text)
+			if m:
+				return m.group(1)
+	except Exception:
+		pass
+	return "SW9D1eZo"
+
+
 class LiveFetchBase(object):
 	def __init__(self, screen):
 		self.screen = screen
@@ -1310,9 +1325,149 @@ class ESPNFetcher(LiveFetchBase):
 		d.addErrback(lambda f: logdata("fetch_live_results", "ESPN fetch failed: %s" % f.getErrorMessage()))
 
 
+class FlashscoreFetcher(LiveFetchBase):
+	FS_BASE = "https://global.flashscore.ninja/2/x/feed/"
+	FS_HEADERS = {
+		'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+		'x-fsign': 'SW9D1eZo',
+		'Referer': 'https://www.flashscore.com/',
+		'Accept': '*/*',
+	}
+
+	def _fs_get(self, endpoint, timeout=20):
+		url = self.FS_BASE + endpoint
+		fsign = _get_fs_fsign()
+		headers = dict(self.FS_HEADERS)
+		headers['x-fsign'] = fsign
+		try:
+			r = requests.get(url, headers=headers, timeout=timeout, verify=False)
+			if r.status_code == 200:
+				return r.text
+			if debug_Fetch_Live:
+				logdata("fetch_live_results", "Flashscore HTTP %s (fsign=%s)" % (r.status_code, fsign))
+			return None
+		except Exception as e:
+			if debug_Fetch_Live:
+				logdata("fetch_live_results", "Flashscore exception: %s" % str(e)[:200])
+			return None
+
+	def _parse_feed(self, text):
+		if not text:
+			return []
+		matches = []
+		for block in text.split('~'):
+			if not block or '÷' not in block:
+				continue
+			row = {}
+			for f in block.split('¬'):
+				if '÷' not in f:
+					continue
+				k, v = f.split('÷', 1)
+				row[k] = v
+			if 'AA' in row and ('CX' in row or 'AE' in row):
+				matches.append(row)
+		return matches
+
+	def _status_from_fs(self, stage, txt):
+		s = str(stage or '').strip()
+		t = str(txt or '').strip().lower()
+		if s == '3' or 'finished' in t or t == 'ft':
+			return 'finished', title125
+		if s == '2' or "'" in t or 'half' in t or 'live' in t:
+			return 'inprogress', txt or ''
+		if 'postpon' in t:
+			return 'postponed', title152
+		if 'cancel' in t:
+			return 'canceled', title124
+		if 'delay' in t:
+			return 'inprogress', title156
+		return 'notstarted', ''
+
+	def _convert_event(self, m):
+		try:
+			home = m.get('CX') or m.get('AE') or 'Unknown Home'
+			away = m.get('AF') or m.get('WU') or 'Unknown Away'
+			if not isinstance(home, str): home = str(home)
+			if not isinstance(away, str): away = str(away)
+			home_score = m.get('AG', '') or ''
+			away_score = m.get('AH', '') or ''
+			ts = 0
+			try:
+				_raw_ts = int(m.get('AD', 0) or 0)
+				if _raw_ts > 0:
+					_dt_utc = datetime.utcfromtimestamp(_raw_ts)
+					_match_date_str = _dt_utc.strftime("%H:%M - %Y-%m-%d")
+					_local_str = self.screen.getTime(_match_date_str)
+					_local_dt = datetime.strptime(_local_str, "%H:%M - %Y-%m-%d")
+					ts = int(time.mktime(_local_dt.timetuple()))
+			except Exception:
+				ts = 0
+			stage = m.get('AB', '')
+			status_txt = m.get('AC', '') or ''
+			league = m.get('ZA', '') or m.get('ZY', '') or ''
+			country = m.get('UY', '') or ''
+			match_id = m.get('AA', '')
+			ss_type, status_long = self._status_from_fs(stage, status_txt)
+			return {
+				"homeTeam": {"name": home, "shortName": home},
+				"awayTeam": {"name": away, "shortName": away},
+				"homeScore": {"current": str(home_score)},
+				"awayScore": {"current": str(away_score)},
+				"status": {"type": ss_type, "description": status_long},
+				"startTimestamp": ts,
+				"id": str(match_id),
+				"tournament": {"name": league, "category": {"country": {"name": country}}}
+			}
+		except Exception as e:
+			if debug_Fetch_Live:
+				logdata("fetch_live_results", "Flashscore convert error: %s" % str(e)[:150])
+			return None
+
+	def fetch(self):
+		if not self.screen.matches:
+			self.screen.onWindowShow()
+			return
+		self.screen.fetch_timestamp = time.time()
+		self.current_ts = self.screen.fetch_timestamp
+		if debug_Fetch_Live:
+			logdata("fetch_live_results", "Flashscore fetch started")
+
+		if self.screen.link == "yesterday":
+			day = -1
+		elif self.screen.link == "tomorrow":
+			day = 1
+		else:
+			day = 0
+
+		all_events = []
+		endpoint = "f_1_{0}_3_en_1".format(day)
+		text = self._fs_get(endpoint, timeout=25)
+		if text and len(text) > 50:
+			parsed = self._parse_feed(text)
+			for m in parsed:
+				ev = self._convert_event(m)
+				if ev:
+					all_events.append(ev)
+
+		if debug_Fetch_Live:
+			logdata("fetch_live_results", "Flashscore events=%d" % len(all_events))
+
+		if not all_events:
+			try:
+				self.screen.iniMenu()
+			except Exception:
+				pass
+			return
+
+		raw_json = json.dumps({"events": all_events}).encode('utf-8')
+		self._process_response([raw_json])
+
+
 def get_live_fetcher(source, screen):
 	if source == "sportscore":
 		return SportScoreFetcher(screen)
 	if source == "espn":
 		return ESPNFetcher(screen)
+	if source == "flashscore":
+		return FlashscoreFetcher(screen)
 	return SofaScoreFetcher(screen)
