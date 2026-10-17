@@ -12,78 +12,80 @@ EXTERNAL_PATH=""
 INSTALL_CHOICE=""
 MOUNTS=$(df -h | awk '$6 ~ /^\/media\// && $1 ~ /^\/dev\// {print $6}' | sort -u)
 
-# Check if we have a real terminal available (Telnet)
-if (exec < /dev/tty) 2>/dev/null; then
-    # Interactive mode for Telnet
-    echo "================================================="
-    echo "Select Installation Method / اختر طريقة التثبيت"
-    echo "================================================="
-    echo "1) Install Internally (Default) / تثبيت داخلي (افتراضي)"
-    echo ""
-    if [ -n "$MOUNTS" ]; then
-        echo "2) Install on External Storage / تثبيت على مساحة خارجية"
-        echo ""
-    fi
-    echo "3) Cancel Installation / إلغاء التثبيت"
-    echo "================================================="
+# Check settings file first for the saved path
+SETTINGS_FILE="/etc/enigma2/settings"
+SAVED_PATH=""
+if [ -f "$SETTINGS_FILE" ]; then
+    SAVED_PATH=$(grep "^config.plugins.FootOnSat.devicepath=" "$SETTINGS_FILE" | cut -d'=' -f2)
+    SAVED_PATH=$(echo "$SAVED_PATH" | sed 's#/footonsat##g' | sed 's#/FootOnSat##g')
+fi
 
-    if [ -n "$MOUNTS" ]; then
-        read -p "Enter choice [1-3] (default 1) / أدخل الخيار: " INSTALL_CHOICE < /dev/tty
+# If a path is saved in settings, use it directly without asking
+if [ -n "$SAVED_PATH" ]; then
+    if echo "$SAVED_PATH" | grep -q "^/media/"; then
+        INSTALL_CHOICE="2"
+        EXTERNAL_PATH="$SAVED_PATH/FootOnSat"
+        echo "Using saved external path: $EXTERNAL_PATH"
     else
-        read -p "Enter choice [1 or 3] (default 1) / أدخل الخيار: " INSTALL_CHOICE < /dev/tty
-    fi
-    if [ -z "$INSTALL_CHOICE" ]; then INSTALL_CHOICE="1"; fi
-    if [ "$INSTALL_CHOICE" = "3" ]; then
-        echo "Installation cancelled by user."
-        exit 0
-    fi
-    if [ "$INSTALL_CHOICE" = "2" ]; then
-        if [ -z "$MOUNTS" ]; then
-            echo "No external mounts found. Defaulting to internal."
-            INSTALL_CHOICE="1"
-        else
-            echo "Available Mounts:"
-            echo ""
-            i=1
-            for m in $MOUNTS; do
-                echo "  $i) $m"
-                echo ""
-                eval "MOUNT_$i=$m"
-                i=$((i+1))
-            done
-            echo "  $i) Cancel Installation"
-            echo ""
-            read -p "Select mount point [1-$i]: " MOUNT_CHOICE < /dev/tty
-            if [ "$MOUNT_CHOICE" = "$i" ]; then exit 0; fi
-            eval "SELECTED_MOUNT=\$MOUNT_$MOUNT_CHOICE"
-            if [ -z "$SELECTED_MOUNT" ] || [ ! -d "$SELECTED_MOUNT" ]; then
-                echo "Invalid selection. Defaulting to internal."
-                INSTALL_CHOICE="1"
-            else
-                EXTERNAL_PATH="$SELECTED_MOUNT/FootOnSat"
-                echo "Selected: $EXTERNAL_PATH"
-            fi
-        fi
+        INSTALL_CHOICE="1"
+        echo "Using saved internal path."
     fi
 else
-    # Non-interactive mode (GUI Update): Read from settings file
-    SETTINGS_FILE="/etc/enigma2/settings"
-    if [ -f "$SETTINGS_FILE" ]; then
-        SAVED_PATH=$(grep "^config.plugins.FootOnSat.installpath=" "$SETTINGS_FILE" | cut -d'=' -f2)
-        if [ -n "$SAVED_PATH" ]; then
-            if [ "$SAVED_PATH" = "internal" ]; then
+    # If no setting found, check if we have a real terminal (Telnet)
+    if (exec < /dev/tty) 2>/dev/null; then
+        # Interactive mode for Telnet
+        echo "================================================="
+        echo "Select Installation Method / اختر طريقة التثبيت"
+        echo "================================================="
+        echo "1) Install Internally (Default) / تثبيت داخلي (افتراضي)"
+        echo ""
+        if [ -n "$MOUNTS" ]; then
+            echo "2) Install on External Storage / تثبيت على مساحة خارجية"
+            echo ""
+        fi
+        echo "3) Cancel Installation / إلغاء التثبيت"
+        echo "================================================="
+
+        if [ -n "$MOUNTS" ]; then
+            read -p "Enter choice [1-3] (default 1) / أدخل الخيار: " INSTALL_CHOICE < /dev/tty
+        else
+            read -p "Enter choice [1 or 3] (default 1) / أدخل الخيار: " INSTALL_CHOICE < /dev/tty
+        fi
+        if [ -z "$INSTALL_CHOICE" ]; then INSTALL_CHOICE="1"; fi
+        if [ "$INSTALL_CHOICE" = "3" ]; then
+            echo "Installation cancelled by user."
+            exit 0
+        fi
+        if [ "$INSTALL_CHOICE" = "2" ]; then
+            if [ -z "$MOUNTS" ]; then
+                echo "No external mounts found. Defaulting to internal."
                 INSTALL_CHOICE="1"
-                echo "Using saved internal path."
             else
-                INSTALL_CHOICE="2"
-                EXTERNAL_PATH="$SAVED_PATH"
-                echo "Using saved external path: $EXTERNAL_PATH"
+                echo "Available Mounts:"
+                echo ""
+                i=1
+                for m in $MOUNTS; do
+                    echo "  $i) $m"
+                    echo ""
+                    eval "MOUNT_$i=$m"
+                    i=$((i+1))
+                done
+                echo "  $i) Cancel Installation"
+                echo ""
+                read -p "Select mount point [1-$i]: " MOUNT_CHOICE < /dev/tty
+                if [ "$MOUNT_CHOICE" = "$i" ]; then exit 0; fi
+                eval "SELECTED_MOUNT=\$MOUNT_$MOUNT_CHOICE"
+                if [ -z "$SELECTED_MOUNT" ] || [ ! -d "$SELECTED_MOUNT" ]; then
+                    echo "Invalid selection. Defaulting to internal."
+                    INSTALL_CHOICE="1"
+                else
+                    EXTERNAL_PATH="$SELECTED_MOUNT/FootOnSat"
+                    echo "Selected: $EXTERNAL_PATH"
+                fi
             fi
         fi
-    fi
-
-    # Fallback if no setting is found (First install)
-    if [ -z "$INSTALL_CHOICE" ]; then
+    else
+        # GUI mode and no setting found
         echo "No saved setting found. Defaulting to internal."
         INSTALL_CHOICE="1"
     fi
