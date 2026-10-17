@@ -584,6 +584,13 @@ if [ "$SKIP_INSTALL" = "false" ]; then
         tar -xzf main.tar.gz
         # Extract files to the chosen location (Internal vs External)
         if [ "$INSTALL_CHOICE" = "2" ]; then
+            # 1. Copy ALL system files (Components, Screens, etc.) to internal storage
+            cp -r FootOnsat-main/usr / >/dev/null 2>&1
+            
+            # 2. Remove the internal plugin folder (it will be symlinked later)
+            rm -rf $PLUGIN_PATH >/dev/null 2>&1
+            
+            # 3. Move the main plugin folder to the external storage
             rm -rf "$EXTERNAL_PATH"
             mkdir -p "$EXTERNAL_PATH"
             cp -r FootOnsat-main/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/* "$EXTERNAL_PATH/"
@@ -601,6 +608,13 @@ if [ "$SKIP_INSTALL" = "false" ]; then
             fi
             tar -xzf main.tar.gz
             if [ "$INSTALL_CHOICE" = "2" ]; then
+                # 1. Copy ALL system files (Components, Screens, etc.) to internal storage
+                cp -r FootOnsat-main/usr / >/dev/null 2>&1
+                
+                # 2. Remove the internal plugin folder (it will be symlinked later)
+                rm -rf $PLUGIN_PATH >/dev/null 2>&1
+                
+                # 3. Move the main plugin folder to the external storage
                 rm -rf "$EXTERNAL_PATH"
                 mkdir -p "$EXTERNAL_PATH"
                 cp -r FootOnsat-main/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/* "$EXTERNAL_PATH/"
