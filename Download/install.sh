@@ -587,16 +587,17 @@ if [ "$SKIP_INSTALL" = "false" ]; then
         fi
         
         # Extract files to the chosen location (Internal vs External)
+        # Find where the plugin is currently installed (resolves symlinks)
+        OLD_ACTIVE_PATH=$(readlink -f "$PLUGIN_PATH" 2>/dev/null)
+
         if [ "$INSTALL_CHOICE" = "2" ]; then
-            OLD_ACTIVE_PATH=$(readlink -f "$PLUGIN_PATH" 2>/dev/null)
-            
             # 1. Copy ALL system files to internal storage
             cp -r FootOnsat-main/usr / >/dev/null 2>&1
             
             # 2. Remove the internal plugin folder (it will be symlinked later)
             rm -rf $PLUGIN_PATH >/dev/null 2>&1
             
-            # 3. Remove the old external folder if moving to a different path
+            # 3. Remove the old folder if moving to a different path
             if [ -n "$OLD_ACTIVE_PATH" ] && [ -d "$OLD_ACTIVE_PATH" ] && [ "$OLD_ACTIVE_PATH" != "$EXTERNAL_PATH" ]; then
                 echo "Moving plugin from old path: $OLD_ACTIVE_PATH"
                 rm -rf "$OLD_ACTIVE_PATH"
@@ -608,6 +609,13 @@ if [ "$SKIP_INSTALL" = "false" ]; then
             cp -r FootOnsat-main/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/* "$EXTERNAL_PATH/"
             echo "$VERSION" > "$EXTERNAL_PATH/.version"
         else
+            # Internal Installation (Moving from External to Internal)
+            if [ -n "$OLD_ACTIVE_PATH" ] && [ "$OLD_ACTIVE_PATH" != "$PLUGIN_PATH" ] && [ -d "$OLD_ACTIVE_PATH" ]; then
+                echo "Moving plugin from external path: $OLD_ACTIVE_PATH to internal"
+                rm -rf "$OLD_ACTIVE_PATH"
+            fi
+            # Remove the symlink if it exists before copying internally
+            rm -rf $PLUGIN_PATH >/dev/null 2>&1
             cp -r FootOnsat-main/usr / >/dev/null 2>&1
         fi
     else
