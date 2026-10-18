@@ -1,5 +1,4 @@
 #!/bin/sh
-
 #wget -q "--no-check-certificate" https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh
 VERSION=10.8
 PLUGIN_PATH="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
@@ -8,6 +7,100 @@ ASSETS_PATH="$PLUGIN_PATH/assets"
 IGNORE_PATH="$PLUGIN_PATH/ignore"
 TMP_DB="/tmp/footonsat.db"
 TMP_ASSETS="/tmp/assets"
+
+EXTERNAL_PATH=""
+INSTALL_CHOICE=""
+MOUNTS=$(df -h | awk '$6 ~ /^\/media\// && $1 ~ /^\/dev\// {print $6}' | sort -u)
+
+# Check settings file first for the saved path
+SETTINGS_FILE="/etc/enigma2/settings"
+SAVED_PATH=""
+if [ -f "$SETTINGS_FILE" ]; then
+    SAVED_PATH=$(grep "^config.plugins.FootOnSat.installpath=" "$SETTINGS_FILE" | cut -d'=' -f2)
+fi
+
+# Auto-detect path if settings are empty
+if [ -z "$SAVED_PATH" ] && [ -L "$PLUGIN_PATH" ]; then
+    SAVED_PATH=$(readlink -f "$PLUGIN_PATH")
+fi
+
+# If a path is saved (or auto-detected), use it directly without asking
+if [ -n "$SAVED_PATH" ]; then
+    if echo "$SAVED_PATH" | grep -q "^/media/"; then
+        BASE_DIR=$(echo "$SAVED_PATH" | sed -E 's#/[Ff]oot[Oo]n[Ss]at/?$##g')
+        EXTERNAL_PATH="$BASE_DIR/FootOnSat"
+        INSTALL_CHOICE="2"
+        echo "Using external path: $EXTERNAL_PATH"
+    else
+        INSTALL_CHOICE="1"
+        echo "Using internal path."
+    fi
+else
+    # If no setting found, check if it's already installed internally (default path)
+    if [ -d "$PLUGIN_PATH" ] && [ ! -L "$PLUGIN_PATH" ]; then
+        INSTALL_CHOICE="1"
+        echo "Using default internal path (already installed)."
+    else
+        # If truly not installed, check if we have a real terminal (Telnet)
+        if (exec < /dev/tty) 2>/dev/null; then
+            # Interactive mode for Telnet
+            echo "================================================="
+            echo "Select Installation Method / اختر طريقة التثبيت"
+            echo "================================================="
+            echo "1) Install Internally (Default) / تثبيت داخلي (افتراضي)"
+            echo ""
+            if [ -n "$MOUNTS" ]; then
+                echo "2) Install on External Storage / تثبيت على مساحة خارجية"
+                echo ""
+            fi
+            echo "3) Cancel Installation / إلغاء التثبيت"
+            echo "================================================="
+
+            if [ -n "$MOUNTS" ]; then
+                read -p "Enter choice [1-3] (default 1) / أدخل الخيار: " INSTALL_CHOICE < /dev/tty
+            else
+                read -p "Enter choice [1 or 3] (default 1) / أدخل الخيار: " INSTALL_CHOICE < /dev/tty
+            fi
+            if [ -z "$INSTALL_CHOICE" ]; then INSTALL_CHOICE="1"; fi
+            if [ "$INSTALL_CHOICE" = "3" ]; then
+                echo "Installation cancelled by user."
+                exit 0
+            fi
+            if [ "$INSTALL_CHOICE" = "2" ]; then
+                if [ -z "$MOUNTS" ]; then
+                    echo "No external mounts found. Defaulting to internal."
+                    INSTALL_CHOICE="1"
+                else
+                    echo "Available Mounts:"
+                    echo ""
+                    i=1
+                    for m in $MOUNTS; do
+                        echo "  $i) $m"
+                        echo ""
+                        eval "MOUNT_$i=$m"
+                        i=$((i+1))
+                    done
+                    echo "  $i) Cancel Installation"
+                    echo ""
+                    read -p "Select mount point [1-$i]: " MOUNT_CHOICE < /dev/tty
+                    if [ "$MOUNT_CHOICE" = "$i" ]; then exit 0; fi
+                    eval "SELECTED_MOUNT=\$MOUNT_$MOUNT_CHOICE"
+                    if [ -z "$SELECTED_MOUNT" ] || [ ! -d "$SELECTED_MOUNT" ]; then
+                        echo "Invalid selection. Defaulting to internal."
+                        INSTALL_CHOICE="1"
+                    else
+                        EXTERNAL_PATH="$SELECTED_MOUNT/FootOnSat"
+                        echo "Selected: $EXTERNAL_PATH"
+                    fi
+                fi
+            fi
+        else
+            # GUI mode and no setting found
+            echo "No saved setting found. Defaulting to internal."
+            INSTALL_CHOICE="1"
+        fi
+    fi
+fi
 
 E2Settings='/etc/enigma2/settings'
 SETTING_NAME="config.plugins.FootOnSat.icons"
@@ -442,36 +535,154 @@ if [ "$MISSING_PKGS" = "true" ]; then
 	exit 1
 fi
 
-echo " ** Download and install FootOnsat ** "
-echo ""
-cd /tmp
-set -e
-rm -rf *main* >/dev/null 2>&1
-rm -rf *FootOnsat* >/dev/null 2>&1
-wget -q -c "--no-check-certificate" "https://github.com/fairbird/FootOnsat/archive/refs/heads/main.tar.gz" -O main.tar.gz
-if [ -s "main.tar.gz" ] && tar -ztf main.tar.gz >/dev/null 2>&1; then
-	echo "Archive verified successfully"
-	echo "remove old version"
-	echo ""
-	rm -rf $PLUGIN_PATH >/dev/null 2>&1
-	echo "Send new version"
-	echo ""
-	tar -xzf main.tar.gz
-	cp -r FootOnsat-main/usr / >/dev/null 2>&1
-else
-	echo "Download failed or corrupted, trying with curl..."
-	curl -Lk "https://github.com/fairbird/FootOnsat/archive/refs/heads/main.tar.gz" -o main.tar.gz
-	if [ -s "main.tar.gz" ] && tar -ztf main.tar.gz >/dev/null 2>&1; then
-		echo "Archive verified successfully via curl"
-		rm -rf $PLUGIN_PATH >/dev/null 2>&1
-		tar -xzf main.tar.gz
-		cp -r FootOnsat-main/usr / >/dev/null 2>&1
-	else
-		echo "Critical Error: Archive is still corrupted after retry"
-		exit 1
-	fi
+# Check if the same version is already installed to skip redundant downloads
+SKIP_INSTALL="false"
+if (exec < /dev/tty) 2>/dev/null; then
+    if [ "$INSTALL_CHOICE" = "2" ] && [ -d "$EXTERNAL_PATH" ]; then
+        if [ -f "$EXTERNAL_PATH/__init__.py" ]; then
+            INSTALLED_VER=$(grep "__version__" "$EXTERNAL_PATH/__init__.py" | cut -d'=' -f2 | tr -d ' ')
+            if [ "$INSTALLED_VER" = "$VERSION" ]; then
+                echo "================================================="
+                echo "Plugin version $VERSION is already installed at:"
+                echo "$EXTERNAL_PATH"
+                echo "Skipping download and installation."
+                echo "================================================="
+                SKIP_INSTALL="true"
+                sleep 3
+                exit 0
+            fi
+        fi
+    elif [ "$INSTALL_CHOICE" = "1" ] && [ -d "$PLUGIN_PATH" ]; then
+        if [ -f "$PLUGIN_PATH/__init__.py" ]; then
+            INSTALLED_VER=$(grep "__version__" "$PLUGIN_PATH/__init__.py" | cut -d'=' -f2 | tr -d ' ')
+            if [ "$INSTALLED_VER" = "$VERSION" ]; then
+                echo "================================================="
+                echo "Plugin version $VERSION is already installed internally."
+                echo "Skipping download and installation."
+                echo "================================================="
+                SKIP_INSTALL="true"
+                sleep 3
+                exit 0
+            fi
+        fi
+    fi
 fi
-if [ -d $PLUGIN_PATH ]; then
+
+# Download and extract the plugin only if it needs to be installed or updated
+if [ "$SKIP_INSTALL" = "false" ]; then
+    echo " ** Download and install FootOnsat ** "
+    echo ""
+    
+    WORK_DIR="/tmp"
+    cd "$WORK_DIR"
+    rm -rf *main* >/dev/null 2>&1
+    rm -rf *FootOnsat* >/dev/null 2>&1
+    
+    wget -q -c "--no-check-certificate" "https://github.com/fairbird/FootOnsat/archive/refs/heads/main.tar.gz" -O main.tar.gz
+    if [ -s "main.tar.gz" ] && tar -ztf main.tar.gz >/dev/null 2>&1; then
+        echo "Archive verified successfully"
+        echo "remove old version"
+        echo ""
+        if [ "$INSTALL_CHOICE" = "1" ]; then
+            rm -rf $PLUGIN_PATH >/dev/null 2>&1
+        fi
+        echo "Send new version"
+        echo ""
+        tar -xzf main.tar.gz
+        
+        if [ ! -d "FootOnsat-main" ]; then
+            echo "ERROR: Extraction failed! Disk space might be full."
+            sleep 5
+            exit 1
+        fi
+        
+        # Extract files to the chosen location (Internal vs External)
+        # Find where the plugin is currently installed (resolves symlinks)
+        OLD_ACTIVE_PATH=$(readlink -f "$PLUGIN_PATH" 2>/dev/null)
+
+        if [ "$INSTALL_CHOICE" = "2" ]; then
+            # 1. Copy ALL system files to internal storage
+            cp -r FootOnsat-main/usr / >/dev/null 2>&1
+            
+            # 2. Remove the internal plugin folder (it will be symlinked later)
+            rm -rf $PLUGIN_PATH >/dev/null 2>&1
+            
+            # 3. Remove the old folder if moving to a different path
+            if [ -n "$OLD_ACTIVE_PATH" ] && [ -d "$OLD_ACTIVE_PATH" ] && [ "$OLD_ACTIVE_PATH" != "$EXTERNAL_PATH" ]; then
+                echo "Moving plugin from old path: $OLD_ACTIVE_PATH"
+                rm -rf "$OLD_ACTIVE_PATH"
+            fi
+            
+            # 4. Install to the new external storage
+            rm -rf "$EXTERNAL_PATH"
+            mkdir -p "$EXTERNAL_PATH"
+            cp -r FootOnsat-main/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/* "$EXTERNAL_PATH/"
+            echo "$VERSION" > "$EXTERNAL_PATH/.version"
+        else
+            # Internal Installation (Moving from External to Internal)
+            if [ -n "$OLD_ACTIVE_PATH" ] && [ "$OLD_ACTIVE_PATH" != "$PLUGIN_PATH" ] && [ -d "$OLD_ACTIVE_PATH" ]; then
+                echo "Moving plugin from external path: $OLD_ACTIVE_PATH to internal"
+                rm -rf "$OLD_ACTIVE_PATH"
+            fi
+            # Remove the symlink if it exists before copying internally
+            rm -rf $PLUGIN_PATH >/dev/null 2>&1
+            cp -r FootOnsat-main/usr / >/dev/null 2>&1
+        fi
+    else
+        echo "Download failed or corrupted, trying with curl..."
+        curl -Lk "https://github.com/fairbird/FootOnsat/archive/refs/heads/main.tar.gz" -o main.tar.gz
+        if [ -s "main.tar.gz" ] && tar -ztf main.tar.gz >/dev/null 2>&1; then
+            echo "Archive verified successfully via curl"
+            if [ "$INSTALL_CHOICE" = "1" ]; then
+                rm -rf $PLUGIN_PATH >/dev/null 2>&1
+            fi
+            tar -xzf main.tar.gz
+            
+            if [ ! -d "FootOnsat-main" ]; then
+                echo "ERROR: Extraction failed! Disk space might be full."
+                sleep 5
+                exit 1
+            fi
+            
+            if [ "$INSTALL_CHOICE" = "2" ]; then
+                OLD_ACTIVE_PATH=$(readlink -f "$PLUGIN_PATH" 2>/dev/null)
+                
+                # 1. Copy ALL system files to internal storage
+                cp -r FootOnsat-main/usr / >/dev/null 2>&1
+                
+                # 2. Remove the internal plugin folder (it will be symlinked later)
+                rm -rf $PLUGIN_PATH >/dev/null 2>&1
+                
+                # 3. Remove the old external folder if moving to a different path
+                if [ -n "$OLD_ACTIVE_PATH" ] && [ -d "$OLD_ACTIVE_PATH" ] && [ "$OLD_ACTIVE_PATH" != "$EXTERNAL_PATH" ]; then
+                    echo "Moving plugin from old path: $OLD_ACTIVE_PATH"
+                    rm -rf "$OLD_ACTIVE_PATH"
+                fi
+                
+                # 4. Install to the new external storage
+                rm -rf "$EXTERNAL_PATH"
+                mkdir -p "$EXTERNAL_PATH"
+                cp -r FootOnsat-main/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/* "$EXTERNAL_PATH/"
+                echo "$VERSION" > "$EXTERNAL_PATH/.version"
+            else
+                cp -r FootOnsat-main/usr / >/dev/null 2>&1
+            fi
+        else
+            echo "Critical Error: Archive is still corrupted after retry"
+            exit 1
+        fi
+    fi
+fi
+
+# Create a symbolic link from the system plugin path to the external storage
+if [ "$INSTALL_CHOICE" = "2" ]; then
+    echo "Creating symlink: $PLUGIN_PATH -> $EXTERNAL_PATH"
+    rm -rf "$PLUGIN_PATH"
+    ln -sfn "$EXTERNAL_PATH" "$PLUGIN_PATH"
+fi
+
+# Restore previous database and UI style if a fresh installation occurred
+if [ -d "$PLUGIN_PATH" ]; then
 	if [ -f "$TMP_DB" ]; then
 		echo ""
 		echo "Restore old db ..."
@@ -495,7 +706,7 @@ if [ -d $PLUGIN_PATH ]; then
 		  FILE_NAME="icons_default.tar.gz"
 		  ;;
 	esac
-	if [ -n "$FILE_NAME" ]; then
+	if [ -n "$FILE_NAME" ] && [ "$SKIP_INSTALL" = "false" ]; then
 	    cd /tmp/FootOnsat-main/Download/Style-Icons-Files
 	    tar -xzf "${FILE_NAME}" >/dev/null 2>&1
 	    cp -r assets "$PLUGIN_PATH" >/dev/null 2>&1

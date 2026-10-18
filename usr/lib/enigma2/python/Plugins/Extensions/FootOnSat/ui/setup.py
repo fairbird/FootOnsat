@@ -248,6 +248,25 @@ else:
 		("5002", "%s" % title30)
 	])
 
+PLUGIN_INTERNAL_PATH = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
+CURRENT_REAL_PATH = os.path.realpath(PLUGIN_INTERNAL_PATH)
+
+install_choices = [("internal", "%s" % title323)]
+for part in mounted_partitions:
+	try:
+		mountpoint = part.mountpoint
+		if mountpoint and mountpoint not in device_paths:
+			if os.path.isdir(mountpoint):
+				install_choices.append((join(mountpoint, "FootOnSat"), join(mountpoint, "FootOnSat")))
+	except Exception:
+		pass
+
+if CURRENT_REAL_PATH != PLUGIN_INTERNAL_PATH and CURRENT_REAL_PATH not in [c[0] for c in install_choices]:
+	install_choices.append((CURRENT_REAL_PATH, CURRENT_REAL_PATH))
+
+default_path = CURRENT_REAL_PATH if CURRENT_REAL_PATH != PLUGIN_INTERNAL_PATH else "internal"
+config.plugins.FootOnSat.installpath = ConfigSelection(default=default_path, choices=install_choices)
+
 # debug
 debug_Notif = config.plugins.FootOnSat.debug_Notif.value
 debug_Standings = config.plugins.FootOnSat.debug_Standings.value
@@ -333,12 +352,14 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.debug_MatchMedia = config.plugins.FootOnSat.debug_MatchMedia.value
 		self.debug_MatchDetails = config.plugins.FootOnSat.debug_MatchDetails.value
 		self.debug_MatchStatistics = config.plugins.FootOnSat.debug_MatchStatistics.value
+		self.old_installpath = config.plugins.FootOnSat.installpath.value
 		self.getToneFile()
 		self.createSetup()
 
 	def createSetup(self):
 		self.list = []
 		self.list.append(getConfigListEntry(title91))
+		self.list.append(getConfigListEntry(_("%s") % title321, config.plugins.FootOnSat.installpath, _("%s") % title322))
 		self.list.append(getConfigListEntry(_("%s") % title31, config.plugins.FootOnSat.lang, _("%s") % title32))
 		self.list.append(getConfigListEntry(_("%s") % title33, config.plugins.FootOnSat.showplugin, _("%s") % title34))
 		self.list.append(getConfigListEntry(_("%s") % title301, config.plugins.FootOnSat.keyname, _("%s") % title302))
@@ -693,7 +714,85 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			}
 			if config.plugins.FootOnSat.icons.value in urls:
 				os.system("wget -q -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/%s | tar -xz -C %s" % (urls[config.plugins.FootOnSat.icons.value], extract_path))
-		
+
+		path_changed = (self.old_installpath != config.plugins.FootOnSat.installpath.value)
+		if path_changed:
+			import os
+			import shutil
+			from twisted.internet.threads import deferToThread
+			
+			plugin_path = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
+			old_real_path = os.path.realpath(plugin_path)
+			new_base = config.plugins.FootOnSat.installpath.value
+			
+			if new_base == "internal" or new_base == "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat":
+				new_real_path = plugin_path
+			else:
+				if new_base.lower().endswith("footonsat"):
+					new_real_path = new_base[:-9] + "FootOnSat"
+				else:
+					new_real_path = os.path.join(new_base, "FootOnSat")
+			
+			self.wait_dialog = self.session.open(MessageBox, _("Wait while moving the plugin to:\n%s" % new_real_path), MessageBox.TYPE_INFO, enable_input=False)
+			
+			def move_plugin():
+				try:
+					if old_real_path == new_real_path:
+						return True
+						
+					if os.path.islink(plugin_path):
+						os.unlink(plugin_path)
+						
+					if new_real_path != plugin_path:
+						new_base_dir = os.path.dirname(new_real_path)
+						if not os.path.exists(new_base_dir):
+							os.makedirs(new_base_dir)
+						if os.path.exists(new_real_path):
+							shutil.rmtree(new_real_path)
+							
+						shutil.copytree(old_real_path, new_real_path)
+						
+						if os.path.exists(plugin_path) and not os.path.islink(plugin_path):
+							shutil.rmtree(plugin_path)
+							
+						os.symlink(new_real_path, plugin_path)
+						
+						if old_real_path != plugin_path and os.path.exists(old_real_path):
+							shutil.rmtree(old_real_path)
+					else:
+						if not os.path.exists(plugin_path):
+							os.makedirs(plugin_path)
+							
+						for item in os.listdir(old_real_path):
+							s = os.path.join(old_real_path, item)
+							d = os.path.join(plugin_path, item)
+							if os.path.isdir(s):
+								shutil.copytree(s, d)
+							else:
+								shutil.copy2(s, d)
+								
+						if os.path.exists(old_real_path) and old_real_path != plugin_path:
+							shutil.rmtree(old_real_path)
+							
+					return True
+				except Exception as e:
+					print("[FootOnSat] Move Error: %s" % str(e))
+					return False
+					
+			def move_finished(result):
+				if hasattr(self, 'wait_dialog') and self.wait_dialog:
+					self.wait_dialog.close()
+				if result:
+					for x in self["config"].list:
+						if len(x) > 1:
+							x[1].save()
+					configfile.save()
+					self.close("exit_launcher")
+				else:
+					self.session.open(MessageBox, _("Failed to move the plugin! Please check the logs."), MessageBox.TYPE_ERROR)
+			deferToThread(move_plugin).addCallback(move_finished)
+			return
+			
 		# 4. Save all config items
 		for x in self["config"].list:
 			if len(x) > 1:

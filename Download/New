@@ -1,1 +1,2 @@
-- Add new source (flashscore) for result and data
+- Add new option (Plugin Path)
+(Select where to install the plugin (Internal or External))
