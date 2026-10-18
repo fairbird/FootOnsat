@@ -126,7 +126,7 @@ log_urls = {
 }
 
 SPORTS = {
-	"basketball", "nba", "hockey", "nfl"
+	"basketball", "euroleague", "nba", "hockey", "nfl"
 }
 FOOTBALL = {
 	"championsleague", "europaleague", "ConferenceLeague", "premierleague",
@@ -428,7 +428,7 @@ class FootOnSat(Screen):
 				if not fileExists(flagTeam2):
 					flagTeam2 = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/flags/default.png")
 				if not fileExists(teamlog1):
-					if self.link in ("basketball", "nba"):
+					if self.link in ("basketball", "euroleague", "nba"):
 						teamlog1 = basketdefault
 					elif self.link in ("hockey"):
 						teamlog1 = hockeydefault
@@ -437,7 +437,7 @@ class FootOnSat(Screen):
 					else:
 						teamlog1 = footdefault
 				if not fileExists(teamlog2):
-					if self.link in ("basketball", "nba"):
+					if self.link in ("basketball", "euroleague", "nba"):
 						teamlog2 = basketdefault
 					elif self.link in ("hockey"):
 						teamlog2 = hockeydefault
@@ -474,7 +474,7 @@ class FootOnSat(Screen):
 						else:
 							res.append(MultiContentEntryText(pos=(482, 60), size=(50, 50), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_LEFT, text=str(team1_score), color=LIVECOLORE))
 				# Place a checkmark (-) between the results in the section FOOTBALL
-				if (team1_score != "" or match_status != "") and self.link in FOOTBALL:
+				if (team1_score != "" or match_status != "") and self.link in FOOTBALL and self.link not in SPORTS:
 					if isUHD():
 						res.append(MultiContentEntryText(pos=(1050, 120), size=(50, 36), font=0, flags=RT_VALIGN_CENTER | RT_HALIGN_CENTER, text=str("-"), color=LIVECOLORE))
 					else:
@@ -3107,7 +3107,7 @@ class StandingsScreen(Screen):
 		self.league = str(league)
 		self.url = str(url)
 		self.league = str(league).lower()
-		if self.league in ("basketball", "nba", "nfl"):
+		if self.league in ("basketball", "euroleague", "nba", "nfl"):
 			label_text = "Ties" if self.league in ("nfl") else "Streak"
 			self.skin = SKIN_standingsbasketball % label_text
 		else:
@@ -3211,13 +3211,13 @@ class StandingsScreen(Screen):
 					played = str(row.get('matches', 0))
 					wins = str(row.get('wins', 0))
 					losses = str(row.get('losses', 0))
-					if self.league not in ("basketball", "nba"):
+					if self.league not in ("basketball", "euroleague", "nba"):
 						draws = str(row.get('draws', 0)) if self.league not in ("hockey") else str(row.get('overtimeLosses', 0))
 						points = str(row.get('points', 0))
 						goals_scored = str(row.get('scoresFor', 0))
 						goals_conceded = str(row.get('scoresAgainst', 0))
 						goal_diff = str(row.get('scoreDiffFormatted', 0))
-					if self.league in ("basketball", "nba", "nfl"):
+					if self.league in ("basketball", "euroleague", "nba", "nfl"):
 						# Calculate streak
 						streak_val = row.get('streak', 0)
 						if isinstance(streak_val, int):
@@ -3595,7 +3595,7 @@ class StandingsScreen(Screen):
 				continue
 
 
-			if self.league in ("basketball", "nba", "nfl"):
+			if self.league in ("basketball", "euroleague", "nba", "nfl"):
 				wins = standing[3]
 				losses = standing[4]
 				raw_diff = standing[6]
@@ -3642,7 +3642,7 @@ class StandingsScreen(Screen):
 
 			# logo using file path
 			flagteam_png = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/standings/{}.png".format(sanitize_team_name(team)))
-			if self.league in ("basketball", "nba", "nfl"): # This for basketball, nba and nfl option codes only
+			if self.league in ("basketball", "euroleague", "nba", "nfl"): # This for basketball, nba and nfl option codes only
 				if isFHD():
 					if exists(flagteam_png):
 						if PY3:

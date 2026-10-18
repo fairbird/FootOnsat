@@ -48,6 +48,9 @@ ESPN_SLUGS = {
 	"championsleague": "uefa.champions",
 	"europaleague": "uefa.europa",
 	"conferenceleague": "uefa.europa.conf",
+	"euroleague": "basketball/euroleague",
+	"basketball": "basketball/euroleague",
+	"nba": "basketball/nba",
 	"premierleague": "eng.1",
 	"championship": "eng.2",
 	"seriea": "ita.1",
@@ -134,6 +137,8 @@ def _curl_ss(url, timeout=25):
 
 
 def is_standings_available(source, link):
+	if link.lower() in ("basketball", "euroleague"):
+		return True
 	if source == "espn":
 		return link.lower() in ESPN_SLUGS
 	if source == "sportscore":
@@ -144,12 +149,13 @@ def is_standings_available(source, link):
 
 
 def get_standings_url(source, link):
+	if link.lower() in ("basketball", "euroleague"):
+		return json_urls.get("basketball")
 	if source == "espn":
 		return link if link.lower() in ESPN_SLUGS else None
 	if source == "sportscore":
 		return None
 	return json_urls.get(link)
-
 
 FS_BASE = "https://global.flashscore.ninja/2/x/feed/"
 FS_HEADERS = {
@@ -280,7 +286,13 @@ class ESPNStandings(StandingsFetcherBase):
 			self.screen.standings_data = []
 			self.screen.display_standings()
 			return
-		url = "https://site.api.espn.com/apis/v2/sports/soccer/{}/standings".format(slug)
+		sport_type = "soccer"
+		if slug.startswith("basketball/"):
+			sport_type = "basketball"
+			slug = slug.replace("basketball/", "")
+		url = "https://site.api.espn.com/apis/v2/sports/{}/{}/standings".format(sport_type, slug)
+		if slug == "euroleague":
+			url += "?season=2026"
 		if debug_Standings:
 			logdata("StandingsScreen", "ESPN API URL: %s" % url)
 		def _fetch():
@@ -398,6 +410,8 @@ class SportScoreStandings(StandingsFetcherBase):
 
 
 def get_standings_fetcher(source, screen, league, url):
+	if league.lower() in ("basketball", "euroleague"):
+		return SofaScoreStandings(screen, league, url)
 	if source == "espn":
 		return ESPNStandings(screen, league, url)
 	if source == "sportscore":
