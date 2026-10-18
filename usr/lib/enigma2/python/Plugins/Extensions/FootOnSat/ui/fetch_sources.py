@@ -546,14 +546,14 @@ class LiveFetchBase(object):
 				elif stype == 'interrupted':
 					status = title299
 				elif stype == 'inprogress':
-					m = re.search(r'(\d{1,3}[\'+]*\+?\d*)\s*\'', descr)
-					if m:
+					m = re.search(r'(\d{1,3}[\'+]*\+?\d*)', descr)
+					if m and descr.replace("'", "").strip().isdigit():
 						status = '{0} min'.format(m.group(1))
-					elif 'extra time' in descr.lower():
-						status = title153
-					elif 'penalties' in descr.lower():
-						status = title154
-					elif descr.lower() in ['half time', 'halftime']:
+					elif descr.lower() in ['extra time', 'et']:
+						status = title216
+					elif 'penalties' in descr.lower() or descr.lower() == 'pen':
+						status = title217
+					elif descr.lower() in ['half time', 'halftime', 'ht']:
 						status = title155
 					elif 'delayed' in descr.lower():
 						status = title156
@@ -1373,7 +1373,7 @@ class FlashscoreFetcher(LiveFetchBase):
 		t = str(txt or '').strip().lower()
 		if s == '3' or 'finished' in t or t == 'ft':
 			return 'finished', title125
-		if s == '2' or "'" in t or 'half' in t or 'live' in t:
+		if s == '2' or "'" in t or 'half' in t or 'live' in t or t == 'ht' or t == 'et' or t == 'pen':
 			return 'inprogress', txt or ''
 		if 'postpon' in t:
 			return 'postponed', title152
