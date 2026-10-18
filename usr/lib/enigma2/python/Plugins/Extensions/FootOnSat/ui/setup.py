@@ -1,5 +1,20 @@
 # -*- coding: utf-8 -*-
+import os
+import re
+import json
+import sys
+import io
+import shutil
+import importlib
+from os.path import join, exists, splitext, isfile
+from twisted.web.client import getPage
+from twisted.internet.ssl import ClientContextFactory
+from twisted.internet._sslverify import ClientTLSOptions
+from twisted.python.failure import Failure
+from twisted.internet.threads import deferToThread
+
 from enigma import getDesktop, eActionMap, eRCInput
+from keyids import KEYIDS
 from Screens.Screen import Screen
 from Screens.Standby import TryQuitMainloop
 from Screens.MessageBox import MessageBox
@@ -18,14 +33,7 @@ from Tools.LoadPixmap import LoadPixmap
 from Tools.Directories import resolveFilename, SCOPE_PLUGINS
 from Plugins.Extensions.FootOnSat.ui.Console import Console
 from Plugins.Extensions.FootOnSat.component.configs import ConfigDictionarySet
-from os.path import join, exists, splitext, isfile
-import re, os, json, sys, io
 from .compat import *
-import importlib
-from twisted.web.client import getPage
-from twisted.internet.ssl import ClientContextFactory
-from twisted.internet._sslverify import ClientTLSOptions
-from twisted.python.failure import Failure
 
 
 def logdata(label_name = "", data = None):
@@ -716,11 +724,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 				os.system("wget -q -O - https://github.com/fairbird/FootOnsat/raw/refs/heads/main/Download/Style-Icons-Files/%s | tar -xz -C %s" % (urls[config.plugins.FootOnSat.icons.value], extract_path))
 
 		path_changed = (self.old_installpath != config.plugins.FootOnSat.installpath.value)
-		if path_changed:
-			import os
-			import shutil
-			from twisted.internet.threads import deferToThread
-			
+		if path_changed:			
 			plugin_path = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
 			old_real_path = os.path.realpath(plugin_path)
 			new_base = config.plugins.FootOnSat.installpath.value
@@ -1009,7 +1013,6 @@ class KeyCaptureScreen(Screen):
 
 	def resolveKeyName(self, key):
 		try:
-			from keyids import KEYIDS
 			for name, k_id in KEYIDS.items():
 				if k_id == key:
 					return name
