@@ -546,8 +546,8 @@ class LiveFetchBase(object):
 				elif stype == 'interrupted':
 					status = title299
 				elif stype == 'inprogress':
-					m = re.search(r'(\d{1,3}[\'+]*\+?\d*)', descr)
-					if m and descr.replace("'", "").strip().isdigit():
+					m = re.search(r'(\d{1,3}(?:\+\d+)?)', descr)
+					if m:
 						status = '{0} min'.format(m.group(1))
 					elif descr.lower() in ['extra time', 'et']:
 						status = title216
