@@ -1167,7 +1167,8 @@ class FootOnSat(Screen):
 #				if debug_Fetch_Live: logdata("FootOnSat", "DEBUG: partial matched -> %s with banner %s" % (c['label'], c['banner']))
 				return resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/FHD/{}.png".format(c['banner']))
 #		if debug_Fetch_Live: logdata("FootOnSat", "DEBUG: no match found, using random default")
-		banner = random.choice(['default', 'default1', 'default2', 'default3'])
+#		banner = random.choice(['default', 'default1', 'default2', 'default3'])
+		banner = 'default'
 		return resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/compet/default/FHD/{}.png".format(banner))
 
 	def callAPI(self):
