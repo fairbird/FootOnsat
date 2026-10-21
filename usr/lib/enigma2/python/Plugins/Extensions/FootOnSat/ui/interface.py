@@ -2032,14 +2032,17 @@ class MatchDetailsScreen(Screen):
 			inc_js, ev_js = None, None
 		if ev_js and 'event' in ev_js:
 			ev = ev_js['event']
-			if self.passed_home_score != "" and self.passed_away_score != "":
+			pen_h = ev.get('homeScore', {}).get('penalties')
+			pen_a = ev.get('awayScore', {}).get('penalties')
+			if pen_h is not None and pen_a is not None:
+				h = ev.get('homeScore', {}).get('display', ev.get('homeScore', {}).get('current', 0))
+				a = ev.get('awayScore', {}).get('display', ev.get('awayScore', {}).get('current', 0))
+			elif self.passed_home_score != "" and self.passed_away_score != "":
 				h = self.passed_home_score
 				a = self.passed_away_score
 			else:
 				h = ev.get('homeScore', {}).get('display', ev.get('homeScore', {}).get('current', 0))
 				a = ev.get('awayScore', {}).get('display', ev.get('awayScore', {}).get('current', 0))
-			pen_h = ev.get('homeScore', {}).get('penalties')
-			pen_a = ev.get('awayScore', {}).get('penalties')
 			if debug_MatchDetails: logdata("MatchDetails", "DEBUG: Score: %s - %s | Penalty: %s - %s" % (h, a, pen_h, pen_a))
 			if pen_h is not None and pen_a is not None:
 				self["score"].setText("%s(%s)-(%s)%s" % (h, pen_h, pen_a, a))
@@ -2119,7 +2122,7 @@ class MatchDetailsScreen(Screen):
 				if inc.get('time', 0) < 0 or inc.get('isBenchPlayer', False):
 					continue
 				itype = inc.get('incidentType')
-				if itype not in ('goal', 'card', 'substitution', 'penaltyShootout', 'var'): continue
+				if itype not in ('goal', 'card', 'substitution', 'penaltyShootout', 'var', 'period'): continue
 				if itype == 'penaltyShootout':
 					penalty_incidents.append(inc)
 				else:
@@ -2145,13 +2148,13 @@ class MatchDetailsScreen(Screen):
 						color = 0xFF0000
 						icon_name = "owngoal.png"
 					else:
-						p_name = str(inc.get('player', {}).get('name', 'Goal'))
+						p_name = str(inc.get('playerName') or inc.get('player', {}).get('name', 'Goal'))
 						text = (p_name + " (Pen.)") if is_pen else p_name
 						color = 0x00FF00
 						icon_name = "goal.png"
 				elif itype == 'card':
 					ic_class = str(inc.get('incidentClass', '')).lower()
-					p_name = str(inc.get('player', {}).get('name', 'unknown'))
+					p_name = str(inc.get('playerName') or inc.get('player', {}).get('name', 'unknown'))
 					p_id = (p_name, inc.get('isHome', True))
 					text = p_name
 					if 'yellow' in ic_class:
@@ -2177,6 +2180,22 @@ class MatchDetailsScreen(Screen):
 					text = "%s - %s" % (p_name, v_reason) if p_name else v_reason
 					color = 0xFFAA00
 					icon_name = "var.png"
+				elif itype == 'period':
+					ptext = str(inc.get('text', ''))
+					if ptext == 'PEN' or inc.get('period') == 'penalties':
+						text = "Penalty Shootout: %s - %s" % (inc.get('homeScore', ''), inc.get('awayScore', ''))
+						color = 0xFFFF00
+						icon_name = ""
+					elif ptext == 'FT':
+						text = "Full Time"
+						color = 0xAAAAAA
+						icon_name = ""
+					elif ptext == 'HT':
+						text = "Half Time"
+						color = 0xAAAAAA
+						icon_name = ""
+					else:
+						continue
 				elif itype == 'penaltyShootout':
 					ic_class = str(inc.get('incidentClass', '')).lower()
 					is_scored = 'missed' not in ic_class and 'save' not in ic_class and 'post' not in ic_class
@@ -2193,11 +2212,14 @@ class MatchDetailsScreen(Screen):
 					color = 0x00FF00 if is_scored else 0xFF0000
 					icon_name = "pen_scored.png" if is_scored else "pen_missed.png"
 					itime = "PEN"
-				if itype != 'separator_line':
-					itime = str(inc.get('time_display', inc.get('time', ''))) + "'"
+				if itype not in ('separator_line', 'period'):
+					if itype == 'penaltyShootout':
+						itime = "PEN"
+					else:
+						itime = str(inc.get('time_display', inc.get('time', ''))) + "'"
 				# --- Incident List Row Information ---
 				res = [MultiContentEntryText()]
-				if itype == 'separator_line':
+				if itype in ('separator_line', 'period'):
 					sep_w = 2462 if isUHD() else 1750
 					sep_x = 20 if isUHD() else 0
 					sep_y = 11 if isUHD() else 0

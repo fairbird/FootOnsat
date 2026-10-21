@@ -116,7 +116,7 @@ class LiveFetchBase(object):
 		if getattr(self.screen, 'link', None):
 			try:
 				from Components.config import config as _cfg
-				if _cfg.plugins.FootOnSat.source.value == "sportscore":
+				if _cfg.plugins.FootOnSat.source.value in ("sportscore", "espn"):
 					THRESHOLD = 0.75
 			except Exception:
 				pass
@@ -406,7 +406,10 @@ class LiveFetchBase(object):
 		if live_matches is None:
 			return
 		if not live_matches:
-			self.screen.matches = [list(m) for m in self.screen.matches]
+			matches_list = [list(m) for m in self.screen.matches]
+			for m in matches_list:
+				m[5] = m[6] = m[7] = ""
+			self.screen.matches = matches_list
 			try:
 				self.screen.iniMenu()
 			except Exception:
@@ -1338,10 +1341,18 @@ class FlashscoreFetcher(LiveFetchBase):
 		try:
 			home = m.get('CX') or m.get('AE') or 'Unknown Home'
 			away = m.get('AF') or m.get('WU') or 'Unknown Away'
+			if 'Moravce' in home or 'Moravce' in away:
+				logdata("DEBUG_FS_MAIN", "MAIN_LIST MATCH RAW: %s" % str(m))
+			away = m.get('AF') or m.get('WU') or 'Unknown Away'
 			if not isinstance(home, str): home = str(home)
 			if not isinstance(away, str): away = str(away)
-			home_score = m.get('AG', '') or ''
-			away_score = m.get('AH', '') or ''
+			home_score = m.get('AU', '') or m.get('AG', '') or ''
+			away_score = m.get('BD', '') or m.get('AH', '') or ''
+			pen_h = m.get('RPA', '')
+			pen_a = m.get('RPB', '')
+			if pen_h and pen_a:
+				home_score = str(pen_h)
+				away_score = str(pen_a)
 			ts = 0
 			try:
 				_raw_ts = int(m.get('AD', 0) or 0)

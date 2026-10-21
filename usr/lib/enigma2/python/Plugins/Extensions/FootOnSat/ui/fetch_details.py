@@ -409,29 +409,34 @@ class SofaScoreMatchDetails(MatchDetailsFetcherBase):
 		if debug_MatchDetails:
 			logdata("MatchDetails", "URL incidents=%s" % url_incidents)
 			logdata("MatchDetails", "URL event=%s" % url_event)
+
 		def _fetch_details():
-			headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Referer': 'https://www.sofascore.com/', 'Origin': 'https://www.sofascore.com', 'Accept': 'application/json'}
-			r1, r2 = None, None
-			try:
-				res1 = requests.get(url_incidents, headers=headers, timeout=25, verify=False)
-				if res1.status_code == 200: r1 = res1.content
-			except Exception: pass
-			try:
-				res2 = requests.get(url_event, headers=headers, timeout=25, verify=False)
-				if res2.status_code == 200: r2 = res2.content
-			except Exception: pass
+			def _get_data(url):
+				try:
+					out = subprocess.check_output([
+						"/usr/bin/curl_chrome150", "-s", "-L", "-k",
+						"--max-time", "20",
+						"-b", "/tmp/ss_cf_cookies.txt",
+						"-H", "X-Requested-With: XMLHttpRequest",
+						"-H", "Accept: application/json, text/plain, */*",
+						"-H", "Referer: https://www.sofascore.com/",
+						"-H", "Origin: https://www.sofascore.com",
+						url
+					], stderr=subprocess.PIPE)
+					if out:
+						return json.loads(out.decode('utf-8', 'ignore'))
+				except Exception:
+					pass
+				return None
+			
+			r1 = _get_data(url_incidents)
+			r2 = _get_data(url_event)
+			
 			parsed = []
-			if r1:
-				try:
-					parsed.append(json.loads(r1.decode('utf-8')))
-				except Exception:
-					pass
-			if r2:
-				try:
-					parsed.append(json.loads(r2.decode('utf-8')))
-				except Exception:
-					pass
+			if r1: parsed.append(r1)
+			if r2: parsed.append(r2)
 			return parsed if parsed else None
+
 		d = deferToThread(_fetch_details)
 		d.addCallback(self.screen.process_data)
 
@@ -1106,6 +1111,10 @@ class FlashscoreMatchDetails(MatchDetailsFetcherBase):
 		prev_away = 0
 		final_home = 0
 		final_away = 0
+		pen_home = None
+		pen_away = None
+		is_shootout = False
+		processed_pens = set()
 
 		for block in blocks:
 			context = {}
@@ -1128,11 +1137,24 @@ class FlashscoreMatchDetails(MatchDetailsFetcherBase):
 				entries.append(current)
 
 			if 'IG' in context:
-				try: final_home = int(context['IG'])
+				try:
+					val = int(context['IG'])
+					if 'penalt' in str(context.get('AC', '')).lower() or is_shootout:
+						pen_home = val
+					else:
+						final_home = val
 				except Exception: pass
 			if 'IH' in context:
-				try: final_away = int(context['IH'])
+				try:
+					val = int(context['IH'])
+					if 'penalt' in str(context.get('AC', '')).lower() or is_shootout:
+						pen_away = val
+					else:
+						final_away = val
 				except Exception: pass
+
+			if str(context.get('AC', '')).lower() in ('penalties', 'penalty shootout'):
+				is_shootout = True
 
 			if not entries:
 				continue
@@ -1154,6 +1176,8 @@ class FlashscoreMatchDetails(MatchDetailsFetcherBase):
 				ik_low = ik.lower()
 				ict_low = (e.get('ICT', '') or '').strip().lower()
 				ie = e.get('IE', '')
+				if 'pen' in ik_low or 'pen' in ict_low:
+					logdata("DEBUG_FS_PEN", "PENALTY RAW ENTRY: %s" % str(e))
 
 				if ie == '8' or 'assistance' in ik_low:
 					continue
@@ -1165,6 +1189,31 @@ class FlashscoreMatchDetails(MatchDetailsFetcherBase):
 					continue
 				if 'disallowed' in ik_low or 'disallowed' in ict_low or 'var' in ik_low:
 					disallowed_entry = e
+					continue
+				if is_shootout and ('penalty' in ik_low or 'goal' in ik_low or 'missed' in ik_low or 'saved' in ik_low) and 'awarded' not in ik_low:
+					is_missed = 'miss' in ik_low or 'sav' in ik_low or 'miss' in ict_low or 'sav' in ict_low or 'miss' in str(e.get('IL', '')).lower()
+					side = ctx_is_home if ctx_is_home is not None else True
+					p_key = (e.get('IF', ''), side)
+					if p_key not in processed_pens:
+						processed_pens.add(p_key)
+						incidents.append({
+							"incidentType": "penaltyShootout",
+							"incidentClass": "missed" if is_missed else "scored",
+							"isHome": side,
+							"time": 0,
+							"player": {"name": e.get('IF', '')}
+						})
+					continue
+				if is_shootout and ('penalty' in ik_low or 'goal' in ik_low or 'missed' in ik_low or 'saved' in ik_low) and 'awarded' not in ik_low:
+					is_missed = 'miss' in ik_low or 'sav' in ik_low or 'miss' in ict_low or 'sav' in ict_low or 'miss' in str(e.get('IL', '')).lower()
+					side = ctx_is_home if ctx_is_home is not None else True
+					incidents.append({
+						"incidentType": "penaltyShootout",
+						"incidentClass": "missed" if is_missed else "scored",
+						"isHome": side,
+						"time": 0,
+						"player": {"name": e.get('IF', '')}
+					})
 					continue
 				if 'goal' in ik_low:
 					goal_entries.append(e)
@@ -1262,10 +1311,11 @@ class FlashscoreMatchDetails(MatchDetailsFetcherBase):
 			final_home = prev_home
 			final_away = prev_away
 
+		has_pen = any(i.get('incidentType') == 'penaltyShootout' for i in incidents)
 		ev_js = {"event": {
-			"homeScore": {"current": final_home, "display": final_home},
-			"awayScore": {"current": final_away, "display": final_away},
-			"status": {"description": ""}
+			"homeScore": {"current": final_home, "display": final_home, "penalties": pen_home},
+			"awayScore": {"current": final_away, "display": final_away, "penalties": pen_away},
+			"status": {"description": "Ended Match - Penalties" if pen_home is not None else ""}
 		}}
 
 		if debug_MatchDetails:
