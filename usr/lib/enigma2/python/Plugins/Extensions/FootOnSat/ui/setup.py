@@ -209,10 +209,10 @@ config.plugins.FootOnSat.livescoresearchlevel = ConfigSelection(default = "1", c
 	("1", "%s" % title308),
 	("2", "%s" % title309)
 	])
-config.plugins.FootOnSat.source = ConfigSelection(default = "sofascore", choices = [
+config.plugins.FootOnSat.source = ConfigSelection(default = "flashscore", choices = [
 	("sofascore", "%s" % title314),
-	("espn", "%s" % title316),
 	("flashscore", "%s" % title320),
+	("espn", "%s" % title316),
 #	("sportscore", "%s" % title315),
 	])
 config.plugins.FootOnSat.livescoresections = ConfigSelection(default = "1", choices = [

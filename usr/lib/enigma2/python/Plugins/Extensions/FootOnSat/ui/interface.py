@@ -1020,7 +1020,9 @@ class FootOnSat(Screen):
 					home_full, 
 					away_full, 
 					current_match[3], 
-					current_match[4])
+					current_match[4],
+					current_match[5],
+					current_match[6])
 				return
 			else:
 				src = config.plugins.FootOnSat.source.value
@@ -1930,11 +1932,13 @@ class TeamListScreen(Screen):
 
 
 class MatchDetailsScreen(Screen):
-	def __init__(self, session, event_id, match_name, home_full, away_full, home_country, away_country):
+	def __init__(self, session, event_id, match_name, home_full, away_full, home_country, away_country, home_score="", away_score=""):
 		self.session = session
 		Screen.__init__(self, session)
 		self.skin = SKIN_MatchDetails
 		self.event_id = str(event_id)
+		self.passed_home_score = str(home_score)
+		self.passed_away_score = str(away_score)
 		if debug_MatchDetails: logdata("MatchDetails", "Initializing MatchDetails for event_id: %s, match_name: %s, home_full: %s, away_full: %s, home_country: %s, away_country: %s" % (event_id, match_name, home_full, away_full, home_country, away_country))
 		self["title"] = Label(str(match_name) + " - " + title171)
 		self["home_name_big"] = Label(str(home_full))
@@ -2028,8 +2032,12 @@ class MatchDetailsScreen(Screen):
 			inc_js, ev_js = None, None
 		if ev_js and 'event' in ev_js:
 			ev = ev_js['event']
-			h = ev.get('homeScore', {}).get('display', ev.get('homeScore', {}).get('current', 0))
-			a = ev.get('awayScore', {}).get('display', ev.get('awayScore', {}).get('current', 0))
+			if self.passed_home_score != "" and self.passed_away_score != "":
+				h = self.passed_home_score
+				a = self.passed_away_score
+			else:
+				h = ev.get('homeScore', {}).get('display', ev.get('homeScore', {}).get('current', 0))
+				a = ev.get('awayScore', {}).get('display', ev.get('awayScore', {}).get('current', 0))
 			pen_h = ev.get('homeScore', {}).get('penalties')
 			pen_a = ev.get('awayScore', {}).get('penalties')
 			if debug_MatchDetails: logdata("MatchDetails", "DEBUG: Score: %s - %s | Penalty: %s - %s" % (h, a, pen_h, pen_a))

@@ -17,59 +17,6 @@ from .setup import *
 import os
 
 
-SS_COOKIE_MAX_AGE = 1800
-
-
-def _get_ss_cookie_file():
-	try:
-		data_dir, _, _ = get_data_paths()
-		return os.path.join(data_dir, "sofa_cookies.txt")
-	except Exception:
-		return "/tmp/footonsat_ss_cookies.txt"
-
-
-def _load_ss_cookies(session):
-	cookie_file = _get_ss_cookie_file()
-	if not os.path.exists(cookie_file):
-		return
-	try:
-		jar = compat_MozillaCookieJar()
-		jar.load(cookie_file, ignore_discard=True, ignore_expires=True)
-		count = 0
-		for c in jar:
-			session.cookies.set_cookie(c)
-			count += 1
-		if debug_Fetch_Live and count > 0:
-			logdata("fetch_live_results", "Loaded %d cookies from %s" % (count, cookie_file))
-	except Exception as e:
-		if debug_Fetch_Live:
-			logdata("fetch_live_results", "Cookie load error: %s" % str(e)[:100])
-
-
-def _save_ss_cookies(session):
-	cookie_file = _get_ss_cookie_file()
-	try:
-		try:
-			d = os.path.dirname(cookie_file)
-			if d and not os.path.exists(d):
-				os.makedirs(d)
-		except Exception:
-			pass
-		jar = compat_MozillaCookieJar()
-		count = 0
-		for c in session.cookies:
-			jar.set_cookie(c)
-			count += 1
-		jar.save(cookie_file, ignore_discard=True, ignore_expires=True)
-		if debug_Fetch_Live and count > 0:
-			logdata("fetch_live_results", "Saved %d cookies to %s" % (count, cookie_file))
-		elif debug_Fetch_Live:
-			logdata("fetch_live_results", "No cookies to save (session empty)")
-	except Exception as e:
-		if debug_Fetch_Live:
-			logdata("fetch_live_results", "Cookie save error: %s" % str(e)[:100])
-
-
 # --- PY2 SSL fix: force weak ciphers globally (needed by SofaScore) ---
 if not PY3:
 	try:
@@ -546,29 +493,33 @@ class LiveFetchBase(object):
 				elif stype == 'interrupted':
 					status = title299
 				elif stype == 'inprogress':
-					m = re.search(r'(\d{1,3}(?:\+\d+)?)', descr)
-					if m:
-						status = '{0} min'.format(m.group(1))
-					elif descr.lower() in ['extra time', 'et']:
+					d_low = descr.lower()
+					if d_low in ['extra time', 'et']:
 						status = title216
-					elif 'penalties' in descr.lower() or descr.lower() == 'pen':
+					elif 'penalties' in d_low or d_low == 'pen':
 						status = title217
-					elif descr.lower() in ['half time', 'halftime', 'ht']:
+					elif d_low in ['half time', 'halftime', 'ht']:
 						status = title155
-					elif 'delayed' in descr.lower():
+					elif 'delayed' in d_low:
 						status = title156
+					elif "'" in descr or 'min' in d_low or descr.isdigit():
+						m = re.search(r'(\d{1,3}(?:\+\d+)?)', descr)
+						if m:
+							status = '{0} min'.format(m.group(1))
+						else:
+							status = descr
 					else:
 						try:
 							status_time_ts = ev.get('statusTime', {}).get('timestamp')
 							if status_time_ts:
 								minutes_diff = int((datetime.now() - datetime.fromtimestamp(status_time_ts)).total_seconds() // 60)
-								if descr.lower() == '2nd half':
+								if '2nd half' in d_low:
 									minutes_diff += 45
 								status = '{0} min'.format(minutes_diff)
 							else:
-								status = ''
+								status = descr
 						except Exception:
-							status = ''
+							status = descr
 
 				if match_dt > now + timedelta(minutes=10) and stype not in ['inprogress', 'canceled', 'postponed', 'afterextra', 'penaltyshootout', 'interrupted']:
 					h_score = a_score = ''
@@ -1407,6 +1358,22 @@ class FlashscoreFetcher(LiveFetchBase):
 			league = m.get('ZA', '') or m.get('ZY', '') or ''
 			country = m.get('UY', '') or ''
 			match_id = m.get('AA', '')
+			
+			if stage == '2' and status_txt.replace("'", "").isdigit():
+				_raw_ts = int(m.get('AD', 0) or 0)
+				if _raw_ts > 0:
+					_dt_utc = datetime.utcfromtimestamp(_raw_ts)
+					_match_date_str = _dt_utc.strftime("%H:%M - %Y-%m-%d")
+					_local_str = self.screen.getTime(_match_date_str)
+					_local_dt = datetime.strptime(_local_str, "%H:%M - %Y-%m-%d")
+					
+					elapsed = int((datetime.now() - _local_dt).total_seconds() / 60)
+					if elapsed > 45:
+						elapsed -= 15
+					if elapsed < 0:
+						elapsed = 0
+					status_txt = str(elapsed)
+					
 			ss_type, status_long = self._status_from_fs(stage, status_txt)
 			return {
 				"homeTeam": {"name": home, "shortName": home},

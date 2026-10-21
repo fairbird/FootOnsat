@@ -97,45 +97,6 @@ def _make_sofa_session_py2():
 	return session
 
 
-def _ss_ensure_cookies():
-	cookie_file = "/tmp/ss_cf_cookies.txt"
-	if os.path.exists(cookie_file) and (time.time() - os.path.getmtime(cookie_file)) < 1500:
-		return cookie_file
-	try:
-		subprocess.call([
-			"/usr/bin/curl_chrome150", "-s", "-L", "-k",
-			"--max-time", "15",
-			"-c", cookie_file,
-			"https://www.sofascore.com/",
-			"-o", "/dev/null"
-		], stderr=subprocess.PIPE)
-	except Exception:
-		pass
-	return cookie_file
-
-
-def _curl_ss(url, timeout=25):
-	cookie_file = _ss_ensure_cookies()
-	url_str = url.decode('utf-8') if isinstance(url, bytes) else url
-	try:
-		out = subprocess.check_output([
-			"/usr/bin/curl_chrome150", "-s", "-L", "-k",
-			"--max-time", str(timeout),
-			"-b", cookie_file,
-			"-H", "X-Requested-With: XMLHttpRequest",
-			"-H", "Accept: application/json, text/plain, */*",
-			"-H", "Referer: https://www.sofascore.com/",
-			"-H", "Origin: https://www.sofascore.com",
-			url_str
-		], stderr=subprocess.PIPE)
-		if not out:
-			logdata("SofaSession", "DEBUG _curl_ss empty for %s" % url_str[:80])
-		return out
-	except Exception as e:
-		logdata("SofaSession", "DEBUG _curl_ss EXC: %s | url=%s" % (str(e)[:200], url_str[:80]))
-		return None
-
-
 def is_standings_available(source, link):
 	if link.lower() in ("basketball", "euroleague"):
 		return True
@@ -243,7 +204,12 @@ class SofaScoreStandings(StandingsFetcherBase):
 			logdata("StandingsScreen", "Using SofaScore API URL: %s" % api_url)
 		if PY3:
 			def _fetch_standings_py3():
-				return _curl_ss(api_url, timeout=15)
+				headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Referer': 'https://www.sofascore.com/', 'Origin': 'https://www.sofascore.com', 'Accept': 'application/json'}
+				try:
+					r = requests.get(api_url, headers=headers, timeout=15, verify=False)
+					return r.content if r.status_code == 200 else None
+				except Exception:
+					return None
 			d = deferToThread(_fetch_standings_py3)
 			d.addCallback(self.screen._parse_standings_data)
 			d.addErrback(self.screen._standing_error_handler, api_url)
@@ -444,8 +410,16 @@ class SofaScoreMatchDetails(MatchDetailsFetcherBase):
 			logdata("MatchDetails", "URL incidents=%s" % url_incidents)
 			logdata("MatchDetails", "URL event=%s" % url_event)
 		def _fetch_details():
-			r1 = _curl_ss(url_incidents, timeout=25)
-			r2 = _curl_ss(url_event, timeout=25)
+			headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Referer': 'https://www.sofascore.com/', 'Origin': 'https://www.sofascore.com', 'Accept': 'application/json'}
+			r1, r2 = None, None
+			try:
+				res1 = requests.get(url_incidents, headers=headers, timeout=25, verify=False)
+				if res1.status_code == 200: r1 = res1.content
+			except Exception: pass
+			try:
+				res2 = requests.get(url_event, headers=headers, timeout=25, verify=False)
+				if res2.status_code == 200: r2 = res2.content
+			except Exception: pass
 			parsed = []
 			if r1:
 				try:
@@ -474,11 +448,14 @@ class ESPNMatchDetails(MatchDetailsFetcherBase):
 		league_slug, ev_id = self.event_id.split("|", 1)
 
 		summary_url = "https://site.web.api.espn.com/apis/site/v2/sports/soccer/{}/summary?event={}".format(league_slug, ev_id)
-		plays_url = "https://sports.core.api.espn.com/v2/sports/soccer/leagues/{}/events/{}/competitions/{}/plays?limit=1000".format(league_slug, ev_id, ev_id)
+		plays_url = None
+		if league_slug != "all":
+			plays_url = "https://sports.core.api.espn.com/v2/sports/soccer/leagues/{}/events/{}/competitions/{}/plays?limit=1000".format(league_slug, ev_id, ev_id)
 
 		if debug_MatchDetails:
 			logdata("MatchDetails", "ESPN summary URL=%s" % summary_url)
-			logdata("MatchDetails", "ESPN plays URL=%s" % plays_url)
+			if plays_url:
+				logdata("MatchDetails", "ESPN plays URL=%s" % plays_url)
 
 		def _fetch_all():
 			results = {"summary": None, "plays": None}
@@ -492,34 +469,36 @@ class ESPNMatchDetails(MatchDetailsFetcherBase):
 			except Exception as e:
 				if debug_MatchDetails:
 					logdata("MatchDetails", "ESPN summary fetch error: %s" % str(e)[:200])
-			try:
-				all_items = []
-				page = 1
-				while page <= 20:
-					page_url = plays_url + "&page=" + str(page)
-					r = requests.get(page_url, timeout=15, verify=False, headers={
-						'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-						'Accept': 'application/json',
-					})
-					if r.status_code != 200:
+					
+			if plays_url:
+				try:
+					all_items = []
+					page = 1
+					while page <= 20:
+						page_url = plays_url + "&page=" + str(page)
+						r = requests.get(page_url, timeout=15, verify=False, headers={
+							'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+							'Accept': 'application/json',
+						})
+						if r.status_code != 200:
+							if debug_MatchDetails:
+								logdata("MatchDetails", "ESPN plays HTTP status=%d page=%d" % (r.status_code, page))
+							break
+						page_data = r.json()
+						page_items = page_data.get('items', []) or []
 						if debug_MatchDetails:
-							logdata("MatchDetails", "ESPN plays HTTP status=%d page=%d" % (r.status_code, page))
-						break
-					page_data = r.json()
-					page_items = page_data.get('items', []) or []
+							logdata("MatchDetails", "ESPN plays page=%d items=%d pageCount=%s" % (page, len(page_items), page_data.get('pageCount', '?')))
+						if not page_items:
+							break
+						all_items.extend(page_items)
+						page_count = page_data.get('pageCount', 1) or 1
+						if page >= page_count:
+							break
+						page += 1
+					results['plays'] = json.dumps({"items": all_items}).encode('utf-8')
+				except Exception as e:
 					if debug_MatchDetails:
-						logdata("MatchDetails", "ESPN plays page=%d items=%d pageCount=%s" % (page, len(page_items), page_data.get('pageCount', '?')))
-					if not page_items:
-						break
-					all_items.extend(page_items)
-					page_count = page_data.get('pageCount', 1) or 1
-					if page >= page_count:
-						break
-					page += 1
-				results['plays'] = json.dumps({"items": all_items}).encode('utf-8')
-			except Exception as e:
-				if debug_MatchDetails:
-					logdata("MatchDetails", "ESPN plays fetch error: %s" % str(e)[:200])
+						logdata("MatchDetails", "ESPN plays fetch error: %s" % str(e)[:200])
 			return results
 
 		d = deferToThread(_fetch_all)
@@ -551,6 +530,11 @@ class ESPNMatchDetails(MatchDetailsFetcherBase):
 				logdata("MatchDetails", "ESPN summary JSON error: %s" % str(e))
 			self.screen.process_data(None)
 			return
+
+		if not plays_raw:
+			plays_list = data.get("plays", []) or data.get("keyEvents", []) or []
+			if plays_list:
+				plays_raw = json.dumps({"items": plays_list}).encode('utf-8')
 
 		if debug_MatchDetails:
 			logdata("MatchDetails", "ESPN summary loaded, plays_raw=%s" % ("yes" if plays_raw else "no"))
@@ -607,6 +591,10 @@ class ESPNMatchDetails(MatchDetailsFetcherBase):
 						team_obj = play.get('team') or {}
 						if isinstance(team_obj, dict):
 							team_ref = team_obj.get('$ref', '')
+							if not team_ref:
+								team_id = team_obj.get('id')
+								if team_id:
+									team_ref = "/teams/" + str(team_id)
 						is_home = True
 						if team_ref and home_team_id:
 							tid_match = re.search(r'/teams/(\d+)', team_ref)
@@ -779,12 +767,13 @@ class SofaScoreMatchStatistics(MatchStatisticsFetcherBase):
 			'X-Requested-With': 'XMLHttpRequest'
 		}
 		def _fetch_stats():
-			raw = _curl_ss(url, timeout=25)
-			if raw:
-				try:
-					return json.loads(raw.decode('utf-8'))
-				except Exception:
-					return None
+			headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Referer': 'https://www.sofascore.com/', 'Origin': 'https://www.sofascore.com', 'Accept': 'application/json'}
+			try:
+				r = requests.get(url, headers=headers, timeout=25, verify=False)
+				if r.status_code == 200:
+					return r.json()
+			except Exception:
+				pass
 			return None
 		d = deferToThread(_fetch_stats)
 		d.addCallback(self.screen.process_stats)
@@ -986,27 +975,73 @@ class MatchMediaFetcherBase(object):
 
 
 class SofaScoreMatchMedia(MatchMediaFetcherBase):
+	def _search_youtube(self, query, max_results=3):
+		if not PY3 and isinstance(query, unicode):
+			query = query.encode('utf-8', 'ignore')
+		search_url = "https://www.youtube.com/results?search_query=" + compat_quote(query)
+		try:
+			r = requests.get(search_url, timeout=15, verify=False, headers={
+				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+				'Accept-Language': 'en-US,en;q=0.9',
+			})
+			if r.status_code != 200:
+				if debug_MatchMedia:
+					logdata("MatchMedia", "SofaScore YouTube search HTTP %d" % r.status_code)
+				return []
+			html = r.text
+			video_ids = []
+			for m in re.finditer(r'"videoId":"([a-zA-Z0-9_-]{11})"', html):
+				vid = m.group(1)
+				if vid not in video_ids:
+					video_ids.append(vid)
+				if len(video_ids) >= max_results:
+					break
+			media = []
+			for vid in video_ids:
+				media.append({
+					'url': "https://www.youtube.com/watch?v=" + vid,
+					'title': query,
+					'subtitle': '',
+				})
+			if debug_MatchMedia:
+				logdata("MatchMedia", "SofaScore YouTube search found %d videos" % len(media))
+			return media
+		except Exception as e:
+			if debug_MatchMedia:
+				logdata("MatchMedia", "SofaScore YouTube search error: %s" % str(e)[:150])
+			return []
+
 	def fetch(self):
 		if debug_MatchMedia:
 			logdata("MatchMedia", "SofaScore.fetch started | event_id=%s" % self.event_id)
 		url = "https://www.sofascore.com/api/v1/event/{}/media".format(self.event_id)
+		
 		if debug_MatchMedia:
 			logdata("MatchMedia", "URL=%s" % url)
-		headers = {
-			'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36',
-			'Referer': 'https://www.sofascore.com/',
-			'Origin': 'https://www.sofascore.com',
-			'Accept': 'application/json',
-			'X-Requested-With': 'XMLHttpRequest'
-		}
+
+		home_team = getattr(self.screen, 'home_name', '') or ''
+		away_team = getattr(self.screen, 'away_name', '') or ''
+
 		def _fetch_media():
-			raw = _curl_ss(url, timeout=25)
-			if raw:
-				try:
-					return json.loads(raw.decode('utf-8'))
-				except Exception:
-					return None
-			return None
+			sofa_media = []
+			headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Referer': 'https://www.sofascore.com/', 'Origin': 'https://www.sofascore.com', 'Accept': 'application/json'}
+			try:
+				r = requests.get(url, headers=headers, timeout=25, verify=False)
+				if r.status_code == 200:
+					data = r.json()
+					sofa_media = data.get("media", [])
+			except Exception:
+				pass
+			
+			yt_media = []
+			if home_team and away_team:
+				query = "%s vs %s highlights" % (home_team, away_team)
+				if debug_MatchMedia:
+					logdata("MatchMedia", "SofaScore YouTube query: %s" % query)
+				yt_media = self._search_youtube(query)
+				
+			return {"media": sofa_media + yt_media}
+			
 		d = deferToThread(_fetch_media)
 		d.addCallback(self.screen.process_media)
 		d.addErrback(lambda f: self._err(f))
