@@ -370,21 +370,26 @@ class LiveFetchBase(object):
 			m_time_str = self.screen.getTime(str(m[1]))
 			if 'DELAYED' in m_status:
 				m_time_str = "%s - %s" % (title130, m_time_str.split(' - ')[1])
+			
+			# Time-based fallback exactly as in the old interface.py getData
+			try:
+				m_dt = datetime.strptime(m_time_str, "%H:%M - %Y-%m-%d")
+				is_really_finished = datetime.now() > (m_dt + timedelta(minutes=180))
+			except:
+				is_really_finished = False
+				
 			is_term = any(x in m_status for x in ('FINISHED', 'CANCELED', 'POSTPONED'))
 			in_cache = m_name in terminated_cache
+			
 			if getattr(self.screen, 'link', None) == "live":
 				if is_term and not in_cache:
 					terminated_cache[m_name] = m_time_str
 					changed = True
-				if is_term or in_cache:
+				if is_term or in_cache or is_really_finished:
 					continue
 			elif getattr(self.screen, 'link', None) == "end":
-				# Do not re-filter here. The initial "end" filter is already
-				# applied in getData() based on JSON data (stype / match date).
-				# Re-filtering based on live-event status would wrongly remove
-				# matches whose events could not be matched in the current
-				# live data (e.g. leagues not covered by the selected source).
-				pass
+				if not (is_term or in_cache or is_really_finished):
+					continue
 			final_list.append(m)
 		if debug_Fetch_Live:
 			logdata("fetch_live_results", "MATCHES AFTER: %d" % len(final_list))
@@ -1325,24 +1330,25 @@ class FlashscoreFetcher(LiveFetchBase):
 	def _status_from_fs(self, stage, txt):
 		s = str(stage or '').strip()
 		t = str(txt or '').strip().lower()
+		
+		# Flashscore uses numeric codes: 4=Postponed, 5=Canceled, 6=Abandoned
+		if t == '4' or 'postpon' in t:
+			return 'postponed', title152
+		if t in ('5', '6') or 'cancel' in t or 'abandon' in t:
+			return 'canceled', title124
+		if t == '9' or 'delay' in t:
+			return 'inprogress', title156
+			
 		if s == '3' or 'finished' in t or t == 'ft':
 			return 'finished', title125
 		if s == '2' or "'" in t or 'half' in t or 'live' in t or t == 'ht' or t == 'et' or t == 'pen':
 			return 'inprogress', txt or ''
-		if 'postpon' in t:
-			return 'postponed', title152
-		if 'cancel' in t:
-			return 'canceled', title124
-		if 'delay' in t:
-			return 'inprogress', title156
+			
 		return 'notstarted', ''
 
 	def _convert_event(self, m):
 		try:
 			home = m.get('CX') or m.get('AE') or 'Unknown Home'
-			away = m.get('AF') or m.get('WU') or 'Unknown Away'
-			if 'Moravce' in home or 'Moravce' in away:
-				logdata("DEBUG_FS_MAIN", "MAIN_LIST MATCH RAW: %s" % str(m))
 			away = m.get('AF') or m.get('WU') or 'Unknown Away'
 			if not isinstance(home, str): home = str(home)
 			if not isinstance(away, str): away = str(away)
@@ -1407,38 +1413,167 @@ class FlashscoreFetcher(LiveFetchBase):
 			return
 		self.screen.fetch_timestamp = time.time()
 		self.current_ts = self.screen.fetch_timestamp
-		if debug_Fetch_Live:
-			logdata("fetch_live_results", "Flashscore fetch started")
 
-		if self.screen.link == "yesterday":
-			day = -1
-		elif self.screen.link == "tomorrow":
-			day = 1
+		if self.screen.link in ("end", "yesterday"):
+			if debug_Fetch_Live:
+				logdata("fetch_live_results", "Flashscore (JSON) fetch started for %s" % self.screen.link)
+			
+			day = -1 if self.screen.link == "yesterday" else 0
+			
+			def _fetch_old():
+				all_events = []
+				endpoint = "f_1_{0}_3_en_1".format(day)
+				text = self._fs_get(endpoint, timeout=15)
+				if text and len(text) > 50:
+					parsed = self._parse_feed(text)
+					for m in parsed:
+						ev = self._convert_event(m)
+						if ev:
+							all_events.append(ev)
+				return all_events
+
+			def _done_old(events):
+				if self.screen.fetch_timestamp != self.current_ts:
+					return
+				if debug_Fetch_Live:
+					logdata("fetch_live_results", "Flashscore JSON events=%d" % len(events))
+				if not events:
+					try:
+						self.screen.iniMenu()
+					except Exception:
+						pass
+					return
+				raw_json = json.dumps({"events": events}).encode('utf-8')
+				self._process_response([raw_json])
+
+			def _err_old(failure):
+				if debug_Fetch_Live:
+					logdata("fetch_live_results", "Flashscore JSON error: %s" % failure.getErrorMessage())
+				try:
+					self.screen.iniMenu()
+				except Exception:
+					pass
+
+			d = deferToThread(_fetch_old)
+			d.addCallback(_done_old)
+			d.addErrback(_err_old)
+			
 		else:
-			day = 0
+			if debug_Fetch_Live:
+				logdata("fetch_live_results", "Flashscore (Mobile) fetch started for %s" % self.screen.link)
+			
+			day = 1 if self.screen.link == "tomorrow" else 0
+			url = "https://www.flashscore.mobi/?d={0}".format(day)
+				
+			headers = {
+				'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36'
+			}
+			
+			def _fetch_mobile():
+				try:
+					r = requests.get(url, headers=headers, timeout=15, verify=False)
+					if r.status_code == 200:
+						return r.text
+				except Exception:
+					pass
+				return None
 
-		all_events = []
-		endpoint = "f_1_{0}_3_en_1".format(day)
-		text = self._fs_get(endpoint, timeout=25)
-		if text and len(text) > 50:
-			parsed = self._parse_feed(text)
-			for m in parsed:
-				ev = self._convert_event(m)
-				if ev:
-					all_events.append(ev)
+			def _done_mobile(html):
+				if self.screen.fetch_timestamp != self.current_ts:
+					return
+				self._process_mobile_html(html)
 
-		if debug_Fetch_Live:
-			logdata("fetch_live_results", "Flashscore events=%d" % len(all_events))
+			def _err_mobile(failure):
+				if debug_Fetch_Live:
+					logdata("fetch_live_results", "Flashscore Mobile error: %s" % failure.getErrorMessage())
+				try:
+					self.screen.iniMenu()
+				except Exception:
+					pass
 
-		if not all_events:
+			d = deferToThread(_fetch_mobile)
+			d.addCallback(_done_mobile)
+			d.addErrback(_err_mobile)
+
+	def _process_mobile_html(self, html):
+		if not html:
 			try:
 				self.screen.iniMenu()
-			except Exception:
+			except:
 				pass
 			return
 
-		raw_json = json.dumps({"events": all_events}).encode('utf-8')
-		self._process_response([raw_json])
+		live_matches = []
+		pattern = re.compile(r'<span[^>]*>(.*?)<\/span>\s*(<span[^>]*>.*?<\/span>)?\s*(.*?)\s*<a href="\/match\/([^\/]+)\/[^>]*class="([^"]*)"[^>]*>(.*?)<\/a>')
+		matches = pattern.findall(html)
+
+		for m in matches:
+			try:
+				status_raw = m[0].strip()
+				nested_span = m[1].strip() if m[1] else ""
+				teams_raw = m[2].strip()
+				match_id = m[3].strip()
+				match_class = m[4].strip()
+				score_raw = m[5].strip()
+
+				full_status_text = (status_raw + " " + nested_span).lower()
+				
+				teams_raw = re.sub(r'<[^>]+>', '', teams_raw).strip()
+
+				if 'cancel' in full_status_text or 'abandoned' in full_status_text or 'canceled' in match_class:
+					status_txt = 'CANCELED'
+				elif 'postpon' in full_status_text or 'postponed' in match_class:
+					status_txt = 'POSTPONED'
+				elif 'fin' in match_class:
+					status_txt = 'FINISHED'
+				elif 'sched' in match_class:
+					status_txt = ''
+				elif 'live' in match_class:
+					status_txt = re.sub(r'<[^>]+>', '', status_raw).strip()
+					if 'Half Time' in status_txt or 'HT' in status_txt:
+						status_txt = 'HALFTIME'
+				else:
+					status_txt = re.sub(r'<[^>]+>', '', status_raw).strip()
+
+				score_txt = score_raw.replace('&nbsp;', '').strip()
+				score_clean = score_txt.split(' ')[0]
+				teams = teams_raw.split(' - ')
+				
+				if len(teams) == 2:
+					home_team = teams[0].strip()
+					away_team = teams[1].strip()
+					h_score = ""
+					a_score = ""
+					if '-' in score_clean:
+						parts = score_clean.split('-')
+						h_score = parts[0].strip()
+						a_score = parts[1].strip()
+
+					live_matches.append({
+						"team1": home_team,
+						"team2": away_team,
+						"team1_score": h_score,
+						"team2_score": a_score,
+						"match_status": status_txt,
+						"match_dt": datetime.now(),
+						"id": match_id
+					})
+			except Exception:
+				continue
+				
+		if not live_matches:
+			try:
+				self.screen.iniMenu()
+			except:
+				pass
+			return
+
+		matches_list = [list(m) for m in self.screen.matches]
+		now_adj = datetime.now() - timedelta(minutes=3)
+		
+		d_match = deferToThread(self._do_fuzzy_matching, matches_list, live_matches, now_adj)
+		d_match.addCallback(self._matching_complete)
+		d_match.addErrback(lambda f: logdata("fetch_live_results", "FS_Mobile fuzzy match failed: %s" % f.getErrorMessage()) if not getattr(self.screen, 'is_closed', True) else None)
 
 
 def get_live_fetcher(source, screen):
