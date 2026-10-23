@@ -1974,16 +1974,97 @@ class FotMobMatchStatistics(MatchStatisticsFetcherBase):
 # =========================================================
 
 class FotMobMatchMedia(MatchMediaFetcherBase):
+	def _search_youtube(self, query, max_results=3):
+		if not PY3 and isinstance(query, unicode):
+			query = query.encode('utf-8', 'ignore')
+		search_url = "https://www.youtube.com/results?search_query=" + compat_quote(query) + "&sp=EgQIBRAB"
+		try:
+			r = requests.get(search_url, timeout=15, verify=False, headers={
+				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+				'Accept-Language': 'en-US,en;q=0.9',
+			})
+			if r.status_code != 200:
+				if debug_MatchMedia:
+					logdata("MatchMedia", "FotMob YouTube search HTTP %d" % r.status_code)
+				return []
+			html = r.text
+			media = []
+			seen_vids = set()
+			
+			chunks = html.split('"videoRenderer":')
+			for chunk in chunks[1:]:
+				vid_match = re.search(r'"videoId":"([a-zA-Z0-9_-]{11})"', chunk[:2000])
+				if not vid_match:
+					continue
+				vid = vid_match.group(1)
+				if vid in seen_vids:
+					continue
+				seen_vids.add(vid)
+				
+				pub_text = ''
+				pub_match = re.search(r'"publishedTimeText":\s*\{\s*"simpleText":\s*"([^"]+)"', chunk[:10000])
+				if not pub_match:
+					pub_match = re.search(r'"publishedTimeText":\s*\{\s*"runs":\s*\[\s*\{\s*"text":\s*"([^"]+)"', chunk[:10000])
+					
+				if pub_match:
+					pub_text = pub_match.group(1)
+					pub_text_lower = pub_text.lower()
+					if debug_MatchMedia:
+						logdata("MatchMedia", "FotMob Checking video %s | Date: %s" % (vid, pub_text))
+						
+					if any(x in pub_text_lower for x in ['streamed', 'live', 'premiered']):
+						continue
+						
+					time_match = re.search(r'(\d+)\s*([a-z]+)\s*ago', pub_text_lower)
+					if time_match:
+						num = int(time_match.group(1))
+						unit = time_match.group(2)
+						if unit.startswith('y') or unit.startswith('mo') or unit.startswith('w'):
+							continue
+						if unit.startswith('d') and num > 2:
+							continue
+					else:
+						if any(x in pub_text_lower for x in ['year', 'month', 'week']):
+							continue
+				else:
+					if debug_MatchMedia:
+						logdata("MatchMedia", "FotMob Skipping video %s: No date found." % vid)
+					continue
+					
+				media.append({
+					'url': "https://www.youtube.com/watch?v=" + vid,
+					'title': query,
+					'subtitle': pub_text if pub_text else "Recent",
+				})
+				if len(media) >= max_results:
+					break
+					
+			if debug_MatchMedia:
+				logdata("MatchMedia", "FotMob YouTube search found %d videos" % len(media))
+			return media
+		except Exception as e:
+			if debug_MatchMedia:
+				logdata("MatchMedia", "FotMob YouTube search error: %s" % str(e)[:150])
+			return []
+
 	def fetch(self):
 		if debug_MatchMedia:
-			logdata("MatchMedia", "FotMob media not implemented")
-		try:
-			self.screen.process_media({"media": []})
-		except Exception:
+			logdata("MatchMedia", "FotMob.fetch started | event_id=%s" % self.event_id)
+		home_team = getattr(self.screen, 'home_name', '') or ''
+		away_team = getattr(self.screen, 'away_name', '') or ''
+		if not home_team or not away_team:
+			if debug_MatchMedia:
+				logdata("MatchMedia", "FotMob: missing team names, cannot search YouTube")
 			try:
-				self.screen.process_media(None)
+				self.screen.process_media({"media": []})
 			except Exception:
-				pass
+				self.screen.process_media(None)
+			return
+		query = "%s vs %s highlights" % (home_team, away_team)
+		if debug_MatchMedia:
+			logdata("MatchMedia", "FotMob YouTube query: %s" % query)
+		media = self._search_youtube(query)
+		self.screen.process_media({"media": media})
 
 
 # =========================================================
