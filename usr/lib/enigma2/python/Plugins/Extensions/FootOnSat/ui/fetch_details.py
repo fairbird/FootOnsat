@@ -1337,6 +1337,7 @@ class FlashscoreMatchDetails(MatchDetailsFetcherBase):
 					"time": minute,
 					"time_display": minute_raw,
 					"player": {"name": player_name},
+					"reason": c.get('IL', ''),
 				}
 				incidents.append(incident_data)
 

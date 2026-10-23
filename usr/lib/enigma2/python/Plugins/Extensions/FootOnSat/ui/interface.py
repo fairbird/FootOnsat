@@ -2157,7 +2157,10 @@ class MatchDetailsScreen(Screen):
 					ic_class = str(inc.get('incidentClass', '')).lower()
 					p_name = str(inc.get('playerName') or inc.get('player', {}).get('name', 'unknown'))
 					p_id = (p_name, inc.get('isHome', True))
+					reason = str(inc.get('reason', '')).strip()
 					text = p_name
+					if reason:
+						text = "%s (%s)" % (p_name, reason)
 					if 'yellow' in ic_class:
 						player_cards[p_id] = player_cards.get(p_id, 0) + 1
 						if player_cards[p_id] >= 2:
