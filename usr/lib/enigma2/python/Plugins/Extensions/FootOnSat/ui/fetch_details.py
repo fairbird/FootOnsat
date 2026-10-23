@@ -734,6 +734,123 @@ class SportScoreMatchDetails(MatchDetailsFetcherBase):
 		self.screen.process_data(None)
 
 
+# =========================================================
+# FotMob Match Details
+# =========================================================
+
+
+class FotMobMatchDetails(MatchDetailsFetcherBase):
+	def fetch(self):
+		if debug_MatchDetails:
+			logdata("MatchDetails", "FotMob.fetch started | event_id=%s" % self.event_id)
+		url = "https://www.fotmob.com/api/data/matchDetails?matchId=" + self.event_id
+		def _fetch():
+			try:
+				r = requests.get(url, timeout=15, verify=False, headers={
+					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+					'Accept': 'application/json',
+					'Referer': 'https://www.fotmob.com/',
+				})
+				if r.status_code == 200:
+					return r.content
+				return None
+			except Exception as e:
+				if debug_MatchDetails:
+					logdata("MatchDetails", "FotMob fetch error: %s" % str(e)[:200])
+				return None
+		d = deferToThread(_fetch)
+		d.addCallback(self._convert)
+		d.addErrback(self._err)
+
+	def _err(self, failure):
+		if debug_MatchDetails:
+			logdata("MatchDetails", "FotMob deferred errback: %s" % failure.getErrorMessage())
+		self.screen.process_data(None)
+
+	def _convert(self, raw):
+		if not raw:
+			self.screen.process_data(None)
+			return
+		try:
+			data = json.loads(raw.decode('utf-8', 'ignore'))
+		except Exception as e:
+			if debug_MatchDetails:
+				logdata("MatchDetails", "FotMob JSON error: %s" % str(e))
+			self.screen.process_data(None)
+			return
+
+		incidents = []
+		match_facts = data.get("content", {}).get("matchFacts", {})
+		events = match_facts.get("events", {}).get("events", [])
+		
+		for ev in events:
+			try:
+				itype = ev.get("type")
+				time = ev.get("time", 0)
+				is_home = ev.get("isHome", True)
+				player = ev.get("player", {})
+				player_name = player.get("name", "")
+
+				if itype == "Goal":
+					is_own = ev.get("ownGoal", False)
+					is_pen = ev.get("isPenalty", False)
+					ic_class = "owngoal" if is_own else ("penalty" if is_pen else "regular")
+					incidents.append({
+						"incidentType": "goal",
+						"incidentClass": ic_class,
+						"isHome": is_home,
+						"time": time,
+						"player": {"name": player_name},
+					})
+				elif itype == "Card":
+					card_type = str(ev.get("card", "Yellow")).lower()
+					card_class = "yellow"
+					if "red" in card_type:
+						card_class = "red"
+					
+					incidents.append({
+						"incidentType": "card",
+						"incidentClass": card_class,
+						"isHome": is_home,
+						"time": time,
+						"player": {"name": player_name},
+						"reason": ev.get("reason", ""),
+					})
+				elif itype == "Substitution":
+					swap = ev.get("swap", [])
+					player_in = swap[0].get("name", "") if len(swap) > 0 else ""
+					player_out = swap[1].get("name", "") if len(swap) > 1 else ""
+					incidents.append({
+						"incidentType": "substitution",
+						"isHome": is_home,
+						"time": time,
+						"playerIn": {"name": player_in},
+						"playerOut": {"name": player_out},
+					})
+			except Exception:
+				continue
+
+		header = data.get("header", {})
+		teams = header.get("teams", [])
+		home_team = next((t for t in teams if t.get("isHome")), {})
+		away_team = next((t for t in teams if not t.get("isHome")), {})
+		
+		home_score = home_team.get("score", 0)
+		away_score = away_team.get("score", 0)
+		
+		status = match_facts.get("infoBox", {}).get("status", {})
+		status_desc = status.get("statusText") or status.get("reason", {}).get("long") or "Ended"
+		
+		ev_js = {"event": {
+			"homeScore": {"current": home_score, "display": home_score},
+			"awayScore": {"current": away_score, "display": away_score},
+			"status": {"description": status_desc}
+		}}
+
+		inc_js = {"incidents": incidents}
+		self.screen.process_data([inc_js, ev_js])
+
+
 def get_match_details_fetcher(source, screen, event_id):
 	if source == "espn":
 		return ESPNMatchDetails(screen, event_id)
@@ -741,6 +858,8 @@ def get_match_details_fetcher(source, screen, event_id):
 		return SportScoreMatchDetails(screen, event_id)
 	if source == "flashscore":
 		return FlashscoreMatchDetails(screen, event_id)
+	if source == "fotmob":
+		return FotMobMatchDetails(screen, event_id)
 	return SofaScoreMatchDetails(screen, event_id)
 
 
@@ -963,6 +1082,8 @@ def get_match_statistics_fetcher(source, screen, event_id):
 		return SportScoreMatchStatistics(screen, event_id)
 	if source == "flashscore":
 		return FlashscoreMatchStatistics(screen, event_id)
+	if source == "fotmob":
+		return FotMobMatchStatistics(screen, event_id)
 	return SofaScoreMatchStatistics(screen, event_id)
 
 
@@ -1738,6 +1859,137 @@ class ESPNMatchMedia(MatchMediaFetcherBase):
 		self.screen.process_media({"media": media})
 
 
+# =========================================================
+# FotMob Match Statistics
+# =========================================================
+
+class FotMobMatchStatistics(MatchStatisticsFetcherBase):
+	def fetch(self):
+		if debug_MatchStatistics:
+			logdata("MatchStatistics", "FotMob.fetch started | event_id=%s" % self.event_id)
+		url = "https://www.fotmob.com/api/data/matchDetails?matchId=" + self.event_id
+		def _fetch():
+			try:
+				r = requests.get(url, timeout=15, verify=False, headers={
+					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+					'Accept': 'application/json',
+					'Referer': 'https://www.fotmob.com/',
+				})
+				if r.status_code == 200:
+					return r.content
+				return None
+			except Exception as e:
+				if debug_MatchStatistics:
+					logdata("MatchStatistics", "FotMob fetch error: %s" % str(e)[:200])
+				return None
+		d = deferToThread(_fetch)
+		d.addCallback(self._convert)
+		d.addErrback(self._err)
+
+	def _err(self, failure):
+		if debug_MatchStatistics:
+			logdata("MatchStatistics", "FotMob deferred errback: %s" % failure.getErrorMessage())
+		self.screen.process_stats(None)
+
+	def _convert(self, raw):
+		if not raw:
+			self.screen.process_stats(None)
+			return
+		try:
+			data = json.loads(raw.decode('utf-8', 'ignore'))
+		except Exception as e:
+			if debug_MatchStatistics:
+				logdata("MatchStatistics", "FotMob JSON error: %s" % str(e))
+			self.screen.process_stats(None)
+			return
+
+		stats_groups = []
+		stats_obj = data.get("content", {}).get("stats", {})
+		
+		# Get the list of groups (e.g., Top stats, Shots, etc.)
+		groups_data = []
+		if isinstance(stats_obj, dict):
+			if "Periods" in stats_obj and "All" in stats_obj["Periods"]:
+				groups_data = stats_obj["Periods"]["All"].get("stats", [])
+			else:
+				groups_data = stats_obj.get("stats", [])
+		elif isinstance(stats_obj, list):
+			groups_data = stats_obj
+
+		if not isinstance(groups_data, list):
+			groups_data = []
+
+		for group in groups_data:
+			if not isinstance(group, dict):
+				continue
+				
+			group_name = group.get("title", "")
+			group_items_data = group.get("stats", [])
+			
+			if not group_name or not isinstance(group_items_data, list):
+				continue
+				
+			items = []
+			for item in group_items_data:
+				if not isinstance(item, dict):
+					continue
+					
+				item_title = item.get("title", "")
+				item_stats = item.get("stats", [])
+				
+				if not item_title or not isinstance(item_stats, list) or len(item_stats) < 2:
+					continue
+					
+				home_val = item_stats[0]
+				away_val = item_stats[1]
+				
+				# Handle cases where the value might be a dict (rare, but possible)
+				if isinstance(home_val, dict):
+					home_val = home_val.get("value", "")
+				if isinstance(away_val, dict):
+					away_val = away_val.get("value", "")
+					
+				items.append({
+					"name": str(item_title),
+					"home": str(home_val),
+					"away": str(away_val)
+				})
+				
+			if items:
+				stats_groups.append({
+					"groupName": str(group_name),
+					"statisticsItems": items
+				})
+
+		stats_json = {
+			"statistics": [{
+				"period": "ALL",
+				"groups": stats_groups,
+			}]
+		}
+		self.screen.process_stats(stats_json)
+
+# =========================================================
+# FotMob Match Media
+# =========================================================
+
+class FotMobMatchMedia(MatchMediaFetcherBase):
+	def fetch(self):
+		if debug_MatchMedia:
+			logdata("MatchMedia", "FotMob media not implemented")
+		try:
+			self.screen.process_media({"media": []})
+		except Exception:
+			try:
+				self.screen.process_media(None)
+			except Exception:
+				pass
+
+
+# =========================================================
+# SportScore Match Media
+# =========================================================
+
 class SportScoreMatchMedia(MatchMediaFetcherBase):
 	def fetch(self):
 		if debug_MatchMedia:
@@ -1758,4 +2010,6 @@ def get_match_media_fetcher(source, screen, event_id):
 		return SportScoreMatchMedia(screen, event_id)
 	if source == "flashscore":
 		return FlashscoreMatchMedia(screen, event_id)
+	if source == "fotmob":
+		return FotMobMatchMedia(screen, event_id)
 	return SofaScoreMatchMedia(screen, event_id)

@@ -1614,6 +1614,258 @@ class FlashscoreFetcher(LiveFetchBase):
 		d_match.addErrback(lambda f: logdata("fetch_live_results", "FS_Mobile fuzzy match failed: %s" % f.getErrorMessage()) if not getattr(self.screen, 'is_closed', True) else None)
 
 
+class FotMobFetcher(LiveFetchBase):
+	def _fotmob_get(self, endpoint, timeout=20):
+		url = "https://www.fotmob.com/api/data/" + endpoint
+		headers = {
+			'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+			'Accept': 'application/json',
+			'Referer': 'https://www.fotmob.com/',
+		}
+		try:
+			r = requests.get(url, headers=headers, timeout=timeout, verify=False)
+			if r.status_code == 200:
+				return r.json()
+			if debug_Fetch_Live:
+				logdata("fetch_live_results", "FotMob HTTP %s" % r.status_code)
+			return None
+		except Exception as e:
+			if debug_Fetch_Live:
+				logdata("fetch_live_results", "FotMob exception: %s" % str(e)[:200])
+			return None
+
+	def _convert_match_to_event(self, m, league_data=None):
+		if not isinstance(m, dict):
+			return None
+		try:
+			home_name = m.get("home", {}).get("name")
+			away_name = m.get("away", {}).get("name")
+			if not home_name or not away_name:
+				return None
+
+			status_obj = m.get("status", {})
+			is_live = status_obj.get("started") and not status_obj.get("finished")
+			status_short = str(status_obj.get("short", "")).strip().lower()
+			status_long = str(status_obj.get("long", ""))
+
+			# Fix: Ensure finished matches are correctly identified for the 'end' section
+			if status_short == "ft" or status_obj.get("finished"):
+				ss_type = "finished"
+				status_long = "FINISHED"  # Must match the keyword used in _matching_complete
+			elif is_live:
+				ss_type = "inprogress"
+				live_time = status_obj.get("liveTime", {})
+				short_time = str(live_time.get("short", ""))
+				if short_time:
+					# Fix: Clean up any strange characters (like ¶) and extract only digits/plus
+					short_time = re.sub(r'[^0-9+]', '', short_time)
+					status_long = short_time + "'" if short_time else "LIVE"
+				else:
+					status_long = "LIVE"
+			elif status_short == "postponed":
+				ss_type = "postponed"
+				status_long = "POSTPONED"
+			elif status_short == "canceled" or status_obj.get("cancelled"):
+				ss_type = "canceled"
+				status_long = "CANCELED"
+			else:
+				ss_type = "notstarted"
+				status_long = ""
+
+			home_score = m.get("home", {}).get("score")
+			away_score = m.get("away", {}).get("score")
+			if home_score is None: home_score = ""
+			if away_score is None: away_score = ""
+
+			ts = 0
+			time_str = m.get("time")
+			if time_str:
+				try:
+					time_clean = time_str.replace("Z", "")
+					if "." in time_clean:
+						dt_utc = datetime.strptime(time_clean, "%Y-%m-%dT%H:%M:%S.%f")
+					else:
+						dt_utc = datetime.strptime(time_clean, "%Y-%m-%dT%H:%M:%S")
+					import calendar
+					ts = calendar.timegm(dt_utc.timetuple())
+				except Exception:
+					ts = 0
+
+			league_name = league_data.get("name", "") if league_data else ""
+			country = league_data.get("ccode", "").lower() if league_data else ""
+
+			return {
+				"homeTeam": {"name": home_name, "shortName": home_name},
+				"awayTeam": {"name": away_name, "shortName": away_name},
+				"homeScore": {"current": str(home_score)},
+				"awayScore": {"current": str(away_score)},
+				"status": {"type": ss_type, "description": status_long},
+				"startTimestamp": ts,
+				"id": str(m.get("id", "")),
+				"tournament": {"name": league_name, "category": {"country": {"name": country}}}
+			}
+		except Exception as e:
+			if debug_Fetch_Live:
+				logdata("fetch_live_results", "FotMob convert error: %s" % str(e)[:150])
+			return None
+
+	def _token_containment(self, a, b):
+		wa = set(a.split())
+		wb = set(b.split())
+		if not wa or not wb:
+			return 0.0
+		overlap = len(wa & wb)
+		return overlap / float(min(len(wa), len(wb)))
+
+	def _handle_live_matches(self, live_matches):
+		if self.screen.is_closed or not live_matches:
+			return
+
+		matches_list = [list(m) for m in self.screen.matches]
+		THRESHOLD = 0.60 # Lowered to 0.60 to accept names like M'gladbach
+
+		for match in matches_list:
+			try:
+				local_name = compat_str(match[0])
+				teams = re.split(r'\s+(?:vs\.|vs|v\.|v|VS|Vs|VS\.)\s+|\s+-\s+', local_name, flags=re.IGNORECASE)
+				if len(teams) != 2:
+					continue
+				
+				l_t1 = self._clean_name(teams[0].strip())
+				l_t2 = self._clean_name(teams[1].strip())
+
+				best_sim = 0.0
+				best_live = None
+
+				for live in live_matches:
+					s_t1 = self._clean_name(live["team1"])
+					s_t2 = self._clean_name(live["team2"])
+
+					# Straight match similarity
+					sm1 = SequenceMatcher(None, l_t1, s_t1)
+					sim1 = max(sm1.ratio(), self._token_containment(l_t1, s_t1))
+					sm2 = SequenceMatcher(None, l_t2, s_t2)
+					sim2 = max(sm2.ratio(), self._token_containment(l_t2, s_t2))
+					avg_straight = (sim1 + sim2) / 2.0
+
+					# Swap match similarity
+					sm1s = SequenceMatcher(None, l_t1, s_t2)
+					sim1s = max(sm1s.ratio(), self._token_containment(l_t1, s_t2))
+					sm2s = SequenceMatcher(None, l_t2, s_t1)
+					sim2s = max(sm2s.ratio(), self._token_containment(l_t2, s_t1))
+					avg_swap = (sim1s + sim2s) / 2.0
+
+					cur_sim = max(avg_straight, avg_swap)
+
+					if cur_sim > best_sim:
+						best_sim = cur_sim
+						if avg_straight >= avg_swap:
+							best_live = {
+								"team1_score": live["team1_score"],
+								"team2_score": live["team2_score"],
+								"match_status": live["match_status"],
+								"id": live["id"]
+							}
+						else:
+							best_live = {
+								"team1_score": live["team2_score"],
+								"team2_score": live["team1_score"],
+								"match_status": live["match_status"],
+								"id": live["id"]
+							}
+
+				if best_sim >= THRESHOLD and best_live:
+					match[5] = best_live["team1_score"]
+					match[6] = best_live["team2_score"]
+					match[7] = best_live["match_status"]
+					if len(match) > 8:
+						match[8] = best_live["id"]
+					else:
+						match.append(best_live["id"])
+				else:
+					match[5] = match[6] = match[7] = ""
+			except Exception:
+				continue
+				
+		self._matching_complete(matches_list)
+
+	def fetch(self):
+		if not self.screen.matches:
+			self.screen.onWindowShow()
+			return
+		self.screen.fetch_timestamp = time.time()
+		self.current_ts = self.screen.fetch_timestamp
+		if debug_Fetch_Live:
+			logdata("fetch_live_results", "FotMob fetch started")
+
+		if self.screen.link == "yesterday":
+			selected_date = date.today() - timedelta(days=1)
+		else:
+			selected_date = date.today()
+		date_str = selected_date.strftime("%Y%m%d")
+
+		def _fetch():
+			data = self._fotmob_get("matches?date=" + date_str)
+			if not data:
+				return []
+			all_events = []
+			
+			# Build a word index from the local matches to filter smartly
+			screen_words = set()
+			for match in self.screen.matches:
+				try:
+					local_name = compat_str(match[0])
+					teams = re.split(r'\s+(?:vs\.|vs|v\.|v|VS|Vs|VS\.)\s+|\s+-\s+', local_name, flags=re.IGNORECASE)
+					if len(teams) == 2:
+						screen_words.update(self._clean_name(teams[0].strip()).split())
+						screen_words.update(self._clean_name(teams[1].strip()).split())
+				except Exception:
+					pass
+
+			leagues = data.get("leagues", [])
+			for league in leagues:
+				matches = league.get("matches", [])
+				for m in matches:
+					ev = self._convert_match_to_event(m, league)
+					if ev:
+						h_words = set(self._clean_name(ev['homeTeam']['name']).split())
+						a_words = set(self._clean_name(ev['awayTeam']['name']).split())
+						
+						# Keep event if there's a word intersection (length > 2)
+						h_intersect = h_words.intersection(screen_words)
+						a_intersect = a_words.intersection(screen_words)
+						
+						if any(len(w) > 2 for w in h_intersect) or any(len(w) > 2 for w in a_intersect):
+							all_events.append(ev)
+			return all_events
+
+		def _done(events):
+			if self.screen.fetch_timestamp != self.current_ts:
+				return
+			if debug_Fetch_Live:
+				logdata("fetch_live_results", "FotMob events=%d" % len(events))
+			if not events:
+				try:
+					self.screen.iniMenu()
+				except Exception:
+					pass
+				return
+			raw_json = json.dumps({"events": events}).encode('utf-8')
+			self._process_response([raw_json])
+
+		def _err(failure):
+			if debug_Fetch_Live:
+				logdata("fetch_live_results", "FotMob fetch error: %s" % failure.getErrorMessage())
+			try:
+				self.screen.iniMenu()
+			except Exception:
+				pass
+
+		d = deferToThread(_fetch)
+		d.addCallback(_done)
+		d.addErrback(_err)
+
+
 def get_live_fetcher(source, screen):
 	if source == "sportscore":
 		return SportScoreFetcher(screen)
@@ -1621,4 +1873,6 @@ def get_live_fetcher(source, screen):
 		return ESPNFetcher(screen)
 	if source == "flashscore":
 		return FlashscoreFetcher(screen)
+	if source == "fotmob":
+		return FotMobFetcher(screen)
 	return SofaScoreFetcher(screen)

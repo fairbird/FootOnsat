@@ -213,6 +213,7 @@ config.plugins.FootOnSat.source = ConfigSelection(default = "flashscore", choice
 	("sofascore", "%s" % title314),
 	("flashscore", "%s" % title320),
 	("espn", "%s" % title316),
+	("fotmob", "%s" % title324),
 #	("sportscore", "%s" % title315),
 	])
 config.plugins.FootOnSat.livescoresections = ConfigSelection(default = "1", choices = [
