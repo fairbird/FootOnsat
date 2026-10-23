@@ -1478,8 +1478,9 @@ class FlashscoreFetcher(LiveFetchBase):
 							a = str(ev['awayTeam']['name'])
 							hs = str(ev['homeScore']['current'])
 							as_ = str(ev['awayScore']['current'])
-							api_scores[mid] = (hs, as_)
-							api_scores[(h, a)] = (hs, as_)
+							st = str(ev['status']['description'])
+							api_scores[mid] = (hs, as_, st)
+							api_scores[(h, a)] = (hs, as_, st)
 							
 				url = "https://www.flashscore.mobi/?d={0}".format(day)
 				headers = {
@@ -1561,11 +1562,12 @@ class FlashscoreFetcher(LiveFetchBase):
 					a_score = ""
 					
 					# Get scores from API if available
+					api_status = ""
 					if api_scores:
 						if match_id in api_scores:
-							h_score, a_score = api_scores[match_id]
+							h_score, a_score, api_status = api_scores[match_id]
 						elif (home_team, away_team) in api_scores:
-							h_score, a_score = api_scores[(home_team, away_team)]
+							h_score, a_score, api_status = api_scores[(home_team, away_team)]
 					else:
 						score_txt = score_raw.replace('&nbsp;', '').strip()
 						score_clean = score_txt.split(' ')[0]
@@ -1573,6 +1575,17 @@ class FlashscoreFetcher(LiveFetchBase):
 							parts = score_clean.split('-')
 							h_score = parts[0].strip()
 							a_score = parts[1].strip()
+
+					# Fix Extra Time / Penalties showing as Half Time
+					api_status_low = api_status.lower()
+					if ('extra' in api_status_low or 'et' in api_status_low) and status_txt == 'HALFTIME':
+						status_txt = 'Extra Time'
+					elif ('penalties' in api_status_low or 'pen' in api_status_low or 'ap' in api_status_low) and status_txt == 'HALFTIME':
+						status_txt = 'Penalties'
+					elif status_txt == 'ET':
+						status_txt = 'Extra Time'
+					elif status_txt == 'AP' or status_txt == 'PEN':
+						status_txt = 'Penalties'
 
 					live_matches.append({
 						"team1": home_team,
