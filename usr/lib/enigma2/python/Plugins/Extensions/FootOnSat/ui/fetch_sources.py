@@ -1352,8 +1352,8 @@ class FlashscoreFetcher(LiveFetchBase):
 			away = m.get('AF') or m.get('WU') or 'Unknown Away'
 			if not isinstance(home, str): home = str(home)
 			if not isinstance(away, str): away = str(away)
-			home_score = m.get('AU', '') or m.get('AG', '') or ''
-			away_score = m.get('BD', '') or m.get('AH', '') or ''
+			home_score = m.get('AG', '') or m.get('AU', '') or ''
+			away_score = m.get('AH', '') or m.get('BD', '') or ''
 			pen_h = m.get('RPA', '')
 			pen_a = m.get('RPB', '')
 			if pen_h and pen_a:
@@ -1460,42 +1460,59 @@ class FlashscoreFetcher(LiveFetchBase):
 			
 		else:
 			if debug_Fetch_Live:
-				logdata("fetch_live_results", "Flashscore (Mobile) fetch started for %s" % self.screen.link)
+				logdata("fetch_live_results", "Flashscore (API+Mobile) fetch started for %s" % self.screen.link)
 			
 			day = 1 if self.screen.link == "tomorrow" else 0
-			url = "https://www.flashscore.mobi/?d={0}".format(day)
-				
-			headers = {
-				'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36'
-			}
 			
-			def _fetch_mobile():
+			def _fetch_both():
+				api_scores = {}
+				endpoint = "f_1_{0}_3_en_1".format(day)
+				text = self._fs_get(endpoint, timeout=15)
+				if text and len(text) > 50:
+					parsed = self._parse_feed(text)
+					for m in parsed:
+						ev = self._convert_event(m)
+						if ev:
+							mid = str(ev.get('id', ''))
+							h = str(ev['homeTeam']['name'])
+							a = str(ev['awayTeam']['name'])
+							hs = str(ev['homeScore']['current'])
+							as_ = str(ev['awayScore']['current'])
+							api_scores[mid] = (hs, as_)
+							api_scores[(h, a)] = (hs, as_)
+							
+				url = "https://www.flashscore.mobi/?d={0}".format(day)
+				headers = {
+					'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36'
+				}
+				html = None
 				try:
 					r = requests.get(url, headers=headers, timeout=15, verify=False)
 					if r.status_code == 200:
-						return r.text
+						html = r.text
 				except Exception:
 					pass
-				return None
+				return html, api_scores
 
-			def _done_mobile(html):
+			def _done_both(result):
 				if self.screen.fetch_timestamp != self.current_ts:
 					return
-				self._process_mobile_html(html)
+				html, api_scores = result
+				self._process_mobile_html(html, api_scores)
 
-			def _err_mobile(failure):
+			def _err_both(failure):
 				if debug_Fetch_Live:
-					logdata("fetch_live_results", "Flashscore Mobile error: %s" % failure.getErrorMessage())
+					logdata("fetch_live_results", "Flashscore API+Mobile error: %s" % failure.getErrorMessage())
 				try:
 					self.screen.iniMenu()
 				except Exception:
 					pass
 
-			d = deferToThread(_fetch_mobile)
-			d.addCallback(_done_mobile)
-			d.addErrback(_err_mobile)
+			d = deferToThread(_fetch_both)
+			d.addCallback(_done_both)
+			d.addErrback(_err_both)
 
-	def _process_mobile_html(self, html):
+	def _process_mobile_html(self, html, api_scores=None):
 		if not html:
 			try:
 				self.screen.iniMenu()
@@ -1535,8 +1552,6 @@ class FlashscoreFetcher(LiveFetchBase):
 				else:
 					status_txt = re.sub(r'<[^>]+>', '', status_raw).strip()
 
-				score_txt = score_raw.replace('&nbsp;', '').strip()
-				score_clean = score_txt.split(' ')[0]
 				teams = teams_raw.split(' - ')
 				
 				if len(teams) == 2:
@@ -1544,10 +1559,20 @@ class FlashscoreFetcher(LiveFetchBase):
 					away_team = teams[1].strip()
 					h_score = ""
 					a_score = ""
-					if '-' in score_clean:
-						parts = score_clean.split('-')
-						h_score = parts[0].strip()
-						a_score = parts[1].strip()
+					
+					# Get scores from API if available
+					if api_scores:
+						if match_id in api_scores:
+							h_score, a_score = api_scores[match_id]
+						elif (home_team, away_team) in api_scores:
+							h_score, a_score = api_scores[(home_team, away_team)]
+					else:
+						score_txt = score_raw.replace('&nbsp;', '').strip()
+						score_clean = score_txt.split(' ')[0]
+						if '-' in score_clean:
+							parts = score_clean.split('-')
+							h_score = parts[0].strip()
+							a_score = parts[1].strip()
 
 					live_matches.append({
 						"team1": home_team,

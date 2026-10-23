@@ -983,7 +983,7 @@ class SofaScoreMatchMedia(MatchMediaFetcherBase):
 	def _search_youtube(self, query, max_results=3):
 		if not PY3 and isinstance(query, unicode):
 			query = query.encode('utf-8', 'ignore')
-		search_url = "https://www.youtube.com/results?search_query=" + compat_quote(query)
+		search_url = "https://www.youtube.com/results?search_query=" + compat_quote(query) + "&sp=EgQIBRAB"
 		try:
 			r = requests.get(search_url, timeout=15, verify=False, headers={
 				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
@@ -994,20 +994,57 @@ class SofaScoreMatchMedia(MatchMediaFetcherBase):
 					logdata("MatchMedia", "SofaScore YouTube search HTTP %d" % r.status_code)
 				return []
 			html = r.text
-			video_ids = []
-			for m in re.finditer(r'"videoId":"([a-zA-Z0-9_-]{11})"', html):
-				vid = m.group(1)
-				if vid not in video_ids:
-					video_ids.append(vid)
-				if len(video_ids) >= max_results:
-					break
 			media = []
-			for vid in video_ids:
+			seen_vids = set()
+			
+			chunks = html.split('"videoRenderer":')
+			for chunk in chunks[1:]:
+				vid_match = re.search(r'"videoId":"([a-zA-Z0-9_-]{11})"', chunk[:2000])
+				if not vid_match:
+					continue
+				vid = vid_match.group(1)
+				if vid in seen_vids:
+					continue
+				seen_vids.add(vid)
+				
+				pub_text = ''
+				pub_match = re.search(r'"publishedTimeText":\s*\{\s*"simpleText":\s*"([^"]+)"', chunk[:10000])
+				if not pub_match:
+					pub_match = re.search(r'"publishedTimeText":\s*\{\s*"runs":\s*\[\s*\{\s*"text":\s*"([^"]+)"', chunk[:10000])
+					
+				if pub_match:
+					pub_text = pub_match.group(1)
+					pub_text_lower = pub_text.lower()
+					if debug_MatchMedia:
+						logdata("MatchMedia", "SofaScore Checking video %s | Date: %s" % (vid, pub_text))
+						
+					if any(x in pub_text_lower for x in ['streamed', 'live', 'premiered']):
+						continue
+						
+					time_match = re.search(r'(\d+)\s*([a-z]+)\s*ago', pub_text_lower)
+					if time_match:
+						num = int(time_match.group(1))
+						unit = time_match.group(2)
+						if unit.startswith('y') or unit.startswith('mo') or unit.startswith('w'):
+							continue
+						if unit.startswith('d') and num > 2:
+							continue
+					else:
+						if any(x in pub_text_lower for x in ['year', 'month', 'week']):
+							continue
+				else:
+					if debug_MatchMedia:
+						logdata("MatchMedia", "SofaScore Skipping video %s: No date found." % vid)
+					continue
+					
 				media.append({
 					'url': "https://www.youtube.com/watch?v=" + vid,
 					'title': query,
-					'subtitle': '',
+					'subtitle': pub_text if pub_text else "Recent",
 				})
+				if len(media) >= max_results:
+					break
+					
 			if debug_MatchMedia:
 				logdata("MatchMedia", "SofaScore YouTube search found %d videos" % len(media))
 			return media
@@ -1115,6 +1152,7 @@ class FlashscoreMatchDetails(MatchDetailsFetcherBase):
 		pen_away = None
 		is_shootout = False
 		processed_pens = set()
+		processed_cards = set() # Added set to prevent duplicate cards
 
 		for block in blocks:
 			context = {}
@@ -1169,16 +1207,13 @@ class FlashscoreMatchDetails(MatchDetailsFetcherBase):
 			disallowed_entry = None
 			sub_in = None
 			sub_out = None
-			sub_reason = ''
 
 			for e in entries:
 				ik = (e.get('IK', '') or '').strip()
 				ik_low = ik.lower()
 				ict_low = (e.get('ICT', '') or '').strip().lower()
 				ie = e.get('IE', '')
-				if 'pen' in ik_low or 'pen' in ict_low:
-					logdata("DEBUG_FS_PEN", "PENALTY RAW ENTRY: %s" % str(e))
-
+				
 				if ie == '8' or 'assistance' in ik_low:
 					continue
 				if 'substitution' in ik_low and 'in' in ik_low:
@@ -1204,17 +1239,6 @@ class FlashscoreMatchDetails(MatchDetailsFetcherBase):
 							"player": {"name": e.get('IF', '')}
 						})
 					continue
-				if is_shootout and ('penalty' in ik_low or 'goal' in ik_low or 'missed' in ik_low or 'saved' in ik_low) and 'awarded' not in ik_low:
-					is_missed = 'miss' in ik_low or 'sav' in ik_low or 'miss' in ict_low or 'sav' in ict_low or 'miss' in str(e.get('IL', '')).lower()
-					side = ctx_is_home if ctx_is_home is not None else True
-					incidents.append({
-						"incidentType": "penaltyShootout",
-						"incidentClass": "missed" if is_missed else "scored",
-						"isHome": side,
-						"time": 0,
-						"player": {"name": e.get('IF', '')}
-					})
-					continue
 				if 'goal' in ik_low:
 					goal_entries.append(e)
 					continue
@@ -1222,22 +1246,9 @@ class FlashscoreMatchDetails(MatchDetailsFetcherBase):
 					card_entries.append(e)
 					continue
 
-			reason_str = ''
-			for src in (sub_out, sub_in):
-				if not src:
-					continue
-				m = re.search(r'\(([^)]+)\)', (src.get('ICT', '') or ''))
-				if m:
-					cand = m.group(1).strip()
-					if cand and cand.lower() not in ('in', 'out'):
-						reason_str = cand
-						break
-
 			if sub_in or sub_out:
 				pin = sub_in.get('IF', '') if sub_in else ''
 				pout = sub_out.get('IF', '') if sub_out else ''
-				if reason_str and pout:
-					pout = "%s (%s)" % (pout, reason_str)
 				side = ctx_is_home if ctx_is_home is not None else True
 				incidents.append({
 					"incidentType": "substitution",
@@ -1294,24 +1305,45 @@ class FlashscoreMatchDetails(MatchDetailsFetcherBase):
 					"player": {"name": g.get('IF', '')},
 				})
 
+			# Check if there is a yellow card in this batch to handle second yellow properly
+			has_yellow_in_batch = any('yellow card' in (e.get('IK','').lower()) for e in card_entries)
+
 			for c in card_entries:
 				ik_low = (c.get('IK', '') or '').lower()
-				card_class = 'red' if ('red card' in ik_low or 'second yellow' in ik_low) else 'yellow'
+				ict_low = (c.get('ICT', '') or '').lower()
+				
+				# Skip explicit Red Card if it's a second yellow situation (UI handles the upgrade)
+				if 'red card' in ik_low and has_yellow_in_batch:
+					continue
+					
+				if 'red card' in ik_low or 'red card' in ict_low:
+					card_class = 'red'
+				else:
+					card_class = 'yellow'
+					
 				side = ctx_is_home if ctx_is_home is not None else True
-				incidents.append({
+				player_name = c.get('IF', '')
+				
+				card_key = (player_name, minute, side)
+				if card_key in processed_cards:
+					continue
+					
+				processed_cards.add(card_key)
+
+				incident_data = {
 					"incidentType": "card",
 					"incidentClass": card_class,
 					"isHome": side,
 					"time": minute,
 					"time_display": minute_raw,
-					"player": {"name": c.get('IF', '')},
-				})
+					"player": {"name": player_name},
+				}
+				incidents.append(incident_data)
 
 		if final_home == 0 and final_away == 0:
 			final_home = prev_home
 			final_away = prev_away
 
-		has_pen = any(i.get('incidentType') == 'penaltyShootout' for i in incidents)
 		ev_js = {"event": {
 			"homeScore": {"current": final_home, "display": final_home, "penalties": pen_home},
 			"awayScore": {"current": final_away, "display": final_away, "penalties": pen_away},
@@ -1440,7 +1472,7 @@ class FlashscoreMatchMedia(MatchMediaFetcherBase):
 	def _search_youtube(self, query, max_results=3):
 		if not PY3 and isinstance(query, unicode):
 			query = query.encode('utf-8', 'ignore')
-		search_url = "https://www.youtube.com/results?search_query=" + compat_quote(query)
+		search_url = "https://www.youtube.com/results?search_query=" + compat_quote(query) + "&sp=EgQIBRAB"
 		try:
 			r = requests.get(search_url, timeout=15, verify=False, headers={
 				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
@@ -1451,20 +1483,57 @@ class FlashscoreMatchMedia(MatchMediaFetcherBase):
 					logdata("MatchMedia", "Flashscore YouTube search HTTP %d" % r.status_code)
 				return []
 			html = r.text
-			video_ids = []
-			for m in re.finditer(r'"videoId":"([a-zA-Z0-9_-]{11})"', html):
-				vid = m.group(1)
-				if vid not in video_ids:
-					video_ids.append(vid)
-				if len(video_ids) >= max_results:
-					break
 			media = []
-			for vid in video_ids:
+			seen_vids = set()
+			
+			chunks = html.split('"videoRenderer":')
+			for chunk in chunks[1:]:
+				vid_match = re.search(r'"videoId":"([a-zA-Z0-9_-]{11})"', chunk[:2000])
+				if not vid_match:
+					continue
+				vid = vid_match.group(1)
+				if vid in seen_vids:
+					continue
+				seen_vids.add(vid)
+				
+				pub_text = ''
+				pub_match = re.search(r'"publishedTimeText":\s*\{\s*"simpleText":\s*"([^"]+)"', chunk[:10000])
+				if not pub_match:
+					pub_match = re.search(r'"publishedTimeText":\s*\{\s*"runs":\s*\[\s*\{\s*"text":\s*"([^"]+)"', chunk[:10000])
+					
+				if pub_match:
+					pub_text = pub_match.group(1)
+					pub_text_lower = pub_text.lower()
+					if debug_MatchMedia:
+						logdata("MatchMedia", "Flashscore Checking video %s | Date: %s" % (vid, pub_text))
+						
+					if any(x in pub_text_lower for x in ['streamed', 'live', 'premiered']):
+						continue
+						
+					time_match = re.search(r'(\d+)\s*([a-z]+)\s*ago', pub_text_lower)
+					if time_match:
+						num = int(time_match.group(1))
+						unit = time_match.group(2)
+						if unit.startswith('y') or unit.startswith('mo') or unit.startswith('w'):
+							continue
+						if unit.startswith('d') and num > 2:
+							continue
+					else:
+						if any(x in pub_text_lower for x in ['year', 'month', 'week']):
+							continue
+				else:
+					if debug_MatchMedia:
+						logdata("MatchMedia", "Flashscore Skipping video %s: No date found." % vid)
+					continue
+					
 				media.append({
 					'url': "https://www.youtube.com/watch?v=" + vid,
 					'title': query,
-					'subtitle': '',
+					'subtitle': pub_text if pub_text else "Recent",
 				})
+				if len(media) >= max_results:
+					break
+					
 			if debug_MatchMedia:
 				logdata("MatchMedia", "Flashscore YouTube search found %d videos" % len(media))
 			return media
@@ -1497,7 +1566,7 @@ class ESPNMatchMedia(MatchMediaFetcherBase):
 	def _search_youtube(self, query, max_results=3):
 		if not PY3 and isinstance(query, unicode):
 			query = query.encode('utf-8', 'ignore')
-		search_url = "https://www.youtube.com/results?search_query=" + compat_quote(query)
+		search_url = "https://www.youtube.com/results?search_query=" + compat_quote(query) + "&sp=EgQIBRAB"
 		try:
 			r = requests.get(search_url, timeout=15, verify=False, headers={
 				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
@@ -1508,20 +1577,57 @@ class ESPNMatchMedia(MatchMediaFetcherBase):
 					logdata("MatchMedia", "YouTube search HTTP %d" % r.status_code)
 				return []
 			html = r.text
-			video_ids = []
-			for m in re.finditer(r'"videoId":"([a-zA-Z0-9_-]{11})"', html):
-				vid = m.group(1)
-				if vid not in video_ids:
-					video_ids.append(vid)
-				if len(video_ids) >= max_results:
-					break
 			media = []
-			for vid in video_ids:
+			seen_vids = set()
+			
+			chunks = html.split('"videoRenderer":')
+			for chunk in chunks[1:]:
+				vid_match = re.search(r'"videoId":"([a-zA-Z0-9_-]{11})"', chunk[:2000])
+				if not vid_match:
+					continue
+				vid = vid_match.group(1)
+				if vid in seen_vids:
+					continue
+				seen_vids.add(vid)
+				
+				pub_text = ''
+				pub_match = re.search(r'"publishedTimeText":\s*\{\s*"simpleText":\s*"([^"]+)"', chunk[:10000])
+				if not pub_match:
+					pub_match = re.search(r'"publishedTimeText":\s*\{\s*"runs":\s*\[\s*\{\s*"text":\s*"([^"]+)"', chunk[:10000])
+					
+				if pub_match:
+					pub_text = pub_match.group(1)
+					pub_text_lower = pub_text.lower()
+					if debug_MatchMedia:
+						logdata("MatchMedia", "Checking video %s | Date: %s" % (vid, pub_text))
+						
+					if any(x in pub_text_lower for x in ['streamed', 'live', 'premiered']):
+						continue
+						
+					time_match = re.search(r'(\d+)\s*([a-z]+)\s*ago', pub_text_lower)
+					if time_match:
+						num = int(time_match.group(1))
+						unit = time_match.group(2)
+						if unit.startswith('y') or unit.startswith('mo') or unit.startswith('w'):
+							continue
+						if unit.startswith('d') and num > 2:
+							continue
+					else:
+						if any(x in pub_text_lower for x in ['year', 'month', 'week']):
+							continue
+				else:
+					if debug_MatchMedia:
+						logdata("MatchMedia", "Skipping video %s: No date found." % vid)
+					continue
+					
 				media.append({
 					'url': "https://www.youtube.com/watch?v=" + vid,
 					'title': query,
-					'subtitle': '',
+					'subtitle': pub_text if pub_text else "Recent",
 				})
+				if len(media) >= max_results:
+					break
+					
 			if debug_MatchMedia:
 				logdata("MatchMedia", "YouTube search found %d videos" % len(media))
 			return media
