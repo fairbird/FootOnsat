@@ -119,6 +119,8 @@ class LiveFetchBase(object):
 				from Components.config import config as _cfg
 				if _cfg.plugins.FootOnSat.source.value in ("sportscore", "espn"):
 					THRESHOLD = 0.75
+				elif _cfg.plugins.FootOnSat.source.value == "fotmob":
+					THRESHOLD = 0.60
 			except Exception:
 				pass
 		TIME_WINDOW = timedelta(hours=4)
@@ -264,10 +266,38 @@ class LiveFetchBase(object):
 					if abs(live["match_dt"] - local_dt) <= TIME_WINDOW
 				]
 
+				# === FAST CANDIDATE SCORING ===
+				wa1 = set(l_t1_clean.split())
+				wa2 = set(l_t2_clean.split())
+				
+				scored_candidates = []
+				for live in relevant_live_events:
+					s_t1_clean = live_clean_cache[compat_str(live["team1"]).strip()]
+					s_t2_clean = live_clean_cache[compat_str(live["team2"]).strip()]
+					
+					wb1 = set(s_t1_clean.split())
+					wb2 = set(s_t2_clean.split())
+					
+					overlap_straight = len(wa1 & wb1) + len(wa2 & wb2)
+					overlap_swap = len(wa1 & wb2) + len(wa2 & wb1)
+					overlap_score = max(overlap_straight, overlap_swap)
+					
+					len_diff = abs(len(l_t1_clean) - len(s_t1_clean)) + abs(len(l_t2_clean) - len(s_t2_clean))
+					
+					scored_candidates.append((overlap_score, -len_diff, live))
+					
+				scored_candidates.sort(key=lambda x: (x[0], x[1]), reverse=True)
+				
+				positive_overlaps = [x[2] for x in scored_candidates if x[0] > 0]
+				if positive_overlaps:
+					top_candidates = positive_overlaps[:60]
+				else:
+					top_candidates = [x[2] for x in scored_candidates[:60]]
+					
 				sm1 = SequenceMatcher(None, l_t1_clean, "")
 				sm2 = SequenceMatcher(None, l_t2_clean, "")
 
-				for live in relevant_live_events:
+				for live in top_candidates:
 					s_t1 = compat_str(live["team1"]).strip()
 					s_t2 = compat_str(live["team2"]).strip()
 					s_t1_clean = live_clean_cache[s_t1]
@@ -278,8 +308,8 @@ class LiveFetchBase(object):
 					len_l2 = len(l_t2_clean)
 					len_s2 = len(s_t2_clean)
 
-					straight_possible = (abs(len_l1 - len_s1) <= 20 and abs(len_l2 - len_s2) <= 20)
-					swap_possible = (abs(len_l1 - len_s2) <= 20 and abs(len_l2 - len_s1) <= 20)
+					straight_possible = (abs(len_l1 - len_s1) <= 15 and abs(len_l2 - len_s2) <= 15)
+					swap_possible = (abs(len_l1 - len_s2) <= 15 and abs(len_l2 - len_s1) <= 15)
 					if not (straight_possible or swap_possible):
 						continue
 
@@ -654,7 +684,6 @@ class SofaScoreFetcher(LiveFetchBase):
 			logdata("fetch_live_results", "Selected Date: %s" % selected_date)
 
 		cookie_file = "/tmp/ss_cf_cookies.txt"
-		self._ss_bootstrap(cookie_file)
 
 		d = defer.Deferred()
 
@@ -702,7 +731,10 @@ class SofaScoreFetcher(LiveFetchBase):
 				d_final.callback([b'{"events":[]}'])
 			self._ss_get(url, cookie_file, timeout=20).addCallback(_cb).addErrback(_eb)
 
-		_fetch_page(1, [], d)
+		def _bootstrap_done(_):
+			_fetch_page(1, [], d)
+
+		deferToThread(self._ss_bootstrap, cookie_file).addCallback(_bootstrap_done)
 		self.screen.fetch_deferred = d
 
 		def process_results(results):
@@ -732,7 +764,7 @@ class SportScoreFetcher(LiveFetchBase):
 			'Accept': 'application/json',
 		}
 		try:
-			r = requests.get(url, headers=headers, timeout=timeout, verify=False)
+			r = requests.get(url, headers=headers, timeout=10, verify=False)
 			if r.status_code == 200:
 				return r.json()
 			if debug_Fetch_Live:
@@ -1139,27 +1171,6 @@ class ESPNFetcher(LiveFetchBase):
 		if debug_Fetch_Live:
 			logdata("fetch_live_results", "ESPN dates: %s limit: %s" % (",".join(date_dates), limit))
 
-		leagues_data = self._espn_get("https://sports.core.api.espn.com/v2/sports/soccer/leagues?limit={0}".format(limit))
-		if debug_Fetch_Live:
-			logdata("fetch_live_results", "ESPN leagues RAW_TYPE: %s" % type(leagues_data).__name__)
-			if leagues_data:
-				logdata("fetch_live_results", "ESPN leagues RAW_KEYS: %s" % (list(leagues_data.keys()) if isinstance(leagues_data, dict) else "not-dict"))
-				logdata("fetch_live_results", "ESPN leagues PREVIEW: %s" % str(leagues_data)[:500])
-		if not leagues_data:
-			if debug_Fetch_Live:
-				logdata("fetch_live_results", "ESPN no leagues data")
-			try:
-				self.screen.iniMenu()
-			except Exception:
-				pass
-			return
-
-		league_items = leagues_data.get("items", [])
-		if debug_Fetch_Live:
-			logdata("fetch_live_results", "ESPN total leagues: %d" % len(league_items))
-			if league_items:
-				logdata("fetch_live_results", "ESPN FIRST_LEAGUE: %s" % str(league_items[0])[:300])
-
 		import threading
 
 		all_events = []
@@ -1199,23 +1210,6 @@ class ESPNFetcher(LiveFetchBase):
 							seen_local.add(ev_id)
 				if not events:
 					return
-				if debug_Fetch_Live and events:
-					logdata("fetch_live_results", "ESPN_LEAGUE_HIT [%s/%s]: %d events" % (slug, name, len(events)))
-					for _ev in events:
-						try:
-							_comps = _ev.get("competitions", [{}])[0]
-							_competitors = _comps.get("competitors", [])
-							_h = next((c for c in _competitors if c.get("homeAway") == "home"), {})
-							_a = next((c for c in _competitors if c.get("homeAway") == "away"), {})
-							_hn = _h.get("team", {}).get("displayName", "?")
-							_an = _a.get("team", {}).get("displayName", "?")
-							_dt = _ev.get("date", "?")
-							_st = _comps.get("status", {}).get("type", {}).get("state", "?")
-							_hs = _h.get("score", "")
-							_as = _a.get("score", "")
-							logdata("fetch_live_results", "ESPN_SAMPLE [%s] %s vs %s | score=%s-%s | date=%s | state=%s" % (slug, _hn, _an, _hs, _as, _dt, _st))
-						except Exception:
-							continue
 				local_converted = []
 				for ev in events:
 					ev_id = str(ev.get("id", ""))
@@ -1236,6 +1230,18 @@ class ESPNFetcher(LiveFetchBase):
 					logdata("fetch_live_results", "ESPN league fetch error: %s" % str(e)[:100])
 
 		def _run_all():
+			leagues_data = self._espn_get("https://sports.core.api.espn.com/v2/sports/soccer/leagues?limit={0}".format(limit))
+			if debug_Fetch_Live:
+				logdata("fetch_live_results", "ESPN leagues RAW_TYPE: %s" % type(leagues_data).__name__)
+			if not leagues_data:
+				if debug_Fetch_Live:
+					logdata("fetch_live_results", "ESPN no leagues data")
+				return []
+				
+			league_items = leagues_data.get("items", [])
+			if debug_Fetch_Live:
+				logdata("fetch_live_results", "ESPN total leagues: %d" % len(league_items))
+
 			threads = []
 			for item in league_items:
 				t = threading.Thread(target=_fetch_league, args=(item,))
@@ -1248,28 +1254,6 @@ class ESPNFetcher(LiveFetchBase):
 					t.start()
 				for t in batch:
 					t.join()
-			if debug_Fetch_Live:
-				by_date = {}
-				by_league = {}
-				by_state = {}
-				for _ev in all_events:
-					_ts = _ev.get("startTimestamp", 0)
-					try:
-						_d = datetime.fromtimestamp(_ts).strftime("%Y-%m-%d")
-					except Exception:
-						_d = "unknown"
-					by_date[_d] = by_date.get(_d, 0) + 1
-					_t = (_ev.get("tournament") or {}).get("name", "?")
-					by_league[_t] = by_league.get(_t, 0) + 1
-					_s = (_ev.get("status") or {}).get("type", "?")
-					by_state[_s] = by_state.get(_s, 0) + 1
-				logdata("fetch_live_results", "ESPN_SUMMARY: total_leagues=%d total_events=%d" % (len(league_items), len(all_events)))
-				for _k in sorted(by_date.keys()):
-					logdata("fetch_live_results", "ESPN_SUMMARY_BY_DATE: %s count=%d" % (_k, by_date[_k]))
-				for _k in sorted(by_state.keys()):
-					logdata("fetch_live_results", "ESPN_SUMMARY_BY_STATE: %s count=%d" % (_k, by_state[_k]))
-				for _k in sorted(by_league.keys()):
-					logdata("fetch_live_results", "ESPN_SUMMARY_BY_LEAGUE: %s count=%d" % (_k, by_league[_k]))
 			return all_events
 
 		def _done(events):
@@ -1662,8 +1646,11 @@ class FotMobFetcher(LiveFetchBase):
 				ss_type = "inprogress"
 				live_time = status_obj.get("liveTime", {})
 				short_time = str(live_time.get("short", ""))
-				if short_time:
-					# Fix: Clean up any strange characters (like ¶) and extract only digits/plus
+				
+				# Check for Half Time before stripping non-numeric characters
+				if status_short == "ht" or "half" in status_long.lower() or "ht" in short_time.lower():
+					status_long = "HALFTIME"
+				elif short_time:
 					short_time = re.sub(r'[^0-9+]', '', short_time)
 					status_long = short_time + "'" if short_time else "LIVE"
 				else:
@@ -1728,72 +1715,87 @@ class FotMobFetcher(LiveFetchBase):
 			return
 
 		matches_list = [list(m) for m in self.screen.matches]
-		THRESHOLD = 0.60 # Lowered to 0.60 to accept names like M'gladbach
+		THRESHOLD = 0.60
+		TIME_WINDOW = timedelta(hours=24)
 
-		for match in matches_list:
-			try:
-				local_name = compat_str(match[0])
-				teams = re.split(r'\s+(?:vs\.|vs|v\.|v|VS|Vs|VS\.)\s+|\s+-\s+', local_name, flags=re.IGNORECASE)
-				if len(teams) != 2:
-					continue
-				
-				l_t1 = self._clean_name(teams[0].strip())
-				l_t2 = self._clean_name(teams[1].strip())
+		def _do_match():
+			for match in matches_list:
+				try:
+					local_name = compat_str(match[0])
+					teams = re.split(r'\s+(?:vs\.|vs|v\.|v|VS|Vs|VS\.)\s+|\s+-\s+', local_name, flags=re.IGNORECASE)
+					if len(teams) != 2:
+						continue
+					
+					l_t1 = self._clean_name(teams[0].strip())
+					l_t2 = self._clean_name(teams[1].strip())
 
-				best_sim = 0.0
-				best_live = None
+					time_str = compat_str(match[1])
+					try:
+						time_str_local = self.screen.getTime(time_str)
+						local_dt = datetime.strptime(time_str_local.split(' - ')[1] + ' ' + time_str_local.split(' - ')[0], "%Y-%m-%d %H:%M")
+					except Exception:
+						local_dt = datetime.now()
 
-				for live in live_matches:
-					s_t1 = self._clean_name(live["team1"])
-					s_t2 = self._clean_name(live["team2"])
+					best_sim = 0.0
+					best_live = None
 
-					# Straight match similarity
-					sm1 = SequenceMatcher(None, l_t1, s_t1)
-					sim1 = max(sm1.ratio(), self._token_containment(l_t1, s_t1))
-					sm2 = SequenceMatcher(None, l_t2, s_t2)
-					sim2 = max(sm2.ratio(), self._token_containment(l_t2, s_t2))
-					avg_straight = (sim1 + sim2) / 2.0
+					for live in live_matches:
+						if abs(live["match_dt"] - local_dt) > TIME_WINDOW:
+							continue
 
-					# Swap match similarity
-					sm1s = SequenceMatcher(None, l_t1, s_t2)
-					sim1s = max(sm1s.ratio(), self._token_containment(l_t1, s_t2))
-					sm2s = SequenceMatcher(None, l_t2, s_t1)
-					sim2s = max(sm2s.ratio(), self._token_containment(l_t2, s_t1))
-					avg_swap = (sim1s + sim2s) / 2.0
+						s_t1 = self._clean_name(live["team1"])
+						s_t2 = self._clean_name(live["team2"])
 
-					cur_sim = max(avg_straight, avg_swap)
+						sm1 = SequenceMatcher(None, l_t1, s_t1)
+						sim1 = max(sm1.ratio(), self._token_containment(l_t1, s_t1))
+						sm2 = SequenceMatcher(None, l_t2, s_t2)
+						sim2 = max(sm2.ratio(), self._token_containment(l_t2, s_t2))
+						avg_straight = (sim1 + sim2) / 2.0
 
-					if cur_sim > best_sim:
-						best_sim = cur_sim
-						if avg_straight >= avg_swap:
-							best_live = {
-								"team1_score": live["team1_score"],
-								"team2_score": live["team2_score"],
-								"match_status": live["match_status"],
-								"id": live["id"]
-							}
+						sm1s = SequenceMatcher(None, l_t1, s_t2)
+						sim1s = max(sm1s.ratio(), self._token_containment(l_t1, s_t2))
+						sm2s = SequenceMatcher(None, l_t2, s_t1)
+						sim2s = max(sm2s.ratio(), self._token_containment(l_t2, s_t1))
+						avg_swap = (sim1s + sim2s) / 2.0
+
+						cur_sim = max(avg_straight, avg_swap)
+
+						if cur_sim > best_sim:
+							best_sim = cur_sim
+							if avg_straight >= avg_swap:
+								best_live = {
+									"team1_score": live["team1_score"],
+									"team2_score": live["team2_score"],
+									"match_status": live["match_status"],
+									"id": live["id"]
+								}
+							else:
+								best_live = {
+									"team1_score": live["team2_score"],
+									"team2_score": live["team1_score"],
+									"match_status": live["match_status"],
+									"id": live["id"]
+								}
+
+					if best_sim >= THRESHOLD and best_live:
+						match[5] = best_live["team1_score"]
+						match[6] = best_live["team2_score"]
+						match[7] = best_live["match_status"]
+						if len(match) > 8:
+							match[8] = best_live["id"]
 						else:
-							best_live = {
-								"team1_score": live["team2_score"],
-								"team2_score": live["team1_score"],
-								"match_status": live["match_status"],
-								"id": live["id"]
-							}
-
-				if best_sim >= THRESHOLD and best_live:
-					match[5] = best_live["team1_score"]
-					match[6] = best_live["team2_score"]
-					match[7] = best_live["match_status"]
-					if len(match) > 8:
-						match[8] = best_live["id"]
+							match.append(best_live["id"])
 					else:
-						match.append(best_live["id"])
-				else:
-					match[5] = match[6] = match[7] = ""
-			except Exception:
-				continue
-				
-		self._matching_complete(matches_list)
+						match[5] = match[6] = match[7] = ""
+				except Exception:
+					continue
+			
+			return matches_list
+
+		def _done(updated_list):
+			self._matching_complete(updated_list)
+
+		deferToThread(_do_match).addCallback(_done)
 
 	def fetch(self):
 		self.screen.fetch_timestamp = time.time()
