@@ -104,7 +104,7 @@ def is_standings_available(source, link):
 		return link.lower() in ESPN_SLUGS
 	if source == "sportscore":
 		return False
-	if source == "flashscore":
+	if source in ("flashscore", "fotmob"):
 		return link in json_urls
 	return link in json_urls
 
@@ -116,7 +116,10 @@ def get_standings_url(source, link):
 		return link if link.lower() in ESPN_SLUGS else None
 	if source == "sportscore":
 		return None
+	if source in ("flashscore", "fotmob"):
+		return json_urls.get(link)
 	return json_urls.get(link)
+
 
 FS_BASE = "https://global.flashscore.ninja/2/x/feed/"
 FS_HEADERS = {
@@ -125,6 +128,7 @@ FS_HEADERS = {
 	'Referer': 'https://www.flashscore.com/',
 	'Accept': '*/*',
 }
+
 
 def _fs_request(endpoint, timeout=20):
 	try:
@@ -202,43 +206,47 @@ class SofaScoreStandings(StandingsFetcherBase):
 		api_url = "https://www.sofascore.com/api/v1/unique-tournament/{}/season/{}/standings/total".format(tournament_id, season_id)
 		if debug_Standings:
 			logdata("StandingsScreen", "Using SofaScore API URL: %s" % api_url)
-		if PY3:
-			def _fetch_standings_py3():
+
+		def _fetch_standings_curl():
+			cookie_file = "/tmp/ss_cf_cookies.txt"
+			try:
+				subprocess.call(["/usr/bin/curl_chrome150", "-s", "-L", "-k", "--max-time", "15", "-c", cookie_file, "https://www.sofascore.com/", "-o", "/dev/null"], stderr=subprocess.PIPE)
+				out = subprocess.check_output([
+					"/usr/bin/curl_chrome150", "-s", "-L", "-k",
+					"--max-time", "20",
+					"-b", cookie_file,
+					"-H", "X-Requested-With: XMLHttpRequest",
+					"-H", "Accept: application/json, text/plain, */*",
+					"-H", "Referer: https://www.sofascore.com/",
+					"-H", "Origin: https://www.sofascore.com",
+					api_url
+				], stderr=subprocess.PIPE)
+				if out:
+					if debug_Standings:
+						logdata("StandingsScreen", "Curl fetch OK, len=%d" % len(out))
+					return out
+			except Exception as e:
+				if debug_Standings:
+					logdata("StandingsScreen", "Curl fetch failed: %s" % str(e))
+			
+			# Fallback to requests if curl fails
+			try:
 				headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', 'Referer': 'https://www.sofascore.com/', 'Origin': 'https://www.sofascore.com', 'Accept': 'application/json'}
-				try:
-					r = requests.get(api_url, headers=headers, timeout=15, verify=False)
-					return r.content if r.status_code == 200 else None
-				except Exception:
-					return None
-			d = deferToThread(_fetch_standings_py3)
-			d.addCallback(self.screen._parse_standings_data)
-			d.addErrback(self.screen._standing_error_handler, api_url)
-		else:
-			headers2 = {
-				'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36',
-				'Referer': 'https://www.sofascore.com/',
-				'Origin': 'https://www.sofascore.com',
-				'Accept': 'application/json'
-			}
-			def _fetch_with_requests_py2():
-				try:
-					s = _make_sofa_session_py2()
-					s.headers.update(headers2)
-					s.headers.update({'X-Requested-With': 'XMLHttpRequest'})
-					r = s.get(api_url, timeout=15, verify=False)
-					if r.status_code == 403:
-						r = s.get(api_url, timeout=15, verify=False)
-					r.raise_for_status()
-					if debug_Standings:
-						logdata("StandingsScreen", "PY2 fetch OK, len=%d" % len(r.content))
+				r = requests.get(api_url, headers=headers, timeout=15, verify=False)
+				if r.status_code == 200:
 					return r.content
-				except Exception as e:
-					if debug_Standings:
-						logdata("StandingsScreen", "PY2 fetch failed: %s" % str(e))
-					raise Exception("SofaScore fetch failed: %s" % str(e))
-			d = deferToThread(_fetch_with_requests_py2)
-			d.addCallback(self.screen._parse_standings_data)
-			d.addErrback(self.screen._standing_error_handler, api_url)
+			except Exception:
+				pass
+			return None
+			
+		def _debug_parse_wrapper(raw_data):
+			if debug_Standings:
+				logdata("StandingsScreen", "DEBUG: Callback triggered -> Sending data to _parse_standings_data. Data length: %s" % (len(raw_data) if raw_data else 0))
+			self.screen._parse_standings_data(raw_data)
+
+		d = deferToThread(_fetch_standings_curl)
+		d.addCallback(_debug_parse_wrapper)
+		d.addErrback(self.screen._standing_error_handler, api_url)
 
 
 class ESPNStandings(StandingsFetcherBase):
@@ -382,8 +390,7 @@ def get_standings_fetcher(source, screen, league, url):
 		return ESPNStandings(screen, league, url)
 	if source == "sportscore":
 		return SportScoreStandings(screen, league, url)
-	if source == "flashscore":
-		return FlashscoreStandings(screen, league, url)
+	# Use SofaScoreStandings directly for flashscore, fotmob, and sofascore to ensure Py2 compatibility
 	return SofaScoreStandings(screen, league, url)
 
 

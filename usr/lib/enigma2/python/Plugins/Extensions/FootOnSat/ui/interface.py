@@ -3236,10 +3236,7 @@ class StandingsScreen(Screen):
 					team_data = row.get('team', {})
 					team_name = team_data.get('name', 'Unknown Team')
 					team_id = team_data.get('id')
-					try:
-						logo_url = "http://api.sofascore.com/api/v1/team/{}/image".format(team_id) if team_id else ""
-					except Exception as e:
-						logo_url = "https://api.sofascore.com/api/v1/team/{}/image".format(team_id) if team_id else ""
+					logo_url = "https://api.sofascore.app/api/v1/team/{}/image".format(team_id) if team_id else ""
 					# Extract all required stats directly from the 'row' dictionary
 					position = str(row.get('position', 0))
 					played = str(row.get('matches', 0))
@@ -3374,47 +3371,52 @@ class StandingsScreen(Screen):
 			AGENT_STR = AGENT.decode('utf-8', 'ignore')
 
 			try:
-				if PY3:
-					sniFactory = WebClientContextFactory(logo_url)
-					d = downloadPage(
-						str.encode(logo_url), 
-						temp_file,
-						contextFactory=sniFactory, 
-						timeout=5,
-						agent=AGENT
-					)
-					blockingCallFromThread(reactor, lambda: d) 
-				else:
-					logo_headers = {
-						# Headers common to both methods (must be list of strings for Twisted, single string for Requests)
-						'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*;q=0.8',
-						'Referer': 'https://www.sofascore.com/', # CRITICAL
-						'Origin': 'https://www.sofascore.com',   # CRITICAL
-					}
-					# === PYTHON 2 FIX: Use Requests/deferToThread to bypass 403 ===
-					#if debug_Standings: logdata("Logos", "Starting Requests download for logo: %s (PY2 FIX)" % team_name)
+				cookie_file = "/tmp/ss_cf_cookies.txt"
+				cmd = [
+					"/usr/bin/curl_chrome150", "-s", "-L", "-k",
+					"--max-time", "15",
+					"-b", cookie_file,
+					"-H", "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
+					"-H", "Referer: https://www.sofascore.com/",
+					"-H", "Origin: https://www.sofascore.com",
+					"-H", "Accept: image/avif,image/webp,image/apng,image/svg+xml,image/*;q=0.8",
+					logo_url
+				]
+				
+				if debug_Standings: 
+					logdata("Logos", "Executing curl for '%s'" % logo_url)
+				
+				try:
+					data = subprocess.check_output(cmd, stderr=subprocess.PIPE)
+				except subprocess.CalledProcessError as e:
+					data = b""
 					
-					# Use headers in Py2 format (single strings)
-					py2_headers = {
-						'User-Agent': AGENT_STR,
-						'Accept': logo_headers['Accept'],
-						'Referer': logo_headers['Referer'],
-						'Origin': logo_headers['Origin'],
-						'Cache-Control': 'no-cache',
-					}
-					
-					r = requests.get(logo_url, headers=py2_headers, timeout=5, verify=False)
-					r.raise_for_status()
-					data = r.content
-					
-					# === CRITICAL FIX: Ensure it’s actually image data (not HTML 403 page) ===
-					if not (data.startswith(b'\x89PNG') or data.startswith(b'\xff\xd8') or data.startswith(b'GIF')):
-						if debug_Standings: logdata("Logos", "ERROR: Downloaded content for '%s' is not an image (probably 403 HTML page)." % team_name)
-						return False
+				# Fallback to requests if curl fails
+				if not data or len(data) < 100:
+					if debug_Standings: 
+						logdata("Logos", "Curl failed for '%s', trying requests fallback..." % team_name)
+					try:
+						req_headers = {
+							'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36',
+							'Referer': 'https://www.sofascore.com/',
+							'Origin': 'https://www.sofascore.com'
+						}
+						r = requests.get(logo_url, headers=req_headers, timeout=10, verify=False)
+						if r.status_code == 200:
+							data = r.content
+					except Exception:
+						pass
 						
-					# Save the raw file content to the temporary location
-					with open(temp_file, "wb") as f:
-						f.write(data)
+				if not data or len(data) < 100:
+					if debug_Standings: logdata("Logos", "Empty or too small response for logo: %s (Len: %d)" % (team_name, len(data) if data else 0))
+					return False
+				
+				if not (data.startswith(b'\x89PNG') or data.startswith(b'\xff\xd8') or data.startswith(b'GIF') or data.startswith(b'RIFF')):
+					if debug_Standings: logdata("Logos", "ERROR: Downloaded content for '%s' is not an image. Preview: %s" % (team_name, data[:50]))
+					return False
+					
+				with open(temp_file, "wb") as f:
+					f.write(data)
 
 				success = False
 				if ext == ".png":
@@ -3427,6 +3429,11 @@ class StandingsScreen(Screen):
 					try:
 						img = Image.open(temp_file)
 						if debug_Standings: logdata("img", "Downloading logo for '%s'" % img)
+						
+						if img.size[0] < 10 or img.size[1] < 10:
+							if debug_Standings: logdata("Logos", "Rejected tiny/blank logo for '%s' (Size: %dx%d)" % (team_name, img.size[0], img.size[1]))
+							return False
+
 						# Handle potential transparent GIF/JPG by converting to RGBA
 						if img.mode not in ('RGB', 'RGBA'):
 							img = img.convert('RGBA')
@@ -3514,6 +3521,9 @@ class StandingsScreen(Screen):
 			if team_info["url"]:
 				absolute_url = team_info["url"]
 				
+				# Add delay to prevent Cloudflare Rate Limiting
+				time.sleep(0.3)
+				
 				# Use the actual download function we defined above
 				if download_and_save_logo(team_info["original_name"], absolute_url, headers, self.league):
 					team_info["found"] = True
@@ -3538,12 +3548,19 @@ class StandingsScreen(Screen):
 							html_headers["Referer"] = "https://www.google.com/"
 						html_headers["Upgrade-Insecure-Requests"] = "1"
 
-						request = compat_Request(primary_backup_url, headers=html_headers)
-						response = compat_urlopen(request, timeout=5)
-						html = response.read()
-
-						if PY3:
-							html = html.decode("utf-8", errors="ignore")
+						try:
+							cmd = [
+								"/usr/bin/curl_chrome150", "-s", "-L", "-k",
+								"--max-time", "15",
+								"-H", "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+								primary_backup_url
+							]
+							html = subprocess.check_output(cmd, stderr=subprocess.PIPE)
+							if PY3:
+								html = html.decode("utf-8", errors="ignore")
+						except Exception as e:
+							if debug_Standings: logdata("Logos", "Curl HTML fetch failed: %s" % str(e))
+							html = ""
 						
 						soup = BeautifulSoup(html, "html.parser")
 						# Look for img tags
@@ -3568,8 +3585,8 @@ class StandingsScreen(Screen):
 							# Use the pre-normalized name for matching
 							team_to_search = team_info["name"]
 
-							# Fuzzy match against the normalized scraped titles (STRICT CUTOFF = 0.90)
-							team_match = difflib.get_close_matches(team_to_search, normalized_targets, n=1, cutoff=0.90)
+							# Fuzzy match against the normalized scraped titles
+							team_match = difflib.get_close_matches(team_to_search, normalized_targets, n=1, cutoff=0.75)
 							
 							if debug_Standings: logdata("Logos", "Phase 2 Fuzzy Search for: '%s' (Normalized: '%s'). Match: %s" % (team_info["original_name"], team_to_search, team_match))
 

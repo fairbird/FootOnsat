@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import time
 import json
 import re
@@ -10,11 +11,11 @@ from unicodedata import normalize
 from difflib import SequenceMatcher
 from twisted.internet import defer
 from twisted.internet.threads import deferToThread
+from twisted.internet.defer import DeferredSemaphore
 from twisted.python.failure import Failure
 from Components.config import config
 from .compat import *
 from .setup import *
-import os
 
 
 # --- PY2 SSL fix: force weak ciphers globally (needed by SofaScore) ---
@@ -630,6 +631,8 @@ class SofaScoreFetcher(LiveFetchBase):
 		return d
 
 	def fetch(self):
+		self.screen.fetch_timestamp = time.time()
+		self.current_ts = self.screen.fetch_timestamp
 		if not os.path.exists("/usr/bin/curl_chrome150"):
 			if debug_Fetch_Live:
 				logdata("fetch_live_results", "WARNING: curl-impersonate not installed, live data will be unavailable")
@@ -637,8 +640,6 @@ class SofaScoreFetcher(LiveFetchBase):
 		if not self.screen.matches:
 			self.screen.onWindowShow()
 			return
-		self.screen.fetch_timestamp = time.time()
-		self.current_ts = self.screen.fetch_timestamp
 		if debug_Fetch_Live:
 			logdata("fetch_live_results", "fetch_live_results initiated.")
 
@@ -676,7 +677,13 @@ class SofaScoreFetcher(LiveFetchBase):
 						urls_unique = list(set(urls))
 						if debug_Fetch_Live:
 							logdata("fetch_live_results", "DISCOVERY DONE: %d tournament URLs" % len(urls_unique))
-						deferreds = [self._ss_get(u, cookie_file, timeout=20) for u in urls_unique]
+
+						sem = DeferredSemaphore(10)
+						
+						def _ss_get_limited(u):
+							return sem.run(self._ss_get, u, cookie_file, timeout=5)
+							
+						deferreds = [_ss_get_limited(u) for u in urls_unique]
 						if not deferreds:
 							d_final.callback([b'{"events":[]}'])
 						else:
@@ -804,11 +811,11 @@ class SportScoreFetcher(LiveFetchBase):
 		}
 
 	def fetch(self):
+		self.screen.fetch_timestamp = time.time()
+		self.current_ts = self.screen.fetch_timestamp
 		if not self.screen.matches:
 			self.screen.onWindowShow()
 			return
-		self.screen.fetch_timestamp = time.time()
-		self.current_ts = self.screen.fetch_timestamp
 		if debug_Fetch_Live:
 			logdata("fetch_live_results", "SportScore fetch started")
 
@@ -937,11 +944,11 @@ class SportsDBFetcher(LiveFetchBase):
 		}
 
 	def fetch(self):
+		self.screen.fetch_timestamp = time.time()
+		self.current_ts = self.screen.fetch_timestamp
 		if not self.screen.matches:
 			self.screen.onWindowShow()
 			return
-		self.screen.fetch_timestamp = time.time()
-		self.current_ts = self.screen.fetch_timestamp
 		if debug_Fetch_Live:
 			logdata("fetch_live_results", "TheSportsDB fetch started")
 
@@ -1108,11 +1115,11 @@ class ESPNFetcher(LiveFetchBase):
 		}
 
 	def fetch(self):
+		self.screen.fetch_timestamp = time.time()
+		self.current_ts = self.screen.fetch_timestamp
 		if not self.screen.matches:
 			self.screen.onWindowShow()
 			return
-		self.screen.fetch_timestamp = time.time()
-		self.current_ts = self.screen.fetch_timestamp
 		if debug_Fetch_Live:
 			logdata("fetch_live_results", "ESPN fetch started")
 
@@ -1408,12 +1415,11 @@ class FlashscoreFetcher(LiveFetchBase):
 			return None
 
 	def fetch(self):
+		self.screen.fetch_timestamp = time.time()
+		self.current_ts = self.screen.fetch_timestamp
 		if not self.screen.matches:
 			self.screen.onWindowShow()
 			return
-		self.screen.fetch_timestamp = time.time()
-		self.current_ts = self.screen.fetch_timestamp
-
 		if self.screen.link in ("end", "yesterday"):
 			if debug_Fetch_Live:
 				logdata("fetch_live_results", "Flashscore (JSON) fetch started for %s" % self.screen.link)
@@ -1790,11 +1796,11 @@ class FotMobFetcher(LiveFetchBase):
 		self._matching_complete(matches_list)
 
 	def fetch(self):
+		self.screen.fetch_timestamp = time.time()
+		self.current_ts = self.screen.fetch_timestamp
 		if not self.screen.matches:
 			self.screen.onWindowShow()
 			return
-		self.screen.fetch_timestamp = time.time()
-		self.current_ts = self.screen.fetch_timestamp
 		if debug_Fetch_Live:
 			logdata("fetch_live_results", "FotMob fetch started")
 
