@@ -1439,10 +1439,10 @@ class FootOnSat(Screen):
 			#logdata("DEBUG_VALUE", "Value is: %s | Link is: %s" % (str(config.plugins.FootOnSat.livescore.value), str(self.link)))
 			# Only fetch live results for live/finished matches if livescore is set to "3"					
 			if config.plugins.FootOnSat.livescore.value == "2":
-				if config.plugins.FootOnSat.livescoresections.value == "1" and self.link != "today":
+				if config.plugins.FootOnSat.livescoresections.value == "1" and self.link not in ["today", "tomorrow"]: 
 					self.fetch_live_results()
 				elif config.plugins.FootOnSat.livescoresections.value == "2":
-					if self.link == "live" or self.link == "end" or self.link == "yesterday":
+					if self.link in ["live", "end", "yesterday"]:
 						self.fetch_live_results()
 
 			self.onWindowShow()
