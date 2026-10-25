@@ -85,6 +85,7 @@ class LiveFetchBase(object):
 		self.current_ts = 0
 
 	def _clean_name(self, name):
+		name = re.sub(r'\([^)]*\)', '', name)
 		name = name.replace('ø', 'o').replace('æ', 'ae').replace('å', 'a').replace('Ø', 'O').replace('Æ', 'AE').replace('Å', 'A')
 		if not PY3 and isinstance(name, str):
 			name = name.decode('ascii', 'ignore')
@@ -113,7 +114,7 @@ class LiveFetchBase(object):
 
 	def _do_fuzzy_matching(self, matches_list, live_matches, now_adj):
 		match_perf_start = time.time()
-		THRESHOLD = 0.45
+		THRESHOLD = 0.30
 		if getattr(self.screen, 'link', None):
 			try:
 				from Components.config import config as _cfg
@@ -123,7 +124,7 @@ class LiveFetchBase(object):
 					THRESHOLD = 0.60
 			except Exception:
 				pass
-		TIME_WINDOW = timedelta(hours=4)
+		TIME_WINDOW = timedelta(hours=24) if getattr(self.screen, 'link', None) in ("yesterday", "end") else timedelta(hours=6)
 
 		live_clean_cache = {}
 		for live in live_matches:
@@ -261,10 +262,16 @@ class LiveFetchBase(object):
 				if word_candidates:
 					search_pool = word_candidates
 
-				relevant_live_events = [
-					live for live in search_pool
-					if abs(live["match_dt"] - local_dt) <= TIME_WINDOW
-				]
+				if getattr(self.screen, 'link', None) in ("yesterday", "end"):
+					relevant_live_events = [
+						live for live in search_pool
+						if live["match_dt"].date() == local_dt.date() or abs(live["match_dt"] - local_dt) <= timedelta(hours=36)
+					]
+				else:
+					relevant_live_events = [
+						live for live in search_pool
+						if abs(live["match_dt"] - local_dt) <= TIME_WINDOW
+					]
 
 				# === FAST CANDIDATE SCORING ===
 				wa1 = set(l_t1_clean.split())
@@ -1417,6 +1424,8 @@ class FlashscoreFetcher(LiveFetchBase):
 				if text and len(text) > 50:
 					parsed = self._parse_feed(text)
 					for m in parsed:
+						if self.screen.link == "end" and m.get('AB') != '3':
+							continue
 						ev = self._convert_event(m)
 						if ev:
 							all_events.append(ev)
