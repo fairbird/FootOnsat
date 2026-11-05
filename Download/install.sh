@@ -535,38 +535,8 @@ if [ "$MISSING_PKGS" = "true" ]; then
 	exit 1
 fi
 
-# Check if the same version is already installed to skip redundant downloads
+# Always force plugin installation
 SKIP_INSTALL="false"
-if (exec < /dev/tty) 2>/dev/null; then
-    if [ "$INSTALL_CHOICE" = "2" ] && [ -d "$EXTERNAL_PATH" ]; then
-        if [ -f "$EXTERNAL_PATH/__init__.py" ]; then
-            INSTALLED_VER=$(grep "__version__" "$EXTERNAL_PATH/__init__.py" | cut -d'=' -f2 | tr -d ' ')
-            if [ "$INSTALLED_VER" = "$VERSION" ]; then
-                echo "================================================="
-                echo "Plugin version $VERSION is already installed at:"
-                echo "$EXTERNAL_PATH"
-                echo "Skipping download and installation."
-                echo "================================================="
-                SKIP_INSTALL="true"
-                sleep 3
-                exit 0
-            fi
-        fi
-    elif [ "$INSTALL_CHOICE" = "1" ] && [ -d "$PLUGIN_PATH" ]; then
-        if [ -f "$PLUGIN_PATH/__init__.py" ]; then
-            INSTALLED_VER=$(grep "__version__" "$PLUGIN_PATH/__init__.py" | cut -d'=' -f2 | tr -d ' ')
-            if [ "$INSTALLED_VER" = "$VERSION" ]; then
-                echo "================================================="
-                echo "Plugin version $VERSION is already installed internally."
-                echo "Skipping download and installation."
-                echo "================================================="
-                SKIP_INSTALL="true"
-                sleep 3
-                exit 0
-            fi
-        fi
-    fi
-fi
 
 # Download and extract the plugin only if it needs to be installed or updated
 if [ "$SKIP_INSTALL" = "false" ]; then
