@@ -142,11 +142,11 @@ class PiconLocator:
 					pngname = self.findPicon(series)
 		if not pngname:  # picon default
 			tmp = resolveFilename(SCOPE_ACTIVE_SKIN, "picon_default.png")  # picon_default in current active skin
-			tmp2 = findPicon("picon_default")  # picon_default in picon folder
-			if exists(tmp2):
+			tmp2 = self.findPicon("picon_default")  # picon_default in picon folder
+			if pathExists(tmp2):
 				pngname = tmp2
 			else:
-				if exists(tmp):
+				if pathExists(tmp):
 					pngname = tmp
 				else:
 					pngname = resolveFilename(SCOPE_ACTIVE_SKIN, "picon_default.png")
