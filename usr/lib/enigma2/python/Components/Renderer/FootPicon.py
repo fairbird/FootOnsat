@@ -140,6 +140,16 @@ class PiconLocator:
 				if not pngname and len(name) > 6:
 					series = re.sub(r's[0-9]*e[0-9]*$', '', name)
 					pngname = self.findPicon(series)
+		if not pngname:  # picon default
+			tmp = resolveFilename(SCOPE_ACTIVE_SKIN, "picon_default.png")  # picon_default in current active skin
+			tmp2 = findPicon("picon_default")  # picon_default in picon folder
+			if exists(tmp2):
+				pngname = tmp2
+			else:
+				if exists(tmp):
+					pngname = tmp
+				else:
+					pngname = resolveFilename(SCOPE_ACTIVE_SKIN, "picon_default.png")
 		return pngname
 
 
