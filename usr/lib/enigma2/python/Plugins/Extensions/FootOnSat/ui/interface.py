@@ -1,5 +1,18 @@
 # -*- coding: utf-8 -*-
-import os, io, re, gc, sys, math, codecs, random, time, shutil, difflib, requests, subprocess, signal
+import os
+import re
+import io
+import gc
+import sys
+import math
+import codecs
+import random
+import time
+import shutil
+import difflib
+import requests
+import subprocess
+import signal
 from time import strftime
 from sqlite3 import connect
 from bs4 import BeautifulSoup
@@ -30,6 +43,7 @@ from Plugins.Plugin import PluginDescriptor
 from Tools.Directories import resolveFilename, SCOPE_PLUGINS, fileExists
 from Tools.LoadPixmap import LoadPixmap
 from twisted.internet import defer, reactor
+from twisted.internet.defer import Deferred
 from twisted.python.failure import Failure
 from twisted.internet.ssl import ClientContextFactory
 from twisted.internet.threads import deferToThread
@@ -41,6 +55,12 @@ from .YouTubeVideoUrl import YouTubeVideoUrl
 from .compat import *
 from .setup import *
 from .fetch_details import *
+
+try:
+	import urllib3
+	urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+except Exception:
+	pass
 
 try:
 	from skin import parseColor
@@ -237,6 +257,11 @@ class FootOnSat(Screen):
 
 	def iniMenu(self):
 		LIVECOLORE = int(config.plugins.FootOnSat.livecolor.value, 16)
+
+		if self.link == "live":
+			self["menu"].setText("")
+			self["menu2"].setText("")
+
 		if self.link == "favorite" and len(self.matches) > 0:
 			seen = set()
 			uniq = []
@@ -403,13 +428,17 @@ class FootOnSat(Screen):
 				}
 				if clean_status in STATUS_DISPLAY:
 					status_text, prefix_key = STATUS_DISPLAY[clean_status]
-					display_prefix = "%s : " % prefix_key
 				elif clean_status.isdigit() or re.search(r'^\d+[\'+]*\+?\d*$', clean_status):
 					status_text = "%s %s" % (display_status, title131)
-					display_prefix = "%s : " % title123
+					prefix_key = title123
 				else:
 					status_text = display_status
-					display_prefix = "%s : " % title123
+					prefix_key = title123
+
+				if self.link != "live":
+					prefix_key = title122
+
+				display_prefix = "%s : " % prefix_key
 				# =======================================================
 				# *** NEW LOGIC END ***
 				# =======================================================
@@ -581,6 +610,22 @@ class FootOnSat(Screen):
 				self['key_yellow'].setText(_("%s") % title286)
 				self['key_green'].hide()
 				self['key_blue'].hide()
+			elif self.link == "live":
+				self['key_red'].hide()
+				self['key_yellow'].hide()
+				self['key_green'].show()
+				self['key_blue'].hide()
+				self["menu"].setText("")
+				self["menu2"].setText("")
+				sel = self["list1"].getSelectionIndex()
+				if sel >= 0 and sel < len(self.matches):
+					match = self.matches[sel][0]
+					if self.checkIfexist(match):
+						self['key_green'].setText(_("%s") % title332)
+					else:
+						self['key_green'].setText(_("%s") % title331)
+				else:
+					self['key_green'].setText(_("%s") % title331)
 			elif self.link in ["end", "yesterday"]:
 				if self.link == "yesterday" or getattr(self, 'is_yesterday', False):
 					self['key_red'].show()
@@ -646,6 +691,8 @@ class FootOnSat(Screen):
 				self['key_yellow'].hide()
 				self['key_blue'].hide()
 				self['key_green'].hide()
+				self["menu"].setText("")
+				self["menu2"].setText("")
 			elif self.link == "favorite":
 				self['key_red'].show()
 				self['key_red'].setText(_("%s") % title285)
@@ -788,7 +835,19 @@ class FootOnSat(Screen):
 			self.resetChannelinfo()
 			sel = self["list1"].getSelectionIndex()
 			if sel >= 0 and sel < len(self.matches):
-				match = self.matches[sel][0] 
+				match = self.matches[sel][0]
+				if self.link == "live":
+					self["menu"].setText("")
+					self["menu2"].setText("")
+					if self.checkIfexist(match):
+						self["key_green"].setText(_("%s") % title332)
+					else:
+						self["key_green"].setText(_("%s") % title331)
+					return
+				elif self.link in ["end", "yesterday"]:
+					self["menu"].setText("")
+					self["menu2"].setText("")
+					return
 				if self.checkIfexist(match):
 					self["menu"].setText(_("%s") % title121)
 					if parseColor and self["menu"].instance:
@@ -909,18 +968,25 @@ class FootOnSat(Screen):
 		try:
 			with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
 				cur = conn.cursor()
-				cur.execute('CREATE TABLE IF NOT EXISTS LIVE_NOTIF (MATCH TEXT primary key , COMPET TEXT , DATE TEXT , TEAM1_FLAG TEXT , TEAM2_FLAG TEXT , FIRST_NOTIF TEXT , FIRST_NOTIF_STATUS TEXT , LIVE_NOTIF_STATUS TEXT,MESSAGE TEXT)')
-		except DatabaseError as e:
-			# If the file is corrupted, delete it and try again.
-			if debug_Notif: logdata("Database", "Corruption detected, re-creating: %s" % str(e))
-			if exists(join(PLUGINPATH, "db/footonsat.db")):
-				os.remove(join(PLUGINPATH, "db/footonsat.db"))
-			with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
-				cur = conn.cursor()
-				cur.execute('CREATE TABLE IF NOT EXISTS LIVE_NOTIF (MATCH TEXT primary key , COMPET TEXT , DATE TEXT , TEAM1_FLAG TEXT , TEAM2_FLAG TEXT , FIRST_NOTIF TEXT , FIRST_NOTIF_STATUS TEXT , LIVE_NOTIF_STATUS TEXT,MESSAGE TEXT)')
+				cur.execute('CREATE TABLE IF NOT EXISTS LIVE_NOTIF (MATCH TEXT primary key , COMPET TEXT , DATE TEXT , TEAM1_FLAG TEXT , TEAM2_FLAG TEXT , FIRST_NOTIF TEXT , FIRST_NOTIF_STATUS TEXT , LIVE_NOTIF_STATUS TEXT,MESSAGE TEXT, EVENT_ID TEXT)')
+				try:
+					cur.execute("ALTER TABLE LIVE_NOTIF ADD COLUMN EVENT_ID TEXT")
+				except:
+					pass
 		except Exception as e:
-			if debug_Notif: logdata("Database", "Fatal Error: %s" % str(e))
-			pass
+			if debug_ZAP: logdata("Database", "Error: %s" % str(e))
+			if exists(join(PLUGINPATH, "db/footonsat.db")):
+				try:
+					os.remove(join(PLUGINPATH, "db/footonsat.db"))
+				except:
+					pass
+			try:
+				with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
+					cur = conn.cursor()
+					cur.execute('CREATE TABLE IF NOT EXISTS LIVE_NOTIF (MATCH TEXT primary key , COMPET TEXT , DATE TEXT , TEAM1_FLAG TEXT , TEAM2_FLAG TEXT , FIRST_NOTIF TEXT , FIRST_NOTIF_STATUS TEXT , LIVE_NOTIF_STATUS TEXT,MESSAGE TEXT, EVENT_ID TEXT)')
+			except:
+				if debug_Notif: logdata("Database", "Fatal Error: %s" % str(e))
+				pass
 
 	def menu(self):
 		if self.link not in ["live", "end", "yesterday"]:
@@ -1034,16 +1100,18 @@ class FootOnSat(Screen):
 
 		if PY3:
 			match = self.matches[index][0]
+			match = match.replace(u'\xa0', ' ').strip()
+			match = ' '.join(match.split())
 			match_date = self.getTime(self.matches[index][1])
-			compet = self.matches[index][2]
-			flag1 = self.matches[index][3]
-			flag2 = self.matches[index][4]
+			compet = self.matches[index][2].replace(u'\xa0', ' ').strip()
+			flag1 = self.matches[index][3].strip()
+			flag2 = self.matches[index][4].strip()
 		else:
-			match = self.matches[index][0].decode('utf8')
+			match = self.matches[index][0].decode('utf8').strip()
 			match_date = self.getTime(self.matches[index][1].decode('utf8'))
-			compet = self.matches[index][2].decode('utf8')
-			flag1 = self.matches[index][3].decode('utf8')
-			flag2 = self.matches[index][4].decode('utf8')
+			compet = self.matches[index][2].decode('utf8').strip()
+			flag1 = self.matches[index][3].decode('utf8').strip()
+			flag2 = self.matches[index][4].decode('utf8').strip()
 
 		if datetime.strptime(match_date, "%H:%M - %Y-%m-%d") > datetime.now():
 			with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
@@ -1057,14 +1125,89 @@ class FootOnSat(Screen):
 				else:
 					if debug_Notif: logdata("Ok Database", "Adding match to notifications: %s" % str(match))
 					first_notif, message = self.setFirstNotifTime(match_date)
-					cur.execute("INSERT INTO LIVE_NOTIF(MATCH,COMPET,DATE,TEAM1_FLAG,TEAM2_FLAG,FIRST_NOTIF,FIRST_NOTIF_STATUS,LIVE_NOTIF_STATUS,MESSAGE) values (?,?,?,?,?,?,?,?,?)", (
-						match, compet, match_date, flag1, flag2, first_notif, "Waiting", "Waiting", message,))
+					event_id = self.matches[index][8] if len(self.matches[index]) > 8 else ""
+					try:
+						cur.execute("INSERT OR REPLACE INTO LIVE_NOTIF(MATCH,COMPET,DATE,TEAM1_FLAG,TEAM2_FLAG,FIRST_NOTIF,FIRST_NOTIF_STATUS,LIVE_NOTIF_STATUS,MESSAGE,EVENT_ID) values (?,?,?,?,?,?,?,?,?,?)", (
+							match, compet, match_date, flag1, flag2, first_notif, "Waiting", "Waiting", message, event_id))
+						conn.commit()
+						try:
+							if FootOnSatNotifDialog.dialog is not None:
+								FootOnSatNotifDialog.dialog.LiveEventsTimer.start(10000)
+						except Exception:
+							pass
+						if debug_Notif: logdata("Ok Database", "Successfully added to DB: %s" % match)
+					except Exception as e:
+						logdata("Ok Database", "Error adding to DB: %s" % str(e))
+						self.session.open(MessageBox, _("Error: %s") % str(e), MessageBox.TYPE_ERROR, timeout=5)
 		self.iniMenu()
 
+
+	def toggle_live_notification(self):
+		if self.selectedList != self["list1"] or len(self.matches) == 0:
+			return
+
+		index = self['list1'].getSelectionIndex()
+		match = self.matches[index][0] if PY3 else self.matches[index][0].decode('utf8')
+		match = match.replace(u'\xa0', ' ').strip()
+		match = ' '.join(match.split())
+
+		with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
+			cur = conn.cursor()
+			cur.execute("SELECT MATCH FROM LIVE_NOTIF WHERE MATCH = ?", (match,))
+			data = cur.fetchone()
+
+		if data:
+			# Remove Notification
+			if debug_Notif: logdata("NotifToggle", "Removing match: %s" % str(match))
+			clean_match_key = re.sub(r'\s+', '', match.replace(u'\xa0', u''))
+			with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
+				cur = conn.cursor()
+				cur.execute("DELETE FROM LIVE_NOTIF WHERE MATCH = ?", (match,))
+				cur.execute("DELETE FROM zap_channels WHERE match = ?", (clean_match_key,))
+				conn.commit()
+			self.session.open(MessageBox, _("Notification removed"), MessageBox.TYPE_INFO, timeout=3)
+		else:
+			# Add Notification
+			if debug_Notif: logdata("NotifToggle", "Adding match to notifications: %s" % str(match))
+			if PY3:
+				match_date = self.getTime(self.matches[index][1])
+				compet = self.matches[index][2]
+				flag1 = self.matches[index][3]
+				flag2 = self.matches[index][4]
+			else:
+				match_date = self.getTime(self.matches[index][1].decode('utf8'))
+				compet = self.matches[index][2].decode('utf8')
+				flag1 = self.matches[index][3].decode('utf8')
+				flag2 = self.matches[index][4].decode('utf8')
+			event_id = self.matches[index][8] if len(self.matches[index]) > 8 else ""
+			
+			first_notif, message = self.setFirstNotifTime(match_date)
+			try:
+				with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
+					cur = conn.cursor()
+					cur.execute("INSERT OR REPLACE INTO LIVE_NOTIF(MATCH,COMPET,DATE,TEAM1_FLAG,TEAM2_FLAG,FIRST_NOTIF,FIRST_NOTIF_STATUS,LIVE_NOTIF_STATUS,MESSAGE,EVENT_ID) values (?,?,?,?,?,?,?,?,?,?)", (
+						match, compet, match_date, flag1, flag2, first_notif, "Waiting", "Waiting", message, event_id))
+					conn.commit()
+				try:
+					if FootOnSatNotifDialog.dialog is not None:
+						FootOnSatNotifDialog.dialog.LiveEventsTimer.start(10000)
+				except Exception:
+					pass
+				if debug_Notif: logdata("NotifToggle", "Successfully added to DB: %s" % match)
+				self.session.open(MessageBox, _("Notification added"), MessageBox.TYPE_INFO, timeout=3)
+			except Exception as e:
+				if debug_Notif: logdata("NotifToggle", "DB Error on Add: %s" % str(e))
+				self.session.open(MessageBox, "DB Error: %s" % str(e), MessageBox.TYPE_ERROR, timeout=5)
+		self.iniMenu()
 
 	def setFirstNotifTime(self, dt):
 		dt_obj = datetime.strptime(dt, "%H:%M - %Y-%m-%d")
 		now = datetime.now()
+		# If Live Events Only is selected, bypass pre-match notifications
+		if config.plugins.FootOnSat.notify.value == "0":
+			first_notif_str = (dt_obj + timedelta(hours=4)).strftime("%H:%M - %Y-%m-%d")
+			message = "Live Events Only"
+			return [first_notif_str, message]
 		# 1. 30-minute reminder
 		notif_30min_time = dt_obj - timedelta(minutes=30)
 		if notif_30min_time > now:
@@ -1102,14 +1245,23 @@ class FootOnSat(Screen):
 			match_key = match
 		else:
 			match_key = match.decode('utf-8')
+		match_key = match_key.replace(u'\xa0', ' ').strip()
+		# Double check for extra spaces
+		match_key = ' '.join(match_key.split())
 		
+		# if debug_Notif: logdata("NotifToggle", "Checking match in DB: '%s'" % match_key)
+
 		# Connection 1: Using 'with' (Good)
 		with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
 			cur = conn.cursor()
 			cur.execute("SELECT MATCH FROM LIVE_NOTIF WHERE MATCH = ?", (match_key,))
 			data = cur.fetchone()
 			if data is None:
+				#if debug_Notif: logdata("NotifToggle", "Match NOT found in DB: '%s'" % match_key)
 				return 0
+			else:
+				#if debug_Notif: logdata("NotifToggle", "Match FOUND in DB: '%s'" % match_key)
+				pass
 		
 		key = re.sub(r'\s+', '', match_key)
 		if not PY3:
@@ -1355,6 +1507,32 @@ class FootOnSat(Screen):
 						is_really_finished = now > (match_date_adjusted + timedelta(minutes=180))
 						is_terminated = any(x in str(match_status).upper() for x in ['FINISHED', 'CANCELED', 'POSTPONED'])
 						in_cache = match_name in terminated_cache
+						# --- FIX: UPDATE EVENT_ID IN DB IF MATCH GOES LIVE ---
+						current_event_id = str(match.get('event_id', '')).strip()
+						if current_event_id and not is_upcoming:
+							try:
+								clean_m_name = match_name.strip()
+								with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
+									cur = conn.cursor()
+									# Update only if it's currently empty to avoid overwriting
+									cur.execute("UPDATE LIVE_NOTIF SET EVENT_ID = ? WHERE MATCH = ? AND (EVENT_ID IS NULL OR EVENT_ID = '')", (current_event_id, clean_m_name))
+									conn.commit()
+									if debug_Notif: logdata("getData", "Updated missing EVENT_ID for match: %s -> %s" % (clean_m_name, current_event_id))
+							except Exception as e:
+								if debug_Notif: logdata("getData", "Error updating EVENT_ID: %s" % str(e))
+						# -----------------------------------------------------
+							try:
+								clean_match_name = match_name.strip()
+								clean_match_key = re.sub(r'\s+', '', clean_match_name.replace(u'\xa0', ''))
+								if not PY3: clean_match_key = clean_match_key.decode('utf-8') if isinstance(clean_match_key, str) else clean_match_key
+								with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
+									cur = conn.cursor()
+									cur.execute("DELETE FROM LIVE_NOTIF WHERE MATCH = ?", (clean_match_name,))
+									cur.execute("DELETE FROM zap_channels WHERE match = ?", (clean_match_key,))
+									conn.commit()
+									if debug_Notif: logdata("getData", "Match in end section, removed notification from DB: %s" % clean_match_name)
+							except Exception as e:
+								if debug_Notif: logdata("getData", "Error removing finished match: %s" % str(e))
 						if getattr(self, 'link', None) == "favorite":
 							m_lower = match_name.lower()
 							# Check if any part of the saved favorite matches the current match name
@@ -1504,6 +1682,9 @@ class FootOnSat(Screen):
 		self.canScan = False
 
 	def keyGreen(self):
+		if self.link == "live":
+			self.toggle_live_notification()
+			return
 		if self.link == "end":
 			if getattr(self, 'is_yesterday', False):
 				return
@@ -1614,18 +1795,370 @@ class FootOnSat(Screen):
 		self.is_closed = True
 		if hasattr(self, 'fetch_deferred') and self.fetch_deferred:
 			try:
-				# This kills the network socket (Twisted) or the thread callback
 				self.fetch_deferred.cancel()
 				self.fetch_deferred = None 
-				if debug_Fetch_Live: logdata("FootOnSat", "STOP JOB: fetch_deferred killed.")
 			except:
 				pass
+		
+		if config.plugins.FootOnSat.live_events.value and not getattr(self, '_is_fetching_exit_ids', False):
+			self._is_fetching_exit_ids = True
+			try:
+				import threading
+				threading.Thread(target=self._silent_update_ids_on_exit).start()
+			except:
+				pass
+		
 		try:
 			gc.collect()
 		except:
-			if debug_Fetch_Live: logdata("FootOnSat", "Garbage Collector: Failed.")
 			pass
 		self.close()
+
+	def _silent_update_ids_on_exit(self):
+		global _global_exit_fetch_running
+		if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: Starting universal background fetch...")
+		try:
+			import json
+			import re
+			from sqlite3 import connect
+			from os.path import join
+
+			with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
+				cur = conn.cursor()
+				cur.execute("SELECT MATCH FROM LIVE_NOTIF WHERE EVENT_ID IS NULL OR EVENT_ID = ''")
+				rows = cur.fetchall()
+			
+			if not rows:
+				if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: No missing IDs. Aborting.")
+				_global_exit_fetch_running = False
+				return
+
+			match_names = [r[0] for r in rows]
+
+			def _norm(s):
+				try:
+					s = normalize('NFKD', s.lower()).encode('ascii', 'ignore').decode('ascii')
+				except Exception:
+					s = s.lower()
+				return re.sub(r'[^a-z0-9]', '', s)
+			source = config.plugins.FootOnSat.source.value
+			headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
+
+			# 1. FLASHSCORE
+			if source == 'flashscore':
+				try:
+					if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: [FS] Starting fetch for %d matches" % len(match_names))
+					urls = [
+						"https://local-global.flashscore.ninja/2/x/feed/f_1_0_3_en_1",
+						"https://local-global.flashscore.ninja/2/x/feed/f_1_1_3_en_1"
+					]
+					for url in urls:
+						h = headers.copy()
+						h['x-fsign'] = 'SW9D1eZo'
+						h['Referer'] = 'https://www.flashscore.com/'
+						if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: [FS] Requesting URL: %s" % url)
+						
+						res = requests.get(url, headers=h, timeout=10, verify=False)
+						if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: [FS] HTTP Status: %s, Length: %s" % (res.status_code, len(res.text) if res.text else 0))
+						
+						if res.status_code == 200:
+							matches_data = res.text.split('~')
+							
+							def _clean_name_inner(s):
+								try:
+									if not PY3 and isinstance(s, str):
+										s = s.decode('utf-8', 'ignore')
+									elif PY3 and isinstance(s, bytes):
+										s = s.decode('utf-8', 'ignore')
+									s = re.sub(r'\([^)]*\)', '', s)
+									s = normalize('NFKD', s).encode('ascii', 'ignore').decode('ascii')
+									s = s.lower().replace('.', '')
+									s = re.sub(r'[^a-z\s]', ' ', s, flags=re.IGNORECASE)
+									s = re.sub(r'\s+', ' ', s).strip()
+									return s
+								except Exception as e:
+									if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: [FS] Clean Error: %s" % str(e))
+									return ""
+
+							with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
+								cur = conn.cursor()
+								for m in matches_data:
+									if not PY3 and isinstance(m, unicode):
+										m = m.encode('utf-8', 'ignore')
+										
+									if 'AA÷' not in m: continue
+									eid_m = re.search(r'AA÷([^¬]+)', m)
+									t1_m = re.search(r'AE÷([^¬]+)', m)
+									t2_m = re.search(r'AF÷([^¬]+)', m)
+									
+									if eid_m and t1_m and t2_m:
+										eid = eid_m.group(1)
+										t1 = t1_m.group(1)
+										t2 = t2_m.group(1)
+										
+										for db_name in match_names:
+											db_parts = re.split(r'\s+(?:vs\.?|v\.?|VS\.?|-)\s+', db_name, flags=re.IGNORECASE)
+											if len(db_parts) == 2:
+												db_t1 = _clean_name_inner(db_parts[0])
+												db_t2 = _clean_name_inner(db_parts[1])
+												fs_t1 = _clean_name_inner(t1)
+												fs_t2 = _clean_name_inner(t2)
+												
+												from difflib import SequenceMatcher
+												sim1 = SequenceMatcher(None, db_t1, fs_t1).ratio()
+												sim2 = SequenceMatcher(None, db_t2, fs_t2).ratio()
+												
+												if debug_Notif: 
+													try:
+														logdata("NotifScreen", "DEBUG_EXIT: [FS] DB='%s|%s' API='%s|%s' Sim=(%.2f, %.2f)" % (db_t1, db_t2, fs_t1, fs_t2, sim1, sim2))
+													except: pass
+												
+												if sim1 > 0.6 and sim2 > 0.6:
+													if debug_Notif: 
+														try: logdata("NotifScreen", "DEBUG_EXIT: [FS] MATCH FOUND! -> %s" % str(eid))
+														except: pass
+													cur.execute("UPDATE LIVE_NOTIF SET EVENT_ID = ? WHERE MATCH = ?", (eid, db_name))
+													break
+								conn.commit()
+				except Exception as e:
+					if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: [FS] Exception: %s" % str(e))
+
+			# 2. SOFASCORE
+			elif source == 'sofascore':
+				try:
+					from datetime import date
+					selected_date = date.today().isoformat()
+					cookie_file = "/tmp/ss_cf_cookies.txt"
+					
+					subprocess.call([
+						"/usr/bin/curl_chrome150", "-s", "-L", "-k",
+						"--max-time", "15",
+						"-c", cookie_file,
+						"https://www.sofascore.com/",
+						"-o", "/dev/null"
+					], stderr=subprocess.PIPE)
+					
+					def ss_get(u):
+						try:
+							cmd = [
+								"/usr/bin/curl_chrome150", "-s", "-L", "-k",
+								"--max-time", "20",
+								"-b", cookie_file,
+								"-H", "X-Requested-With: XMLHttpRequest",
+								"-H", "Accept: application/json, text/plain, */*",
+								"-H", "Referer: https://www.sofascore.com/",
+								"-H", "Origin: https://www.sofascore.com",
+								u
+							]
+							return subprocess.check_output(cmd, stderr=subprocess.PIPE)
+						except Exception:
+							return None
+
+					tourn_urls = []
+					for page in [1, 2]:
+						t_url = "https://www.sofascore.com/api/v1/sport/football/scheduled-tournaments/%s/page/%d" % (selected_date, page)
+						raw_t = ss_get(t_url)
+						if not raw_t: break
+						try:
+							t_data = json.loads(raw_t.decode('utf-8', 'ignore'))
+							for item in t_data.get('scheduled', []):
+								t = item.get('tournament', {})
+								ut = t.get('uniqueTournament')
+								if ut and ut.get('id'):
+									tourn_urls.append("https://www.sofascore.com/api/v1/unique-tournament/%d/scheduled-events/%s" % (ut['id'], selected_date))
+								elif t.get('id'):
+									tourn_urls.append("https://www.sofascore.com/api/v1/tournament/%d/scheduled-events/%s" % (t['id'], selected_date))
+						except Exception: pass
+
+					all_events = []
+					for u in list(set(tourn_urls)):
+						raw_ev = ss_get(u)
+						if raw_ev:
+							try:
+								ev_data = json.loads(raw_ev.decode('utf-8', 'ignore'))
+								all_events.extend(ev_data.get('events', []))
+							except Exception: pass
+
+					with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
+						cur = conn.cursor()
+						for ev in all_events:
+							eid = str(ev.get('id', ''))
+							h_name = ev.get('homeTeam', {}).get('name', '').lower()
+							a_name = ev.get('awayTeam', {}).get('name', '').lower()
+							from difflib import SequenceMatcher
+							norm_h = _norm(h_name)
+							norm_a = _norm(a_name)
+							for db_name in match_names:
+								db_parts = re.split(r'\s+(?:vs\.?|v\.?|VS\.?|-)\s+', db_name.lower(), flags=re.IGNORECASE)
+								if len(db_parts) == 2:
+									n_db1 = _norm(db_parts[0])
+									n_db2 = _norm(db_parts[1])
+									
+									sim1 = SequenceMatcher(None, n_db1, norm_h).ratio()
+									sim2 = SequenceMatcher(None, n_db2, norm_a).ratio()
+									sim1_s = SequenceMatcher(None, n_db1, norm_a).ratio()
+									sim2_s = SequenceMatcher(None, n_db2, norm_h).ratio()
+									
+									if (sim1 > 0.6 and sim2 > 0.6) or (sim1_s > 0.6 and sim2_s > 0.6):
+										cur.execute("UPDATE LIVE_NOTIF SET EVENT_ID = ? WHERE MATCH = ?", (eid, db_name))
+										if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: SOFASCORE Updated %s with %s" % (db_name, eid))
+										break
+						conn.commit()
+				except Exception as e:
+					if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: SofaScore error: %s" % str(e))
+
+			# 3. FOTMOB
+			elif source == 'fotmob':
+				try:
+					from datetime import date
+					t_date = date.today().strftime('%Y%m%d')
+					url = "https://www.fotmob.com/api/data/matches?date=" + t_date
+					if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: [FOTMOB] Fetching URL: %s" % url)
+					
+					res = requests.get(url, headers=headers, timeout=10, verify=False)
+					if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: [FOTMOB] HTTP Status: %s" % res.status_code)
+					
+					if res.status_code == 200:
+						leagues = res.json().get('leagues', [])
+						if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: [FOTMOB] Found %d leagues" % len(leagues))
+						
+						with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
+							cur = conn.cursor()
+							for lg in leagues:
+								for m in lg.get('matches', []):
+									eid = str(m.get('id', ''))
+									h_name = m.get('home', {}).get('name', '').lower()
+									a_name = m.get('away', {}).get('name', '').lower()
+									
+									if 'kort' in h_name or 'kort' in a_name:
+										if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: [FOTMOB] Checking API: H='%s' A='%s'" % (h_name, a_name))
+										
+									from difflib import SequenceMatcher
+									norm_h = _norm(h_name)
+									norm_a = _norm(a_name)
+									for db_name in match_names:
+										db_parts = re.split(r'\s+(?:vs\.?|v\.?|VS\.?|-)\s+', db_name.lower(), flags=re.IGNORECASE)
+										if len(db_parts) == 2:
+											n_db1 = _norm(db_parts[0])
+											n_db2 = _norm(db_parts[1])
+											
+											sim1 = SequenceMatcher(None, n_db1, norm_h).ratio()
+											sim2 = SequenceMatcher(None, n_db2, norm_a).ratio()
+											sim1_s = SequenceMatcher(None, n_db1, norm_a).ratio()
+											sim2_s = SequenceMatcher(None, n_db2, norm_h).ratio()
+											
+											if (sim1 > 0.6 and sim2 > 0.6) or (sim1_s > 0.6 and sim2_s > 0.6):
+												if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: [FOTMOB] MATCH FOUND! %s -> %s" % (db_name, eid))
+												cur.execute("UPDATE LIVE_NOTIF SET EVENT_ID = ? WHERE MATCH = ?", (eid, db_name))
+												break
+							conn.commit()
+					else:
+						if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: [FOTMOB] HTTP Error")
+				except Exception as e:
+					if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: FotMob error: %s" % str(e))
+
+			# 4. ESPN
+			elif source == 'espn':
+				try:
+					url = "https://site.api.espn.com/apis/site/v2/sports/soccer/all/scoreboard"
+					if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: [ESPN] Fetching URL: %s" % url)
+					res = requests.get(url, headers=headers, timeout=10, verify=False)
+					if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: [ESPN] HTTP Status: %s" % res.status_code)
+					
+					if res.status_code == 200:
+						events = res.json().get('events', [])
+						if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: [ESPN] Found %d events" % len(events))
+						
+						with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
+							cur = conn.cursor()
+							for ev in events:
+								eid = str(ev.get('id', ''))
+								name = ev.get('name', '').lower()
+								
+								if 'kort' in name or 'mech' in name:
+									if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: [ESPN] Checking API: %s" % name)
+									
+								from difflib import SequenceMatcher
+								norm_name = _norm(name)
+								espn_parts = re.split(r'\s+(?:vs\.?|v\.?|at)\s+', name, flags=re.IGNORECASE)
+								
+								for db_name in match_names:
+									db_parts = re.split(r'\s+(?:vs\.?|v\.?|VS\.?|-)\s+', db_name.lower(), flags=re.IGNORECASE)
+									
+									is_match = False
+									if len(db_parts) == 2 and len(espn_parts) == 2:
+										n_db1 = _norm(db_parts[0])
+										n_db2 = _norm(db_parts[1])
+										n_e1 = _norm(espn_parts[0])
+										n_e2 = _norm(espn_parts[1])
+										
+										sim1 = SequenceMatcher(None, n_db1, n_e1).ratio()
+										sim2 = SequenceMatcher(None, n_db2, n_e2).ratio()
+										sim1_s = SequenceMatcher(None, n_db1, n_e2).ratio()
+										sim2_s = SequenceMatcher(None, n_db2, n_e1).ratio()
+										
+										if (sim1 > 0.6 and sim2 > 0.6) or (sim1_s > 0.6 and sim2_s > 0.6):
+											is_match = True
+									elif _norm(db_name) in norm_name or norm_name in _norm(db_name):
+										is_match = True
+										
+									if is_match:
+										if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: [ESPN] MATCH FOUND! %s -> %s" % (db_name, eid))
+										cur.execute("UPDATE LIVE_NOTIF SET EVENT_ID = ? WHERE MATCH = ?", (eid, db_name))
+										break
+							conn.commit()
+				except Exception as e:
+					if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: ESPN error: %s" % str(e))
+
+			# 5. LIVESCORE
+			elif source == 'livescore':
+				try:
+					url = "https://prod-cdn-mev-api.livescore.com/v1/api/app/live/soccer/0?countryCode=US&locale=en"
+					cmd = ['curl', '-s', '-H', 'User-Agent: Mozilla/5.0', url]
+					raw_data = subprocess.check_output(cmd).decode('utf-8')
+					res_json = json.loads(raw_data)
+					with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
+						cur = conn.cursor()
+						for stage in res_json.get('Stages', []):
+							for ev in stage.get('Events', []):
+								eid = str(ev.get('Eid', ''))
+								h_name = ev.get('T1', [{}])[0].get('Nm', '').lower()
+								a_name = ev.get('T2', [{}])[0].get('Nm', '').lower()
+								from difflib import SequenceMatcher
+								n_h = _norm(h_name)
+								n_a = _norm(a_name)
+								for db_name in match_names:
+									db_parts = re.split(r'\s+(?:vs\.?|v\.?|VS\.?|-)\s+', db_name.lower(), flags=re.IGNORECASE)
+									if len(db_parts) == 2:
+										n_db1 = _norm(db_parts[0])
+										n_db2 = _norm(db_parts[1])
+										
+										sim1 = SequenceMatcher(None, n_db1, n_h).ratio()
+										sim2 = SequenceMatcher(None, n_db2, n_a).ratio()
+										in1 = (n_db1 in n_h or n_h in n_db1)
+										in2 = (n_db2 in n_a or n_a in n_db2)
+										
+										sim1_s = SequenceMatcher(None, n_db1, n_a).ratio()
+										sim2_s = SequenceMatcher(None, n_db2, n_h).ratio()
+										in1_s = (n_db1 in n_a or n_a in n_db1)
+										in2_s = (n_db2 in n_h or n_h in n_db2)
+										
+										match_straight = (sim1 > 0.3 and sim2 > 0.3) or (in1 and sim2 > 0.15) or (in2 and sim1 > 0.15)
+										match_swap = (sim1_s > 0.3 and sim2_s > 0.3) or (in1_s and sim2_s > 0.15) or (in2_s and sim1_s > 0.15)
+										
+										if match_straight or match_swap:
+											cur.execute("UPDATE LIVE_NOTIF SET EVENT_ID = ? WHERE MATCH = ?", (eid, db_name))
+											if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: LIVESCORE Updated %s with %s" % (db_name, eid))
+											break
+						conn.commit()
+				except Exception as e:
+					if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: LiveScore error: %s" % str(e))
+
+			if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: Background fetch finished for %s" % source)
+		except Exception as e:
+			if debug_Notif: logdata("NotifScreen", "DEBUG_EXIT: FATAL ERROR: %s" % str(e))
+		finally:
+			self._is_fetching_exit_ids = False
 
 	def manageIgnoreFile(self, compet=None, reset=False, remove=None):
 		if debug_Ignore: logdata("manageIgnoreFile", "Called with compet={}, reset={}, remove={}".format(compet, reset, remove))
@@ -2123,7 +2656,7 @@ class MatchDetailsScreen(Screen):
 				if inc.get('time', 0) < 0 or inc.get('isBenchPlayer', False):
 					continue
 				itype = inc.get('incidentType')
-				if itype not in ('goal', 'card', 'substitution', 'penaltyShootout', 'var', 'period'): continue
+				if itype not in ('goal', 'card', 'substitution', 'penaltyMissed', 'penaltyShootout', 'var', 'period'): continue
 				if itype == 'penaltyShootout':
 					penalty_incidents.append(inc)
 				else:
@@ -2153,6 +2686,11 @@ class MatchDetailsScreen(Screen):
 						text = (p_name + " (Pen.)") if is_pen else p_name
 						color = 0x00FF00
 						icon_name = "goal.png"
+				elif itype == 'penaltyMissed':
+					p_name = str(inc.get('playerName') or inc.get('player', {}).get('name', ''))
+					text = "%s (Missed Pen.)" % p_name if p_name else "Missed Penalty"
+					color = 0xFF0000
+					icon_name = "pen_missed.png"
 				elif itype == 'card':
 					ic_class = str(inc.get('incidentClass', '')).lower()
 					p_name = str(inc.get('playerName') or inc.get('player', {}).get('name', 'unknown'))
@@ -2864,9 +3402,8 @@ class MatchMediaScreen(Screen):
 
 	def extract_sofascore_stream(self, url):
 		try:
-			from urllib.parse import unquote
 			if "sofascore.com/video-player.html?url=" in url:
-				stream_url = unquote(url.split("url=")[1])
+				stream_url = compat_unquote(url.split("url=")[1])
 				return str(stream_url)
 		except Exception as e:
 			if debug_MatchMedia: logdata("MatchMedia", "Sofascore Error: %s" % str(e))
@@ -3841,13 +4378,37 @@ class FootOnSatNotif:
 	def startNotif(self, session):
 		self.dialog = session.instantiateDialog(FootOnsatNotifScreen)
 
+
 FootOnSatNotifDialog = FootOnSatNotif()
+
+
+class _LiveEventsDummyScreen:
+	def __init__(self):
+		self.incidents = []
+		self.event = {}
+		self.deferred = Deferred()
+	def process_data(self, data):
+		if data:
+			self.incidents = data[0].get('incidents', [])
+			self.event = data[1].get('event', {})
+		if not self.deferred.called:
+			self.deferred.callback(None)
+
 
 class FootOnsatNotifScreen(Screen):
 	def __init__(self, session):
 		Screen.__init__(self, session)
 		self.skin = SKIN_FootOnsatNotif
 		if debug_Notif: logdata("NotifScreen", "Initializing NotifScreen")
+		# Ensure table exists even if main window is not opened
+		try:
+			with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
+				cur = conn.cursor()
+				cur.execute('CREATE TABLE IF NOT EXISTS LIVE_NOTIF (MATCH TEXT primary key , COMPET TEXT , DATE TEXT , TEAM1_FLAG TEXT , TEAM2_FLAG TEXT , FIRST_NOTIF TEXT , FIRST_NOTIF_STATUS TEXT , LIVE_NOTIF_STATUS TEXT,MESSAGE TEXT, EVENT_ID TEXT)')
+				cur.execute('CREATE TABLE IF NOT EXISTS zap_channels (match TEXT primary key, ref TEXT)')
+				conn.commit()
+		except Exception as e:
+			if debug_Notif: logdata("NotifScreen", "DB Init Error: %s" % str(e))
 		self['match'] = Label()
 		self['message'] = Label()
 		self['compet'] = Pixmap()
@@ -3875,6 +4436,17 @@ class FootOnsatNotifScreen(Screen):
 		self.is_displaying = False
 		self.is_checking = False
 		self.woken_up_matches = set()
+
+		# --- LIVE EVENTS NOTIFICATIONS ---
+		self.notified_events = set()
+		self.initialized_matches = set()
+		self.is_fetching_events = False
+		self.LiveEventsTimer = eTimer()
+		try:
+			self.LiveEventsTimer.timeout.get().append(self._check_live_events_timer)
+		except:
+			self.LiveEventsTimer_conn = self.LiveEventsTimer.timeout.connect(self._check_live_events_timer)
+		self.LiveEventsTimer.start(10000) # Check every 10 seconds
 
 	def _update_display_only(self, match, compet, team1, team2, message=None, allow_zap=True):
 		if not self.instance:
@@ -3913,7 +4485,7 @@ class FootOnsatNotifScreen(Screen):
 					zap_ref = eServiceReference(str(row[0]))
 					if debug_Notif: logdata("ZAP_DEBUG", "ZAP BY REFERENCE FOUND → %s (%s)" % (zap_ref.getName(), row[0]))
 				else:
-					if debug_Notif: logdatalogdata("ZAP_DEBUG", "No zap ref found (Search key: '%s')" % normalized_search_key)
+					if debug_Notif: logdata("ZAP_DEBUG", "No zap ref found (Search key: '%s')" % normalized_search_key)
 					pass
 			except Exception as e:
 				if debug_Notif: logdata("ZAP_DEBUG", "ZAP LOOKUP ERROR: %s" % str(e))
@@ -4076,6 +4648,11 @@ class FootOnsatNotifScreen(Screen):
 					# Get the user's notification choice ONCE per timer tick
 					user_choice = config.plugins.FootOnSat.notify.value
 
+					# If user selected Live Events Only, skip pre-match notifications
+					if user_choice == "0":
+						self.is_checking = False
+						return
+
 					if len(rows) > 0:
 						for row in rows:
 							match_name = row[0]
@@ -4167,8 +4744,15 @@ class FootOnsatNotifScreen(Screen):
 										if debug_Notif: logdata("FootOnSatNotif", "CLEANUP: Deleting record after final stage for match: %s (No Start Notif)" % match_name)
 										pass
 										
-									# 3b. Delete the record regardless of the notification choice
-									cur.execute("DELETE FROM LIVE_NOTIF WHERE MATCH = ?", (match_name,))
+									# 3b. Preserve record if live events are enabled
+									live_events_enabled = bool(config.plugins.FootOnSat.live_events.value)
+									if live_events_enabled:
+										# Keep the record for the live events timer
+										new_notif_time = (match_time_obj + timedelta(hours=4)).strftime("%H:%M - %Y-%m-%d")
+										cur.execute("UPDATE LIVE_NOTIF set FIRST_NOTIF = ?, MESSAGE = ? WHERE MATCH = ?", (new_notif_time, "Live Events", match_name))
+									else:
+										# No live events selected, safe to delete
+										cur.execute("DELETE FROM LIVE_NOTIF WHERE MATCH = ?", (match_name,))
 									continue
 					conn.commit()
 
@@ -4201,7 +4785,8 @@ class FootOnsatNotifScreen(Screen):
 					try:
 						# row[2] format: "HH:MM - YYYY-MM-DD"
 						record_date = datetime.strptime(date_string, "%H:%M - %Y-%m-%d")
-						cleanup_time = record_date + timedelta(minutes=1)
+						# Keep match for 3 hours after start time
+						cleanup_time = record_date + timedelta(hours=4)
 						
 						if now > cleanup_time:
 							
@@ -4218,6 +4803,9 @@ class FootOnsatNotifScreen(Screen):
 							# 3. Delete from zap_channels using the cleaned key
 							cur.execute("DELETE FROM zap_channels WHERE match = ?", (normalized_zap_key,))
 							
+							self.initialized_matches.discard(match_name.strip())
+							self.notified_events = set(k for k in self.notified_events if not k.startswith(match_name.strip() + "_"))
+							
 							if debug_Notif: logdata("FootOnSatNotif", "CLEANUP SUCCESSFUL: Deleted LIVE_NOTIF and zap_channels for match: %s" % match_name)
 
 					except Exception as e:
@@ -4227,8 +4815,8 @@ class FootOnsatNotifScreen(Screen):
 
 	def notify(self, match, compet, team1, team2, message=None, allow_zap=True):
 		"""
-		[USER REQUESTED CHANGE] Now queues the notification and starts a sequential display timer.
-		It respects the single-call nature of checkforNotif's loop but delivers the output sequentially.
+		Queues the notification and starts a sequential display timer.
+		Includes a check to prevent duplicate notifications in the queue.
 		"""
 		if self.instance and FootOnSatNotifDialog.dialog is not None:
 			# 1. Package the match details
@@ -4240,11 +4828,249 @@ class FootOnsatNotifScreen(Screen):
 				'message': message,
 				'allow_zap': allow_zap,
 			}
-			# 2. Add to queue
+
+			# 2. Check for duplicates in the queue
+			if match_data in self.matches_queue:
+				if debug_Notif: logdata("NotifScreen", "Skipping duplicate notification: %s" % message)
+				return
+
+			# 3. Add to queue
 			self.matches_queue.append(match_data)
 
-			# 3. Start the sequential display process if it's not already running
+			# 4. Start the sequential display process if it's not already running
 			self._start_sequential_display()
+
+	def _check_live_events_timer(self):
+		if not self.instance or not config.plugins.FootOnSat.live_events.value:
+			return
+		if self.is_fetching_events:
+			if debug_Notif: logdata("NotifScreen", "LiveEventsTimer: previous fetch still running, skip")
+			return
+		try:
+			with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
+				cur = conn.cursor()
+				cur.execute("SELECT DATE FROM LIVE_NOTIF")
+				rows = cur.fetchall()
+			
+			if not rows:
+				if debug_Notif: logdata("NotifScreen", "LiveEventsTimer: DB empty, stopping timer")
+				self.LiveEventsTimer.stop()
+				return
+				
+			now = datetime.now()
+			has_active_match = False
+			for row in rows:
+				match_time = datetime.strptime(row[0], "%H:%M - %Y-%m-%d")
+				if match_time <= now <= match_time + timedelta(hours=4):
+					has_active_match = True
+					break
+			
+			if not has_active_match:
+				if debug_Notif: logdata("NotifScreen", "LiveEventsTimer: no active matches in window, skipping")
+				return
+				
+		except Exception:
+			pass
+			
+		if debug_Notif: logdata("NotifScreen", "LiveEventsTimer: tick, active matches found")
+
+		self.is_fetching_events = True
+
+		d = deferToThread(self._do_fetch_live_events)
+		d.addCallback(self._process_fetched_events)
+		d.addErrback(lambda f: logdata("NotifScreen", "Live events fetch error: %s" % f.getErrorMessage()) if debug_Notif else None)
+		d.addBoth(lambda _: setattr(self, 'is_fetching_events', False))
+
+	def _do_fetch_live_events(self):
+		try:
+			with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
+				cur = conn.cursor()
+				cur.execute("SELECT MATCH, COMPET, TEAM1_FLAG, TEAM2_FLAG, DATE, EVENT_ID FROM LIVE_NOTIF")
+				rows = cur.fetchall()
+			if not rows:
+				return []
+
+			now = datetime.now()
+			live_db_matches = []
+			for row in rows:
+				try:
+					match_time = datetime.strptime(row[4], "%H:%M - %Y-%m-%d")
+					# Increase to 4 hours to cover extra time and penalties
+					if match_time <= now <= match_time + timedelta(hours=4):
+						live_db_matches.append(row)
+				except:
+					pass
+			if not live_db_matches:
+				return []
+
+			from .fetch_details import get_match_details_fetcher
+			from twisted.internet import reactor
+			from twisted.internet.threads import blockingCallFromThread
+
+			source = config.plugins.FootOnSat.source.value
+			fetched_data = []
+
+			if debug_Notif: logdata("NotifScreen", "LiveEvents: matches in window=%d" % len(live_db_matches))
+
+			for db_match in live_db_matches:
+				match_name = db_match[0].strip()
+				compet = db_match[1]
+				team1 = db_match[2]
+				team2 = db_match[3]
+				event_id = db_match[5]
+
+				if not event_id:
+					if debug_Notif: logdata("NotifScreen", "LiveEvents: no event_id for %s, fetching from %s..." % (match_name, source))
+					try:
+						class _Dummy: pass
+						dummy = _Dummy()
+						dummy._is_fetching_exit_ids = False
+						FootOnSat.__dict__['_silent_update_ids_on_exit'](dummy)
+					except Exception as e:
+						if debug_Notif: logdata("NotifScreen", "LiveEvents: fetch error: %s" % str(e))
+					continue
+				if debug_Notif: logdata("NotifScreen", "LiveEvents: fetching incidents for %s (event_id=%s)" % (match_name, event_id))
+
+				dummy = _LiveEventsDummyScreen()
+				fetcher = get_match_details_fetcher(source, dummy, event_id)
+				
+				reactor.callFromThread(fetcher.fetch)
+				reactor.callFromThread(lambda: reactor.callLater(15, dummy.deferred.callback, None))
+				blockingCallFromThread(reactor, lambda: dummy.deferred)
+
+				if dummy.incidents:
+					fetched_data.append({
+						'match': match_name,
+						'compet': compet,
+						'team1': team1,
+						'team2': team2,
+						'incidents': dummy.incidents,
+						'event': dummy.event,
+						'date': row[4]
+					})
+			return fetched_data
+		except Exception as e:
+			if debug_Notif: logdata("NotifScreen", "Error in _do_fetch_live_events: %s" % str(e))
+			return []
+
+	def _process_fetched_events(self, fetched_data):
+		if not fetched_data:
+			return
+
+		selected_events = config.plugins.FootOnSat.live_events.value.split(',')
+		if not selected_events:
+			return
+
+		for data in fetched_data:
+			match_name = data['match']
+			compet = data['compet']
+			team1 = data['team1']
+			team2 = data['team2']
+			incidents = data['incidents']
+			ev = data['event']
+			status_desc = ev.get('status', {}).get('description', '')
+			is_finished = status_desc in ['Ended', 'Finished', 'FT', 'AET', 'PEN', 'After Extra Time', 'Penalties']
+			
+			h_score = ev.get('homeScore', {}).get('display', '0')
+			a_score = ev.get('awayScore', {}).get('display', '0')
+			score_str = "%s-%s" % (h_score, a_score)
+
+			is_new_match = match_name not in self.initialized_matches
+			if is_new_match:
+				if debug_Notif: logdata("NotifScreen", "First fetch for %s, populating without notifying" % match_name)
+				self.initialized_matches.add(match_name)
+
+			for inc in incidents:
+				itype = inc.get('incidentType')
+				iclass = inc.get('incidentClass', '')
+				time = inc.get('time', 0)
+				player = inc.get('player', {}).get('name', '')
+				
+				is_notif = False
+				msg = ""
+				event_key = ""
+
+				if itype == 'goal':
+					inc_h = inc.get('homeScore', h_score)
+					inc_a = inc.get('awayScore', a_score)
+					inc_score_str = "%s-%s" % (inc_h, inc_a)
+					inc_id = inc.get('inc_id', '')
+					if iclass == 'penalty':
+						if 'penalty' in selected_events or 'goal' in selected_events:
+							is_notif = True
+							msg = "Penalty Goal! %s (%s)" % (player, inc_score_str)
+							event_key = "%s_pen_%s" % (match_name, inc_id) if inc_id else "%s_pen_%s_%s" % (match_name, time, player)
+					elif iclass == 'owngoal':
+						if 'goal' in selected_events:
+							is_notif = True
+							msg = "Own Goal! %s (%s)" % (player, inc_score_str)
+							event_key = "%s_og_%s" % (match_name, inc_id) if inc_id else "%s_og_%s_%s" % (match_name, time, player)
+					else:
+						if 'goal' in selected_events:
+							is_notif = True
+							msg = "Goal! %s (%s)" % (player, inc_score_str)
+							event_key = "%s_goal_%s" % (match_name, inc_id) if inc_id else "%s_goal_%s_%s" % (match_name, time, player)
+				elif itype == 'penaltyMissed' and 'penalty' in selected_events:
+					is_notif = True
+					msg = "Penalty Missed! %s" % player
+					inc_id = inc.get('inc_id', '')
+					event_key = "%s_pen_miss_%s" % (match_name, inc_id) if inc_id else "%s_pen_miss_%s_%s" % (match_name, time, player)
+				elif itype == 'var' and 'var' in selected_events:
+					is_notif = True
+					msg = "Goal Disallowed (VAR)"
+					inc_id = inc.get('inc_id', '')
+					event_key = "%s_var_%s" % (match_name, inc_id) if inc_id else "%s_var_%s" % (match_name, time)
+				elif itype == 'card' and iclass == 'red' and 'red_card' in selected_events:
+					is_notif = True
+					msg = "Red Card! %s" % player
+					inc_id = inc.get('inc_id', '')
+					event_key = "%s_red_%s" % (match_name, inc_id) if inc_id else "%s_red_%s_%s" % (match_name, time, player)
+				
+				if itype == 'period':
+					ptext = inc.get('text', '')
+					if ptext == 'HT' and 'half_time' in selected_events:
+						is_notif = True
+						msg = title129
+						event_key = "%s_HT" % match_name
+					elif ptext in ('2H', '2nd Half', '2nd half') and 'second_half' in selected_events:
+						is_notif = True
+						msg = title211
+						event_key = "%s_2H" % match_name
+					elif ptext == 'FT' and 'full_time' in selected_events:
+						is_notif = True
+						msg = title126
+						event_key = "%s_FT" % match_name
+					elif ptext == 'ET' and 'extra_time' in selected_events:
+						is_notif = True
+						msg = title216
+						event_key = "%s_ET" % match_name
+					elif ptext == 'PEN' and 'penalties' in selected_events:
+						is_notif = True
+						msg = title217
+						event_key = "%s_PEN" % match_name
+
+				if is_notif and event_key not in self.notified_events:
+					self.notified_events.add(event_key)
+					if is_new_match:
+						continue
+					if debug_Notif: logdata("NotifScreen", "New Live Event: %s - %s" % (match_name, msg))
+					self.notify(match_name, compet, team1, team2, message=msg, allow_zap=False)
+
+			if is_finished:
+				try:
+					clean_m_name = match_name.strip()
+					clean_key = re.sub(r'\s+', '', clean_m_name.replace(u'\xa0', ''))
+					if not PY3: clean_key = clean_key.decode('utf-8') if isinstance(clean_key, str) else clean_key
+					with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
+						cur = conn.cursor()
+						cur.execute("DELETE FROM LIVE_NOTIF WHERE MATCH = ?", (clean_m_name,))
+						cur.execute("DELETE FROM zap_channels WHERE match = ?", (clean_key,))
+						conn.commit()
+						self.initialized_matches.discard(match_name)
+						self.notified_events = set(k for k in self.notified_events if not k.startswith(match_name + "_"))
+						if debug_Notif: logdata("NotifScreen", "Match finished, removed from DB: %s" % clean_m_name)
+				except Exception as e:
+					if debug_Notif: logdata("NotifScreen", "Error removing finished match: %s" % str(e))
 
 	def hideNotif(self):
 		"""Standard hide function used by the queue processor."""

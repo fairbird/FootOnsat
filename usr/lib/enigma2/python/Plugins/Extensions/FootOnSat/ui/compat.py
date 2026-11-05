@@ -22,6 +22,7 @@ if version_info[0] == 2:
 	from itertools import izip_longest as compat_zip_longest
 	from urllib import urlencode as compat_urlencode
 	from urllib import quote as compat_quote
+	from urllib import unquote as compat_unquote
 	from urllib import urlretrieve as compat_urlretrieve
 	from urllib2 import urlopen
 	from urllib2 import Request as compat_Request
@@ -99,6 +100,7 @@ else:
 	from itertools import zip_longest as compat_zip_longest
 	from urllib.parse import urlencode as compat_urlencode
 	from urllib.parse import quote as compat_quote
+	from urllib.parse import unquote as compat_unquote
 	from urllib.request import urlretrieve as compat_urlretrieve
 	from urllib.request import urlopen
 	from urllib.request import Request as compat_Request

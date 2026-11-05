@@ -298,3 +298,26 @@ else:
 		<widget name="list" position="16,19" size="774,774" itemHeight="40" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" scrollbarMode="showOnDemand" transparent="1"/>
 	</screen>
 	"""
+
+if DreamOS():
+	SKIN_CombinedNotificationsScreen = """
+	<screen position="center,center" size="1400,560" title="Notification Settings" backgroundColor="#16000000">
+		<widget name="list" position="20,20" size="1360,460" scrollbarMode="showOnDemand" backgroundColor="#16000000" />
+		<widget name="key_red" position="340,503" size="300,40" font="Regular;34" halign="center" valign="center" foregroundColor="#00ffffff" transparent="1" zPosition="5" />
+		<widget name="key_green" position="660,503" size="300,40" font="Regular;34" halign="center" valign="center" foregroundColor="#00ffffff" transparent="1" zPosition="5" />
+		<eLabel position="340,545" size="300,3" backgroundColor="#FF0000" zPosition="5" />
+		<eLabel position="660,545" size="300,3" backgroundColor="#00FF00" zPosition="5" />
+		<widget name="selection" position="32,89" size="300,57" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/notification_selection_fhd.png" alphatest="blend" zPosition="5" />
+	</screen>
+	"""
+else:
+	SKIN_CombinedNotificationsScreen = """
+	<screen position="center,center" size="1400,560" title="Notification Settings" backgroundColor="#16000000">
+		<widget name="list" position="20,20" size="1360,460" font="Regular;30" scrollbarMode="showOnDemand" backgroundColor="#16000000" />
+		<widget name="key_red" position="340,503" size="300,40" font="Regular;34" halign="center" valign="center" foregroundColor="#00ffffff" transparent="1" zPosition="5" />
+		<widget name="key_green" position="660,503" size="300,40" font="Regular;34" halign="center" valign="center" foregroundColor="#00ffffff" transparent="1" zPosition="5" />
+		<eLabel position="340,545" size="300,3" backgroundColor="#FF0000" zPosition="5" />
+		<eLabel position="660,545" size="300,3" backgroundColor="#00FF00" zPosition="5" />
+		<widget name="selection" position="32,89" size="300,57" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/notification_selection_fhd.png" alphatest="blend" zPosition="5" />
+	</screen>
+	"""

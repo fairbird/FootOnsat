@@ -269,3 +269,26 @@ SKIN_TeamListScreen = """
 	<widget name="list" position="19,15" size="1143,1109" foregroundColor="#00ffffff" backgroundColor="#16000000" scrollbarMode="showOnDemand" transparent="1"/>
 </screen>
 """
+
+if DreamOS():
+	SKIN_CombinedNotificationsScreen = """
+	<screen position="center,center" size="2160,1100" title="Notification Settings" backgroundColor="#16000000">
+		<widget name="list" position="40,40" size="2075,900" scrollbarMode="showOnDemand" backgroundColor="#16000000" />
+		<widget name="key_red" position="500,982" size="600,80" halign="center" valign="center" foregroundColor="#00ffffff" transparent="1" />
+		<widget name="key_green" position="1160,982" size="600,80" font="Regular;45" halign="center" valign="center" foregroundColor="#00ffffff" transparent="1" />
+		<eLabel position="500,1065" size="600,4" backgroundColor="#FF0000" zPosition="5" />
+		<eLabel position="1160,1065" size="600,4" backgroundColor="#00FF00" zPosition="5" />
+		<widget name="selection" position="72,174" size="600,122" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/notification_selection_uhd.png" alphatest="blend" zPosition="5" />
+	</screen>
+	"""
+else:
+	SKIN_CombinedNotificationsScreen = """
+	<screen position="center,center" size="2160,1100" title="Notification Settings" backgroundColor="#16000000">
+		<widget name="list" position="40,40" size="2075,900" scrollbarMode="showOnDemand" backgroundColor="#16000000" />
+		<widget name="key_red" position="500,982" size="600,80" font="Regular;45" halign="center" valign="center" foregroundColor="#00ffffff" transparent="1" />
+		<widget name="key_green" position="1160,982" size="600,80" font="Regular;45" halign="center" valign="center" foregroundColor="#00ffffff" transparent="1" />
+		<eLabel position="500,1065" size="600,4" backgroundColor="#FF0000" zPosition="5" />
+		<eLabel position="1160,1065" size="600,4" backgroundColor="#00FF00" zPosition="5" />
+		<widget name="selection" position="72,174" size="600,122" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/notification_selection_uhd.png" alphatest="blend" zPosition="5" />
+	</screen>
+	"""

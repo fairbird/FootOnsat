@@ -6,6 +6,7 @@ import subprocess
 import time
 import requests
 import ssl
+import unicodedata
 from twisted.internet import defer
 from twisted.internet.threads import deferToThread
 from twisted.python.failure import Failure
@@ -104,7 +105,7 @@ def is_standings_available(source, link):
 		return link.lower() in ESPN_SLUGS
 	if source == "sportscore":
 		return False
-	if source in ("flashscore", "fotmob"):
+	if source in ("flashscore", "fotmob", "livescore"):
 		return link in json_urls
 	return link in json_urls
 
@@ -381,6 +382,12 @@ class SportScoreStandings(StandingsFetcherBase):
 			self.screen.display_standings()
 		except Exception:
 			pass
+
+
+class FlashscoreStandings(StandingsFetcherBase):
+	def fetch(self):
+		sofa = SofaScoreStandings(self.screen, self.league, self.url)
+		sofa.fetch()
 
 
 def get_standings_fetcher(source, screen, league, url):
@@ -685,6 +692,8 @@ class ESPNMatchDetails(MatchDetailsFetcherBase):
 								"isHome": is_home,
 								"time": time_int,
 								"player": {"name": player_name},
+								"homeScore": home.get("score", 0),
+								"awayScore": away.get("score", 0)
 							})
 							continue
 
@@ -739,11 +748,6 @@ class SportScoreMatchDetails(MatchDetailsFetcherBase):
 		if debug_MatchDetails:
 			logdata("MatchDetails", "SportScore details not implemented")
 		self.screen.process_data(None)
-
-
-# =========================================================
-# FotMob Match Details
-# =========================================================
 
 
 class FotMobMatchDetails(MatchDetailsFetcherBase):
@@ -808,6 +812,8 @@ class FotMobMatchDetails(MatchDetailsFetcherBase):
 						"isHome": is_home,
 						"time": time,
 						"player": {"name": player_name},
+						"homeScore": ev.get("homeScore", 0),
+						"awayScore": ev.get("awayScore", 0)
 					})
 				elif itype == "Card":
 					card_type = str(ev.get("card", "Yellow")).lower()
@@ -858,6 +864,539 @@ class FotMobMatchDetails(MatchDetailsFetcherBase):
 		self.screen.process_data([inc_js, ev_js])
 
 
+class LivescoreMatchDetails(MatchDetailsFetcherBase):
+	def fetch(self):
+		if debug_MatchDetails:
+			logdata("MatchDetails", "Livescore.fetch started | event_id=%s" % self.event_id)
+
+		base_url = "https://prod-cdn-public-api.livescore.com/v1/api/app"
+		event_id = str(self.event_id)
+		urls = {
+			'incidents': "%s/incidents/soccer/%s?locale=en" % (base_url, event_id),
+			'scoreboard': "%s/scoreboard/soccer/%s?locale=en" % (base_url, event_id),
+			'lineups': "%s/lineups/soccer/%s?locale=en" % (base_url, event_id),
+		}
+
+		def _fetch():
+			headers = {
+				'User-Agent': 'Mozilla/5.0',
+				'Accept': 'application/json'
+			}
+			result = {}
+
+			for key, url in urls.items():
+				try:
+					r = requests.get(url, headers=headers, timeout=15, verify=False)
+					if r.status_code == 200:
+						result[key] = r.json()
+					elif debug_MatchDetails:
+						logdata("MatchDetails", "LiveScore %s HTTP status=%d" % (key, r.status_code))
+				except Exception as e:
+					if debug_MatchDetails:
+						logdata("MatchDetails", "LiveScore %s error: %s" % (key, str(e)[:150]))
+			return result
+
+		d = deferToThread(_fetch)
+		d.addCallback(self._convert)
+		d.addErrback(self._err)
+
+	def _err(self, failure):
+		if debug_MatchDetails:
+			logdata("MatchDetails", "LiveScore deferred error: %s" % failure.getErrorMessage())
+		self.screen.process_data(None)
+
+	def _convert(self, data):
+		if not data:
+			self.screen.process_data(None)
+			return
+
+		incidents = []
+		seen = set()
+		unknown_types = set()
+
+		def _number(value, default=0):
+			try:
+				return int(value)
+			except (TypeError, ValueError):
+				return default
+
+		def _player(item):
+			name = item.get('Pn', '')
+			if not name:
+				name = "%s %s" % (item.get('Fn', ''), item.get('Ln', ''))
+			return str(name).strip()
+
+		def _add_event(item, team_hint=None):
+			itype = _number(item.get('IT'), -1)
+			if itype == 63:
+				return
+
+			is_home = str(item.get('Nm', team_hint or '1')) != '2'
+			minute = _number(item.get('Min'))
+			extra = _number(item.get('MinEx'))
+			player = _player(item)
+			score = item.get('Sc')
+			score_key = tuple(score) if isinstance(score, (list, tuple)) else ()
+			key = (itype, minute, extra, is_home, player, score_key)
+
+			if key in seen:
+				return
+
+			if itype in (36, 47):
+				itype_name = 'goal'
+				incident_class = 'regular'
+			elif itype == 37:
+				itype_name = 'goal'
+				incident_class = 'penalty'
+			elif itype == 39:
+				itype_name = 'goal'
+				incident_class = 'owngoal'
+			elif itype == 38:
+				itype_name = 'penaltyMissed'
+				incident_class = ''
+			elif itype == 43:
+				itype_name = 'card'
+				incident_class = 'yellow'
+			elif itype in (44, 45):
+				itype_name = 'card'
+				incident_class = 'red'
+			else:
+				unknown_types.add(itype)
+				return
+
+			event = {
+				'incidentType': itype_name,
+				'isHome': is_home,
+				'time': minute,
+				'time_display': "%d+%d" % (minute, extra) if extra else str(minute),
+				'sequence': minute * 10000 + extra * 100 + _number(item.get('Sor')),
+				'player': {'name': player},
+				'inc_id': str(item.get('ID') or item.get('Aid') or '')
+			}
+
+			if incident_class:
+				event['incidentClass'] = incident_class
+
+			if isinstance(score, (list, tuple)) and len(score) >= 2:
+				event['homeScore'] = score[0]
+				event['awayScore'] = score[1]
+
+			seen.add(key)
+			incidents.append(event)
+
+		def _walk(node, team_hint=None, inherited=None):
+			if isinstance(node, list):
+				for child in node:
+					_walk(child, team_hint, inherited)
+				return
+
+			if not isinstance(node, dict):
+				return
+
+			context = dict(inherited or {})
+			for field in ('Min', 'MinEx', 'Nm', 'Sc', 'Sor', 'Pn', 'Fn', 'Ln'):
+				if field in node:
+					context[field] = node[field]
+
+			current_team = node.get('Nm', team_hint)
+			children = node.get('Incs')
+
+			if isinstance(children, (list, dict)) and children:
+				_walk(children, current_team, context)
+			elif 'IT' in node:
+				event = dict(context)
+				event.update(node)
+				_add_event(event, current_team)
+			else:
+				for child in node.values():
+					if isinstance(child, (list, dict)):
+						_walk(child, team_hint, context)
+
+		inc_data = data.get('incidents') or {}
+		raw_incs = inc_data.get('Incs', {}) if isinstance(inc_data, dict) else {}
+
+		if isinstance(raw_incs, dict):
+			for team_key, items in raw_incs.items():
+				hint = team_key if str(team_key) in ('1', '2') else None
+				_walk(items, hint)
+		else:
+			_walk(raw_incs)
+
+		score_data = data.get('scoreboard') or {}
+		event = score_data.get('Event') or score_data.get('event') or score_data
+
+		summary = (
+			event.get('Incs-s') or score_data.get('Incs-s') or
+			event.get('Incs') or score_data.get('Incs')
+		)
+		if isinstance(summary, dict):
+			for items in summary.values():
+				_walk(items)
+		else:
+			_walk(summary)
+
+		lineups = data.get('lineups') or {}
+		subs = lineups.get('Subs', {}) if isinstance(lineups, dict) else {}
+		all_subs = []
+		if isinstance(subs, dict):
+			for items in subs.values():
+				if isinstance(items, list):
+					all_subs.extend(items)
+		elif isinstance(subs, list):
+			all_subs = subs
+
+		for player_in in all_subs:
+			if not isinstance(player_in, dict) or _number(player_in.get('IT')) != 5:
+				continue
+
+			minute = _number(player_in.get('Min'))
+			in_id = str(player_in.get('ID', ''))
+			out_id = str(player_in.get('IDo', ''))
+			player_out = None
+
+			for candidate in all_subs:
+				if not isinstance(candidate, dict) or _number(candidate.get('IT')) != 4:
+					continue
+				if _number(candidate.get('Min')) != minute:
+					continue
+				if ((out_id and str(candidate.get('ID', '')) == out_id) or
+						(in_id and str(candidate.get('IDo', '')) == in_id)):
+					player_out = candidate
+					break
+
+			in_name = _player(player_in)
+			out_name = _player(player_out) if player_out else str(player_in.get('PnO') or '')
+			is_home = str(player_in.get('Nm', '1')) != '2'
+			extra = _number(player_in.get('MinEx'))
+			key = ('substitution', minute, extra, is_home, in_name, out_name)
+
+			if key in seen:
+				continue
+			seen.add(key)
+			incidents.append({
+				'incidentType': 'substitution',
+				'isHome': is_home,
+				'time': minute,
+				'time_display': "%d+%d" % (minute, extra) if extra else str(minute),
+				'sequence': minute * 10000 + extra * 100 + _number(player_in.get('Sor')),
+				'playerIn': {'name': in_name},
+				'playerOut': {'name': out_name}
+			})
+
+		home_score = event.get('Tr1', 0)
+		away_score = event.get('Tr2', 0)
+		status_desc = event.get('Eps', '')
+
+		eps = str(status_desc).strip().upper()
+		esid = event.get('Esid', 0)
+		
+		if eps == 'HT' or esid == 10:
+			incidents.append({
+				'incidentType': 'period',
+				'text': 'HT',
+				'time': 45
+			})
+		elif eps == 'FT' or esid == 6 or 'FINISHED' in eps:
+			incidents.append({
+				'incidentType': 'period',
+				'text': 'FT',
+				'time': 90
+			})
+		elif esid == 3 or eps == '2H' or (eps.replace('+', '').isdigit() and int(eps.split('+')[0]) > 45):
+			incidents.append({
+				'incidentType': 'period',
+				'text': '2H',
+				'time': 46
+			})
+
+		ev_js = {
+			'event': {
+				'homeScore': {
+					'current': home_score,
+					'display': home_score,
+					'penalties': event.get('Trp1')
+				},
+				'awayScore': {
+					'current': away_score,
+					'display': away_score,
+					'penalties': event.get('Trp2')
+				},
+				'status': {
+					'description': status_desc
+				}
+			}
+		}
+
+		if debug_MatchDetails:
+			logdata("MatchDetails", "LiveScore incidents=%d score=%s-%s" % (
+				len(incidents), home_score, away_score
+			))
+			logdata("MatchDetails", "LiveScore unknown IT types=%s" % sorted(unknown_types))
+
+		self.screen.process_data([{'incidents': incidents}, ev_js])
+
+
+class FlashscoreMatchDetails(MatchDetailsFetcherBase):
+	def fetch(self):
+		if debug_MatchDetails:
+			logdata("MatchDetails", "Flashscore.fetch started | event_id=%s" % self.event_id)
+		def _fetch():
+			text = _fs_request("df_sui_1_{0}".format(self.event_id), timeout=25)
+			logdata("MatchDetails_RAW_SUI", "len=%d preview=%s" % (len(text) if text else 0, (text[:800] if text else "EMPTY")))
+			return _fs_parse(text) if text else []
+		d = deferToThread(_fetch)
+		d.addCallback(self._convert)
+		d.addErrback(self._err)
+
+	def _err(self, failure):
+		if debug_MatchDetails:
+			logdata("MatchDetails", "Flashscore deferred errback: %s" % failure.getErrorMessage())
+		self.screen.process_data(None)
+
+	def _detect_team_side(self, entry, home_team, away_team):
+		ict = (entry.get('ICT', '') or '').strip()
+		m = re.search(r'\(([^)]+)\)', ict)
+		if m:
+			team = m.group(1).strip().lower()
+			if home_team and team in home_team.lower():
+				return True
+			if away_team and team in away_team.lower():
+				return False
+		return None
+
+	def _parse_minute(self, s):
+		s = (s or '').replace("'", '').strip()
+		if not s:
+			return 0, ''
+		m = re.match(r'^(\d+)(?:\+(\d+))?$', s)
+		if m:
+			base = int(m.group(1))
+			extra = int(m.group(2)) if m.group(2) else 0
+			return base + extra, s
+		m = re.search(r'(\d+)', s)
+		if m:
+			return int(m.group(1)), s
+		return 0, s
+
+	def _convert(self, blocks):
+		incidents = []
+		prev_home = 0
+		prev_away = 0
+		final_home = 0
+		final_away = 0
+		pen_home = None
+		pen_away = None
+		is_shootout = False
+		processed_pens = set()
+		processed_cards = set() # Added set to prevent duplicate cards
+		if debug_MatchDetails:
+			logdata("DEBUG_FS_START", "=== START CONVERT | event_id: %s ===" % self.event_id)
+
+		for block in blocks:
+			context = {}
+			entries = []
+			current = None
+
+			for k, v in block:
+				kk = k
+				if kk.endswith('X') and len(kk) > 1 and kk not in ('INX', 'IOX'):
+					kk = kk[:-1]
+				if kk == 'IE':
+					if current is not None:
+						entries.append(current)
+					current = {'IE': v}
+				elif current is None:
+					context[kk] = v
+				else:
+					current[kk] = v
+			if current is not None:
+				entries.append(current)
+
+			if debug_MatchDetails and ('IG' in context or 'IH' in context):
+				logdata("DEBUG_FS_BLOCK", "BLOCK CONTEXT -> IG: %s | IH: %s | AC: %s | is_shootout: %s" % (context.get('IG'), context.get('IH'), context.get('AC'), is_shootout))
+			if 'IG' in context:
+				try:
+					val = int(context['IG'])
+					if 'penalt' in str(context.get('AC', '')).lower() or is_shootout:
+						pen_home = val
+					else:
+						final_home = val
+				except Exception: pass
+			if 'IH' in context:
+				try:
+					val = int(context['IH'])
+					if 'penalt' in str(context.get('AC', '')).lower() or is_shootout:
+						pen_away = val
+					else:
+						final_away = val
+				except Exception: pass
+
+			if str(context.get('AC', '')).lower() in ('penalties', 'penalty shootout'):
+				is_shootout = True
+
+			if not entries:
+				continue
+
+			ia = context.get('IA', '')
+			ctx_is_home = True if ia == '1' else (False if ia == '2' else None)
+
+			minute, minute_raw = self._parse_minute(context.get('IB', ''))
+
+			goal_entries = []
+			card_entries = []
+			disallowed_entry = None
+			sub_in = None
+			sub_out = None
+
+			for e in entries:
+				ik = (e.get('IK', '') or '').strip()
+				ik_low = ik.lower()
+				ict_low = (e.get('ICT', '') or '').strip().lower()
+				ie = e.get('IE', '')
+				
+				if ie == '8' or 'assistance' in ik_low:
+					continue
+				if 'substitution' in ik_low and 'in' in ik_low:
+					sub_in = e
+					continue
+				if 'substitution' in ik_low and 'out' in ik_low:
+					sub_out = e
+					continue
+				if 'disallowed' in ik_low or 'disallowed' in ict_low or 'var' in ik_low:
+					disallowed_entry = e
+					continue
+				if is_shootout and ('penalty' in ik_low or 'goal' in ik_low or 'missed' in ik_low or 'saved' in ik_low) and 'awarded' not in ik_low:
+					is_missed = 'miss' in ik_low or 'sav' in ik_low or 'miss' in ict_low or 'sav' in ict_low or 'miss' in str(e.get('IL', '')).lower()
+					side = ctx_is_home if ctx_is_home is not None else True
+					p_key = (e.get('IF', ''), side)
+					if p_key not in processed_pens:
+						processed_pens.add(p_key)
+						incidents.append({
+							"incidentType": "penaltyShootout",
+							"incidentClass": "missed" if is_missed else "scored",
+							"isHome": side,
+							"time": 0,
+							"player": {"name": e.get('IF', '')}
+						})
+					continue
+				if 'goal' in ik_low:
+					goal_entries.append(e)
+					continue
+				if 'yellow' in ik_low or 'red' in ik_low or 'card' in ik_low:
+					card_entries.append(e)
+					continue
+
+			if sub_in or sub_out:
+				pin = sub_in.get('IF', '') if sub_in else ''
+				pout = sub_out.get('IF', '') if sub_out else ''
+				side = ctx_is_home if ctx_is_home is not None else True
+				incidents.append({
+					"incidentType": "substitution",
+					"isHome": side,
+					"time": minute,
+					"time_display": minute_raw,
+					"playerIn": {"name": pin},
+					"playerOut": {"name": pout},
+				})
+				continue
+
+			if disallowed_entry:
+				side = ctx_is_home if ctx_is_home is not None else True
+				v_ik = disallowed_entry.get('IK', 'Goal Disallowed')
+				v_il = disallowed_entry.get('IL', '')
+				v_reason = v_ik
+				if v_il and v_il.lower() not in v_ik.lower():
+					v_reason = "%s (%s)" % (v_ik, v_il)
+				incidents.append({
+					"incidentType": "var",
+					"incidentClass": "goalDisallowed",
+					"isHome": side,
+					"time": minute,
+					"time_display": minute_raw,
+					"player": {"name": disallowed_entry.get('IF', '')},
+					"var_reason": v_reason,
+				})
+				continue
+
+			for g in goal_entries:
+				try:
+					new_home = int(g.get('INX', prev_home) or prev_home)
+					new_away = int(g.get('IOX', prev_away) or prev_away)
+				except Exception:
+					new_home = prev_home
+					new_away = prev_away
+				is_home = new_home > prev_home
+				prev_home = new_home
+				prev_away = new_away
+				ict = (g.get('ICT', '') or '').lower()
+				ik_low = (g.get('IK', '') or '').lower()
+				if 'own goal' in ict or 'own goal' in ik_low:
+					ic_class = 'owngoal'
+				elif 'penalty' in ict or 'penalty' in ik_low:
+					ic_class = 'penalty'
+				else:
+					ic_class = 'regular'
+				incidents.append({
+					"incidentType": "goal",
+					"incidentClass": ic_class,
+					"isHome": is_home,
+					"time": minute,
+					"time_display": minute_raw,
+					"player": {"name": g.get('IF', '')},
+					"homeScore": new_home,
+					"awayScore": new_away,
+				})
+
+			# Check if there is a yellow card in this batch to handle second yellow properly
+			has_yellow_in_batch = any('yellow card' in (e.get('IK','').lower()) for e in card_entries)
+
+			for c in card_entries:
+				ik_low = (c.get('IK', '') or '').lower()
+				ict_low = (c.get('ICT', '') or '').lower()
+				
+				# Skip explicit Red Card if it's a second yellow situation (UI handles the upgrade)
+				if 'red card' in ik_low and has_yellow_in_batch:
+					continue
+					
+				if 'red card' in ik_low or 'red card' in ict_low:
+					card_class = 'red'
+				else:
+					card_class = 'yellow'
+					
+				side = ctx_is_home if ctx_is_home is not None else True
+				player_name = c.get('IF', '')
+				
+				card_key = (player_name, minute, side)
+				if card_key in processed_cards:
+					continue
+					
+				processed_cards.add(card_key)
+
+				incident_data = {
+					"incidentType": "card",
+					"incidentClass": card_class,
+					"isHome": side,
+					"time": minute,
+					"time_display": minute_raw,
+					"player": {"name": player_name},
+					"reason": c.get('IL', ''),
+				}
+				incidents.append(incident_data)
+
+		if final_home == 0 and final_away == 0:
+			final_home = prev_home
+			final_away = prev_away
+
+		ev_js = {"event": {
+			"homeScore": {"current": final_home, "display": final_home, "penalties": pen_home},
+			"awayScore": {"current": final_away, "display": final_away, "penalties": pen_away},
+			"status": {"description": "Ended Match - Penalties" if pen_home is not None else ""}
+		}}
+
+		if debug_MatchDetails:
+			logdata("MatchDetails", "Flashscore incidents=%d score=%d-%d" % (len(incidents), final_home, final_away))
+		self.screen.process_data([{"incidents": incidents}, ev_js])
+
 def get_match_details_fetcher(source, screen, event_id):
 	if source == "espn":
 		return ESPNMatchDetails(screen, event_id)
@@ -865,6 +1404,8 @@ def get_match_details_fetcher(source, screen, event_id):
 		return SportScoreMatchDetails(screen, event_id)
 	if source == "flashscore":
 		return FlashscoreMatchDetails(screen, event_id)
+	if source == "livescore":
+		return LivescoreMatchDetails(screen, event_id)
 	if source == "fotmob":
 		return FotMobMatchDetails(screen, event_id)
 	return SofaScoreMatchDetails(screen, event_id)
@@ -1075,6 +1616,588 @@ class ESPNMatchStatistics(MatchStatisticsFetcherBase):
 		self.screen.process_stats(stats_json)
 
 
+class FlashscoreMatchStatistics(MatchStatisticsFetcherBase):
+	def fetch(self):
+		if debug_MatchStatistics:
+			logdata("MatchStatistics", "Flashscore.fetch started | event_id=%s" % self.event_id)
+		def _fetch():
+			text = _fs_request("df_st_1_{0}".format(self.event_id), timeout=25)
+			logdata("MatchStatistics_RAW_ST", "len=%d preview=%s" % (len(text) if text else 0, (text[:800] if text else "EMPTY")))
+			return _fs_parse(text) if text else []
+		d = deferToThread(_fetch)
+		d.addCallback(self._convert_stats)
+		d.addErrback(self._err)
+
+	def _err(self, failure):
+		if debug_MatchStatistics:
+			logdata("MatchStatistics", "Flashscore deferred errback: %s" % failure.getErrorMessage())
+		self.screen.process_stats(None)
+
+	def _convert_stats(self, blocks):
+		GROUP_MAP = {
+			'Match': 'Match overview',
+			'Top stats': 'Match overview',
+			'Shots': 'Shots',
+			'Attack': 'Attack',
+			'Passes': 'Passes',
+			'Duels': 'Duels',
+			'Defending': 'Defending',
+			'Goalkeeping': 'Goalkeeping',
+		}
+		STAT_MAP = {
+			'Expected goals (xG)': 'Expected goals',
+			'Expected goals': 'Expected goals',
+			'Ball possession': 'Ball possession',
+			'Total shots': 'Total shots',
+			'Shots on target': 'Shots on target',
+			'Big chances': 'Big chances',
+			'Corner kicks': 'Corner kicks',
+			'Passes': 'Accurate passes',
+			'Yellow cards': 'Yellow cards',
+			'Red cards': 'Red cards',
+			'Shots off target': 'Shots off target',
+			'Blocked shots': 'Blocked shots',
+			'Shots inside the box': 'Shots inside box',
+			'Shots outside the box': 'Shots outside box',
+			'Hit the woodwork': 'Hit woodwork',
+			'Touches in opposition box': 'Touches in penalty area',
+			'Fouls': 'Fouls',
+			'Offsides': 'Offsides',
+			'Goalkeeper saves': 'Goalkeeper saves',
+			'Saves': 'Total saves',
+		}
+
+		groups = {}
+		order = []
+		current = None
+
+		for block in blocks:
+			d = {}
+			for k, v in block:
+				d.setdefault(k, []).append(v)
+
+			if 'SE' in d:
+				name = d['SE'][0]
+				mapped = GROUP_MAP.get(name, name)
+				if mapped not in groups:
+					groups[mapped] = []
+					order.append(mapped)
+				current = mapped
+				continue
+
+			if 'SF' in d:
+				name = d['SF'][0]
+				mapped = GROUP_MAP.get(name, name)
+				if mapped not in groups:
+					groups[mapped] = []
+					order.append(mapped)
+				current = mapped
+				continue
+
+			if 'SG' in d and 'SH' in d and 'SI' in d:
+				stat_name = d['SG'][0]
+				home_val = d['SH'][0]
+				away_val = d['SI'][0]
+				mapped_name = STAT_MAP.get(stat_name, stat_name)
+				if current is None:
+					current = 'Match overview'
+					if current not in groups:
+						groups[current] = []
+						order.append(current)
+				groups[current].append({
+					"name": mapped_name,
+					"home": str(home_val),
+					"away": str(away_val),
+				})
+
+		stats_groups = []
+		for gname in order:
+			if groups.get(gname):
+				stats_groups.append({
+					"groupName": gname,
+					"statisticsItems": groups[gname],
+				})
+
+		stats_json = {
+			"statistics": [{
+				"period": "ALL",
+				"groups": stats_groups,
+			}]
+		}
+		if debug_MatchStatistics:
+			logdata("MatchStatistics", "Flashscore groups=%d" % len(stats_groups))
+		self.screen.process_stats(stats_json)
+
+
+class FotMobMatchStatistics(MatchStatisticsFetcherBase):
+	def fetch(self):
+		if debug_MatchStatistics:
+			logdata("MatchStatistics", "FotMob.fetch started | event_id=%s" % self.event_id)
+		url = "https://www.fotmob.com/api/data/matchDetails?matchId=" + self.event_id
+		def _fetch():
+			try:
+				r = requests.get(url, timeout=15, verify=False, headers={
+					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+					'Accept': 'application/json',
+					'Referer': 'https://www.fotmob.com/',
+				})
+				if r.status_code == 200:
+					return r.content
+				return None
+			except Exception as e:
+				if debug_MatchStatistics:
+					logdata("MatchStatistics", "FotMob fetch error: %s" % str(e)[:200])
+				return None
+		d = deferToThread(_fetch)
+		d.addCallback(self._convert)
+		d.addErrback(self._err)
+
+	def _err(self, failure):
+		if debug_MatchStatistics:
+			logdata("MatchStatistics", "FotMob deferred errback: %s" % failure.getErrorMessage())
+		self.screen.process_stats(None)
+
+	def _convert(self, raw):
+		if not raw:
+			self.screen.process_stats(None)
+			return
+		try:
+			data = json.loads(raw.decode('utf-8', 'ignore'))
+		except Exception as e:
+			if debug_MatchStatistics:
+				logdata("MatchStatistics", "FotMob JSON error: %s" % str(e))
+			self.screen.process_stats(None)
+			return
+
+		stats_groups = []
+		stats_obj = data.get("content", {}).get("stats", {})
+		
+		# Get the list of groups (e.g., Top stats, Shots, etc.)
+		groups_data = []
+		if isinstance(stats_obj, dict):
+			if "Periods" in stats_obj and "All" in stats_obj["Periods"]:
+				groups_data = stats_obj["Periods"]["All"].get("stats", [])
+			else:
+				groups_data = stats_obj.get("stats", [])
+		elif isinstance(stats_obj, list):
+			groups_data = stats_obj
+
+		if not isinstance(groups_data, list):
+			groups_data = []
+
+		for group in groups_data:
+			if not isinstance(group, dict):
+				continue
+				
+			group_name = group.get("title", "")
+			group_items_data = group.get("stats", [])
+			
+			if not group_name or not isinstance(group_items_data, list):
+				continue
+				
+			items = []
+			for item in group_items_data:
+				if not isinstance(item, dict):
+					continue
+					
+				item_title = item.get("title", "")
+				item_stats = item.get("stats", [])
+				
+				if not item_title or not isinstance(item_stats, list) or len(item_stats) < 2:
+					continue
+					
+				home_val = item_stats[0]
+				away_val = item_stats[1]
+				
+				# Handle cases where the value might be a dict (rare, but possible)
+				if isinstance(home_val, dict):
+					home_val = home_val.get("value", "")
+				if isinstance(away_val, dict):
+					away_val = away_val.get("value", "")
+					
+				items.append({
+					"name": str(item_title),
+					"home": str(home_val),
+					"away": str(away_val)
+				})
+				
+			if items:
+				stats_groups.append({
+					"groupName": str(group_name),
+					"statisticsItems": items
+				})
+
+		stats_json = {
+			"statistics": [{
+				"period": "ALL",
+				"groups": stats_groups,
+			}]
+		}
+		self.screen.process_stats(stats_json)
+
+
+class LivescoreMatchStatistics(MatchStatisticsFetcherBase):
+	GROUP_ORDER = [
+		"Match overview",
+		"Shots",
+		"Attack",
+		"Passes",
+		"Duels",
+		"Defending",
+		"Goalkeeping",
+	]
+
+	STAT_MAP = {
+		"possession": ("Match overview", "Ball possession"),
+		"ballPossession": ("Match overview", "Ball possession"),
+		"expectedGoals": ("Match overview", "Expected goals"),
+		"xG": ("Match overview", "Expected goals"),
+		"bigChances": ("Attack", "Big chances"),
+		"shots": ("Match overview", "Total shots"),
+		"totalShots": ("Match overview", "Total shots"),
+		"shotsTotal": ("Match overview", "Total shots"),
+		"shotsOnTarget": ("Shots", "Shots on target"),
+		"shotsOffTarget": ("Shots", "Shots off target"),
+		"blockedShots": ("Shots", "Blocked shots"),
+		"hitWoodwork": ("Shots", "Hit woodwork"),
+		"shotsInsideBox": ("Shots", "Shots inside box"),
+		"shotsInsideTheBox": ("Shots", "Shots inside box"),
+		"shotsOutsideBox": ("Shots", "Shots outside box"),
+		"shotsOutsideTheBox": ("Shots", "Shots outside box"),
+		"bigChancesScored": ("Attack", "Big chances scored"),
+		"bigChancesMissed": ("Attack", "Big chances missed"),
+		"touchesInPenaltyArea": ("Attack", "Touches in penalty area"),
+		"touchesInOppositionBox": ("Attack", "Touches in penalty area"),
+		"fouledInFinalThird": ("Attack", "Fouled in final third"),
+		"corners": ("Match overview", "Corner kicks"),
+		"cornerKicks": ("Match overview", "Corner kicks"),
+		"fouls": ("Match overview", "Fouls"),
+		"offsides": ("Match overview", "Offsides"),
+		"goalkeeperSaves": ("Match overview", "Goalkeeper saves"),
+		"saves": ("Match overview", "Goalkeeper saves"),
+		"yellowCards": ("Match overview", "Yellow cards"),
+		"redCards": ("Match overview", "Red cards"),
+		"freeKicks": ("Match overview", "Free kicks"),
+		"throwIns": ("Passes", "Throw-ins"),
+		"passes": ("Passes", "Accurate passes"),
+		"accuratePasses": ("Passes", "Accurate passes"),
+		"finalThirdEntries": ("Passes", "Final third entries"),
+		"finalThirdPhase": ("Passes", "Final third phase"),
+		"longBalls": ("Passes", "Long balls"),
+		"crosses": ("Passes", "Crosses"),
+		"duels": ("Duels", "Duels"),
+		"duelsWon": ("Duels", "Duels"),
+		"possessionLost": ("Duels", "Dispossessed"),
+		"groundDuels": ("Duels", "Ground duels"),
+		"groundDuelsWon": ("Duels", "Ground duels"),
+		"aerialDuels": ("Duels", "Aerial duels"),
+		"aerialDuelsWon": ("Duels", "Aerial duels"),
+		"dribbles": ("Duels", "Dribbles"),
+		"successfulDribbles": ("Duels", "Dribbles"),
+		"tackles": ("Defending", "Total tackles"),
+		"totalTackles": ("Defending", "Total tackles"),
+		"tacklesWon": ("Defending", "Tackles won"),
+		"interceptions": ("Defending", "Interceptions"),
+		"clearances": ("Defending", "Clearances"),
+		"recoveries": ("Defending", "Recoveries"),
+		"errorsLeadingToGoal": ("Defending", "Errors lead to a goal"),
+		"goalKicks": ("Goalkeeping", "Goal kicks"),
+		"punches": ("Goalkeeping", "Punches"),
+		"highClaims": ("Goalkeeping", "High claims"),
+		"penaltySaves": ("Goalkeeping", "Penalty saves"),
+		"errorsLeadingToShot": ("Goalkeeping", "Errors lead to a shot"),
+		"totalSaves": ("Goalkeeping", "Total saves"),
+		"goalsPrevented": ("Goalkeeping", "Goals prevented"),
+		"distanceCovered": ("Match overview", "Distance covered"),
+		"sprints": ("Match overview", "Number of sprints"),
+		"throughBalls": ("Passes", "Through balls"),
+		"bigSaves": ("Goalkeeping", "Big saves"),
+	}
+
+	def fetch(self):
+		if debug_MatchStatistics:
+			logdata("MatchStatistics", "LiveScore.fetch started | event_id=%s" % self.event_id)
+
+		scoreboard_url = "https://prod-cdn-public-api.livescore.com/v1/api/app/scoreboard/soccer/{}?locale=en".format(self.event_id)
+
+		def _fetch():
+			headers = {
+				"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36",
+				"Accept": "application/json, text/plain, */*",
+				"Referer": "https://www.livescore.com/",
+			}
+
+			try:
+				score_response = requests.get(scoreboard_url, headers=headers, timeout=20, verify=False)
+
+				if debug_MatchStatistics:
+					logdata("MatchStatistics", "LiveScore scoreboard HTTP=%d len=%d" % (
+						score_response.status_code,
+						len(score_response.content) if score_response.content else 0
+					))
+
+				if score_response.status_code != 200:
+					return None
+
+				score_data = score_response.json()
+				event = score_data.get("Event") or score_data.get("event") or score_data
+
+				if not isinstance(event, dict):
+					return None
+
+				stage = event.get("Stg") or event.get("stage") or {}
+
+				if not isinstance(stage, dict):
+					stage = {}
+
+				ccd = event.get("Ccd") or stage.get("Ccd") or stage.get("Cnm")
+				scd = event.get("Scd") or stage.get("Scd") or stage.get("CompUrlName") or stage.get("Snm")
+
+				home_team = event.get("T1") or event.get("homeTeam") or {}
+				away_team = event.get("T2") or event.get("awayTeam") or {}
+
+				if isinstance(home_team, (list, tuple)):
+					home_team = home_team[0] if home_team else {}
+
+				if isinstance(away_team, (list, tuple)):
+					away_team = away_team[0] if away_team else {}
+
+				if isinstance(home_team, dict):
+					home_name = home_team.get("Nm") or home_team.get("name") or ""
+				else:
+					home_name = str(home_team)
+
+				if isinstance(away_team, dict):
+					away_name = away_team.get("Nm") or away_team.get("name") or ""
+				else:
+					away_name = str(away_team)
+
+				home_name = home_name or getattr(self.screen, "home_name", "")
+				away_name = away_name or getattr(self.screen, "away_name", "")
+
+				if not ccd or not scd or not home_name or not away_name:
+					if debug_MatchStatistics:
+						logdata("MatchStatistics", "LiveScore match URL fields missing | Ccd=%s Scd=%s Home=%s Away=%s" % (
+							ccd, scd, home_name, away_name
+						))
+					return None
+
+				def _slug(value):
+					try:
+						if isinstance(value, bytes):
+							value = value.decode("utf-8", "ignore")
+
+						value = unicodedata.normalize("NFKD", value)
+						value = value.encode("ascii", "ignore")
+
+						if PY3:
+							value = value.decode("ascii")
+
+					except Exception:
+						value = str(value)
+
+					return re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+
+				match_path = "football/{}/{}/{}-vs-{}/{}".format(
+					_slug(ccd),
+					_slug(scd),
+					_slug(home_name),
+					_slug(away_name),
+					self.event_id
+				)
+
+				match_url = "https://www.livescore.com/en/{}/".format(match_path)
+
+				if debug_MatchStatistics:
+					logdata("MatchStatistics", "LiveScore match URL=%s" % match_url)
+
+				page_response = requests.get(match_url, headers=headers, timeout=20, verify=False)
+
+				if debug_MatchStatistics:
+					logdata("MatchStatistics", "LiveScore page HTTP=%d len=%d" % (
+						page_response.status_code,
+						len(page_response.content) if page_response.content else 0
+					))
+
+				if page_response.status_code != 200:
+					return None
+
+				build_match = re.search(r'"buildId"\s*:\s*"([^"]+)"', page_response.text)
+
+				if not build_match:
+					if debug_MatchStatistics:
+						logdata("MatchStatistics", "LiveScore buildId not found")
+					return None
+
+				build_id = build_match.group(1)
+
+				stats_url = "https://www.livescore.com/_next/data/{}/en/{}/stats.json".format(
+					build_id,
+					match_path
+				)
+
+				if debug_MatchStatistics:
+					logdata("MatchStatistics", "LiveScore stats URL=%s" % stats_url)
+
+				stats_response = requests.get(stats_url, headers=headers, timeout=20, verify=False)
+
+				if debug_MatchStatistics:
+					logdata("MatchStatistics", "LiveScore stats HTTP=%d len=%d" % (
+						stats_response.status_code,
+						len(stats_response.content) if stats_response.content else 0
+					))
+
+				if stats_response.status_code == 200:
+					return stats_response.content
+
+			except Exception as e:
+				if debug_MatchStatistics:
+					logdata("MatchStatistics", "LiveScore fetch error: %s" % str(e)[:200])
+
+			return None
+
+		d = deferToThread(_fetch)
+		d.addCallback(self._convert_stats)
+		d.addErrback(self._err)
+
+	def _err(self, failure):
+		if debug_MatchStatistics:
+			logdata("MatchStatistics", "LiveScore deferred error: %s" % failure.getErrorMessage())
+
+		self.screen.process_stats(None)
+
+	def _convert_stats(self, raw):
+		if not raw:
+			if debug_MatchStatistics:
+				logdata("MatchStatistics", "LiveScore statistics response is empty")
+
+			self.screen.process_stats(None)
+			return
+
+		try:
+			if isinstance(raw, dict):
+				data = raw
+			else:
+				try:
+					data = json.loads(raw.decode("utf-8", "ignore"))
+				except AttributeError:
+					data = json.loads(raw)
+
+		except Exception as e:
+			if debug_MatchStatistics:
+				logdata("MatchStatistics", "LiveScore JSON error: %s" % str(e))
+
+			self.screen.process_stats(None)
+			return
+
+		page_props = data.get("pageProps", {}) or {}
+		initial_data = page_props.get("initialEventData", {}) or data.get("initialEventData", {}) or {}
+
+		event = initial_data.get("event", {}) if isinstance(initial_data, dict) else {}
+
+		if not event:
+			event = page_props.get("event", {}) or data.get("event", {}) or {}
+
+		statistics = event.get("statistics", {}) if isinstance(event, dict) else {}
+
+		if isinstance(statistics, list):
+			converted = {}
+
+			for item in statistics:
+				if not isinstance(item, dict):
+					continue
+
+				stat_key = item.get("name") or item.get("id") or item.get("type")
+
+				if stat_key:
+					converted[stat_key] = [
+						item.get("home"),
+						item.get("away")
+					]
+
+			statistics = converted
+
+		if not isinstance(statistics, dict) or not statistics:
+			if debug_MatchStatistics:
+				logdata("MatchStatistics", "LiveScore event.statistics is empty")
+
+			self.screen.process_stats(None)
+			return
+
+		groups = {}
+		unknown = []
+
+		for stat_key, stat_value in statistics.items():
+			stat_info = self.STAT_MAP.get(stat_key)
+
+			if not stat_info:
+				unknown.append(stat_key)
+				continue
+
+			if isinstance(stat_value, (list, tuple)):
+				if len(stat_value) < 2:
+					continue
+
+				home_value = stat_value[0]
+				away_value = stat_value[1]
+
+			elif isinstance(stat_value, dict):
+				home_value = stat_value.get("home", stat_value.get("1", stat_value.get("team1")))
+				away_value = stat_value.get("away", stat_value.get("2", stat_value.get("team2")))
+
+			else:
+				continue
+
+			if isinstance(home_value, dict):
+				home_value = home_value.get("value", home_value.get("display", ""))
+
+			if isinstance(away_value, dict):
+				away_value = away_value.get("value", away_value.get("display", ""))
+
+			if home_value is None and away_value is None:
+				continue
+
+			group_name, display_name = stat_info
+
+			groups.setdefault(group_name, []).append({
+				"name": display_name,
+				"home": str(home_value if home_value is not None else "-"),
+				"away": str(away_value if away_value is not None else "-"),
+			})
+
+		stats_groups = []
+
+		for group_name in self.GROUP_ORDER:
+			items = groups.get(group_name, [])
+
+			if items:
+				stats_groups.append({
+					"groupName": group_name,
+					"statisticsItems": items,
+				})
+
+		if debug_MatchStatistics:
+			logdata("MatchStatistics", "LiveScore statistics keys=%s" % list(statistics.keys()))
+			logdata("MatchStatistics", "LiveScore groups=%d items=%d" % (
+				len(stats_groups),
+				sum(len(group["statisticsItems"]) for group in stats_groups)
+			))
+
+			if unknown:
+				logdata("MatchStatistics", "LiveScore unmapped statistics=%s" % unknown)
+
+		if not stats_groups:
+			self.screen.process_stats(None)
+			return
+
+		self.screen.process_stats({
+			"statistics": [{
+				"period": "ALL",
+				"groups": stats_groups,
+			}]
+		})
+
+
 class SportScoreMatchStatistics(MatchStatisticsFetcherBase):
 	def fetch(self):
 		if debug_MatchStatistics:
@@ -1089,6 +2212,8 @@ def get_match_statistics_fetcher(source, screen, event_id):
 		return SportScoreMatchStatistics(screen, event_id)
 	if source == "flashscore":
 		return FlashscoreMatchStatistics(screen, event_id)
+	if source == "livescore":
+		return LivescoreMatchStatistics(screen, event_id)
 	if source == "fotmob":
 		return FotMobMatchStatistics(screen, event_id)
 	return SofaScoreMatchStatistics(screen, event_id)
@@ -1220,381 +2345,6 @@ class SofaScoreMatchMedia(MatchMediaFetcherBase):
 		if debug_MatchMedia:
 			logdata("MatchMedia", "SofaScore deferred errback: %s" % failure.getErrorMessage())
 		self.screen.process_media(None)
-
-
-class FlashscoreStandings(StandingsFetcherBase):
-	def fetch(self):
-		sofa = SofaScoreStandings(self.screen, self.league, self.url)
-		sofa.fetch()
-
-
-class FlashscoreMatchDetails(MatchDetailsFetcherBase):
-	def fetch(self):
-		if debug_MatchDetails:
-			logdata("MatchDetails", "Flashscore.fetch started | event_id=%s" % self.event_id)
-		def _fetch():
-			text = _fs_request("df_sui_1_{0}".format(self.event_id), timeout=25)
-			logdata("MatchDetails_RAW_SUI", "len=%d preview=%s" % (len(text) if text else 0, (text[:800] if text else "EMPTY")))
-			return _fs_parse(text) if text else []
-		d = deferToThread(_fetch)
-		d.addCallback(self._convert)
-		d.addErrback(self._err)
-
-	def _err(self, failure):
-		if debug_MatchDetails:
-			logdata("MatchDetails", "Flashscore deferred errback: %s" % failure.getErrorMessage())
-		self.screen.process_data(None)
-
-	def _detect_team_side(self, entry, home_team, away_team):
-		ict = (entry.get('ICT', '') or '').strip()
-		m = re.search(r'\(([^)]+)\)', ict)
-		if m:
-			team = m.group(1).strip().lower()
-			if home_team and team in home_team.lower():
-				return True
-			if away_team and team in away_team.lower():
-				return False
-		return None
-
-	def _parse_minute(self, s):
-		s = (s or '').replace("'", '').strip()
-		if not s:
-			return 0, ''
-		m = re.match(r'^(\d+)(?:\+(\d+))?$', s)
-		if m:
-			base = int(m.group(1))
-			extra = int(m.group(2)) if m.group(2) else 0
-			return base + extra, s
-		m = re.search(r'(\d+)', s)
-		if m:
-			return int(m.group(1)), s
-		return 0, s
-
-	def _convert(self, blocks):
-		incidents = []
-		prev_home = 0
-		prev_away = 0
-		final_home = 0
-		final_away = 0
-		pen_home = None
-		pen_away = None
-		is_shootout = False
-		processed_pens = set()
-		processed_cards = set() # Added set to prevent duplicate cards
-
-		for block in blocks:
-			context = {}
-			entries = []
-			current = None
-
-			for k, v in block:
-				kk = k
-				if kk.endswith('X') and len(kk) > 1 and kk not in ('INX', 'IOX'):
-					kk = kk[:-1]
-				if kk == 'IE':
-					if current is not None:
-						entries.append(current)
-					current = {'IE': v}
-				elif current is None:
-					context[kk] = v
-				else:
-					current[kk] = v
-			if current is not None:
-				entries.append(current)
-
-			if 'IG' in context:
-				try:
-					val = int(context['IG'])
-					if 'penalt' in str(context.get('AC', '')).lower() or is_shootout:
-						pen_home = val
-					else:
-						final_home = val
-				except Exception: pass
-			if 'IH' in context:
-				try:
-					val = int(context['IH'])
-					if 'penalt' in str(context.get('AC', '')).lower() or is_shootout:
-						pen_away = val
-					else:
-						final_away = val
-				except Exception: pass
-
-			if str(context.get('AC', '')).lower() in ('penalties', 'penalty shootout'):
-				is_shootout = True
-
-			if not entries:
-				continue
-
-			ia = context.get('IA', '')
-			ctx_is_home = True if ia == '1' else (False if ia == '2' else None)
-
-			minute, minute_raw = self._parse_minute(context.get('IB', ''))
-
-			goal_entries = []
-			card_entries = []
-			disallowed_entry = None
-			sub_in = None
-			sub_out = None
-
-			for e in entries:
-				ik = (e.get('IK', '') or '').strip()
-				ik_low = ik.lower()
-				ict_low = (e.get('ICT', '') or '').strip().lower()
-				ie = e.get('IE', '')
-				
-				if ie == '8' or 'assistance' in ik_low:
-					continue
-				if 'substitution' in ik_low and 'in' in ik_low:
-					sub_in = e
-					continue
-				if 'substitution' in ik_low and 'out' in ik_low:
-					sub_out = e
-					continue
-				if 'disallowed' in ik_low or 'disallowed' in ict_low or 'var' in ik_low:
-					disallowed_entry = e
-					continue
-				if is_shootout and ('penalty' in ik_low or 'goal' in ik_low or 'missed' in ik_low or 'saved' in ik_low) and 'awarded' not in ik_low:
-					is_missed = 'miss' in ik_low or 'sav' in ik_low or 'miss' in ict_low or 'sav' in ict_low or 'miss' in str(e.get('IL', '')).lower()
-					side = ctx_is_home if ctx_is_home is not None else True
-					p_key = (e.get('IF', ''), side)
-					if p_key not in processed_pens:
-						processed_pens.add(p_key)
-						incidents.append({
-							"incidentType": "penaltyShootout",
-							"incidentClass": "missed" if is_missed else "scored",
-							"isHome": side,
-							"time": 0,
-							"player": {"name": e.get('IF', '')}
-						})
-					continue
-				if 'goal' in ik_low:
-					goal_entries.append(e)
-					continue
-				if 'yellow' in ik_low or 'red' in ik_low or 'card' in ik_low:
-					card_entries.append(e)
-					continue
-
-			if sub_in or sub_out:
-				pin = sub_in.get('IF', '') if sub_in else ''
-				pout = sub_out.get('IF', '') if sub_out else ''
-				side = ctx_is_home if ctx_is_home is not None else True
-				incidents.append({
-					"incidentType": "substitution",
-					"isHome": side,
-					"time": minute,
-					"time_display": minute_raw,
-					"playerIn": {"name": pin},
-					"playerOut": {"name": pout},
-				})
-				continue
-
-			if disallowed_entry:
-				side = ctx_is_home if ctx_is_home is not None else True
-				v_ik = disallowed_entry.get('IK', 'Goal Disallowed')
-				v_il = disallowed_entry.get('IL', '')
-				v_reason = v_ik
-				if v_il and v_il.lower() not in v_ik.lower():
-					v_reason = "%s (%s)" % (v_ik, v_il)
-				incidents.append({
-					"incidentType": "var",
-					"incidentClass": "goalDisallowed",
-					"isHome": side,
-					"time": minute,
-					"time_display": minute_raw,
-					"player": {"name": disallowed_entry.get('IF', '')},
-					"var_reason": v_reason,
-				})
-				continue
-
-			for g in goal_entries:
-				try:
-					new_home = int(g.get('INX', prev_home) or prev_home)
-					new_away = int(g.get('IOX', prev_away) or prev_away)
-				except Exception:
-					new_home = prev_home
-					new_away = prev_away
-				is_home = new_home > prev_home
-				prev_home = new_home
-				prev_away = new_away
-				ict = (g.get('ICT', '') or '').lower()
-				ik_low = (g.get('IK', '') or '').lower()
-				if 'own goal' in ict or 'own goal' in ik_low:
-					ic_class = 'owngoal'
-				elif 'penalty' in ict or 'penalty' in ik_low:
-					ic_class = 'penalty'
-				else:
-					ic_class = 'regular'
-				incidents.append({
-					"incidentType": "goal",
-					"incidentClass": ic_class,
-					"isHome": is_home,
-					"time": minute,
-					"time_display": minute_raw,
-					"player": {"name": g.get('IF', '')},
-				})
-
-			# Check if there is a yellow card in this batch to handle second yellow properly
-			has_yellow_in_batch = any('yellow card' in (e.get('IK','').lower()) for e in card_entries)
-
-			for c in card_entries:
-				ik_low = (c.get('IK', '') or '').lower()
-				ict_low = (c.get('ICT', '') or '').lower()
-				
-				# Skip explicit Red Card if it's a second yellow situation (UI handles the upgrade)
-				if 'red card' in ik_low and has_yellow_in_batch:
-					continue
-					
-				if 'red card' in ik_low or 'red card' in ict_low:
-					card_class = 'red'
-				else:
-					card_class = 'yellow'
-					
-				side = ctx_is_home if ctx_is_home is not None else True
-				player_name = c.get('IF', '')
-				
-				card_key = (player_name, minute, side)
-				if card_key in processed_cards:
-					continue
-					
-				processed_cards.add(card_key)
-
-				incident_data = {
-					"incidentType": "card",
-					"incidentClass": card_class,
-					"isHome": side,
-					"time": minute,
-					"time_display": minute_raw,
-					"player": {"name": player_name},
-					"reason": c.get('IL', ''),
-				}
-				incidents.append(incident_data)
-
-		if final_home == 0 and final_away == 0:
-			final_home = prev_home
-			final_away = prev_away
-
-		ev_js = {"event": {
-			"homeScore": {"current": final_home, "display": final_home, "penalties": pen_home},
-			"awayScore": {"current": final_away, "display": final_away, "penalties": pen_away},
-			"status": {"description": "Ended Match - Penalties" if pen_home is not None else ""}
-		}}
-
-		if debug_MatchDetails:
-			logdata("MatchDetails", "Flashscore incidents=%d score=%d-%d" % (len(incidents), final_home, final_away))
-		self.screen.process_data([{"incidents": incidents}, ev_js])
-
-
-class FlashscoreMatchStatistics(MatchStatisticsFetcherBase):
-	def fetch(self):
-		if debug_MatchStatistics:
-			logdata("MatchStatistics", "Flashscore.fetch started | event_id=%s" % self.event_id)
-		def _fetch():
-			text = _fs_request("df_st_1_{0}".format(self.event_id), timeout=25)
-			logdata("MatchStatistics_RAW_ST", "len=%d preview=%s" % (len(text) if text else 0, (text[:800] if text else "EMPTY")))
-			return _fs_parse(text) if text else []
-		d = deferToThread(_fetch)
-		d.addCallback(self._convert_stats)
-		d.addErrback(self._err)
-
-	def _err(self, failure):
-		if debug_MatchStatistics:
-			logdata("MatchStatistics", "Flashscore deferred errback: %s" % failure.getErrorMessage())
-		self.screen.process_stats(None)
-
-	def _convert_stats(self, blocks):
-		GROUP_MAP = {
-			'Match': 'Match overview',
-			'Top stats': 'Match overview',
-			'Shots': 'Shots',
-			'Attack': 'Attack',
-			'Passes': 'Passes',
-			'Duels': 'Duels',
-			'Defending': 'Defending',
-			'Goalkeeping': 'Goalkeeping',
-		}
-		STAT_MAP = {
-			'Expected goals (xG)': 'Expected goals',
-			'Expected goals': 'Expected goals',
-			'Ball possession': 'Ball possession',
-			'Total shots': 'Total shots',
-			'Shots on target': 'Shots on target',
-			'Big chances': 'Big chances',
-			'Corner kicks': 'Corner kicks',
-			'Passes': 'Accurate passes',
-			'Yellow cards': 'Yellow cards',
-			'Red cards': 'Red cards',
-			'Shots off target': 'Shots off target',
-			'Blocked shots': 'Blocked shots',
-			'Shots inside the box': 'Shots inside box',
-			'Shots outside the box': 'Shots outside box',
-			'Hit the woodwork': 'Hit woodwork',
-			'Touches in opposition box': 'Touches in penalty area',
-			'Fouls': 'Fouls',
-			'Offsides': 'Offsides',
-			'Goalkeeper saves': 'Goalkeeper saves',
-			'Saves': 'Total saves',
-		}
-
-		groups = {}
-		order = []
-		current = None
-
-		for block in blocks:
-			d = {}
-			for k, v in block:
-				d.setdefault(k, []).append(v)
-
-			if 'SE' in d:
-				name = d['SE'][0]
-				mapped = GROUP_MAP.get(name, name)
-				if mapped not in groups:
-					groups[mapped] = []
-					order.append(mapped)
-				current = mapped
-				continue
-
-			if 'SF' in d:
-				name = d['SF'][0]
-				mapped = GROUP_MAP.get(name, name)
-				if mapped not in groups:
-					groups[mapped] = []
-					order.append(mapped)
-				current = mapped
-				continue
-
-			if 'SG' in d and 'SH' in d and 'SI' in d:
-				stat_name = d['SG'][0]
-				home_val = d['SH'][0]
-				away_val = d['SI'][0]
-				mapped_name = STAT_MAP.get(stat_name, stat_name)
-				if current is None:
-					current = 'Match overview'
-					if current not in groups:
-						groups[current] = []
-						order.append(current)
-				groups[current].append({
-					"name": mapped_name,
-					"home": str(home_val),
-					"away": str(away_val),
-				})
-
-		stats_groups = []
-		for gname in order:
-			if groups.get(gname):
-				stats_groups.append({
-					"groupName": gname,
-					"statisticsItems": groups[gname],
-				})
-
-		stats_json = {
-			"statistics": [{
-				"period": "ALL",
-				"groups": stats_groups,
-			}]
-		}
-		if debug_MatchStatistics:
-			logdata("MatchStatistics", "Flashscore groups=%d" % len(stats_groups))
-		self.screen.process_stats(stats_json)
 
 
 class FlashscoreMatchMedia(MatchMediaFetcherBase):
@@ -1866,120 +2616,6 @@ class ESPNMatchMedia(MatchMediaFetcherBase):
 		self.screen.process_media({"media": media})
 
 
-# =========================================================
-# FotMob Match Statistics
-# =========================================================
-
-class FotMobMatchStatistics(MatchStatisticsFetcherBase):
-	def fetch(self):
-		if debug_MatchStatistics:
-			logdata("MatchStatistics", "FotMob.fetch started | event_id=%s" % self.event_id)
-		url = "https://www.fotmob.com/api/data/matchDetails?matchId=" + self.event_id
-		def _fetch():
-			try:
-				r = requests.get(url, timeout=15, verify=False, headers={
-					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-					'Accept': 'application/json',
-					'Referer': 'https://www.fotmob.com/',
-				})
-				if r.status_code == 200:
-					return r.content
-				return None
-			except Exception as e:
-				if debug_MatchStatistics:
-					logdata("MatchStatistics", "FotMob fetch error: %s" % str(e)[:200])
-				return None
-		d = deferToThread(_fetch)
-		d.addCallback(self._convert)
-		d.addErrback(self._err)
-
-	def _err(self, failure):
-		if debug_MatchStatistics:
-			logdata("MatchStatistics", "FotMob deferred errback: %s" % failure.getErrorMessage())
-		self.screen.process_stats(None)
-
-	def _convert(self, raw):
-		if not raw:
-			self.screen.process_stats(None)
-			return
-		try:
-			data = json.loads(raw.decode('utf-8', 'ignore'))
-		except Exception as e:
-			if debug_MatchStatistics:
-				logdata("MatchStatistics", "FotMob JSON error: %s" % str(e))
-			self.screen.process_stats(None)
-			return
-
-		stats_groups = []
-		stats_obj = data.get("content", {}).get("stats", {})
-		
-		# Get the list of groups (e.g., Top stats, Shots, etc.)
-		groups_data = []
-		if isinstance(stats_obj, dict):
-			if "Periods" in stats_obj and "All" in stats_obj["Periods"]:
-				groups_data = stats_obj["Periods"]["All"].get("stats", [])
-			else:
-				groups_data = stats_obj.get("stats", [])
-		elif isinstance(stats_obj, list):
-			groups_data = stats_obj
-
-		if not isinstance(groups_data, list):
-			groups_data = []
-
-		for group in groups_data:
-			if not isinstance(group, dict):
-				continue
-				
-			group_name = group.get("title", "")
-			group_items_data = group.get("stats", [])
-			
-			if not group_name or not isinstance(group_items_data, list):
-				continue
-				
-			items = []
-			for item in group_items_data:
-				if not isinstance(item, dict):
-					continue
-					
-				item_title = item.get("title", "")
-				item_stats = item.get("stats", [])
-				
-				if not item_title or not isinstance(item_stats, list) or len(item_stats) < 2:
-					continue
-					
-				home_val = item_stats[0]
-				away_val = item_stats[1]
-				
-				# Handle cases where the value might be a dict (rare, but possible)
-				if isinstance(home_val, dict):
-					home_val = home_val.get("value", "")
-				if isinstance(away_val, dict):
-					away_val = away_val.get("value", "")
-					
-				items.append({
-					"name": str(item_title),
-					"home": str(home_val),
-					"away": str(away_val)
-				})
-				
-			if items:
-				stats_groups.append({
-					"groupName": str(group_name),
-					"statisticsItems": items
-				})
-
-		stats_json = {
-			"statistics": [{
-				"period": "ALL",
-				"groups": stats_groups,
-			}]
-		}
-		self.screen.process_stats(stats_json)
-
-# =========================================================
-# FotMob Match Media
-# =========================================================
-
 class FotMobMatchMedia(MatchMediaFetcherBase):
 	def _search_youtube(self, query, max_results=3):
 		if not PY3 and isinstance(query, unicode):
@@ -2073,10 +2709,6 @@ class FotMobMatchMedia(MatchMediaFetcherBase):
 		media = self._search_youtube(query)
 		self.screen.process_media({"media": media})
 
-
-# =========================================================
-# SportScore Match Media
-# =========================================================
 
 class SportScoreMatchMedia(MatchMediaFetcherBase):
 	def fetch(self):

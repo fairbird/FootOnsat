@@ -13,7 +13,9 @@ from twisted.internet._sslverify import ClientTLSOptions
 from twisted.python.failure import Failure
 from twisted.internet.threads import deferToThread
 
-from enigma import getDesktop, eActionMap, eRCInput
+from enigma import getDesktop, eActionMap, eRCInput, eListboxPythonMultiContent, gFont, ePoint, eSize, RT_HALIGN_LEFT, RT_VALIGN_CENTER
+from Components.MenuList import MenuList
+from Components.MultiContent import MultiContentEntryText, MultiContentEntryPixmapAlphaBlend
 from keyids import KEYIDS
 from Screens.Screen import Screen
 from Screens.Standby import TryQuitMainloop
@@ -36,6 +38,12 @@ from Plugins.Extensions.FootOnSat.component.configs import ConfigDictionarySet
 from .compat import *
 
 
+try:
+	from enigma import BT_SCALE
+except ImportError:
+	BT_SCALE = 0
+
+
 def logdata(label_name = "", data = None):
 	try:
 		data = str(data)
@@ -51,11 +59,6 @@ def trace_error():
 		traceback.print_exc(file=sys.stdout)
 	except:
 		pass
-
-def DreamOS():
-	if exists('/var/lib/dpkg/status'):
-		return True
-	return False
 
 DEFAULT_DATA_DIR = "/etc/enigma2/footonsat"
 def get_data_paths():
@@ -143,7 +146,8 @@ except:
 	from Plugins.Extensions.FootOnSat.assets.languages.en import *
 #############################
 config.plugins.FootOnSat.showplugin = ConfigText(default="")
-config.plugins.FootOnSat.keyname = ConfigText(default="KEY_RADIO")
+config.plugins.FootOnSat.live_events = ConfigText(default="")
+config.plugins.FootOnSat.keyname = ConfigText(default="Nothing")
 config.plugins.FootOnSat.keysection = ConfigText(default="live")
 config.plugins.FootOnSat.devicepath = ConfigSelection(default=default_data_dir,choices=mounted_devices)
 config.plugins.FootOnSat.sort = ConfigDictionarySet(default={"footmenu": {"footsubmenu": {}}})
@@ -211,6 +215,7 @@ config.plugins.FootOnSat.livescoresearchlevel = ConfigSelection(default = "1", c
 	])
 config.plugins.FootOnSat.source = ConfigSelection(default = "flashscore", choices = [
 	("flashscore", "%s" % title320),
+	("livescore", "%s" % title343),
 	("fotmob", "%s" % title324),
 	("sofascore", "%s" % title314),
 	("espn", "%s" % title316),
@@ -221,6 +226,7 @@ config.plugins.FootOnSat.livescoresections = ConfigSelection(default = "1", choi
 	("2", "%s" % title11),
 	])
 config.plugins.FootOnSat.espn_limit = ConfigInteger(default=500, limits=(50, 1000))
+config.plugins.FootOnSat.livescore_pages = ConfigInteger(default=10, limits=(1, 20))
 config.plugins.FootOnSat.notify_zap = ConfigSelection(default = "1", choices = [
 	("1", "%s" % title12),
 	("2", "%s" % title13),
@@ -232,7 +238,8 @@ config.plugins.FootOnSat.notify = ConfigSelection(default = "1", choices = [
 	("4", "%s" % title17),
 	("5", "%s" % title18),
 	("6", "%s" % title19),
-	("7", "%s" % title20)
+	("7", "%s" % title20),
+	("0", "%s" % title333)
 	])
 config.plugins.FootOnSat.icons = ConfigSelection(default = "icons_default", choices = [
 	("icons_default", "%s" % title21),
@@ -300,9 +307,9 @@ def isFHD():
 	return desktopSize[0] == 1920
 
 if isUHD():
-	from Plugins.Extensions.FootOnSat.assets.skin.skinUHD import SKIN_MenuFootOnSat, SKIN_SelectionScreen
+	from Plugins.Extensions.FootOnSat.assets.skin.skinUHD import SKIN_MenuFootOnSat, SKIN_SelectionScreen, SKIN_CombinedNotificationsScreen
 else:
-	from Plugins.Extensions.FootOnSat.assets.skin.skinFHD import SKIN_MenuFootOnSat, SKIN_SelectionScreen
+	from Plugins.Extensions.FootOnSat.assets.skin.skinFHD import SKIN_MenuFootOnSat, SKIN_SelectionScreen, SKIN_CombinedNotificationsScreen
 
 
 # The CRITICAL class for TLS SNI support
@@ -319,6 +326,20 @@ class WebClientContextFactory(ClientContextFactory):
 			except Exception:
 				pass
 		return ctx
+
+
+def get_live_event_options():
+	return [
+		("goal", title327),
+		("var", title342),
+		("penalty", title329),
+		("red_card", title330),
+		("half_time", title129),
+		("second_half", title211),
+		("full_time", title126),
+		("extra_time", title216),
+		("penalties", title217),
+	]
 
 
 class MenuFootOnSat(ConfigListScreen, Screen):
@@ -387,6 +408,8 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			self.list.append(getConfigListEntry(_("%s") % title312, config.plugins.FootOnSat.source, _("%s") % title313))
 			if config.plugins.FootOnSat.source.value == "espn":
 				self.list.append(getConfigListEntry(_("%s") % title318, config.plugins.FootOnSat.espn_limit, _("%s") % title319))
+			elif config.plugins.FootOnSat.source.value == "livescore":
+				self.list.append(getConfigListEntry(_("%s") % title344, config.plugins.FootOnSat.livescore_pages, _("%s") % title345))
 			elif config.plugins.FootOnSat.source.value in ["flashscore", "fotmob"]:
 				pass
 			else:
@@ -396,8 +419,35 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			self.list.append(getConfigListEntry(_("%s") % title53, config.plugins.FootOnSat.livecolor, _("%s") % title54))
 		self.list.append(getConfigListEntry(title94))
 		self.list.append(getConfigListEntry(_("%s") % title57, config.plugins.FootOnSat.notiftime, _("%s") % title58))
+		selected_events = set(config.plugins.FootOnSat.live_events.value.split(','))
+		selected_events.discard('')
+
+		all_event_keys = set(key for key, text in get_live_event_options())
+		selected_events.intersection_update(all_event_keys)
+
+		notify_value = config.plugins.FootOnSat.notify.value
+		pre_selected_count = sum(1 for values in (
+			("1", "4", "6", "7"),
+			("1", "3", "5", "7"),
+			("1", "2", "5", "6")
+		) if notify_value in values)
+
+		total_selected = pre_selected_count + len(selected_events)
+		total_options = 3 + len(all_event_keys)
+
+		if total_selected == total_options:
+			live_events_text = title339
+		elif total_selected:
+			live_events_text = title341 % total_selected
+		else:
+			live_events_text = title340
+
+		self.live_events_display = ConfigSelection(
+			default=live_events_text,
+			choices=[(live_events_text, live_events_text)]
+		)
+		self.list.append(getConfigListEntry(title334, self.live_events_display, title335))
 		self.list.append(getConfigListEntry(_("%s") % title59, config.plugins.FootOnSat.notify_zap, _("%s") % title60))
-		self.list.append(getConfigListEntry(_("%s") % title61, config.plugins.FootOnSat.notify, _("%s") % title62))
 		self.list.append(getConfigListEntry(_("%s") % title63, config.plugins.FootOnSat.notiffile, _("%s") % title64))
 		self.list.append(getConfigListEntry(_("%s") % title297, config.plugins.FootOnSat.WakingUp, _("%s") % title298))
 		self.list.append(getConfigListEntry(title95))
@@ -480,12 +530,17 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			self.session.openWithCallback(self.keyCaptured, KeyCaptureScreen)
 		if cur and len(cur) > 1 and cur[1] == config.plugins.FootOnSat.showplugin:
 			self.session.open(SelectionScreen)
+		if cur and len(cur) > 1 and cur[1] == self.live_events_display:
+			self.session.openWithCallback(self.liveEventsClosed, CombinedNotificationsScreen)
 		if cur and len(cur) > 1 and cur[1] == config.plugins.FootOnSat.notiffile:
 			tone_list = self.getToneList()
 			if tone_list:
 				self.session.openWithCallback(self.saveToneSelection, ChoiceBox, title=_("%s") % title101, list=tone_list)
 			else:
 				self.session.open(MessageBox, _("%s") % title102, MessageBox.TYPE_INFO)
+
+	def liveEventsClosed(self, *args):
+		self.createSetup()
 
 	def keySave(self):
 		try:
@@ -621,7 +676,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 
 	def keyLeft(self):
 		cur = self["config"].getCurrent()
-		if cur and (cur[1] == config.plugins.FootOnSat.notiftime or cur[1] == config.plugins.FootOnSat.WakingUp):
+		if cur and (cur[1] == config.plugins.FootOnSat.notiftime or cur[1] == config.plugins.FootOnSat.WakingUp or cur[1] == config.plugins.FootOnSat.livescore_pages):
 			cfg = cur[1]
 			val = cfg.value
 			limits = cfg.limits
@@ -643,7 +698,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 
 	def keyRight(self):
 		cur = self["config"].getCurrent()
-		if cur and (cur[1] == config.plugins.FootOnSat.notiftime or cur[1] == config.plugins.FootOnSat.WakingUp):
+		if cur and (cur[1] == config.plugins.FootOnSat.notiftime or cur[1] == config.plugins.FootOnSat.WakingUp or cur[1] == config.plugins.FootOnSat.livescore_pages):
 			cfg = cur[1]
 			val = cfg.value
 			limits = cfg.limits
@@ -1026,3 +1081,346 @@ class KeyCaptureScreen(Screen):
 		except:
 			pass
 		return None
+
+
+class LiveEventsSelectionScreen(Screen, ConfigListScreen):
+	def __init__(self, session):
+		Screen.__init__(self, session)
+		self.skin = SKIN_SelectionScreen
+		ConfigListScreen.__init__(self, [], session=session)
+		self.session = session
+		self.setup_title = _("%s") % title325
+		self.setTitle(self.setup_title)
+
+		self.empty_box = LoadPixmap(resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/icon/checkbox_empty.png'))
+		self.checked_box = LoadPixmap(resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/icon/checkbox_checked.png'))
+
+		# Use existing titles to avoid duplication
+		self.event_options = [
+			("goal", title327),
+			("var", title328),
+			("penalty", title329),
+			("red_card", title330),
+			("half_time", title129),
+			("full_time", title126),
+			("extra_time", title216),
+			("penalties", title217),
+		]
+
+		self.selection_states = dict((key, False) for key, _ in self.event_options)
+		self.current_value = config.plugins.FootOnSat.live_events.value
+		if self.current_value:
+			for item in self.current_value.split(','):
+				if item in self.selection_states:
+					self.selection_states[item] = True
+
+		self["list"] = List([])
+		self.updateList()
+
+		self["key_green"] = Label(title98)
+		self["key_red"] = Label(title107)
+
+		self["setupActions"] = ActionMap(["FootOnsatActions"], {
+			"ok": self.select_option,
+			"cancel": self.close,
+			"back": self.close,
+			"green": self.save
+		}, -2)
+
+		self.onLayoutFinish.append(self.layoutFinished)
+
+	def layoutFinished(self):
+		self.setTitle(self.setup_title)
+
+	def updateList(self):
+		current_index = self["list"].getIndex() or 0
+		self.list = []
+		for key, text in self.event_options:
+			pixmap = self.checked_box if self.selection_states[key] else self.empty_box
+			self.list.append((text, pixmap, key))
+
+		self["list"].setList(self.list)
+		self["list"].setIndex(current_index if current_index < len(self.list) else 0)
+
+	def select_option(self):
+		current = self["list"].getCurrent()
+		if current:
+			self.selection_states[current[2]] = not self.selection_states[current[2]]
+			self.updateList()
+
+	def save(self):
+		selected = [key for key, state in self.selection_states.items() if state]
+		config.plugins.FootOnSat.live_events.value = ','.join(selected)
+		config.plugins.FootOnSat.live_events.save()
+		configfile.save()
+		self.close(True)
+
+
+class CombinedNotificationsScreen(Screen):
+	def __init__(self, session):
+		Screen.__init__(self, session)
+		self.skin = SKIN_CombinedNotificationsScreen
+
+		if isUHD():
+			self.ITEM_H = 130              # Height of each list row
+			self.FONT_SIZE = 45            # Font size of option text
+			self.CHECKBOX_SIZE = 45        # Width and height of checkbox icons
+			self.CHECKBOX_Y = 35           # Vertical position of checkbox icons
+			self.TEXT_X_OFFSET = 100       # Horizontal distance between checkbox and text
+			self.MARGIN_X = 40             # Left margin inside each option column
+			self.LIST_WIDTH = 2075         # Total width of the list content
+			self.LIST_X = 40               # Horizontal position of the list on screen
+			self.LIST_Y = 40               # Vertical position of the list on screen
+			self.SELECTION_WIDTH = 520     # Width of the selection highlight frame
+			self.SELECTION_HEIGHT = 122    # Height of the selection highlight frame
+		else:
+			self.ITEM_H = 65
+			self.FONT_SIZE = 30
+			self.CHECKBOX_SIZE = 30
+			self.CHECKBOX_Y = 17
+			self.TEXT_X_OFFSET = 50
+			self.MARGIN_X = 20
+			self.LIST_WIDTH = 1360
+			self.LIST_X = 20
+			self.LIST_Y = 20
+			self.SELECTION_WIDTH = 300
+			self.SELECTION_HEIGHT = 57
+
+		self.session = session
+		self["list"] = MenuList([], enableWrapAround=False, content=eListboxPythonMultiContent)
+		self["selection"] = Pixmap()
+		self["key_green"] = Label(title98)
+		self["key_red"] = Label(title107)
+
+		self["actions"] = ActionMap(["SetupActions", "ColorActions", "DirectionActions", "WizardActions"], {
+			"cancel": self.cancel,
+			"red": self.cancel,
+			"green": self.save,
+			"ok": self.toggle,
+			"up": self.up,
+			"down": self.down,
+			"left": self.left,
+			"right": self.right,
+		}, -2)
+
+		self.checked_box = LoadPixmap(resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/icon/checkbox_checked.png'))
+		self.empty_box = LoadPixmap(resolveFilename(SCOPE_PLUGINS, 'Extensions/FootOnSat/assets/icon/checkbox_empty.png'))
+
+		val = config.plugins.FootOnSat.notify.value
+		self.pre_options = [
+			{"key": "30min", "text": title336, "checked": val in ("1", "4", "6", "7")},
+			{"key": "15min", "text": title337, "checked": val in ("1", "3", "5", "7")},
+			{"key": "start", "text": title338, "checked": val in ("1", "2", "5", "6")},
+		]
+
+		live_val = config.plugins.FootOnSat.live_events.value
+		live_selected = live_val.split(",") if live_val else []
+
+		self.event_options = [
+			{"key": key, "text": text, "checked": key in live_selected}
+			for key, text in get_live_event_options()
+		]
+
+		self.current_row = 1
+		self.current_col = 0
+		self.onLayoutFinish.append(self.layoutFinished)
+
+	def layoutFinished(self):
+		self.setTitle(_("Notification Settings"))
+		if self["list"].instance:
+			self["list"].instance.setSelectionEnable(0)
+		self.update_list()
+
+	def _event_rows(self):
+		return (len(self.event_options) + 2) // 3
+
+	def _row_columns(self, row):
+		if row == 1:
+			return len(self.pre_options)
+		if row >= 3:
+			start = (row - 3) * 3
+			return max(0, min(3, len(self.event_options) - start))
+		return 0
+
+	def _fix_selection(self):
+		rows = self._event_rows()
+
+		if not rows:
+			self.current_row = 1
+			self.current_col = 0
+			return
+
+		if self.current_row != 1:
+			self.current_row = max(3, min(self.current_row, 2 + rows))
+
+		columns = self._row_columns(self.current_row)
+		self.current_col = max(0, min(self.current_col, columns - 1))
+
+	def update_list(self):
+		self._fix_selection()
+
+		self["list"].l.setItemHeight(self.ITEM_H)
+		self["list"].l.setFont(0, gFont('Regular', self.FONT_SIZE))
+
+		list_width = self.LIST_WIDTH
+		grid_width = int(list_width * 0.78)
+		col_w = grid_width // 3
+		grid_x = (list_width - grid_width) // 2
+		gList = []
+
+		# Pre-match Title
+		res = [MultiContentEntryText()]
+		res.append(MultiContentEntryText(pos=(self.MARGIN_X, 0), size=(list_width - self.MARGIN_X, self.ITEM_H), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=_("Choose to display notifications"), color=0xffcc00))
+		gList.append(res)
+
+		# Pre-match Options
+		res = [MultiContentEntryText()]
+		start_x = grid_x + (3 - len(self.pre_options)) * col_w // 2
+
+		for c_idx, opt in enumerate(self.pre_options):
+			x = start_x + c_idx * col_w
+			icon = self.checked_box if opt["checked"] else self.empty_box
+
+			if DreamOS():
+				res.append(MultiContentEntryPixmapAlphaBlend(pos=(x + self.MARGIN_X, self.CHECKBOX_Y), size=(self.CHECKBOX_SIZE, self.CHECKBOX_SIZE), png=icon))
+			else:
+				res.append(MultiContentEntryPixmapAlphaBlend(pos=(x + self.MARGIN_X, self.CHECKBOX_Y), size=(self.CHECKBOX_SIZE, self.CHECKBOX_SIZE), png=icon, flags=BT_SCALE))
+
+			color = 0x00ff00 if (self.current_row == 1 and c_idx == self.current_col) else 0xffffff
+			res.append(MultiContentEntryText(pos=(x + self.MARGIN_X + self.TEXT_X_OFFSET, 0), size=(col_w - self.MARGIN_X - self.TEXT_X_OFFSET, self.ITEM_H), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=opt["text"], color=color))
+
+		gList.append(res)
+
+		# Live Events Title
+		res = [MultiContentEntryText()]
+		res.append(MultiContentEntryText(pos=(self.MARGIN_X, 0), size=(list_width - self.MARGIN_X, self.ITEM_H), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=_("Live Match Event Notifications"), color=0xffcc00))
+		gList.append(res)
+
+		# Live Events - 3 options per row, centered automatically
+		for row_index, start in enumerate(range(0, len(self.event_options), 3), 3):
+			options = self.event_options[start:start + 3]
+			start_x = grid_x + (3 - len(options)) * col_w // 2
+			res = [MultiContentEntryText()]
+
+			for c_idx, opt in enumerate(options):
+				x = start_x + c_idx * col_w
+				icon = self.checked_box if opt["checked"] else self.empty_box
+				if DreamOS():
+					res.append(MultiContentEntryPixmapAlphaBlend(pos=(x + self.MARGIN_X, self.CHECKBOX_Y), size=(self.CHECKBOX_SIZE, self.CHECKBOX_SIZE), png=icon))
+				else:
+					res.append(MultiContentEntryPixmapAlphaBlend(pos=(x + self.MARGIN_X, self.CHECKBOX_Y), size=(self.CHECKBOX_SIZE, self.CHECKBOX_SIZE), png=icon, flags=BT_SCALE))
+
+				color = 0x00ff00 if (self.current_row == row_index and c_idx == self.current_col) else 0xffffff
+				res.append(MultiContentEntryText(pos=(x + self.MARGIN_X + self.TEXT_X_OFFSET, 0), size=(col_w - self.MARGIN_X - self.TEXT_X_OFFSET, self.ITEM_H), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=opt["text"], color=color))
+
+			gList.append(res)
+
+		self["list"].setList(gList)
+
+		list_row = 1 if self.current_row == 1 else self.current_row + 1
+
+		if gList and self["list"].instance:
+			self["list"].instance.moveSelectionTo(list_row)
+
+		if self["selection"].instance:
+			columns = self._row_columns(self.current_row)
+			start_x = grid_x + (3 - columns) * col_w // 2
+
+			x = self.LIST_X + start_x + self.current_col * col_w + self.MARGIN_X - 8
+			y = self.LIST_Y + list_row * self.ITEM_H + 4
+
+			self["selection"].instance.resize(eSize(self.SELECTION_WIDTH, self.SELECTION_HEIGHT))
+			self["selection"].instance.setScale(1)
+			self["selection"].instance.move(ePoint(x, y))
+			self["selection"].show()
+
+		if gList and self["list"].instance:
+			self["list"].instance.moveSelectionTo(self.current_row)
+
+		if self["selection"].instance:
+			columns = self._row_columns(self.current_row)
+			start_x = grid_x + (3 - columns) * col_w // 2
+
+			x = self.LIST_X + start_x + self.current_col * col_w + self.MARGIN_X - 8
+			y = self.LIST_Y + self.current_row * self.ITEM_H + 4
+
+			self["selection"].instance.resize(eSize(self.SELECTION_WIDTH, self.SELECTION_HEIGHT))
+			self["selection"].instance.setScale(1)
+			self["selection"].instance.move(ePoint(x, y))
+			self["selection"].show()
+
+	def toggle(self):
+		if self.current_row == 1:
+			options = self.pre_options
+			index = self.current_col
+		else:
+			options = self.event_options
+			index = (self.current_row - 3) * 3 + self.current_col
+
+		if 0 <= index < len(options):
+			options[index]["checked"] = not options[index]["checked"]
+
+		self.update_list()
+
+	def up(self):
+		last_row = 2 + self._event_rows()
+
+		if self.current_row == 1:
+			self.current_row = last_row
+		elif self.current_row == 3:
+			self.current_row = 1
+		else:
+			self.current_row -= 1
+
+		self.update_list()
+
+	def down(self):
+		last_row = 2 + self._event_rows()
+
+		if self.current_row == 1:
+			self.current_row = 3
+		elif self.current_row < last_row:
+			self.current_row += 1
+		else:
+			self.current_row = 1
+
+		self.update_list()
+
+	def left(self):
+		columns = self._row_columns(self.current_row)
+		if columns:
+			self.current_col = (self.current_col - 1) % columns
+		self.update_list()
+
+	def right(self):
+		columns = self._row_columns(self.current_row)
+		if columns:
+			self.current_col = (self.current_col + 1) % columns
+		self.update_list()
+
+	def save(self):
+		has_30 = self.pre_options[0]["checked"]
+		has_15 = self.pre_options[1]["checked"]
+		has_start = self.pre_options[2]["checked"]
+
+		if has_30 and has_15 and has_start: code = "1"
+		elif not has_30 and not has_15 and has_start: code = "2"
+		elif not has_30 and has_15 and not has_start: code = "3"
+		elif has_30 and not has_15 and not has_start: code = "4"
+		elif not has_30 and has_15 and has_start: code = "5"
+		elif has_30 and not has_15 and has_start: code = "6"
+		elif has_30 and has_15 and not has_start: code = "7"
+		else: code = "0"
+
+		config.plugins.FootOnSat.notify.value = code
+		config.plugins.FootOnSat.notify.save()
+
+		selected_events = [opt["key"] for opt in self.event_options if opt["checked"]]
+		config.plugins.FootOnSat.live_events.value = ",".join(selected_events)
+		config.plugins.FootOnSat.live_events.save()
+
+		configfile.save()
+		self.close(True)
+
+	def cancel(self):
+		self.close(False)

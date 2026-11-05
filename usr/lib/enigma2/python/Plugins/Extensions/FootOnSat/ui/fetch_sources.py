@@ -432,6 +432,24 @@ class LiveFetchBase(object):
 		if debug_Fetch_Live:
 			logdata("fetch_live_results", "MATCHES AFTER: %d" % len(final_list))
 		self.screen.matches = final_list
+		if self.screen.link not in ("end", "today", "yesterday", "tomorrow"):
+			try:
+				from sqlite3 import connect
+				from os.path import join
+				PLUGINPATH = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
+				with connect(join(PLUGINPATH, "db/footonsat.db")) as conn:
+					cur = conn.cursor()
+					for m in final_list:
+						eid = str(m[8]) if len(m) > 8 and m[8] else ""
+						if not eid:
+							continue
+						m_name = compat_str(m[0]).replace(u'\xa0', u' ').strip()
+						m_name = ' '.join(m_name.split())
+						cur.execute("UPDATE LIVE_NOTIF SET EVENT_ID = ? WHERE MATCH = ? AND (EVENT_ID IS NULL OR EVENT_ID = '')", (eid, m_name))
+					conn.commit()
+			except Exception as e:
+				if debug_Fetch_Live:
+					logdata("fetch_live_results", "EVENT_ID DB update error: %s" % str(e)[:150])
 		if changed and self.screen.link == "live":
 			try:
 				with open(cache_file, 'w') as f:
@@ -1162,112 +1180,50 @@ class ESPNFetcher(LiveFetchBase):
 		if debug_Fetch_Live:
 			logdata("fetch_live_results", "ESPN fetch started")
 
-		if self.screen.link == "yesterday":
-			selected_date = date.today() - timedelta(days=1)
-		else:
-			selected_date = date.today()
-		date_compact = selected_date.strftime("%Y%m%d")
-
-		date_prev = (selected_date - timedelta(days=1)).strftime("%Y%m%d")
-		date_next = (selected_date + timedelta(days=1)).strftime("%Y%m%d")
-		date_dates = [(selected_date + timedelta(days=_i)).strftime("%Y%m%d") for _i in range(-2, 3)]
-		try:
-			limit = config.plugins.FootOnSat.espn_limit.value
-		except Exception:
-			limit = "500"
-		if debug_Fetch_Live:
-			logdata("fetch_live_results", "ESPN dates: %s limit: %s" % (",".join(date_dates), limit))
-
-		import threading
-
-		all_events = []
-		seen_ids = set()
-		lock = threading.Lock()
-
-		def _fetch_league(league_ref):
+		dates_to_fetch = set()
+		for m in self.screen.matches:
 			try:
-				ref_url = league_ref.get("$ref")
-				if not ref_url:
-					return
-				ref_data = self._espn_get(ref_url, timeout=10)
-				if not ref_data:
-					return
-				slug = ref_data.get("slug", "")
-				name = ref_data.get("name", "")
-				if not slug:
-					return
-				events = []
-				seen_local = set()
-				for d in date_dates:
-					scoreboard_url = "https://site.api.espn.com/apis/site/v2/sports/soccer/{0}/scoreboard?dates={1}".format(slug, d)
-					data = self._espn_get(scoreboard_url, timeout=15)
-					if not data:
-						if debug_Fetch_Live:
-							logdata("fetch_live_results", "ESPN_DATE_EMPTY [%s] date=%s" % (slug, d))
-						continue
-					date_events = data.get("events", [])
-					if debug_Fetch_Live and date_events:
-						logdata("fetch_live_results", "ESPN_DATE_HIT [%s] date=%s events=%d" % (slug, d, len(date_events)))
-					for ev in date_events:
-						ev_id = str(ev.get("id", ""))
-						if ev_id and ev_id in seen_local:
-							continue
-						events.append(ev)
-						if ev_id:
-							seen_local.add(ev_id)
-				if not events:
-					return
-				local_converted = []
-				for ev in events:
-					ev_id = str(ev.get("id", ""))
-					if ev_id and ev_id in seen_ids:
-						continue
-					converted = self._convert_event(ev, name, slug)
-					if converted:
-						local_converted.append((ev_id, converted))
-				with lock:
-					for ev_id, conv in local_converted:
-						if ev_id and ev_id in seen_ids:
-							continue
-						all_events.append(conv)
-						if ev_id:
-							seen_ids.add(ev_id)
-			except Exception as e:
-				if debug_Fetch_Live:
-					logdata("fetch_live_results", "ESPN league fetch error: %s" % str(e)[:100])
+				date_part = str(m[1]).split(' - ')[-1]
+				dates_to_fetch.add(date_part.replace('-', ''))
+			except Exception:
+				pass
 
-		def _run_all():
-			leagues_data = self._espn_get("https://sports.core.api.espn.com/v2/sports/soccer/leagues?limit={0}".format(limit))
-			if debug_Fetch_Live:
-				logdata("fetch_live_results", "ESPN leagues RAW_TYPE: %s" % type(leagues_data).__name__)
-			if not leagues_data:
+		if not dates_to_fetch:
+			if self.screen.link == "yesterday":
+				dates_to_fetch.add((date.today() - timedelta(days=1)).strftime("%Y%m%d"))
+			elif self.screen.link == "tomorrow":
+				dates_to_fetch.add((date.today() + timedelta(days=1)).strftime("%Y%m%d"))
+			else:
+				dates_to_fetch.add(date.today().strftime("%Y%m%d"))
+
+		def _fetch():
+			all_events = []
+			for date_str in dates_to_fetch:
+				url = "https://site.api.espn.com/apis/site/v2/sports/soccer/all/scoreboard?dates={0}".format(date_str)
 				if debug_Fetch_Live:
-					logdata("fetch_live_results", "ESPN no leagues data")
-				return []
+					logdata("fetch_live_results", "ESPN Fetching URL: %s" % url)
+				data = self._espn_get(url, timeout=15)
+				if not data:
+					continue
 				
-			league_items = leagues_data.get("items", [])
-			if debug_Fetch_Live:
-				logdata("fetch_live_results", "ESPN total leagues: %d" % len(league_items))
-
-			threads = []
-			for item in league_items:
-				t = threading.Thread(target=_fetch_league, args=(item,))
-				t.daemon = True
-				threads.append(t)
-			max_parallel = 20
-			for i in range(0, len(threads), max_parallel):
-				batch = threads[i:i+max_parallel]
-				for t in batch:
-					t.start()
-				for t in batch:
-					t.join()
+				events = data.get("events", [])
+				if debug_Fetch_Live:
+					logdata("fetch_live_results", "ESPN Date %s events=%d" % (date_str, len(events)))
+				
+				for ev in events:
+					league_data = ev.get("league", {})
+					league_name = league_data.get("name", "")
+					league_slug = league_data.get("slug", "")
+					conv = self._convert_event(ev, league_name, league_slug)
+					if conv:
+						all_events.append(conv)
 			return all_events
 
 		def _done(events):
 			if self.screen.fetch_timestamp != self.current_ts:
 				return
 			if debug_Fetch_Live:
-				logdata("fetch_live_results", "ESPN events=%d" % len(events))
+				logdata("fetch_live_results", "ESPN total events=%d" % len(events))
 			if not events:
 				try:
 					self.screen.iniMenu()
@@ -1277,7 +1233,7 @@ class ESPNFetcher(LiveFetchBase):
 			raw_json = json.dumps({"events": events}).encode('utf-8')
 			self._process_response([raw_json])
 
-		d = deferToThread(_run_all)
+		d = deferToThread(_fetch)
 		d.addCallback(_done)
 		d.addErrback(lambda f: logdata("fetch_live_results", "ESPN fetch failed: %s" % f.getErrorMessage()))
 
@@ -1328,20 +1284,18 @@ class FlashscoreFetcher(LiveFetchBase):
 	def _status_from_fs(self, stage, txt):
 		s = str(stage or '').strip()
 		t = str(txt or '').strip().lower()
-		
-		# Flashscore uses numeric codes: 4=Postponed, 5=Canceled, 6=Abandoned
 		if t == '4' or 'postpon' in t:
 			return 'postponed', title152
 		if t in ('5', '6') or 'cancel' in t or 'abandon' in t:
 			return 'canceled', title124
 		if t == '9' or 'delay' in t:
 			return 'inprogress', title156
-			
+		if s == '2':
+			return 'inprogress', txt or ''
 		if s == '3' or 'finished' in t or t == 'ft':
 			return 'finished', title125
-		if s == '2' or "'" in t or 'half' in t or 'live' in t or t == 'ht' or t == 'et' or t == 'pen':
+		if "'" in t or 'half' in t or 'live' in t or t == 'ht' or t == 'et' or t == 'pen':
 			return 'inprogress', txt or ''
-			
 		return 'notstarted', ''
 
 	def _convert_event(self, m):
@@ -1373,22 +1327,7 @@ class FlashscoreFetcher(LiveFetchBase):
 			league = m.get('ZA', '') or m.get('ZY', '') or ''
 			country = m.get('UY', '') or ''
 			match_id = m.get('AA', '')
-			
-			if stage == '2' and status_txt.replace("'", "").isdigit():
-				_raw_ts = int(m.get('AD', 0) or 0)
-				if _raw_ts > 0:
-					_dt_utc = datetime.utcfromtimestamp(_raw_ts)
-					_match_date_str = _dt_utc.strftime("%H:%M - %Y-%m-%d")
-					_local_str = self.screen.getTime(_match_date_str)
-					_local_dt = datetime.strptime(_local_str, "%H:%M - %Y-%m-%d")
-					
-					elapsed = int((datetime.now() - _local_dt).total_seconds() / 60)
-					if elapsed > 45:
-						elapsed -= 15
-					if elapsed < 0:
-						elapsed = 0
-					status_txt = str(elapsed)
-					
+
 			ss_type, status_long = self._status_from_fs(stage, status_txt)
 			return {
 				"homeTeam": {"name": home, "shortName": home},
@@ -1405,6 +1344,23 @@ class FlashscoreFetcher(LiveFetchBase):
 				logdata("fetch_live_results", "Flashscore convert error: %s" % str(e)[:150])
 			return None
 
+	def _parse_mobile_live(self, html):
+		result = {}
+		if not html:
+			return result
+		pattern = re.compile(r'<span class="live">([^<]*)</span>(?:[^<]|<img[^>]*>)*<a href="/match/([^/]+)/[^"]*"\s+class="live">([^<]*)</a>')
+		for mo in pattern.finditer(html):
+			status_raw = mo.group(1).strip()
+			match_id = mo.group(2).strip()
+			score_raw = mo.group(3).replace('&nbsp;', '').strip()
+			h_score, a_score = '', ''
+			if '-' in score_raw:
+				parts = score_raw.split('-', 1)
+				h_score = parts[0].strip()
+				a_score = parts[1].strip()
+			result[match_id] = (status_raw, h_score, a_score)
+		return result
+
 	def fetch(self):
 		self.screen.fetch_timestamp = time.time()
 		self.current_ts = self.screen.fetch_timestamp
@@ -1414,25 +1370,29 @@ class FlashscoreFetcher(LiveFetchBase):
 		if self.screen.link in ("end", "yesterday"):
 			if debug_Fetch_Live:
 				logdata("fetch_live_results", "Flashscore (JSON) fetch started for %s" % self.screen.link)
-			
-			day = -1 if self.screen.link == "yesterday" else 0
-			
+			current_link = self.screen.link
+			day = -1 if current_link == "yesterday" else 0
 			def _fetch_old():
+				if getattr(self.screen, 'is_closed', True):
+					return []
 				all_events = []
 				endpoint = "f_1_{0}_3_en_1".format(day)
 				text = self._fs_get(endpoint, timeout=15)
 				if text and len(text) > 50:
 					parsed = self._parse_feed(text)
 					for m in parsed:
-						if self.screen.link == "end" and m.get('AB') != '3':
+						if getattr(self.screen, 'is_closed', True):
+							break
+						if current_link == "end" and m.get('AB') != '3':
 							continue
 						ev = self._convert_event(m)
 						if ev:
 							all_events.append(ev)
 				return all_events
-
 			def _done_old(events):
-				if self.screen.fetch_timestamp != self.current_ts:
+				if getattr(self.screen, 'fetch_timestamp', None) != self.current_ts:
+					return
+				if getattr(self.screen, 'is_closed', True):
 					return
 				if debug_Fetch_Live:
 					logdata("fetch_live_results", "Flashscore JSON events=%d" % len(events))
@@ -1444,27 +1404,24 @@ class FlashscoreFetcher(LiveFetchBase):
 					return
 				raw_json = json.dumps({"events": events}).encode('utf-8')
 				self._process_response([raw_json])
-
 			def _err_old(failure):
+				if getattr(self.screen, 'is_closed', True):
+					return
 				if debug_Fetch_Live:
 					logdata("fetch_live_results", "Flashscore JSON error: %s" % failure.getErrorMessage())
 				try:
 					self.screen.iniMenu()
 				except Exception:
 					pass
-
 			d = deferToThread(_fetch_old)
 			d.addCallback(_done_old)
 			d.addErrback(_err_old)
-			
 		else:
 			if debug_Fetch_Live:
 				logdata("fetch_live_results", "Flashscore (API+Mobile) fetch started for %s" % self.screen.link)
-			
 			day = 1 if self.screen.link == "tomorrow" else 0
-			
-			def _fetch_both():
-				api_scores = {}
+			def _fetch_live():
+				all_events = []
 				endpoint = "f_1_{0}_3_en_1".format(day)
 				text = self._fs_get(endpoint, timeout=15)
 				if text and len(text) > 50:
@@ -1472,145 +1429,53 @@ class FlashscoreFetcher(LiveFetchBase):
 					for m in parsed:
 						ev = self._convert_event(m)
 						if ev:
-							mid = str(ev.get('id', ''))
-							h = str(ev['homeTeam']['name'])
-							a = str(ev['awayTeam']['name'])
-							hs = str(ev['homeScore']['current'])
-							as_ = str(ev['awayScore']['current'])
-							st = str(ev['status']['description'])
-							api_scores[mid] = (hs, as_, st)
-							api_scores[(h, a)] = (hs, as_, st)
-							
-				url = "https://www.flashscore.mobi/?d={0}".format(day)
-				headers = {
-					'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36'
-				}
-				html = None
+							all_events.append(ev)
+				mobile_live = {}
 				try:
-					r = requests.get(url, headers=headers, timeout=15, verify=False)
+					r = requests.get("https://www.flashscore.mobi/?d={0}".format(day),
+						headers={'User-Agent': 'Mozilla/5.0 (Linux; Android 10; SM-G975F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0.0.0 Mobile Safari/537.36'},
+						timeout=15, verify=False)
 					if r.status_code == 200:
-						html = r.text
-				except Exception:
-					pass
-				return html, api_scores
-
-			def _done_both(result):
+						mobile_live = self._parse_mobile_live(r.text)
+				except Exception as e:
+					if debug_Fetch_Live:
+						logdata("fetch_live_results", "Flashscore mobile exception: %s" % str(e)[:200])
+				for ev in all_events:
+					mid = ev.get('id', '')
+					if mid in mobile_live:
+						status_raw, h_score, a_score = mobile_live[mid]
+						ev['status']['type'] = 'inprogress'
+						ev['status']['description'] = status_raw
+						if h_score != '':
+							ev['homeScore']['current'] = h_score
+						if a_score != '':
+							ev['awayScore']['current'] = a_score
+					elif debug_Fetch_Live and ev['status']['type'] == 'inprogress':
+						logdata("fetch_live_results", "Flashscore JSON-fallback (not in mobile): %s vs %s id=%s desc=%s" % (ev['homeTeam']['name'], ev['awayTeam']['name'], mid, ev['status']['description']))
+				return all_events
+			def _done_live(events):
 				if self.screen.fetch_timestamp != self.current_ts:
 					return
-				html, api_scores = result
-				self._process_mobile_html(html, api_scores)
-
-			def _err_both(failure):
+				if debug_Fetch_Live:
+					logdata("fetch_live_results", "Flashscore API+Mobile events=%d" % len(events))
+				if not events:
+					try:
+						self.screen.iniMenu()
+					except Exception:
+						pass
+					return
+				raw_json = json.dumps({"events": events}).encode('utf-8')
+				self._process_response([raw_json])
+			def _err_live(failure):
 				if debug_Fetch_Live:
 					logdata("fetch_live_results", "Flashscore API+Mobile error: %s" % failure.getErrorMessage())
 				try:
 					self.screen.iniMenu()
 				except Exception:
 					pass
-
-			d = deferToThread(_fetch_both)
-			d.addCallback(_done_both)
-			d.addErrback(_err_both)
-
-	def _process_mobile_html(self, html, api_scores=None):
-		if not html:
-			try:
-				self.screen.iniMenu()
-			except:
-				pass
-			return
-
-		live_matches = []
-		pattern = re.compile(r'<span[^>]*>(.*?)<\/span>\s*(<span[^>]*>.*?<\/span>)?\s*(.*?)\s*<a href="\/match\/([^\/]+)\/[^>]*class="([^"]*)"[^>]*>(.*?)<\/a>')
-		matches = pattern.findall(html)
-
-		for m in matches:
-			try:
-				status_raw = m[0].strip()
-				nested_span = m[1].strip() if m[1] else ""
-				teams_raw = m[2].strip()
-				match_id = m[3].strip()
-				match_class = m[4].strip()
-				score_raw = m[5].strip()
-
-				full_status_text = (status_raw + " " + nested_span).lower()
-				
-				teams_raw = re.sub(r'<[^>]+>', '', teams_raw).strip()
-
-				if 'cancel' in full_status_text or 'abandoned' in full_status_text or 'canceled' in match_class:
-					status_txt = 'CANCELED'
-				elif 'postpon' in full_status_text or 'postponed' in match_class:
-					status_txt = 'POSTPONED'
-				elif 'fin' in match_class:
-					status_txt = 'FINISHED'
-				elif 'sched' in match_class:
-					status_txt = ''
-				elif 'live' in match_class:
-					status_txt = re.sub(r'<[^>]+>', '', status_raw).strip()
-					if 'Half Time' in status_txt or 'HT' in status_txt:
-						status_txt = 'HALFTIME'
-				else:
-					status_txt = re.sub(r'<[^>]+>', '', status_raw).strip()
-
-				teams = teams_raw.split(' - ')
-				
-				if len(teams) == 2:
-					home_team = teams[0].strip()
-					away_team = teams[1].strip()
-					h_score = ""
-					a_score = ""
-					
-					# Get scores from API if available
-					api_status = ""
-					if api_scores:
-						if match_id in api_scores:
-							h_score, a_score, api_status = api_scores[match_id]
-						elif (home_team, away_team) in api_scores:
-							h_score, a_score, api_status = api_scores[(home_team, away_team)]
-					else:
-						score_txt = score_raw.replace('&nbsp;', '').strip()
-						score_clean = score_txt.split(' ')[0]
-						if '-' in score_clean:
-							parts = score_clean.split('-')
-							h_score = parts[0].strip()
-							a_score = parts[1].strip()
-
-					# Fix Extra Time / Penalties showing as Half Time
-					api_status_low = api_status.lower()
-					if ('extra' in api_status_low or 'et' in api_status_low) and status_txt == 'HALFTIME':
-						status_txt = 'Extra Time'
-					elif ('penalties' in api_status_low or 'pen' in api_status_low or 'ap' in api_status_low) and status_txt == 'HALFTIME':
-						status_txt = 'Penalties'
-					elif status_txt == 'ET':
-						status_txt = 'Extra Time'
-					elif status_txt == 'AP' or status_txt == 'PEN':
-						status_txt = 'Penalties'
-
-					live_matches.append({
-						"team1": home_team,
-						"team2": away_team,
-						"team1_score": h_score,
-						"team2_score": a_score,
-						"match_status": status_txt,
-						"match_dt": datetime.now(),
-						"id": match_id
-					})
-			except Exception:
-				continue
-				
-		if not live_matches:
-			try:
-				self.screen.iniMenu()
-			except:
-				pass
-			return
-
-		matches_list = [list(m) for m in self.screen.matches]
-		now_adj = datetime.now() - timedelta(minutes=3)
-		
-		d_match = deferToThread(self._do_fuzzy_matching, matches_list, live_matches, now_adj)
-		d_match.addCallback(self._matching_complete)
-		d_match.addErrback(lambda f: logdata("fetch_live_results", "FS_Mobile fuzzy match failed: %s" % f.getErrorMessage()) if not getattr(self.screen, 'is_closed', True) else None)
+			d = deferToThread(_fetch_live)
+			d.addCallback(_done_live)
+			d.addErrback(_err_live)
 
 
 class FotMobFetcher(LiveFetchBase):
@@ -1815,16 +1680,23 @@ class FotMobFetcher(LiveFetchBase):
 		if debug_Fetch_Live:
 			logdata("fetch_live_results", "FotMob fetch started")
 
-		if self.screen.link == "yesterday":
-			selected_date = date.today() - timedelta(days=1)
-		else:
-			selected_date = date.today()
-		date_str = selected_date.strftime("%Y%m%d")
+		dates_to_fetch = set()
+		for m in self.screen.matches:
+			try:
+				date_part = str(m[1]).split(' - ')[-1]
+				dates_to_fetch.add(date_part.replace('-', ''))
+			except Exception:
+				pass
+				
+		if not dates_to_fetch:
+			if self.screen.link == "yesterday":
+				dates_to_fetch.add((date.today() - timedelta(days=1)).strftime("%Y%m%d"))
+			elif self.screen.link == "tomorrow":
+				dates_to_fetch.add((date.today() + timedelta(days=1)).strftime("%Y%m%d"))
+			else:
+				dates_to_fetch.add(date.today().strftime("%Y%m%d"))
 
 		def _fetch():
-			data = self._fotmob_get("matches?date=" + date_str)
-			if not data:
-				return []
 			all_events = []
 			
 			# Build a word index from the local matches to filter smartly
@@ -1839,21 +1711,28 @@ class FotMobFetcher(LiveFetchBase):
 				except Exception:
 					pass
 
-			leagues = data.get("leagues", [])
-			for league in leagues:
-				matches = league.get("matches", [])
-				for m in matches:
-					ev = self._convert_match_to_event(m, league)
-					if ev:
-						h_words = set(self._clean_name(ev['homeTeam']['name']).split())
-						a_words = set(self._clean_name(ev['awayTeam']['name']).split())
-						
-						# Keep event if there's a word intersection (length > 2)
-						h_intersect = h_words.intersection(screen_words)
-						a_intersect = a_words.intersection(screen_words)
-						
-						if any(len(w) > 2 for w in h_intersect) or any(len(w) > 2 for w in a_intersect):
-							all_events.append(ev)
+			for date_str in dates_to_fetch:
+				data = self._fotmob_get("matches?date=" + date_str)
+				if not data:
+					continue
+				
+				leagues = data.get("leagues", [])
+				for league in leagues:
+					matches = league.get("matches", [])
+					for m in matches:
+						ev = self._convert_match_to_event(m, league)
+						if ev:
+							h_words = set(self._clean_name(ev['homeTeam']['name']).split())
+							a_words = set(self._clean_name(ev['awayTeam']['name']).split())
+							
+							# Keep event if there's a word intersection (length > 2)
+							h_intersect = h_words.intersection(screen_words)
+							a_intersect = a_words.intersection(screen_words)
+							
+							if any(len(w) > 2 for w in h_intersect) or any(len(w) > 2 for w in a_intersect):
+								# Prevent duplicates if a match appears in multiple dates
+								if not any(e['id'] == ev['id'] for e in all_events):
+									all_events.append(ev)
 			return all_events
 
 		def _done(events):
@@ -1883,6 +1762,256 @@ class FotMobFetcher(LiveFetchBase):
 		d.addErrback(_err)
 
 
+class LiveScoreFetcher(LiveFetchBase):
+	def _handle_live_matches(self, live_matches):
+		if live_matches:
+			live_matches = [dict(live, country='') for live in live_matches]
+
+		return LiveFetchBase._handle_live_matches(self, live_matches)
+
+	def _ls_get(self, endpoint, offset="0", page=0, timeout=15, cursor=None):
+		url = "https://prod-cdn-mev-api.livescore.com/api/v2/date/soccer/{0}/0?countryCode=US&locale=en&paging=true&direction=down".format(offset)
+		if cursor:
+			url += "&cursor={0}".format(cursor)
+
+		try:
+			import subprocess
+			cmd = ['curl', '-s', '-H', 'User-Agent: Mozilla/5.0', url]
+			raw_data = subprocess.check_output(cmd).decode('utf-8')
+			if debug_Fetch_Live:
+				logdata("fetch_live_results", "LiveScore URL: %s" % url)
+				logdata("fetch_live_results", "LiveScore RAW len: %s" % len(raw_data))
+			return json.loads(raw_data)
+		except Exception as e:
+			if debug_Fetch_Live:
+				logdata("fetch_live_results", "LiveScore exception: %s" % str(e))
+			return None
+
+	def _convert_event(self, ev):
+		try:
+			home = ev.get('T1', [{}])[0].get('Nm', 'Home')
+			away = ev.get('T2', [{}])[0].get('Nm', 'Away')
+			home_score = str(ev.get('Tr1', '0'))
+			away_score = str(ev.get('Tr2', '0'))
+			
+			eps = str(ev.get('Eps', ''))
+			esid = ev.get('Esid', 0)
+
+			status_type = 'inprogress'
+			status_desc = eps
+
+			if esid == 6 or eps == "FT" or eps == "Finished":
+				status_type = 'finished'
+				status_desc = title125
+			elif esid in (4, 5):
+				status_type = 'postponed'
+				status_desc = title152
+			elif esid == 7:
+				status_type = 'canceled'
+				status_desc = title124
+			elif esid == 10:
+				status_type = 'inprogress'
+				status_desc = title129
+			elif esid == 13:
+				status_type = 'inprogress'
+				status_desc = title217
+			elif esid == 14:
+				status_type = 'inprogress'
+				status_desc = title216
+			elif esid == 1:
+				status_type = 'notstarted'
+				status_desc = ''
+			else:
+				if eps and eps != '-' and eps != 'NS':
+					status_desc = eps
+					if eps.isdigit():
+						status_desc = "%s %s" % (eps, title131)
+				else:
+					status_type = 'notstarted'
+					status_desc = ''
+
+			ts = ev.get('Est') or ev.get('Esd', 0)
+			start_timestamp = int(time.time())
+			if ts:
+				try:
+					if str(ts).isdigit() and len(str(ts)) == 10:
+						start_timestamp = int(ts)
+					else:
+						match_dt = datetime.strptime(str(ts), "%Y%m%d%H%M%S")
+						start_timestamp = int(time.mktime(match_dt.timetuple()))
+				except Exception:
+					pass
+
+			if start_timestamp and status_type != 'finished':
+				if (time.time() - start_timestamp) / 60 > 135:
+					status_type = 'finished'
+					status_desc = title125
+
+			stg = ev.get('Stg', {})
+			league = stg.get('Snm', '')
+			#if str(ev.get('Eid', '')) == '1804128':
+			#    logdata("fetch_live_results", "LiveScore TARGET EVENT: %s" % str(ev)[:2000])
+			#    logdata("fetch_live_results", "LiveScore TARGET STG: %s" % str(stg)[:1500])
+			country = stg.get('Cnm', '')
+			
+			if not league:
+				league = stg.get('CompN', '')
+				country = stg.get('Cnm', '')
+
+			return {
+				"homeTeam": {"name": home, "shortName": home},
+				"awayTeam": {"name": away, "shortName": away},
+				"homeScore": {"current": home_score},
+				"awayScore": {"current": away_score},
+				"status": {"type": status_type, "description": status_desc},
+				"startTimestamp": start_timestamp,
+				"id": str(ev.get('Eid', '')),
+				"tournament": {"name": league, "category": {"country": {"name": country}}}
+			}
+		except Exception as e:
+			if debug_Fetch_Live:
+				logdata("fetch_live_results", "LiveScore convert error: %s" % str(e))
+			return None
+
+	def fetch(self):
+		self.screen.fetch_timestamp = time.time()
+		self.current_ts = self.screen.fetch_timestamp
+		if not self.screen.matches:
+			self.screen.onWindowShow()
+			return
+
+		if debug_Fetch_Live:
+			logdata("fetch_live_results", "LiveScore fetch() called with screen.link=%s" % str(self.screen.link))
+
+		dates_to_fetch = set()
+		for m in self.screen.matches:
+			try:
+				date_part = str(m[1]).split(' - ')[-1]
+				dates_to_fetch.add(date_part.replace('-', ''))
+			except Exception:
+				pass
+
+		if not dates_to_fetch:
+			if self.screen.link == "yesterday":
+				dates_to_fetch.add((datetime.now() - timedelta(days=1)).strftime("%Y%m%d"))
+			elif self.screen.link == "tomorrow":
+				dates_to_fetch.add((datetime.now() + timedelta(days=1)).strftime("%Y%m%d"))
+			else:
+				dates_to_fetch.add(datetime.now().strftime("%Y%m%d"))
+
+		def _fetch():
+			all_events = []
+			try:
+				max_pages = int(config.plugins.FootOnSat.livescore_pages.value)
+			except Exception:
+				max_pages = 5
+
+			for date_offset in dates_to_fetch:
+				page = 0
+				cursor = None
+				while page < max_pages:
+					data = self._ls_get("date", date_offset, page, cursor=cursor)
+					if not data:
+						break
+						
+					page_events = 0
+					if 'Sctns' in data:
+						for sctn in data['Sctns']:
+							ts = sctn.get('Ts', {})
+							for ev in ts.get('Evs', []) or []:
+								ev['Stg'] = ts
+								conv = self._convert_event(ev)
+								if conv:
+									all_events.append(conv)
+									page_events += 1
+									
+					has_next = data.get('Nav', {}).get('Hn', False)
+					sections = data.get('Sctns', [])
+					next_cursor = sections[-1].get('Id') if sections else None
+
+					if not has_next or not next_cursor or next_cursor == cursor:
+						break
+
+					cursor = next_cursor
+					page += 1
+
+			live_ids = set(ev['id'] for ev in all_events)
+			tracked_ids = set(str(m[8]) for m in self.screen.matches if len(m) > 8 and m[8])
+			missing_ids = tracked_ids - live_ids
+			
+			if missing_ids:
+				if debug_Fetch_Live:
+					logdata("fetch_live_results", "LiveScore: searching date feed for %d missing matches..." % len(missing_ids))
+				recover_dates = list(dates_to_fetch)
+				
+				yest = (datetime.now() - timedelta(days=1)).strftime("%Y%m%d")
+				if yest not in recover_dates:
+					recover_dates.append(yest)
+				today = datetime.now().strftime("%Y%m%d")
+				if today not in recover_dates:
+					recover_dates.append(today)
+
+				for search_date in recover_dates:
+					if not missing_ids: break
+					dpage = 0
+					dcursor = None
+					found = set()
+					
+					while dpage < (max_pages * 2) and (missing_ids - found):
+						ddata = self._ls_get("date", search_date, dpage, cursor=dcursor)
+						if not ddata:
+							break
+						sections = ddata.get('Sctns', [])
+						for sctn in sections:
+							ts = sctn.get('Ts', {})
+							for ev in ts.get('Evs', []) or []:
+								eid = str(ev.get('Eid', ''))
+								if eid in missing_ids and eid not in found:
+									ev['Stg'] = ts
+									conv = self._convert_event(ev)
+									if conv:
+										all_events.append(conv)
+										found.add(eid)
+						has_next = ddata.get('Nav', {}).get('Hn', False)
+						next_cursor = sections[-1].get('Id') if sections else None
+						if not has_next or not next_cursor or next_cursor == dcursor:
+							break
+						dcursor = next_cursor
+						dpage += 1
+						
+					missing_ids = missing_ids - found
+					if debug_Fetch_Live:
+						logdata("fetch_live_results", "LiveScore recovered %d matches from date %s" % (len(found), search_date))
+
+			if debug_Fetch_Live:
+				logdata("fetch_live_results", "LiveScore total events built: %d" % len(all_events))
+			return all_events
+
+		def _done(events):
+			if self.screen.fetch_timestamp != self.current_ts:
+				return
+			if not events:
+				try:
+					self.screen.iniMenu()
+				except Exception:
+					pass
+				return
+			raw_json = json.dumps({"events": events}).encode('utf-8')
+			self._process_response([raw_json])
+
+		def _err(failure):
+			if debug_Fetch_Live:
+				logdata("fetch_live_results", "LiveScore fetch failed: %s" % failure.getErrorMessage())
+			try:
+				self.screen.iniMenu()
+			except Exception:
+				pass
+
+		d = deferToThread(_fetch)
+		d.addCallback(_done)
+		d.addErrback(_err)
+
+
 def get_live_fetcher(source, screen):
 	if source == "sportscore":
 		return SportScoreFetcher(screen)
@@ -1890,6 +2019,8 @@ def get_live_fetcher(source, screen):
 		return ESPNFetcher(screen)
 	if source == "flashscore":
 		return FlashscoreFetcher(screen)
+	if source == "livescore":
+		return LiveScoreFetcher(screen)
 	if source == "fotmob":
 		return FotMobFetcher(screen)
 	return SofaScoreFetcher(screen)
