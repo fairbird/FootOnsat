@@ -361,8 +361,8 @@ class FootOnsatLauncher(Screen):
 					create_system_backup()
 					
 				cmdlist = []
-				#cmd="wget -q https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh"
-				#cmdlist.append(cmd)
+				cmd="wget -q https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh"
+				cmdlist.append(cmd)
 				self.session.open(Console, title="%s" % title105, cmdlist=cmdlist, finishedCallback=self.myCallback, closeOnSuccess=False)
 		except Exception as e:
 			logdata("launcher", "Install Error: %s" % str(e))

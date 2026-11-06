@@ -296,10 +296,12 @@ else:
 SKIN_BackupSelectionScreen = """
 <screen name="BackupSelectionScreen" position="center,center" size="1500,1000" title="Select Files/Folders">
 	<widget name="list" position="30,30" size="1440,780" scrollbarMode="showOnDemand" />
-	<eLabel position="200,880" size="260,5" backgroundColor="#FF0000" />
-	<widget name="key_red" position="200,820" size="260,50" font="Regular;46" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
-	<eLabel position="620,880" size="260,5" backgroundColor="#00FF00" />
-	<widget name="key_green" position="620,820" size="260,50" font="Regular;46" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
-	<eLabel position="1040,880" size="260,5" backgroundColor="#0000FF" />
-	<widget name="key_blue" position="1040,820" size="260,50" font="Regular;46" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
+	<eLabel position="110,880" size="260,5" backgroundColor="#FF0000" />
+	<widget name="key_red" position="110,820" size="260,50" font="Regular;46" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
+	<eLabel position="430,880" size="260,5" backgroundColor="#00FF00" />
+	<widget name="key_green" position="430,820" size="260,50" font="Regular;46" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
+	<eLabel position="750,880" size="260,5" backgroundColor="#FFFF00" />
+	<widget name="key_yellow" position="750,820" size="260,50" font="Regular;46" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
+	<eLabel position="1070,880" size="260,5" backgroundColor="#0000FF" />
+	<widget name="key_blue" position="1070,820" size="260,50" font="Regular;46" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
 </screen>"""

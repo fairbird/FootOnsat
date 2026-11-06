@@ -981,8 +981,8 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 				if config.plugins.FootOnSat.backup_enabled.value:
 					create_system_backup()
 				cmdlist = []
-				#cmd="wget -q https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh"
-				#cmdlist.append(cmd)
+				cmd="wget -q https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh"
+				cmdlist.append(cmd)
 				self.session.open(Console, title="%s" % title105, cmdlist=cmdlist, finishedCallback=self.myCallback, closeOnSuccess=False)
 		except:
 			trace_error()
@@ -1572,7 +1572,7 @@ def create_system_backup():
 		if "keymap.xml" not in items_to_backup and os.path.exists(km_dst):
 			items_to_backup.append("keymap.xml")
 
-		tar_cmd = "tar -czf '%s' -C '%s' %s" % (backup_file, plugin_path, " ".join(["'%s'" % i for i in items_to_backup]))
+		tar_cmd = "tar -czf '%s' --exclude='*.pyc' --exclude='*.pyo' --exclude='__pycache__' -C '%s' %s" % (backup_file, plugin_path, " ".join(["'%s'" % i for i in items_to_backup]))
 		os.system(tar_cmd)
 
 
@@ -1592,14 +1592,16 @@ class BackupSelectionScreen(Screen):
 
 		self["key_green"] = Label(title98)
 		self["key_red"] = Label(title107)
-		self["key_blue"] = Label("Select")
-		
+		self["key_blue"] = Label(title291)
+		self["key_yellow"] = Label(title363)
+
 		self["list"] = MenuList([], enableWrapAround=True, content=eListboxPythonMultiContent)
 		self.list_items = []
 		
 		self["actions"] = ActionMap(["OkCancelActions", "ColorActions", "DirectionActions"], {
 			"ok": self.enter_dir,
 			"blue": self.toggle_select,
+			"yellow": self.toggle_all,
 			"cancel": self.go_back,
 			"red": self.close,
 			"green": self.save,
@@ -1624,7 +1626,7 @@ class BackupSelectionScreen(Screen):
 
 		try:
 			for item in sorted(os.listdir(self.current_path)):
-				if item in ("__pycache__",) or item.endswith(".pyc"):
+				if item in ("__pycache__",) or item.endswith(".pyc") or item.endswith(".pyo"):
 					continue
 				full_path = os.path.join(self.current_path, item)
 				rel_path = os.path.relpath(full_path, self.root_path).replace('\\', '/')
@@ -1646,6 +1648,19 @@ class BackupSelectionScreen(Screen):
 				self.list_items.append((mark, mark_color, display_name, rel_path))
 		except Exception:
 			pass
+			
+		selectable = []
+		for mark, mark_color, display_name, rel_path in self.list_items:
+			if rel_path == "parent": continue
+			is_mandatory = any(rel_path == m or rel_path.startswith(m + '/') for m in self.MANDATORY)
+			if not is_mandatory:
+				selectable.append(rel_path)
+				
+		all_sel = self._get_all_selectable()
+		if all_sel and all(p in self.selected for p in all_sel):
+			self["key_yellow"].setText(title364)
+		else:
+			self["key_yellow"].setText(title363)
 			
 		self.update_list()
 
@@ -1698,6 +1713,43 @@ class BackupSelectionScreen(Screen):
 		else:
 			self.selected.add(rel_path)
 		self.load_files()
+
+	def toggle_all(self):
+		all_selectable = self._get_all_selectable()
+		if not all_selectable:
+			return
+			
+		if all(p in self.selected for p in all_selectable):
+			self.selected.clear()
+		else:
+			self.selected.update(all_selectable)
+			
+		self.load_files()
+
+	def _get_all_selectable(self):
+		all_selectable = []
+		for root, dirs, files in os.walk(self.root_path):
+			if '__pycache__' in dirs:
+				dirs.remove('__pycache__')
+				
+			rel_root = os.path.relpath(root, self.root_path).replace('\\', '/')
+			if rel_root == '.':
+				rel_root = ''
+				
+			for d in dirs:
+				rel_path = os.path.join(rel_root, d).replace('\\', '/') if rel_root else d
+				is_mandatory = any(rel_path == m or rel_path.startswith(m + '/') for m in self.MANDATORY)
+				if not is_mandatory:
+					all_selectable.append(rel_path)
+					
+			for f in files:
+				if f.endswith('.pyc') or f.endswith('.pyo'):
+					continue
+				rel_path = os.path.join(rel_root, f).replace('\\', '/') if rel_root else f
+				is_mandatory = any(rel_path == m or rel_path.startswith(m + '/') for m in self.MANDATORY)
+				if not is_mandatory:
+					all_selectable.append(rel_path)
+		return all_selectable
 
 	def enter_dir(self):
 		idx = self["list"].getSelectedIndex()
