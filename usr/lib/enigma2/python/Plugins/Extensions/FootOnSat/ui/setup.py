@@ -230,11 +230,15 @@ config.plugins.FootOnSat.espn_limit = ConfigInteger(default=500, limits=(50, 100
 config.plugins.FootOnSat.livescore_pages = ConfigInteger(default=10, limits=(1, 20))
 config.plugins.FootOnSat.backup_enabled = ConfigYesNo(default=False)
 backup_path_choices = [("/tmp", "/tmp")]
-for part in mounted_partitions:
+if exists('/proc/mounts'):
 	try:
-		mp = part.mountpoint
-		if mp and mp not in ["/", "/media/net", "/tmp"]:
-			backup_path_choices.append((mp, mp))
+		with open('/proc/mounts', 'r') as f:
+			for line in f.readlines():
+				parts = line.split()
+				if len(parts) >= 2:
+					mp = parts[1].replace("\\040", " ")
+					if mp.startswith("/media/") and not mp.startswith("/media/net") and not mp.startswith("/media/autofs") and mp not in [c[0] for c in backup_path_choices]:
+						backup_path_choices.append((mp, mp))
 	except Exception:
 		pass
 config.plugins.FootOnSat.backup_path = ConfigSelection(default="/tmp", choices=backup_path_choices)
@@ -400,12 +404,22 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 
 	def _update_backup_paths(self):
 		paths = [("/tmp", "/tmp")]
-		for part in harddiskmanager.getMountedPartitions():
+		if exists('/proc/mounts'):
 			try:
-				if part.mountpoint and part.mountpoint not in ["/", "/media/net"]:
-					paths.append((part.mountpoint, part.mountpoint))
-			except:
+				with open('/proc/mounts', 'r') as f:
+					for line in f.readlines():
+						parts = line.split()
+						if len(parts) >= 2:
+							mp = parts[1].replace("\\040", " ")
+							if mp.startswith("/media/") and not mp.startswith("/media/net") and not mp.startswith("/media/autofs") and mp not in [c[0] for c in paths]:
+								paths.append((mp, mp))
+			except Exception:
 				pass
+		
+		curr = config.plugins.FootOnSat.backup_path.value
+		if curr and curr not in [c[0] for c in paths]:
+			paths.append((curr, curr))
+			
 		config.plugins.FootOnSat.backup_path.setChoices(paths)
 
 	def select_backup_custom(self):
