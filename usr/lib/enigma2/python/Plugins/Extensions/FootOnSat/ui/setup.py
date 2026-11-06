@@ -13,7 +13,7 @@ from twisted.internet._sslverify import ClientTLSOptions
 from twisted.python.failure import Failure
 from twisted.internet.threads import deferToThread
 
-from enigma import getDesktop, eActionMap, eRCInput, eListboxPythonMultiContent, gFont, ePoint, eSize, RT_HALIGN_LEFT, RT_VALIGN_CENTER
+from enigma import getDesktop, eActionMap, eRCInput, eListboxPythonMultiContent, gFont, ePoint, eSize, RT_HALIGN_LEFT, RT_VALIGN_CENTER, RT_HALIGN_CENTER
 from Components.MenuList import MenuList
 from Components.MultiContent import MultiContentEntryText, MultiContentEntryPixmapAlphaBlend
 from keyids import KEYIDS
@@ -36,6 +36,7 @@ from Tools.Directories import resolveFilename, SCOPE_PLUGINS
 from Plugins.Extensions.FootOnSat.ui.Console import Console
 from Plugins.Extensions.FootOnSat.component.configs import ConfigDictionarySet
 from .compat import *
+from Plugins.Extensions.FootOnSat.__init__ import __version__
 
 
 try:
@@ -227,6 +228,17 @@ config.plugins.FootOnSat.livescoresections = ConfigSelection(default = "1", choi
 	])
 config.plugins.FootOnSat.espn_limit = ConfigInteger(default=500, limits=(50, 1000))
 config.plugins.FootOnSat.livescore_pages = ConfigInteger(default=10, limits=(1, 20))
+config.plugins.FootOnSat.backup_enabled = ConfigYesNo(default=False)
+backup_path_choices = [("/tmp", "/tmp")]
+for part in mounted_partitions:
+	try:
+		mp = part.mountpoint
+		if mp and mp not in ["/", "/media/net", "/tmp"]:
+			backup_path_choices.append((mp, mp))
+	except Exception:
+		pass
+config.plugins.FootOnSat.backup_path = ConfigSelection(default="/tmp", choices=backup_path_choices)
+config.plugins.FootOnSat.backup_custom = ConfigText(default="")
 config.plugins.FootOnSat.notify_zap = ConfigSelection(default = "1", choices = [
 	("1", "%s" % title12),
 	("2", "%s" % title13),
@@ -307,9 +319,9 @@ def isFHD():
 	return desktopSize[0] == 1920
 
 if isUHD():
-	from Plugins.Extensions.FootOnSat.assets.skin.skinUHD import SKIN_MenuFootOnSat, SKIN_SelectionScreen, SKIN_CombinedNotificationsScreen
+	from Plugins.Extensions.FootOnSat.assets.skin.skinUHD import SKIN_MenuFootOnSat, SKIN_SelectionScreen, SKIN_CombinedNotificationsScreen, SKIN_BackupSelectionScreen
 else:
-	from Plugins.Extensions.FootOnSat.assets.skin.skinFHD import SKIN_MenuFootOnSat, SKIN_SelectionScreen, SKIN_CombinedNotificationsScreen
+	from Plugins.Extensions.FootOnSat.assets.skin.skinFHD import SKIN_MenuFootOnSat, SKIN_SelectionScreen, SKIN_CombinedNotificationsScreen, SKIN_BackupSelectionScreen
 
 
 # The CRITICAL class for TLS SNI support
@@ -385,6 +397,70 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.old_installpath = config.plugins.FootOnSat.installpath.value
 		self.getToneFile()
 		self.createSetup()
+
+	def _update_backup_paths(self):
+		paths = [("/tmp", "/tmp")]
+		for part in harddiskmanager.getMountedPartitions():
+			try:
+				if part.mountpoint and part.mountpoint not in ["/", "/media/net"]:
+					paths.append((part.mountpoint, part.mountpoint))
+			except:
+				pass
+		config.plugins.FootOnSat.backup_path.setChoices(paths)
+
+	def select_backup_custom(self):
+		plugin_path = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
+		current = config.plugins.FootOnSat.backup_custom.value
+		self.session.openWithCallback(self._backup_selection_closed, BackupSelectionScreen, plugin_path, current)
+
+	def _backup_selection_closed(self, result=None):
+		if result is not None:
+			config.plugins.FootOnSat.backup_custom.value = result
+			config.plugins.FootOnSat.backup_custom.save()
+			configfile.save()
+			self.createSetup()
+
+	def _restore_backup(self):
+		base_dir = config.plugins.FootOnSat.backup_path.value
+		backup_dir = os.path.join(base_dir, "FootOnSat_BackUp")
+		files = []
+		try:
+			for f in os.listdir(backup_dir):
+				if f.startswith("Backup-FootOnSat-v") and f.endswith(".tar.gz"):
+					files.append(f)
+		except:
+			pass
+			
+		if not files:
+			self.session.open(MessageBox, _(title352), MessageBox.TYPE_INFO, timeout=5)
+			return
+			
+		list_data = [(f.replace(".tar.gz", ""), f) for f in files]
+		self.session.openWithCallback(self._confirm_restore, ChoiceBox, title=_(title351), list=list_data)
+
+	def _confirm_restore(self, choice):
+		if not choice:
+			return
+		base_dir = config.plugins.FootOnSat.backup_path.value
+		backup_dir = os.path.join(base_dir, "FootOnSat_BackUp")
+		backup_file = os.path.join(backup_dir, choice[1])
+		msg = _(title353) % choice[0]
+		self.session.openWithCallback(lambda ret: self._do_restore(ret, backup_file), MessageBox, msg, MessageBox.TYPE_YESNO)
+
+	def _do_restore(self, answer, backup_file):
+		if answer:
+			plugin_path = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
+			os.system("tar -xzf '%s' -C '%s'" % (backup_file, plugin_path))
+			
+			km_src = os.path.join(plugin_path, "keymap.xml")
+			km_dst = "/etc/enigma2/footonsat/keymap.xml"
+			if os.path.exists(km_src):
+				try:
+					if not os.path.exists("/etc/enigma2/footonsat"): os.makedirs("/etc/enigma2/footonsat")
+					shutil.copyfile(km_src, km_dst)
+				except: pass
+		
+		self.session.openWithCallback(self.restart, MessageBox, _(title354), MessageBox.TYPE_YESNO)
 
 	def createSetup(self):
 		self.list = []
@@ -464,6 +540,17 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			self.list.append((_("%s") % title71, config.plugins.FootOnSat.player, _("%s") % title72))
 		else:
 			self.list.append((_("%s") % title73, config.plugins.FootOnSat.playmethod, _("%s") % title74))
+			
+		self.list.append(getConfigListEntry(title346))
+		self.list.append(getConfigListEntry(_("%s") % title347, config.plugins.FootOnSat.backup_enabled, _(title360)))
+		if config.plugins.FootOnSat.backup_enabled.value:
+			self._update_backup_paths()
+			self.list.append(getConfigListEntry(_("%s") % title348, config.plugins.FootOnSat.backup_path, _(title361)))
+			custom_val = config.plugins.FootOnSat.backup_custom.value
+			custom_text = title340 if not custom_val else title358 % len(custom_val.split(','))
+			self.backup_custom_display = ConfigSelection(default=custom_text, choices=[(custom_text, custom_text)])
+			self.list.append(getConfigListEntry(_("%s") % title349, self.backup_custom_display, _(title362)))
+			
 		self.list.append(getConfigListEntry(title96))
 		self.list.append(getConfigListEntry(_("%s") % title75, config.plugins.FootOnSat.debug_ZAP, _("%s") % title76))
 		self.list.append(getConfigListEntry(_("%s") % title77, config.plugins.FootOnSat.debug_Notif, _("%s") % title78))
@@ -538,6 +625,9 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 				self.session.openWithCallback(self.saveToneSelection, ChoiceBox, title=_("%s") % title101, list=tone_list)
 			else:
 				self.session.open(MessageBox, _("%s") % title102, MessageBox.TYPE_INFO)
+		if cur and len(cur) > 1 and hasattr(self, 'backup_custom_display') and cur[1] == self.backup_custom_display:
+			self.select_backup_custom()
+			return
 
 	def liveEventsClosed(self, *args):
 		self.createSetup()
@@ -870,6 +960,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		list = []
 		list.append((title270, "ReInstall_Plugin"))
 		list.append((title271, "Update_Languages"))
+		list.append((_(title351), "Restore_Backup"))
 		self.session.openWithCallback(self.reinstall, ChoiceBox, title=_("%s") % title269, list=list)
 
 	def reinstall(self, select):
@@ -879,15 +970,19 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 				self.session.openWithCallback(self.doreinstall, MessageBox, _("%s") % title104, MessageBox.TYPE_YESNO)
 			elif select[1] == "Update_Languages":
 				self.session.openWithCallback(self.doUpdateinstall, MessageBox, _("%s") % title268, MessageBox.TYPE_YESNO)
+			elif select[1] == "Restore_Backup":
+				self._restore_backup()
 		else:
 			self.close()
 
-	def doreinstall(self,answer=False):
+	def doreinstall(self, answer=False):
 		try:
 			if answer:
+				if config.plugins.FootOnSat.backup_enabled.value:
+					create_system_backup()
 				cmdlist = []
-				cmd="wget -q https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh"
-				cmdlist.append(cmd)
+				#cmd="wget -q https://raw.githubusercontent.com/fairbird/FootOnsat/main/Download/install.sh -O - | /bin/sh"
+				#cmdlist.append(cmd)
 				self.session.open(Console, title="%s" % title105, cmdlist=cmdlist, finishedCallback=self.myCallback, closeOnSuccess=False)
 		except:
 			trace_error()
@@ -1424,3 +1519,213 @@ class CombinedNotificationsScreen(Screen):
 
 	def cancel(self):
 		self.close(False)
+
+
+def create_system_backup():
+	import shutil
+	plugin_path = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat"
+	base_dir = config.plugins.FootOnSat.backup_path.value
+	backup_dir = os.path.join(base_dir, "FootOnSat_BackUp")
+	
+	if not os.path.exists(backup_dir):
+		try:
+			os.makedirs(backup_dir)
+		except:
+			pass
+			
+	version = str(__version__)
+	backup_file = os.path.join(backup_dir, "Backup-FootOnSat-v%s.tar.gz" % version)
+	mandatory = ["plugin.py", "__init__.py", "keymap.xml", "ui", "logo", "db", "component", "satfinder", "assets/skin", "assets/sound", "assets/languages", "assets/icon", "assets/fonts", "assets/__init__.py"]
+	
+	custom_str = config.plugins.FootOnSat.backup_custom.value
+	custom = custom_str.split(',') if custom_str else []
+	
+	all_items = mandatory + custom
+	unique_items = []
+	
+	for item in all_items:
+		item = item.strip()
+		if item and item not in unique_items and os.path.exists(os.path.join(plugin_path, item)):
+			unique_items.append(item)
+			
+	unique_items.sort(key=len)
+	items_to_backup = []
+	
+	for item in unique_items:
+		is_child = False
+		for parent in items_to_backup:
+			if item.startswith(parent + '/'):
+				is_child = True
+				break
+		if not is_child:
+			items_to_backup.append(item)
+			
+	if items_to_backup:
+		km_src = "/etc/enigma2/footonsat/keymap.xml"
+		km_dst = os.path.join(plugin_path, "keymap.xml")
+		if os.path.exists(km_src) and not os.path.exists(km_dst):
+			try: 
+				shutil.copyfile(km_src, km_dst)
+			except: 
+				pass
+				
+		if "keymap.xml" not in items_to_backup and os.path.exists(km_dst):
+			items_to_backup.append("keymap.xml")
+
+		tar_cmd = "tar -czf '%s' -C '%s' %s" % (backup_file, plugin_path, " ".join(["'%s'" % i for i in items_to_backup]))
+		os.system(tar_cmd)
+
+
+class BackupSelectionScreen(Screen):
+	def __init__(self, session, root_path, current_selected):
+		Screen.__init__(self, session)
+		self.skin = SKIN_BackupSelectionScreen
+		self.session = session
+		self.root_path = root_path
+		self.current_path = root_path
+		self.selected = set(current_selected.split(',')) if current_selected else set()
+		
+		self.MANDATORY = [
+			"plugin.py", "__init__.py", "keymap.xml", "ui", "logo", "db", "component", "satfinder",
+			"assets/skin", "assets/sound", "assets/languages", "assets/icon", "assets/fonts", "assets/__init__.py"
+		]
+
+		self["key_green"] = Label(title98)
+		self["key_red"] = Label(title107)
+		self["key_blue"] = Label("Select")
+		
+		self["list"] = MenuList([], enableWrapAround=True, content=eListboxPythonMultiContent)
+		self.list_items = []
+		
+		self["actions"] = ActionMap(["OkCancelActions", "ColorActions", "DirectionActions"], {
+			"ok": self.enter_dir,
+			"blue": self.toggle_select,
+			"cancel": self.go_back,
+			"red": self.close,
+			"green": self.save,
+			"right": self.jump_bottom,
+			"left": self.jump_top,
+		}, -1)
+		
+		self.load_files()
+
+	def jump_top(self):
+		if self["list"].instance:
+			self["list"].instance.moveSelectionTo(0)
+
+	def jump_bottom(self):
+		if self["list"].instance and self.list_items:
+			self["list"].instance.moveSelectionTo(len(self.list_items) - 1)
+
+	def load_files(self):
+		self.list_items = []
+		if self.current_path != self.root_path:
+			self.list_items.append(("..", 0xFFFFFF, "..", "parent"))
+
+		try:
+			for item in sorted(os.listdir(self.current_path)):
+				if item in ("__pycache__",) or item.endswith(".pyc"):
+					continue
+				full_path = os.path.join(self.current_path, item)
+				rel_path = os.path.relpath(full_path, self.root_path).replace('\\', '/')
+				
+				is_dir = os.path.isdir(full_path)
+				is_mandatory = any(rel_path == m or rel_path.startswith(m + '/') for m in self.MANDATORY)
+				
+				if is_mandatory:
+					mark = "*"
+					mark_color = 0xFF0000 
+				elif rel_path in self.selected:
+					mark = "X"
+					mark_color = 0x00FF00 
+				else:
+					mark = " "
+					mark_color = 0xFFFFFF 
+					
+				display_name = item + ("/" if is_dir else "")
+				self.list_items.append((mark, mark_color, display_name, rel_path))
+		except Exception:
+			pass
+			
+		self.update_list()
+
+	def update_list(self):
+		gList = []
+		
+		if isUHD():
+			item_h = 85      # Height of each row
+			font_size = 55   # Size of the text
+			mark_w = 135     # Width of the checkbox [*] area
+			text_w = 1300    # Width of the file/folder name area
+		else:
+			item_h = 70
+			font_size = 42
+			mark_w = 80
+			text_w = 900
+
+		for mark, mark_color, display_name, rel_path in self.list_items:
+			res = [MultiContentEntryText()]
+			res.append(MultiContentEntryText(pos=(0, 0), size=(mark_w, item_h), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text="[%s]" % mark, color=mark_color))
+			res.append(MultiContentEntryText(pos=(mark_w, 0), size=(text_w, item_h), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=display_name, color=0xFFFFFF))
+			gList.append(res)
+		
+		if not gList:
+			res = [MultiContentEntryText()]
+			res.append(MultiContentEntryText(pos=(0, 0), size=(text_w + mark_w, item_h), font=0, flags=RT_HALIGN_CENTER|RT_VALIGN_CENTER, text="Empty Folder", color=0xAAAAAA))
+			gList.append(res)
+			
+		self["list"].l.setItemHeight(item_h)
+		self["list"].l.setFont(0, gFont('Regular', font_size))
+		self["list"].setList(gList)
+
+	def toggle_select(self):
+		idx = self["list"].getSelectedIndex()
+		if idx < 0 or idx >= len(self.list_items):
+			return
+			
+		mark, mark_color, display_name, rel_path = self.list_items[idx]
+		
+		if rel_path == "parent":
+			return
+			
+		is_mandatory = any(rel_path == m or rel_path.startswith(m + '/') for m in self.MANDATORY)
+		if is_mandatory:
+			self.session.open(MessageBox, _(title359), MessageBox.TYPE_INFO, timeout=3)
+			return
+			
+		if rel_path in self.selected:
+			self.selected.remove(rel_path)
+		else:
+			self.selected.add(rel_path)
+		self.load_files()
+
+	def enter_dir(self):
+		idx = self["list"].getSelectedIndex()
+		if idx < 0 or idx >= len(self.list_items):
+			return
+			
+		mark, mark_color, display_name, rel_path = self.list_items[idx]
+		
+		if rel_path == "parent":
+			self.go_back()
+			return
+			
+		full_path = os.path.join(self.current_path, display_name.replace("/", ""))
+		if os.path.isdir(full_path):
+			self.current_path = full_path
+			self.load_files()
+		else:
+			self.toggle_select()
+
+	def go_back(self):
+		if self.current_path != self.root_path:
+			self.current_path = os.path.dirname(self.current_path)
+			self.load_files()
+		else:
+			self.close(None)
+
+	def save(self):
+		for m in self.MANDATORY:
+			if os.path.exists(os.path.join(self.root_path, m)):
+				self.selected.add(m)
+		self.close(",".join(list(self.selected)))

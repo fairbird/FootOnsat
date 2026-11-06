@@ -321,3 +321,14 @@ else:
 		<widget name="selection" position="32,89" size="300,57" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/notification_selection_fhd.png" alphatest="blend" zPosition="5" />
 	</screen>
 	"""
+
+SKIN_BackupSelectionScreen = """
+<screen name="BackupSelectionScreen" position="center,center" size="1100,750" title="Select Files/Folders">
+	<widget name="list" position="20,20" size="1060,580" scrollbarMode="showOnDemand" />
+	<eLabel position="150,660" size="200,4" backgroundColor="#FF0000" />
+	<widget name="key_red" position="150,610" size="200,40" font="Regular;34" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
+	<eLabel position="450,660" size="200,4" backgroundColor="#00FF00" />
+	<widget name="key_green" position="450,610" size="200,40" font="Regular;34" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
+	<eLabel position="750,660" size="200,4" backgroundColor="#0000FF" />
+	<widget name="key_blue" position="750,610" size="200,40" font="Regular;34" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
+</screen>"""
