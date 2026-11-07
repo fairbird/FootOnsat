@@ -148,7 +148,7 @@ except:
 #############################
 config.plugins.FootOnSat.showplugin = ConfigText(default="")
 config.plugins.FootOnSat.live_events = ConfigText(default="")
-config.plugins.FootOnSat.keyname = ConfigText(default="Nothing")
+config.plugins.FootOnSat.keyname = ConfigText(default=title340)
 config.plugins.FootOnSat.keysection = ConfigText(default="live")
 config.plugins.FootOnSat.devicepath = ConfigSelection(default=default_data_dir,choices=mounted_devices)
 config.plugins.FootOnSat.sort = ConfigDictionarySet(default={"footmenu": {"footsubmenu": {}}})
