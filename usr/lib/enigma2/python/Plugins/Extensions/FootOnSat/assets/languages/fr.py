@@ -363,3 +363,5 @@ title361="Sélectionnez l'emplacement où le fichier de sauvegarde sera enregist
 title362="Choisissez des fichiers supplémentaires à inclure dans la sauvegarde."
 title363="Tout sélectionner"
 title364="Tout désélectionner"
+title365="Choisissez d'afficher les notifications"
+title366="Notifications des événements en direct"

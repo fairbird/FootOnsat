@@ -1379,7 +1379,7 @@ class CombinedNotificationsScreen(Screen):
 
 		# Pre-match Title
 		res = [MultiContentEntryText()]
-		res.append(MultiContentEntryText(pos=(self.MARGIN_X, 0), size=(list_width - self.MARGIN_X, self.ITEM_H), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=_("Choose to display notifications"), color=0xffcc00))
+		res.append(MultiContentEntryText(pos=(self.MARGIN_X, 0), size=(list_width - self.MARGIN_X, self.ITEM_H), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=title365, color=0xffcc00))
 		gList.append(res)
 
 		# Pre-match Options
@@ -1402,7 +1402,7 @@ class CombinedNotificationsScreen(Screen):
 
 		# Live Events Title
 		res = [MultiContentEntryText()]
-		res.append(MultiContentEntryText(pos=(self.MARGIN_X, 0), size=(list_width - self.MARGIN_X, self.ITEM_H), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=_("Live Match Event Notifications"), color=0xffcc00))
+		res.append(MultiContentEntryText(pos=(self.MARGIN_X, 0), size=(list_width - self.MARGIN_X, self.ITEM_H), font=0, flags=RT_HALIGN_LEFT|RT_VALIGN_CENTER, text=title366, color=0xffcc00))
 		gList.append(res)
 
 		# Live Events - 3 options per row, centered automatically

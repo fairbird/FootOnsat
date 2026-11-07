@@ -363,3 +363,5 @@ title361="Wybierz lokalizację, w której zostanie zapisany plik kopii zapasowej
 title362="Wybierz dodatkowe pliki do uwzględnienia w kopii zapasowej."
 title363="Zaznacz wszystko"
 title364="Odznacz wszystko"
+title365="Wybierz wyświetlanie powiadomień"
+title366="Powiadomienia o wydarzeniach na żywo"
