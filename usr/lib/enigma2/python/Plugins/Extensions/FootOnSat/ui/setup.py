@@ -214,7 +214,7 @@ config.plugins.FootOnSat.livescoresearchlevel = ConfigSelection(default = "1", c
 	("1", "%s" % title308),
 	("2", "%s" % title309)
 	])
-config.plugins.FootOnSat.source = ConfigSelection(default = "flashscore", choices = [
+config.plugins.FootOnSat.source = ConfigSelection(default = "livescore", choices = [
 	("flashscore", "%s" % title320),
 	("livescore", "%s" % title343),
 	("fotmob", "%s" % title324),
