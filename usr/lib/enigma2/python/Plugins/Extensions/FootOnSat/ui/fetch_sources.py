@@ -324,13 +324,13 @@ class LiveFetchBase(object):
 					sim1 = max(sm1.ratio(), self._token_containment(l_t1_clean, s_t1_clean))
 					sm2.set_seq2(s_t2_clean)
 					sim2 = max(sm2.ratio(), self._token_containment(l_t2_clean, s_t2_clean))
-					avg_straight = (sim1 + sim2) / 2.0
+					avg_straight = (sim1 + sim2) / 2.0 if min(sim1, sim2) >= THRESHOLD else 0.0
 
 					sm1.set_seq2(s_t2_clean)
 					sim1s = max(sm1.ratio(), self._token_containment(l_t1_clean, s_t2_clean))
 					sm2.set_seq2(s_t1_clean)
 					sim2s = max(sm2.ratio(), self._token_containment(l_t2_clean, s_t1_clean))
-					avg_swap = (sim1s + sim2s) / 2.0
+					avg_swap = (sim1s + sim2s) / 2.0 if min(sim1s, sim2s) >= THRESHOLD else 0.0
 
 					cur_sim = max(avg_straight, avg_swap)
 
