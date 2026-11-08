@@ -1904,7 +1904,7 @@ class LiveScoreFetcher(LiveFetchBase):
 			try:
 				max_pages = int(config.plugins.FootOnSat.livescore_pages.value)
 			except Exception:
-				max_pages = 5
+				max_pages = 10
 
 			for date_offset in dates_to_fetch:
 				page = 0
@@ -1934,6 +1934,8 @@ class LiveScoreFetcher(LiveFetchBase):
 
 					cursor = next_cursor
 					page += 1
+				if debug_Fetch_Live:
+					logdata("fetch_live_results", "LiveScore date=%s STOPPED at page=%d has_next=%s (max_pages=%d)" % (date_offset, page, has_next, max_pages))
 
 			live_ids = set(ev['id'] for ev in all_events)
 			tracked_ids = set(str(m[8]) for m in self.screen.matches if len(m) > 8 and m[8])

@@ -206,6 +206,13 @@ config.plugins.FootOnSat.finished = ConfigSelection(default = "5", choices = [
 	("8", "8 %s" % title6),
 	("9999", "%s" % title7)
 	])
+config.plugins.FootOnSat.livescore_pages = ConfigSelection(default = "100", choices = [
+	("50", "50"),
+	("100", "100"),
+	("200", "200"),
+	("300", "300"),
+	("400", "400")
+	])
 config.plugins.FootOnSat.livescore = ConfigSelection(default = "2", choices = [
 	("1", "%s" % title8),
 	("2", "%s" % title9)
@@ -214,7 +221,7 @@ config.plugins.FootOnSat.livescoresearchlevel = ConfigSelection(default = "1", c
 	("1", "%s" % title308),
 	("2", "%s" % title309)
 	])
-config.plugins.FootOnSat.source = ConfigSelection(default = "livescore", choices = [
+config.plugins.FootOnSat.source = ConfigSelection(default = "flashscore", choices = [
 	("flashscore", "%s" % title320),
 	("livescore", "%s" % title343),
 	("fotmob", "%s" % title324),
@@ -227,7 +234,6 @@ config.plugins.FootOnSat.livescoresections = ConfigSelection(default = "1", choi
 	("2", "%s" % title11),
 	])
 config.plugins.FootOnSat.espn_limit = ConfigInteger(default=500, limits=(50, 1000))
-config.plugins.FootOnSat.livescore_pages = ConfigInteger(default=10, limits=(1, 20))
 config.plugins.FootOnSat.backup_enabled = ConfigYesNo(default=False)
 backup_path_choices = [("/tmp", "/tmp")]
 if exists('/proc/mounts'):
@@ -780,7 +786,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 
 	def keyLeft(self):
 		cur = self["config"].getCurrent()
-		if cur and (cur[1] == config.plugins.FootOnSat.notiftime or cur[1] == config.plugins.FootOnSat.WakingUp or cur[1] == config.plugins.FootOnSat.livescore_pages):
+		if cur and (cur[1] == config.plugins.FootOnSat.notiftime or cur[1] == config.plugins.FootOnSat.WakingUp):
 			cfg = cur[1]
 			val = cfg.value
 			limits = cfg.limits
@@ -802,7 +808,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 
 	def keyRight(self):
 		cur = self["config"].getCurrent()
-		if cur and (cur[1] == config.plugins.FootOnSat.notiftime or cur[1] == config.plugins.FootOnSat.WakingUp or cur[1] == config.plugins.FootOnSat.livescore_pages):
+		if cur and (cur[1] == config.plugins.FootOnSat.notiftime or cur[1] == config.plugins.FootOnSat.WakingUp):
 			cfg = cur[1]
 			val = cfg.value
 			limits = cfg.limits
