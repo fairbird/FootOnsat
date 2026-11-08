@@ -1341,7 +1341,7 @@ class CombinedNotificationsScreen(Screen):
 		self.onLayoutFinish.append(self.layoutFinished)
 
 	def layoutFinished(self):
-		self.setTitle(_("Notification Settings"))
+		self.setTitle(title331)
 		if self["list"].instance:
 			self["list"].instance.setSelectionEnable(0)
 		self.update_list()
