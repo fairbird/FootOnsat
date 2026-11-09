@@ -386,9 +386,9 @@ class FootOnSat(Screen):
 					self["menu2"].setText("")
 
 			if isUHD():
-				self["list1"].l.setFont(0, gFont('Regular', 36))
+				self["list1"].l.setFont(0, gFont('FootFont', 36))
 			else:
-				self["list1"].l.setFont(0, gFont('Regular', 28))
+				self["list1"].l.setFont(0, gFont('FootFont', 28))
 			for i in range(0, len(self.matches)):
 				match = self.matches[i][0]
 				match_date = self.matches[i][1]
@@ -661,9 +661,9 @@ class FootOnSat(Screen):
 			# Set font and height (mirroring the 'if' block setup)
 			self["list1"].l.setItemHeight(175)
 			if isUHD():
-				self["list1"].l.setFont(0, gFont('Regular', 36))
+				self["list1"].l.setFont(0, gFont('FootFont', 36))
 			else:
-				self["list1"].l.setFont(0, gFont('Regular', 28))
+				self["list1"].l.setFont(0, gFont('FootFont', 28))
 			# Create the single list entry with centered text
 			res = []
 			res.append(MultiContentEntryText()) # Starts the list item
@@ -1635,9 +1635,9 @@ class FootOnSat(Screen):
 		gList = []
 		self["list2"].l.setItemHeight(50)
 		if isUHD():
-			self["list2"].l.setFont(0, gFont('Regular', 32))
+			self["list2"].l.setFont(0, gFont('FootFont', 32))
 		else:
-			self["list2"].l.setFont(0, gFont('Regular', 30))
+			self["list2"].l.setFont(0, gFont('FootFont', 30))
 		index = self['list1'].getSelectionIndex()
 		if len(self.matches) > 0:
 			self.match = self.matches[index][0]
@@ -2645,7 +2645,7 @@ class MatchDetailsScreen(Screen):
 				IMG_Y  = -5    # Vertical Offset
 
 			self["details_list"].l.setItemHeight(ITEM_H)
-			self["details_list"].l.setFont(0, gFont('Regular', FONT_S))
+			self["details_list"].l.setFont(0, gFont('FootFont', FONT_S))
 
 			# Sort: Top to Bottom (Start of match to end)
 			sorted_inc = sorted(inc_js['incidents'], key=lambda x: x.get('sequence', x.get('time', 0)), reverse=False)
@@ -2873,7 +2873,7 @@ class MatchStatisticsScreen(Screen):
 			NAME_W = 1220 # Width of the middle name box
 
 		self["stats_list"].l.setItemHeight(ITEM_H)
-		self["stats_list"].l.setFont(0, gFont('Regular', FONT_S))
+		self["stats_list"].l.setFont(0, gFont('FootFont', FONT_S))
 
 		if data and 'statistics' in data:
 			for period in data['statistics']:
@@ -3063,7 +3063,7 @@ class MatchMediaScreen(Screen):
 			X_TEXT_Y = 0             # Vertical Offset
 
 		self["media_list"].l.setItemHeight(ITEM_H)
-		self["media_list"].l.setFont(0, gFont('Regular', FONT_S))
+		self["media_list"].l.setFont(0, gFont('FootFont', FONT_S))
 		
 		path = resolveFilename(SCOPE_PLUGINS, "Extensions/FootOnSat/assets/icon/")
 		if isUHD():
@@ -4164,9 +4164,9 @@ class StandingsScreen(Screen):
 
 		self["standings_list"].l.setItemHeight(ITEM_HEIGHT)
 		if isUHD():
-			self["standings_list"].l.setFont(0, gFont('Regular', 32))
+			self["standings_list"].l.setFont(0, gFont('FootFont', 32))
 		else:
-			self["standings_list"].l.setFont(0, gFont('Regular', 28))
+			self["standings_list"].l.setFont(0, gFont('FootFont', 28))
 
 		club_idx = 1  # numbering for clubs only
 
@@ -5081,8 +5081,8 @@ class FootOnsatNotifScreen(Screen):
 class FootOnSatSummary(Screen):
 	skin = """
         <screen name="FootOnSatSummary" position="0,0" size="400,240">
-        	<widget source="entry" render="Label" position="0,40" size="400,50" font="Regular;45" valign="center" halign="center" />
-        	<widget source="global.CurrentTime" render="Label" position="center,110" size="225,100" font="Regular;85" halign="center" >
+        	<widget source="entry" render="Label" position="0,40" size="400,50" font="FootFont;45" valign="center" halign="center" />
+        	<widget source="global.CurrentTime" render="Label" position="center,110" size="225,100" font="FootFont;85" halign="center" >
 			<convert type="ClockToText">Format:%H:%M</convert>
 		</widget>
         </screen>"""

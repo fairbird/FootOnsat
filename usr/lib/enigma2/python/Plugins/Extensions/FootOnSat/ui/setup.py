@@ -13,7 +13,7 @@ from twisted.internet._sslverify import ClientTLSOptions
 from twisted.python.failure import Failure
 from twisted.internet.threads import deferToThread
 
-from enigma import getDesktop, eActionMap, eRCInput, eListboxPythonMultiContent, gFont, ePoint, eSize, RT_HALIGN_LEFT, RT_VALIGN_CENTER, RT_HALIGN_CENTER
+from enigma import addFont, getDesktop, eActionMap, eRCInput, eListboxPythonMultiContent, gFont, ePoint, eSize, RT_HALIGN_LEFT, RT_VALIGN_CENTER, RT_HALIGN_CENTER
 from Components.MenuList import MenuList
 from Components.MultiContent import MultiContentEntryText, MultiContentEntryPixmapAlphaBlend
 from keyids import KEYIDS
@@ -146,6 +146,38 @@ try:
 except:
 	from Plugins.Extensions.FootOnSat.assets.languages.en import *
 #############################
+
+FONT_DEFAULT_PATH = "/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/fonts/LiberationSans-Regular.ttf"
+FONT_SEARCH_PATH = "/usr/share/fonts"
+
+def get_font_choices():
+	font_files = []
+
+	try:
+		for root, dirs, files in os.walk(FONT_SEARCH_PATH):
+			dirs.sort()
+			for filename in files:
+				if os.path.splitext(filename)[1].lower() in (".ttf", ".otf", ".ttc"):
+					font_path = os.path.join(root, filename)
+					if os.path.isfile(font_path):
+						font_files.append((font_path, os.path.splitext(filename)[0]))
+	except Exception:
+		pass
+
+	font_files.sort(key=lambda item: (item[1].lower(), item[0].lower()))
+
+	return [("default", "default")] + font_files
+
+
+def get_foot_font_path():
+	selected = config.plugins.FootOnSat.font.value
+
+	if selected != "default" and os.path.isfile(selected):
+		return selected
+
+	return FONT_DEFAULT_PATH
+
+
 config.plugins.FootOnSat.showplugin = ConfigText(default="")
 config.plugins.FootOnSat.live_events = ConfigText(default="")
 config.plugins.FootOnSat.keyname = ConfigText(default=title340)
@@ -168,6 +200,7 @@ config.plugins.FootOnSat.debug_Fetch_Live = ConfigYesNo(default=False)
 config.plugins.FootOnSat.debug_MatchMedia = ConfigYesNo(default=False)
 config.plugins.FootOnSat.debug_MatchDetails = ConfigYesNo(default=False)
 config.plugins.FootOnSat.debug_MatchStatistics = ConfigYesNo(default=False)
+config.plugins.FootOnSat.font = ConfigSelection(default="default", choices=get_font_choices())
 config.plugins.FootOnSat.backcolor = ConfigSelection(default = "default", choices = [
 	("default", "%s" % title21),
 	("rad", "%s" % title1),
@@ -405,7 +438,10 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.debug_MatchDetails = config.plugins.FootOnSat.debug_MatchDetails.value
 		self.debug_MatchStatistics = config.plugins.FootOnSat.debug_MatchStatistics.value
 		self.old_installpath = config.plugins.FootOnSat.installpath.value
+		self.old_font = config.plugins.FootOnSat.font.value
+		self.font_preview_aliases = {}
 		self.getToneFile()
+		self.onLayoutFinish.append(self.applyFontPreview)
 		self.createSetup()
 
 	def _update_backup_paths(self):
@@ -495,6 +531,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.list.append(getConfigListEntry(_("%s") % title41, config.plugins.FootOnSat.icons, _("%s") % title42))
 		if config.plugins.FootOnSat.icons.value != "icons_renkli":
 			self.list.append(getConfigListEntry(_("%s") % title304, config.plugins.FootOnSat.backcolor, _("%s") % title305))
+		self.list.append(getConfigListEntry(_("%s") % title367, config.plugins.FootOnSat.font, _("%s") % title368))
 		self.list.append(getConfigListEntry(title92))
 		self.list.append(getConfigListEntry(_("%s") % title43, config.plugins.FootOnSat.enableflag, _("%s") % title44))
 		self.list.append(getConfigListEntry(_("%s") % title45, config.plugins.FootOnSat.devicepath, _("%s") % title46))
@@ -736,6 +773,9 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			if not cur:
 				self['Picture'].hide()
 				return
+			if cur[1] == config.plugins.FootOnSat.font:
+				self['Picture'].hide()
+				return
 			index = cur[1].value if hasattr(cur[1], "value") else None
 			pic = None
 			if index == "icons_default":
@@ -784,6 +824,44 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			#logdata("Picture preview error:", str(error))
 			pass
 
+	def applyFontPreview(self):
+		try:
+			font_path = get_foot_font_path()
+			if not isfile(font_path):
+				return
+			instance = self["config"].instance
+			if not instance:
+				return
+			preview_alias = self.font_preview_aliases.get(font_path)
+			if not preview_alias:
+				preview_alias = "FootFontPreview%d" % (len(self.font_preview_aliases) + 1)
+				addFont(font_path, preview_alias, 100, 0)
+				self.font_preview_aliases[font_path] = preview_alias
+			font_size = 45 if isUHD() else 30
+			preview_font = gFont(preview_alias, font_size)
+			try:
+				instance.setEntryFont(preview_font)
+			except Exception:
+				try:
+					instance.setFont(preview_font)
+				except Exception:
+					pass
+			try:
+				instance.setValueFont(preview_font)
+			except Exception:
+				pass
+			try:
+				instance.setHeaderFont(preview_font)
+			except Exception:
+				pass
+			try:
+				self["config"].l.invalidate()
+			except Exception:
+				self["config"].l.setList(self["config"].list)
+		except Exception as error:
+			#logdata("Font preview error:", error)
+			pass
+
 	def keyLeft(self):
 		cur = self["config"].getCurrent()
 		if cur and (cur[1] == config.plugins.FootOnSat.notiftime or cur[1] == config.plugins.FootOnSat.WakingUp):
@@ -802,6 +880,12 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 					self["config"].invalidate()
 				self["config"].l.setList(self["config"].list)
 			return
+
+		if cur and len(cur) > 1 and cur[1] == config.plugins.FootOnSat.font:
+			ConfigListScreen.keyLeft(self)
+			self.applyFontPreview()
+			return
+
 		ConfigListScreen.keyLeft(self)
 		self.Picture()
 		self.createSetup()
@@ -824,6 +908,12 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 					self["config"].invalidate()
 				self["config"].l.setList(self["config"].list)
 			return
+
+		if cur and len(cur) > 1 and cur[1] == config.plugins.FootOnSat.font:
+			ConfigListScreen.keyRight(self)
+			self.applyFontPreview()
+			return
+
 		ConfigListScreen.keyRight(self)
 		self.Picture()
 		self.createSetup()
@@ -832,6 +922,8 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		for x in self["config"].list:
 			if len(x) > 1:
 				x[1].cancel()
+
+		self.applyFontPreview()
 		self.close()
 
 	def save(self):
@@ -874,6 +966,9 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 
 		# Check if plugin backcolor has actually changed
 		if self.backcolor != config.plugins.FootOnSat.backcolor.value: Restart_changed = True
+
+		# Check if plugin font has actually changed
+		if self.old_font != config.plugins.FootOnSat.font.value: Restart_changed = True
 
 		# Handle icons download and set Restart_changed flag
 		if self.icons_value != config.plugins.FootOnSat.icons.value:

@@ -9,7 +9,7 @@ from Plugins.Extensions.FootOnSat.ui.setup import *
 from Plugins.Extensions.FootOnSat.ui.interface import FootOnSatNotifDialog
 from Plugins.Extensions.FootOnSat.ui.launcher import FootOnsatLauncher, pSignal
 
-addFont("/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/fonts/miso-bold.ttf", "FootFont", 100, 0)
+addFont(get_foot_font_path(), "FootFont", 100, 0)
 addFont("/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/fonts/font_default.otf", "ArabicFont", 100, 0)
 addFont("/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/fonts/google-icons.ttf", "FootIcons", 100, 0)
 

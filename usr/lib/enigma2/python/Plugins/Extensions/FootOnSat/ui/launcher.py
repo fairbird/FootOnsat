@@ -441,7 +441,7 @@ class FootOnsatLauncher(Screen):
 
 class KeyCaptureScreen(Screen):
 	skin = """<screen position="center,center" size="500,100" title="" flags="wfNoBorder">
-	<widget name="label" position="10,10" size="480,80" font="Regular;35" halign="center" valign="center"/>
+	<widget name="label" position="10,10" size="480,80" font="FootFont;35" halign="center" valign="center"/>
 	</screen>"""
 	def __init__(self, session):
 		Screen.__init__(self, session)
@@ -549,8 +549,8 @@ pSignal = FootOnSatLive()
 class FootOnSatSummary(Screen):
         skin = """
         <screen name="FootOnSatSummary" position="0,0" size="400,240">
-        	<widget source="entry" render="Label" position="0,40" size="400,50" font="Regular;45" valign="center" halign="center" />
-        	<widget source="global.CurrentTime" render="Label" position="center,110" size="225,100" font="Regular;85" halign="center" >
+        	<widget source="entry" render="Label" position="0,40" size="400,50" font="FootFont;45" valign="center" halign="center" />
+        	<widget source="global.CurrentTime" render="Label" position="center,110" size="225,100" font="FootFont;85" halign="center" >
 			<convert type="ClockToText">Format:%H:%M</convert>
 		</widget>
         </screen>"""

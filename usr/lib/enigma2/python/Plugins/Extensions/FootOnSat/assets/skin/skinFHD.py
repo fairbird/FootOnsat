@@ -79,22 +79,22 @@ SKIN_interface = """
     <eLabel position="1330,670" zPosition="5" size="60,60" text="&#xeb3a;" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;60" transparent="1" />
     <eLabel position="1335,758" zPosition="5" size="50,50" text="&#xf04e;" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;50" transparent="1" />
     <eLabel position="1330,843" zPosition="5" size="60,50" text="&#xe870;" foregroundColor="#00ffffff" backgroundColor="#16000000" font="FootIcons;60" transparent="1" />
-    <widget name="menu" position="5,15" size="890,45" font="Regular;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" />
-    <widget name="menu2" position="1074,15" size="805,45" font="Regular;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#16000000" zPosition="5" transparent="1"/>
-    <widget name="channel" position="1450,600" size="385,39" font="Regular;25" halign="left" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
-    <widget name="sat" position="1450,684" size="385,39" font="Regular;25" halign="left" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
-    <widget name="freq" position="1450,765" size="385,39" font="Regular;25" halign="left" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
-    <widget name="enc" position="1450,860" size="385,40" font="Regular;25" halign="left" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
-    <widget name="key_red" position="108,880" size="385,40" font="Regular;28" halign="center" foregroundColor="#FF0000" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
-    <widget name="key_green" position="108,880" size="385,40" font="Regular;28" halign="center" foregroundColor="#00FF00" backgroundColor="#101c1c1c" zPosition="1" transparent="1" />
-    <widget name="key_yellow" position="849,880" size="385,40" font="Regular;28" halign="center" foregroundColor="#FFFF00" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
-    <widget name="key_blue" position="1550,900" size="385,40" font="Regular;28" halign="left" foregroundColor="#1E90FF" backgroundColor="#0000FF" zPosition="5" transparent="1" />
+    <widget name="menu" position="5,15" size="890,45" font="FootFont;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" />
+    <widget name="menu2" position="1074,15" size="805,45" font="FootFont;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#16000000" zPosition="5" transparent="1"/>
+    <widget name="channel" position="1450,600" size="385,39" font="FootFont;25" halign="left" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+    <widget name="sat" position="1450,684" size="385,39" font="FootFont;25" halign="left" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+    <widget name="freq" position="1450,765" size="385,39" font="FootFont;25" halign="left" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+    <widget name="enc" position="1450,860" size="385,40" font="FootFont;25" halign="left" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+    <widget name="key_red" position="108,880" size="385,40" font="FootFont;28" halign="center" foregroundColor="#FF0000" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+    <widget name="key_green" position="108,880" size="385,40" font="FootFont;28" halign="center" foregroundColor="#00FF00" backgroundColor="#101c1c1c" zPosition="1" transparent="1" />
+    <widget name="key_yellow" position="849,880" size="385,40" font="FootFont;28" halign="center" foregroundColor="#FFFF00" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+    <widget name="key_blue" position="1550,900" size="385,40" font="FootFont;28" halign="left" foregroundColor="#1E90FF" backgroundColor="#0000FF" zPosition="5" transparent="1" />
     <widget name="list1" position="57,145" size="1220,700" scrollbarMode="showNever" selectionPixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/button1180x45.png" foregroundColor="#00ffffff" foregroundColorSelected="#00F9C731" backgroundColorSelected="#00e5b243" enableWrapAround="1"  transparent="1" zPosition="2" /> 
     <widget name="list2" position="1315,150" size="560,350" scrollbarMode="showNever" selectionPixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/list2selectionpixmap.png" foregroundColor="#00ffffff" foregroundColorSelected="#00F9C731" backgroundColorSelected="#00e5b243" enableWrapAround="1" transparent="1" zPosition="3" />
-    <widget font="Regular;35" foregroundColor="#00ffffff" backgroundColor="#16000000" halign="center" position="center,15" render="Label" size="143,52" source="global.CurrentTime" transparent="1" valign="center" zPosition="5">
+    <widget font="FootFont;35" foregroundColor="#00ffffff" backgroundColor="#16000000" halign="center" position="center,15" render="Label" size="143,52" source="global.CurrentTime" transparent="1" valign="center" zPosition="5">
         <convert type="ClockToText">Default</convert>
     </widget>
-    <widget name="counter" foregroundColor="#00ffffff" backgroundColor="#16000000" position="655,875" size="143,52" font="Regular;28" transparent="1" valign="center" zPosition="5" />
+    <widget name="counter" foregroundColor="#00ffffff" backgroundColor="#16000000" position="655,875" size="143,52" font="FootFont;28" transparent="1" valign="center" zPosition="5" />
     <ePixmap position="575,885" zPosition="6" size="32,32" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/spin-down.png" alphatest="blend" />
     <ePixmap position="758,885" zPosition="6" size="32,32" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/spin-up.png" alphatest="blend" />
 </screen>
@@ -105,8 +105,8 @@ SKIN_FootOnsatNotif = """
     <widget name="compet" zPosition="3" position="7,6" size="320,163" />
     <widget name="flag1" zPosition="5" position="333,70" size="40,30" alphatest="blend" />
     <widget name="flag2" zPosition="5" position="850,70" size="40,30" alphatest="blend" />
-    <widget name="match" font="Regular;24" position="380,40" zPosition="2" valign="center" halign="center" size="460,90" backgroundColor="#31000000" transparent="1" />
-    <widget name="message" font="Regular;26" position="390,85" zPosition="2" valign="center" halign="center" size="420,90" backgroundColor="#31000000" transparent="1" />
+    <widget name="match" font="FootFont;24" position="380,40" zPosition="2" valign="center" halign="center" size="460,90" backgroundColor="#31000000" transparent="1" />
+    <widget name="message" font="FootFont;26" position="390,85" zPosition="2" valign="center" halign="center" size="420,90" backgroundColor="#31000000" transparent="1" />
     <widget name="live" zPosition="5" position="545,3" size="100,50" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/live_notif.png" alphatest="blend" />
     <ePixmap position="0,0" zPosition="1" size="900,175" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/notif_bar.png" alphatest="blend" />
 </screen>
@@ -117,27 +117,27 @@ SKIN_standings = """
   <ePixmap position="0,0" zPosition="1" size="1920,70" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/infobar_top.png" alphatest="blend"/>
  
     <!-- Title -->
-    <widget name="title" position="center,15" size="600,52" font="Regular;35" halign="center" foregroundColor="#00ffffff" backgroundColor="#16000000" transparent="1" zPosition="5"/>
+    <widget name="title" position="center,15" size="600,52" font="FootFont;35" halign="center" foregroundColor="#00ffffff" backgroundColor="#16000000" transparent="1" zPosition="5"/>
 
     <!-- Top separator line -->
     <eLabel backgroundColor="#00ffffff" position="60,180" size="1800,3" zPosition="5"/>
 
     <!-- Column headers -->
-    <eLabel text="{0}" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="65,140" size="59,35" zPosition="5" transparent="1" halign="center"/>
-    <eLabel text="{1}" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="230,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
-    <eLabel text="{2}" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="572,140" size="150,35" zPosition="5" transparent="1" halign="center"/>
-    <eLabel text="{3}" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="745,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
-    <eLabel text="{4}" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="889,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
-    <eLabel text="{5}" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1040,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
-    <eLabel text="{6}" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1199,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
-    <eLabel text="{7}|{8}|{9}" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1357,140" size="500,35" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="{0}" font="FootFont;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="65,140" size="59,35" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="{1}" font="FootFont;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="230,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="{2}" font="FootFont;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="572,140" size="150,35" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="{3}" font="FootFont;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="745,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="{4}" font="FootFont;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="889,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="{5}" font="FootFont;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1040,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="{6}" font="FootFont;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1199,140" size="130,35" zPosition="5" transparent="1" halign="center"/>
+    <eLabel text="{7}|{8}|{9}" font="FootFont;28" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1357,140" size="500,35" zPosition="5" transparent="1" halign="center"/>
 
     <!-- Standings list -->  
     <widget name="standings_list" position="60,190" size="1800,785" scrollbarMode="showNever" 
         	foregroundColor="#00ffffff" backgroundColorSelected="#0000FF" enableWrapAround="1" transparent="1" zPosition="2"/>
 
     <!-- Red key label -->
-    <widget name="key_red" position="45,990" size="600,40" font="Regular;28" halign="center" 
+    <widget name="key_red" position="45,990" size="600,40" font="FootFont;28" halign="center" 
         	foregroundColor="#00ff2525" backgroundColor="#16000000" zPosition="5" transparent="1" />
 </screen>
 """.format(title196, title197, title198, title199, title200, title201, title202, title203, title204, title205)
@@ -147,27 +147,27 @@ SKIN_standingsbasketball = """
   <ePixmap position="0,0" zPosition="1" size="1920,70" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/infobar_top.png" alphatest="blend"/>
  
     <!-- Title -->
-    <widget name="title" position="center,15" size="600,52" font="Regular;35" halign="center" foregroundColor="#00ffffff" backgroundColor="#16000000" transparent="1" zPosition="5"/>
+    <widget name="title" position="center,15" size="600,52" font="FootFont;35" halign="center" foregroundColor="#00ffffff" backgroundColor="#16000000" transparent="1" zPosition="5"/>
 
     <!-- Top separator line -->
     <eLabel backgroundColor="#00ffffff" position="60,180" size="1800,3" zPosition="5"/>
 
     <!-- Column headers -->
-    <eLabel text="{0}" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="65,140" size="59,35" zPosition="5" transparent="1" halign="center" />
-    <eLabel text="{1}" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="230,140" size="130,35" zPosition="5" transparent="1" halign="center" />
-    <eLabel text="{2}" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="572,140" size="150,35" zPosition="5" transparent="1" halign="center" />
-    <eLabel text="{3}" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="780,140" size="130,35" zPosition="5" transparent="1" halign="center" />
-    <eLabel text="{4}" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="987,140" size="130,35" zPosition="5" transparent="1" halign="center" />
-    <eLabel text="%s" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1177,140" size="130,35" zPosition="5" transparent="1" halign="center" />
-    <eLabel text="{5}" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1305,140" size="250,35" zPosition="5" transparent="1" halign="center" />
-    <eLabel text="{6}" font="Regular;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1540,140" size="250,35" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="{0}" font="FootFont;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="65,140" size="59,35" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="{1}" font="FootFont;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="230,140" size="130,35" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="{2}" font="FootFont;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="572,140" size="150,35" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="{3}" font="FootFont;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="780,140" size="130,35" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="{4}" font="FootFont;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="987,140" size="130,35" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="%s" font="FootFont;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1177,140" size="130,35" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="{5}" font="FootFont;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1305,140" size="250,35" zPosition="5" transparent="1" halign="center" />
+    <eLabel text="{6}" font="FootFont;34" foregroundColor="#00ffffff" backgroundColor="#16000000" position="1540,140" size="250,35" zPosition="5" transparent="1" halign="center" />
 
     <!-- Standings list -->  
     <widget name="standings_list" position="60,190" size="1800,785" scrollbarMode="showNever" 
         foregroundColor="#00ffffff" backgroundColorSelected="#0000FF" enableWrapAround="1" transparent="1" zPosition="2"/>
 
     <!-- Red key label -->
-    <widget name="key_red" position="45,990" size="600,40" font="Regular;28" halign="center" 
+    <widget name="key_red" position="45,990" size="600,40" font="FootFont;28" halign="center" 
         foregroundColor="#00ff2525" backgroundColor="#16000000" zPosition="5" transparent="1" />
 </screen>
 """.format(title196, title197, title198, title200, title202, title205, title206)
@@ -175,54 +175,54 @@ SKIN_standingsbasketball = """
 SKIN_MatchDetails = """
 <screen name="MatchDetailsScreen" position="0,0" size="1920,1080" title="Match Details" flags="wfNoBorder" backgroundColor="#16000000">
     <eLabel position="0,0" size="1920,120" backgroundColor="#003366" zPosition="0" />
-    <widget name="title" position="40,20" size="1840,80" font="Regular;50" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#003366" transparent="1" zPosition="1"/>
+    <widget name="title" position="40,20" size="1840,80" font="FootFont;50" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#003366" transparent="1" zPosition="1"/>
     
-    <widget name="home_name_big" position="100,180" size="700,150" font="Regular;70" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#101010" transparent="1" />
-    <widget name="away_name_big" position="1120,180" size="700,150" font="Regular;70" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#101010" transparent="1" />
+    <widget name="home_name_big" position="100,180" size="700,150" font="FootFont;70" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#101010" transparent="1" />
+    <widget name="away_name_big" position="1120,180" size="700,150" font="FootFont;70" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#101010" transparent="1" />
 
     <widget name="home_team" position="375,340" size="150,100" alphatest="blend" />
     <widget name="away_team" position="1395,340" size="150,100" alphatest="blend" />
 
-    <widget name="score" position="760,200" size="400,150" font="Regular;95" halign="center" valign="center" foregroundColor="#ffcc00" backgroundColor="#101010" transparent="1" />
-    <widget name="status" position="760,350" size="400,60" font="Regular;34" halign="center" valign="center" foregroundColor="#00ff00" backgroundColor="#101010" transparent="1" />
+    <widget name="score" position="760,200" size="400,150" font="FootFont;95" halign="center" valign="center" foregroundColor="#ffcc00" backgroundColor="#101010" transparent="1" />
+    <widget name="status" position="760,350" size="400,60" font="FootFont;34" halign="center" valign="center" foregroundColor="#00ff00" backgroundColor="#101010" transparent="1" />
     
     <widget name="details_list" position="50,450" size="1780,545" scrollbarMode="showOnDemand" transparent="1" />
 
-    <eLabel text="&lt; {0} | {1} &gt;" position="910,1000" size="969,60" font="Regular;35" foregroundColor="#ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" halign="center" valign="center" />
+    <eLabel text="&lt; {0} | {1} &gt;" position="910,1000" size="969,60" font="FootFont;35" foregroundColor="#ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" halign="center" valign="center" />
 
     <eLabel position="0,1076" size="1920,4" backgroundColor="#333333" />
-    <widget name="key_red" position="40,1000" size="400,60" zPosition="1" font="Regular;34" halign="left" valign="center" backgroundColor="#101010" transparent="1" foregroundColor="red" />
+    <widget name="key_red" position="40,1000" size="400,60" zPosition="1" font="FootFont;34" halign="left" valign="center" backgroundColor="#101010" transparent="1" foregroundColor="red" />
 </screen>
 """.format(title179, title197)
 
 SKIN_MatchStatistics = """
 <screen name="MatchStatisticsScreen" position="0,0" size="1920,1080" title="Match Statistics" flags="wfNoBorder" backgroundColor="#16000000">
     <eLabel position="0,0" size="1920,120" backgroundColor="#006633" zPosition="0" />
-    <widget name="title" position="40,20" size="1840,80" font="Regular;50" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#006633" transparent="1" zPosition="1" />
+    <widget name="title" position="40,20" size="1840,80" font="FootFont;50" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#006633" transparent="1" zPosition="1" />
 	
-    <widget name="home_team" position="100,150" size="700,100" font="Regular;60" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
-    <widget name="away_team" position="1120,150" size="700,100" font="Regular;60" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
+    <widget name="home_team" position="100,150" size="700,100" font="FootFont;60" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
+    <widget name="away_team" position="1120,150" size="700,100" font="FootFont;60" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
 	
     <widget name="stats_list" position="100,280" size="1780,700" scrollbarMode="showOnDemand" transparent="1" />
 
-    <eLabel text="&lt; {0} | {1} &gt;" position="910,1000" size="969,60" font="Regular;35" foregroundColor="#ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" halign="center" valign="center" />
+    <eLabel text="&lt; {0} | {1} &gt;" position="910,1000" size="969,60" font="FootFont;35" foregroundColor="#ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" halign="center" valign="center" />
    
     <eLabel position="0,1076" size="1920,4" backgroundColor="#333333" />
-    <widget name="key_red" position="40,1000" size="400,60" zPosition="1" font="Regular;34" halign="left" valign="center" backgroundColor="#101010" transparent="1" foregroundColor="red" />
+    <widget name="key_red" position="40,1000" size="400,60" zPosition="1" font="FootFont;34" halign="left" valign="center" backgroundColor="#101010" transparent="1" foregroundColor="red" />
 </screen>
 """.format(title171, title179)
 
 SKIN_MatchMedia = """
 <screen name="MatchMediaScreen" position="0,0" size="1920,1080" title="Match Media" flags="wfNoBorder" backgroundColor="#16000000">
     <eLabel position="0,0" size="1920,120" backgroundColor="#660000" zPosition="0" />
-    <widget name="title" position="40,20" size="1840,80" font="Regular;50" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#660000" transparent="1" zPosition="1"/>
+    <widget name="title" position="40,20" size="1840,80" font="FootFont;50" halign="center" valign="center" foregroundColor="#ffffff" backgroundColor="#660000" transparent="1" zPosition="1"/>
     
     <widget name="media_list" position="100,180" size="1720,800" scrollbarMode="showOnDemand" transparent="1" />
 
-    <eLabel text="&lt; {0} | {1} &gt;" position="910,1000" size="969,60" font="Regular;35" foregroundColor="#ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" halign="center" valign="center" />
+    <eLabel text="&lt; {0} | {1} &gt;" position="910,1000" size="969,60" font="FootFont;35" foregroundColor="#ffffff" backgroundColor="#16000000" zPosition="5" transparent="1" halign="center" valign="center" />
 
     <eLabel position="0,1076" size="1920,4" backgroundColor="#333333" />
-    <widget name="key_red" position="40,1000" size="400,60" zPosition="1" font="Regular;34" halign="left" valign="center" backgroundColor="#101010" transparent="1" foregroundColor="red" />
+    <widget name="key_red" position="40,1000" size="400,60" zPosition="1" font="FootFont;34" halign="left" valign="center" backgroundColor="#101010" transparent="1" foregroundColor="red" />
 </screen>
 """.format(title177, title171)
 
@@ -234,13 +234,13 @@ if DreamOS():
 			<eLabel position="143,920" size="300,3" backgroundColor="#FF0000" zPosition="5" />
 			<eLabel position="514,920" size="300,3" backgroundColor="#00FF00" zPosition="5" />
 			<eLabel position="884,920" size="300,3" backgroundColor="#0000FF" zPosition="5" />
-			<widget source="key_red" render="Label" position="108,880" size="385,40" font="Regular;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
-			<widget source="key_green" render="Label" position="474,880" size="385,40" font="Regular;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
-			<widget source="key_blue" render="Label" position="849,880" size="385,40" font="Regular;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+			<widget source="key_red" render="Label" position="108,880" size="385,40" font="FootFont;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+			<widget source="key_green" render="Label" position="474,880" size="385,40" font="FootFont;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+			<widget source="key_blue" render="Label" position="849,880" size="385,40" font="FootFont;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
 			<widget name="config" position="75,145" size="1169,720" backgroundColor="#16000000" scrollbarMode="showOnDemand" transparent="1" />
-			<widget source="help" render="Label" position="1315,165" size="532,350" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
+			<widget source="help" render="Label" position="1315,165" size="532,350" font="FootFont;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
 			<widget name="Picture" position="1380,623" size="400,225" zPosition="5" alphatest="blend"/>
-			<widget font="Regular;35" foregroundColor="#00ffffff" backgroundColor="#16000000" halign="center" position="center,15" render="Label" size="650,52" source="global.CurrentTime" transparent="1" valign="center" zPosition="5">
+			<widget font="FootFont;35" foregroundColor="#00ffffff" backgroundColor="#16000000" halign="center" position="center,15" render="Label" size="650,52" source="global.CurrentTime" transparent="1" valign="center" zPosition="5">
 				<convert type="ClockToText">Format:%d-%m-%Y&#160;%H:%M:%S</convert>
 			</widget>
 		</screen>
@@ -253,13 +253,13 @@ else:
 			<eLabel position="143,920" size="300,3" backgroundColor="#FF0000" zPosition="5" />
 			<eLabel position="514,920" size="300,3" backgroundColor="#00FF00" zPosition="5" />
 			<eLabel position="884,920" size="300,3" backgroundColor="#0000FF" zPosition="5" />
-			<widget source="key_red" render="Label" position="108,880" size="385,40" font="Regular;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
-			<widget source="key_green" render="Label" position="474,880" size="385,40" font="Regular;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
-			<widget source="key_blue" render="Label" position="849,880" size="385,40" font="Regular;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
-			<widget name="config" font="Regular;28" secondfont="Regular;28" itemHeight="45" position="75,145" size="1169,720" backgroundColor="#16000000" scrollbarMode="showOnDemand" transparent="1" />
-			<widget source="help" render="Label" position="1315,165" size="532,350" font="Regular;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
+			<widget source="key_red" render="Label" position="108,880" size="385,40" font="FootFont;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+			<widget source="key_green" render="Label" position="474,880" size="385,40" font="FootFont;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+			<widget source="key_blue" render="Label" position="849,880" size="385,40" font="FootFont;30" halign="center" foregroundColor="#00ffffff" backgroundColor="#101c1c1c" zPosition="5" transparent="1" />
+			<widget name="config" font="FootFont;28" secondfont="FootFont;28" itemHeight="45" position="75,145" size="1169,720" backgroundColor="#16000000" scrollbarMode="showOnDemand" transparent="1" />
+			<widget source="help" render="Label" position="1315,165" size="532,350" font="FootFont;28" foregroundColor="#00e5b243" backgroundColor="#16000000" valign="center" halign="center" transparent="1" zPosition="5"/>
 			<widget name="Picture" position="1380,623" size="400,225" zPosition="5" alphatest="blend"/>
-			<widget font="Regular;35" foregroundColor="#00ffffff" backgroundColor="#16000000" halign="center" position="center,15" render="Label" size="650,52" source="global.CurrentTime" transparent="1" valign="center" zPosition="5">
+			<widget font="FootFont;35" foregroundColor="#00ffffff" backgroundColor="#16000000" halign="center" position="center,15" render="Label" size="650,52" source="global.CurrentTime" transparent="1" valign="center" zPosition="5">
 				<convert type="ClockToText">Format:%d-%m-%Y     %H:%M:%S</convert>
 			</widget>
 		</screen>
@@ -274,15 +274,15 @@ SKIN_SelectionScreen = """
 					MultiContentEntryText(pos=(85,10), size=(650,50), font=0, text=0),
 					MultiContentEntryPixmapAlphaBlend(pos=(0,0), size=(50,50), png=1)
 				],
-				"fonts": [gFont("Regular", 35)],
+				"fonts": [gFont("FootFont", 35)],
 				"itemHeight": 60
 			}
 		</convert>
 	</widget>
 	<eLabel text="" foregroundColor="#00ff2525" backgroundColor="#00ff2525" position="105,517" size="165,2" zPosition="-10"/>
 	<eLabel text="" foregroundColor="#00389416" backgroundColor="#00389416" position="482,517" size="165,2" zPosition="-10"/>
-	<widget name="key_red" position="70,480" size="246,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;35" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
-	<widget name="key_green" position="445,480" size="246,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="Regular;35" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
+	<widget name="key_red" position="70,480" size="246,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="FootFont;35" transparent="1" foregroundColor="#00ffffff" shadowColor="black"/>
+	<widget name="key_green" position="445,480" size="246,40" zPosition="5" valign="center" halign="center" backgroundColor="#16000000" font="FootFont;35" transparent="1" foregroundColor="#00ffffff" shadowColor="black" shadowOffset="-1,-1"/>
 </screen>
 """
 
@@ -295,7 +295,7 @@ if DreamOS():
 else:
 	SKIN_TeamListScreen = """
 	<screen name="TeamListScreen" position="center,center" size="800,800" title="Select" backgroundColor="#16000000">
-		<widget name="list" position="16,19" size="774,774" itemHeight="40" font="Regular;28" foregroundColor="#00ffffff" backgroundColor="#16000000" scrollbarMode="showOnDemand" transparent="1"/>
+		<widget name="list" position="16,19" size="774,774" itemHeight="40" font="FootFont;28" foregroundColor="#00ffffff" backgroundColor="#16000000" scrollbarMode="showOnDemand" transparent="1"/>
 	</screen>
 	"""
 
@@ -303,8 +303,8 @@ if DreamOS():
 	SKIN_CombinedNotificationsScreen = """
 	<screen position="center,center" size="1400,560" title="Notification Settings" backgroundColor="#16000000">
 		<widget name="list" position="20,20" size="1360,460" scrollbarMode="showOnDemand" backgroundColor="#16000000" />
-		<widget name="key_red" position="340,503" size="300,40" font="Regular;34" halign="center" valign="center" foregroundColor="#00ffffff" transparent="1" zPosition="5" />
-		<widget name="key_green" position="660,503" size="300,40" font="Regular;34" halign="center" valign="center" foregroundColor="#00ffffff" transparent="1" zPosition="5" />
+		<widget name="key_red" position="340,503" size="300,40" font="FootFont;34" halign="center" valign="center" foregroundColor="#00ffffff" transparent="1" zPosition="5" />
+		<widget name="key_green" position="660,503" size="300,40" font="FootFont;34" halign="center" valign="center" foregroundColor="#00ffffff" transparent="1" zPosition="5" />
 		<eLabel position="340,545" size="300,3" backgroundColor="#FF0000" zPosition="5" />
 		<eLabel position="660,545" size="300,3" backgroundColor="#00FF00" zPosition="5" />
 		<widget name="selection" position="32,89" size="300,57" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/notification_selection_fhd.png" alphatest="blend" zPosition="5" />
@@ -313,9 +313,9 @@ if DreamOS():
 else:
 	SKIN_CombinedNotificationsScreen = """
 	<screen position="center,center" size="1400,560" title="Notification Settings" backgroundColor="#16000000">
-		<widget name="list" position="20,20" size="1360,460" font="Regular;30" scrollbarMode="showOnDemand" backgroundColor="#16000000" />
-		<widget name="key_red" position="340,503" size="300,40" font="Regular;34" halign="center" valign="center" foregroundColor="#00ffffff" transparent="1" zPosition="5" />
-		<widget name="key_green" position="660,503" size="300,40" font="Regular;34" halign="center" valign="center" foregroundColor="#00ffffff" transparent="1" zPosition="5" />
+		<widget name="list" position="20,20" size="1360,460" font="FootFont;30" scrollbarMode="showOnDemand" backgroundColor="#16000000" />
+		<widget name="key_red" position="340,503" size="300,40" font="FootFont;34" halign="center" valign="center" foregroundColor="#00ffffff" transparent="1" zPosition="5" />
+		<widget name="key_green" position="660,503" size="300,40" font="FootFont;34" halign="center" valign="center" foregroundColor="#00ffffff" transparent="1" zPosition="5" />
 		<eLabel position="340,545" size="300,3" backgroundColor="#FF0000" zPosition="5" />
 		<eLabel position="660,545" size="300,3" backgroundColor="#00FF00" zPosition="5" />
 		<widget name="selection" position="32,89" size="300,57" pixmap="/usr/lib/enigma2/python/Plugins/Extensions/FootOnSat/assets/icon/notification_selection_fhd.png" alphatest="blend" zPosition="5" />
@@ -326,11 +326,11 @@ SKIN_BackupSelectionScreen = """
 <screen name="BackupSelectionScreen" position="center,center" size="1100,750" title="Select Files/Folders">
 	<widget name="list" position="20,20" size="1060,580" scrollbarMode="showOnDemand" />
 	<eLabel position="70,660" size="200,4" backgroundColor="#FF0000" />
-	<widget name="key_red" position="70,610" size="200,40" font="Regular;34" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
+	<widget name="key_red" position="70,610" size="200,40" font="FootFont;34" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
 	<eLabel position="330,660" size="200,4" backgroundColor="#00FF00" />
-	<widget name="key_green" position="330,610" size="200,40" font="Regular;34" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
+	<widget name="key_green" position="330,610" size="200,40" font="FootFont;34" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
 	<eLabel position="590,660" size="200,4" backgroundColor="#FFFF00" />
-	<widget name="key_yellow" position="590,610" size="200,40" font="Regular;34" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
+	<widget name="key_yellow" position="590,610" size="200,40" font="FootFont;34" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
 	<eLabel position="850,660" size="200,4" backgroundColor="#0000FF" />
-	<widget name="key_blue" position="850,610" size="200,40" font="Regular;34" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
+	<widget name="key_blue" position="850,610" size="200,40" font="FootFont;34" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
 </screen>"""
