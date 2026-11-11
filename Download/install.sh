@@ -296,7 +296,15 @@ if grep -q 'enigma2-plugin-systemplugins-serviceapp' "$STATUS"; then
     serviceapp='Installed'
 fi
 
+if grep -q 'enigma2-plugin-systemplugins-serviceapp-dreamos' "$STATUS"; then
+    serviceapp='Installed'
+fi
+
 if grep -q 'exteplayer3' "$STATUS"; then
+    exteplayer3='Installed'
+fi
+
+if grep -q 'exteplayer3-dreamos' "$STATUS"; then
     exteplayer3='Installed'
 fi
 
@@ -384,7 +392,7 @@ else
     fi
 fi
 
-if ! grep -q 'enigma2-plugin-systemplugins-serviceapp' "$STATUS"; then
+if ! grep -q 'enigma2-plugin-systemplugins-serviceapp' "$STATUS" || ! grep -q 'enigma2-plugin-systemplugins-serviceapp-dreamos' "$STATUS"; then
 	if [ "$OS" == "DreamOS" ]; then
 		echo " Downloading serviceapp + exteplayer3 For DreamOS ......"
 		wget https://raw.githubusercontent.com/Blacker91/serviceapp-dreamos/dreamos/installer.sh -O - | /bin/sh > /dev/null 2>&1

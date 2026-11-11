@@ -3005,13 +3005,11 @@ class MatchMediaScreen(Screen):
 			"left": self.openStats,
 			"right": self.close,
 		}, -1)
-		# Check for ServiceApp/Exteplayer3 only if NOT using DreamOS 8193
-		if config.plugins.FootOnSat.player.value != '8193':
-			for p in plugins.getPlugins(where=PluginDescriptor.WHERE_MENU):
-				if 'ServiceApp' in p.path and exists("/usr/bin/exteplayer3"):
-					break
-			else:
-				config.plugins.FootOnSat.player.value = '4097'
+		for p in plugins.getPlugins(where=PluginDescriptor.WHERE_MENU):
+			if 'ServiceApp' in p.path and exists("/usr/bin/exteplayer3"):
+				break
+		else:
+			config.plugins.FootOnSat.player.value = '4097'
 
 		self.onLayoutFinish.append(self.fetch_media)
 
