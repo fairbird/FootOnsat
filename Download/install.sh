@@ -384,14 +384,16 @@ else
     fi
 fi
 
-if [ "$OS" != "DreamOS" ]; then
-	if [ "$serviceapp" = "Installed" -a "$exteplayer3" = "Installed" ]; then
-		echo ""
+if ! grep -q 'enigma2-plugin-systemplugins-serviceapp' "$STATUS"; then
+	if [ "$OS" == "DreamOS" ]; then
+		echo " Downloading serviceapp + exteplayer3 For DreamOS ......"
+		wget https://raw.githubusercontent.com/Blacker91/serviceapp-dreamos/dreamos/installer.sh -O - | /bin/sh > /dev/null 2>&1
 	else
-		echo " Downloading serviceapp + exteplayer3 ......"
+		echo " Downloading serviceapp + exteplayer3 For Open source......"
 		opkg update > /dev/null 2>&1
 		opkg install enigma2-plugin-systemplugins-serviceapp > /dev/null 2>&1
 		opkg install exteplayer3 > /dev/null 2>&1
+
 	fi
 fi
 
