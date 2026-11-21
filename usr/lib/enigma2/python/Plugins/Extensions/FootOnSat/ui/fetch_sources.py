@@ -122,6 +122,8 @@ class LiveFetchBase(object):
 					THRESHOLD = 0.75
 				elif _cfg.plugins.FootOnSat.source.value == "fotmob":
 					THRESHOLD = 0.60
+				elif _cfg.plugins.FootOnSat.source.value == "livescore":
+					THRESHOLD = 0.20
 			except Exception:
 				pass
 		TIME_WINDOW = timedelta(hours=24) if getattr(self.screen, 'link', None) in ("yesterday", "end") else timedelta(hours=6)
@@ -315,8 +317,8 @@ class LiveFetchBase(object):
 					len_l2 = len(l_t2_clean)
 					len_s2 = len(s_t2_clean)
 
-					straight_possible = (abs(len_l1 - len_s1) <= 15 and abs(len_l2 - len_s2) <= 15)
-					swap_possible = (abs(len_l1 - len_s2) <= 15 and abs(len_l2 - len_s1) <= 15)
+					straight_possible = (abs(len_l1 - len_s1) <= 30 and abs(len_l2 - len_s2) <= 30)
+					swap_possible = (abs(len_l1 - len_s2) <= 30 and abs(len_l2 - len_s1) <= 30)
 					if not (straight_possible or swap_possible):
 						continue
 
@@ -1774,18 +1776,23 @@ class LiveScoreFetcher(LiveFetchBase):
 		if cursor:
 			url += "&cursor={0}".format(cursor)
 
-		try:
-			import subprocess
-			cmd = ['curl', '-s', '-H', 'User-Agent: Mozilla/5.0', url]
-			raw_data = subprocess.check_output(cmd).decode('utf-8')
-			if debug_Fetch_Live:
-				logdata("fetch_live_results", "LiveScore URL: %s" % url)
-				logdata("fetch_live_results", "LiveScore RAW len: %s" % len(raw_data))
-			return json.loads(raw_data)
-		except Exception as e:
-			if debug_Fetch_Live:
-				logdata("fetch_live_results", "LiveScore exception: %s" % str(e))
-			return None
+		for attempt in range(2):
+			try:
+				if not hasattr(self, '_ls_session'):
+					self._ls_session = requests.Session()
+					self._ls_session.headers.update({'User-Agent': 'Mozilla/5.0'})
+				r = self._ls_session.get(url, timeout=8, verify=False)
+				if r.status_code == 200:
+					raw_data = r.text
+					if debug_Fetch_Live:
+						logdata("fetch_live_results", "LiveScore URL: %s" % url)
+						logdata("fetch_live_results", "LiveScore RAW len: %s" % len(raw_data))
+					return json.loads(raw_data)
+			except Exception as e:
+				if debug_Fetch_Live:
+					logdata("fetch_live_results", "LiveScore exception (attempt %d): %s" % (attempt+1, str(e)))
+				time.sleep(0.5)
+		return None
 
 	def _convert_event(self, ev):
 		try:
@@ -1884,12 +1891,20 @@ class LiveScoreFetcher(LiveFetchBase):
 			logdata("fetch_live_results", "LiveScore fetch() called with screen.link=%s" % str(self.screen.link))
 
 		dates_to_fetch = set()
+		today_dt = datetime.now().date()
 		for m in self.screen.matches:
 			try:
 				date_part = str(m[1]).split(' - ')[-1]
-				dates_to_fetch.add(date_part.replace('-', ''))
+				date_str = date_part.replace('-', '')
+				match_date = datetime.strptime(date_str, "%Y%m%d").date()
+				if abs((match_date - today_dt).days) <= 3:
+					dates_to_fetch.add(date_str)
 			except Exception:
 				pass
+
+		if self.screen.link in ("yesterday", "end"):
+			dates_to_fetch.add((datetime.now() - timedelta(days=1)).strftime("%Y%m%d"))
+			dates_to_fetch.add(datetime.now().strftime("%Y%m%d"))
 
 		if not dates_to_fetch:
 			if self.screen.link == "yesterday":
@@ -1904,11 +1919,12 @@ class LiveScoreFetcher(LiveFetchBase):
 			try:
 				max_pages = int(config.plugins.FootOnSat.livescore_pages.value)
 			except Exception:
-				max_pages = 10
+				max_pages = 15
 
 			for date_offset in dates_to_fetch:
 				page = 0
 				cursor = None
+				has_next = False
 				while page < max_pages:
 					data = self._ls_get("date", date_offset, page, cursor=cursor)
 					if not data:
@@ -1959,7 +1975,7 @@ class LiveScoreFetcher(LiveFetchBase):
 					dcursor = None
 					found = set()
 					
-					while dpage < (max_pages * 2) and (missing_ids - found):
+					while dpage < max_pages and (missing_ids - found):
 						ddata = self._ls_get("date", search_date, dpage, cursor=dcursor)
 						if not ddata:
 							break
