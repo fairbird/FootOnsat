@@ -581,9 +581,9 @@ class FootOnSat(Screen):
 							res.append(MultiContentEntryText(pos=(420, 120), size=(1000, 48), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(KICKOFF)))
 					else:
 						if self.link in (SPORTS | FOOTBALL):
-							res.append(MultiContentEntryText(pos=(320, 120), size=(500, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(KICKOFF)))
+							res.append(MultiContentEntryText(pos=(320, 120), size=(550, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(KICKOFF)))
 						else:
-							res.append(MultiContentEntryText(pos=(420, 120), size=(450, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(KICKOFF)))
+							res.append(MultiContentEntryText(pos=(420, 120), size=(520, 36), font=0, flags=RT_HALIGN_LEFT | RT_VALIGN_CENTER, text=str(KICKOFF)))
 				# Competition name
 				if isUHD():
 					if self.link in (SPORTS | FOOTBALL):
