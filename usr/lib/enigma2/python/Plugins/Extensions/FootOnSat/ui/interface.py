@@ -4600,11 +4600,8 @@ class FootOnsatNotifScreen(Screen):
 			self.onhideTimer.start(compensated_milliseconds)
 
 	def _play_tone(self, event_type=None):
-		from .launcher import MenuFootOnSat
-		import json
-		
+		from .launcher import MenuFootOnSat		
 		tone_file = MenuFootOnSat.getToneFile()
-		
 		if event_type:
 			try:
 				selected_path = config.plugins.FootOnSat.soundspath.value

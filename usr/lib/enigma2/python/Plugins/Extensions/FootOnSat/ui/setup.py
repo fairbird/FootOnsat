@@ -184,7 +184,6 @@ config.plugins.FootOnSat.live_events = ConfigText(default="")
 config.plugins.FootOnSat.keyname = ConfigText(default=title340)
 config.plugins.FootOnSat.keysection = ConfigText(default="live")
 config.plugins.FootOnSat.devicepath = ConfigSelection(default=default_data_dir,choices=mounted_devices)
-config.plugins.FootOnSat.soundspath = ConfigSelection(default=default_data_dir, choices=mounted_devices)
 config.plugins.FootOnSat.sort = ConfigDictionarySet(default={"footmenu": {"footsubmenu": {}}})
 config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
 config.plugins.FootOnSat.updatebannersonline = ConfigYesNo(default=True)
@@ -516,7 +515,7 @@ class NotifSoundScreen(Screen):
 			("penalties", title217)
 		]
 		
-		selected_path = config.plugins.FootOnSat.soundspath.value
+		selected_path = config.plugins.FootOnSat.devicepath.value
 		normalized_path = os.path.normpath(selected_path)
 		if normalized_path == "/etc/enigma2/footonsat" or normalized_path.endswith("/footonsat"):
 			data_dir = normalized_path
@@ -754,7 +753,7 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		)
 		self.list.append(getConfigListEntry(title334, self.live_events_display, title335))
 		self.list.append(getConfigListEntry(_("%s") % title59, config.plugins.FootOnSat.notify_zap, _("%s") % title60))
-		selected_path = config.plugins.FootOnSat.soundspath.value
+		selected_path = config.plugins.FootOnSat.devicepath.value
 		normalized_path = os.path.normpath(selected_path)
 		if normalized_path == "/etc/enigma2/footonsat" or normalized_path.endswith("/footonsat"):
 			data_dir = normalized_path
@@ -776,7 +775,6 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			sound_text = title379
 		self.sound_display = ConfigSelection(default=sound_text, choices=[(sound_text, sound_text)])
 		self.list.append(getConfigListEntry(_("%s") % title63, self.sound_display, _("%s") % title64))
-		self.list.append(getConfigListEntry(_("%s") % title381, config.plugins.FootOnSat.soundspath, _("%s") % title382))
 		self.list.append(getConfigListEntry(_("%s") % title297, config.plugins.FootOnSat.WakingUp, _("%s") % title298))
 		self.list.append(getConfigListEntry(title95))
 		self.list.append(getConfigListEntry(_("%s") % title65, config.plugins.FootOnSat.useDashMP4, _("%s") % title66))
