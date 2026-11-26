@@ -544,6 +544,18 @@ class NotifSoundScreen(Screen):
 				display_val = title379
 			else:
 				display_val = os.path.basename(val)
+			
+			if not PY3:
+				try:
+					if isinstance(ev_name, unicode):
+						ev_name = ev_name.encode('utf-8', 'ignore')
+					if isinstance(display_val, unicode):
+						display_val = display_val.encode('utf-8', 'ignore')
+					if isinstance(ev_key, unicode):
+						ev_key = ev_key.encode('utf-8', 'ignore')
+				except Exception:
+					pass
+					
 			res.append(("%s : %s" % (ev_name, display_val), ev_key))
 		self["config"].setList(res)
 		
