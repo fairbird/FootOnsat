@@ -26,6 +26,7 @@ from Components.ActionMap import ActionMap
 from Components.Pixmap import Pixmap
 from Components.Sources.StaticText import StaticText
 from Components.Label import Label
+from Components.FileList import FileList
 from Components.Sources.List import List
 from Components.Harddisk import harddiskmanager
 from Components.ConfigList import ConfigListScreen
@@ -183,12 +184,13 @@ config.plugins.FootOnSat.live_events = ConfigText(default="")
 config.plugins.FootOnSat.keyname = ConfigText(default=title340)
 config.plugins.FootOnSat.keysection = ConfigText(default="live")
 config.plugins.FootOnSat.devicepath = ConfigSelection(default=default_data_dir,choices=mounted_devices)
+config.plugins.FootOnSat.soundspath = ConfigSelection(default=default_data_dir, choices=mounted_devices)
 config.plugins.FootOnSat.sort = ConfigDictionarySet(default={"footmenu": {"footsubmenu": {}}})
 config.plugins.FootOnSat.updateonline = ConfigYesNo(default=True)
 config.plugins.FootOnSat.updatebannersonline = ConfigYesNo(default=True)
 config.plugins.FootOnSat.enableflag = ConfigYesNo(default=True)
 config.plugins.FootOnSat.notiftime = ConfigInteger(default=6, limits=(6, 20))
-config.plugins.FootOnSat.notiffile = ConfigText(default="notif1", visible_width = 250, fixed_size = False)
+config.plugins.FootOnSat.notiffile = ConfigText(default="default", visible_width = 250, fixed_size = False)
 config.plugins.FootOnSat.WakingUp = ConfigInteger(default=3, limits=(1, 60))
 config.plugins.FootOnSat.useDashMP4 = ConfigYesNo(default=True)
 config.plugins.FootOnSat.debug_ZAP = ConfigYesNo(default=False)
@@ -362,9 +364,11 @@ def isFHD():
 	return desktopSize[0] == 1920
 
 if isUHD():
-	from Plugins.Extensions.FootOnSat.assets.skin.skinUHD import SKIN_MenuFootOnSat, SKIN_SelectionScreen, SKIN_CombinedNotificationsScreen, SKIN_BackupSelectionScreen
+	from Plugins.Extensions.FootOnSat.assets.skin.skinUHD import SKIN_MenuFootOnSat, SKIN_SelectionScreen, \
+	SKIN_CombinedNotificationsScreen, SKIN_BackupSelectionScreen, SKIN_NotifSoundFileSelect, SKIN_NotifSoundScreen
 else:
-	from Plugins.Extensions.FootOnSat.assets.skin.skinFHD import SKIN_MenuFootOnSat, SKIN_SelectionScreen, SKIN_CombinedNotificationsScreen, SKIN_BackupSelectionScreen
+	from Plugins.Extensions.FootOnSat.assets.skin.skinFHD import SKIN_MenuFootOnSat, SKIN_SelectionScreen, \
+	SKIN_CombinedNotificationsScreen, SKIN_BackupSelectionScreen, SKIN_NotifSoundFileSelect, SKIN_NotifSoundScreen
 
 
 # The CRITICAL class for TLS SNI support
@@ -397,6 +401,180 @@ def get_live_event_options():
 	]
 
 
+class NotifSoundFileSelect(Screen):
+	def __init__(self, session, current_path):
+		Screen.__init__(self, session)
+		self.setTitle(title378)
+		self.skin = SKIN_NotifSoundFileSelect
+
+		self["actions"] = ActionMap(["OkCancelActions", "ColorActions", "DirectionActions"],
+		{
+			"cancel": self.exit,
+			"red": self.exit,
+			"green": self.saveSelection,
+			"ok": self.okClicked,
+			"left": self.left,
+			"right": self.right,
+			"down": self.down,
+			"up": self.up
+		}, -1)
+
+		self["key_red"] = StaticText(title97)
+		self["key_green"] = StaticText(title98)
+		self["list_head"] = Label()
+
+		start_dir = "/"
+		if current_path and current_path != title379:
+			dir_path = os.path.dirname(current_path)
+			if os.path.exists(dir_path):
+				start_dir = dir_path
+
+		self.filelist = FileList(start_dir, matchingPattern="")
+		self["checkList"] = self.filelist
+		self.onLayoutFinish.append(self.layoutFinished)
+		self.updateHead()
+
+	def layoutFinished(self):
+		self["checkList"].moveToIndex(0)
+
+	def up(self):
+		self["checkList"].up()
+		self.updateHead()
+
+	def down(self):
+		self["checkList"].down()
+		self.updateHead()
+
+	def left(self):
+		self["checkList"].pageUp()
+		self.updateHead()
+
+	def right(self):
+		self["checkList"].pageDown()
+		self.updateHead()
+
+	def updateHead(self):
+		curdir = self["checkList"].getCurrentDirectory()
+		self["list_head"].setText(curdir)
+
+	def saveSelection(self):
+		current = self["checkList"].getCurrent()
+		if current:
+			filename = current[0]
+			if isinstance(filename, tuple):
+				filename = filename[0]
+			
+			cur_dir = self["checkList"].getCurrentDirectory()
+			if isinstance(cur_dir, tuple):
+				cur_dir = cur_dir[0]
+				
+			full_path = os.path.join(str(cur_dir), str(filename))
+			
+			if str(filename).lower().endswith(('.wav', '.mp3')) and os.path.isfile(full_path):
+				self.close(full_path)
+			else:
+				self.session.open(MessageBox, title380, MessageBox.TYPE_INFO, timeout=5)
+
+	def okClicked(self):
+		if self.filelist.canDescent():
+			self.filelist.descent()
+			self.updateHead()
+
+	def exit(self):
+		self.close(None)
+
+
+class NotifSoundScreen(Screen):
+	def __init__(self, session):
+		Screen.__init__(self, session)
+		self.setTitle(title369)
+		self.skin = SKIN_NotifSoundScreen
+		self["config"] = MenuList([])
+		self["key_red"] = StaticText(title97)
+		self["key_green"] = StaticText(title98)
+		
+		self["actions"] = ActionMap(["SetupActions", "ColorActions"],
+		{
+			"ok": self.ok,
+			"red": self.close,
+			"green": self.close,
+			"cancel": self.close,
+		}, -1)
+		
+		self.events = [
+			("before_30", title336),
+			("before_15", title337),
+			("match_start", title338),
+			("goal", title327),
+			("var", title342),
+			("penalty", title329),
+			("red_card", title330),
+			("half_time", title129),
+			("second_half", title211),
+			("full_time", title126),
+			("extra_time", title216),
+			("penalties", title217)
+		]
+		
+		selected_path = config.plugins.FootOnSat.soundspath.value
+		normalized_path = os.path.normpath(selected_path)
+		if normalized_path == "/etc/enigma2/footonsat" or normalized_path.endswith("/footonsat"):
+			data_dir = normalized_path
+		else:
+			data_dir = os.path.join(normalized_path, "footonsat")
+		if not os.path.exists(data_dir):
+			try: os.makedirs(data_dir)
+			except: pass
+		self.config_file = os.path.join(data_dir, "sounds.json")
+		self.config_data = {}
+		self.load_config()
+		self.update_list()
+		
+	def load_config(self):
+		if os.path.exists(self.config_file):
+			try:
+				with open(self.config_file, 'r') as f:
+					self.config_data = json.load(f)
+			except: pass
+			
+	def update_list(self):
+		res = []
+		for ev_key, ev_name in self.events:
+			val = self.config_data.get(ev_key, "")
+			if not val or os.path.basename(val) == "default.wav":
+				display_val = title379
+			else:
+				display_val = os.path.basename(val)
+			res.append(("%s : %s" % (ev_name, display_val), ev_key))
+		self["config"].setList(res)
+		
+	def ok(self):
+		current = self["config"].getCurrent()
+		if not current: return
+		ev_key = current[1]
+		current_path = self.config_data.get(ev_key, title379)
+		
+		self.session.openWithCallback(
+			lambda path: self.file_selected(path, ev_key),
+			NotifSoundFileSelect,
+			current_path
+		)
+		
+	def file_selected(self, path, ev_key):
+		if path:
+			if os.path.basename(path) == "default.wav":
+				if ev_key in self.config_data:
+					del self.config_data[ev_key]
+			else:
+				self.config_data[ev_key] = path
+				
+			try:
+				with open(self.config_file, 'w') as f:
+					json.dump(self.config_data, f, indent=4)
+			except: pass
+			self.update_list()
+
+
 class MenuFootOnSat(ConfigListScreen, Screen):
 
 	def __init__(self, session):
@@ -423,7 +601,6 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self["help"] = StaticText()
 		self.keyname = config.plugins.FootOnSat.keyname.value
 		self.lang = config.plugins.FootOnSat.lang.value
-		self.old_notiffile = config.plugins.FootOnSat.notiffile.value
 		self.old_WakingUp = config.plugins.FootOnSat.WakingUp.value
 		self.icons_value = config.plugins.FootOnSat.icons.value
 		self.backcolor = config.plugins.FootOnSat.backcolor.value
@@ -554,20 +731,16 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		self.list.append(getConfigListEntry(_("%s") % title57, config.plugins.FootOnSat.notiftime, _("%s") % title58))
 		selected_events = set(config.plugins.FootOnSat.live_events.value.split(','))
 		selected_events.discard('')
-
 		all_event_keys = set(key for key, text in get_live_event_options())
 		selected_events.intersection_update(all_event_keys)
-
 		notify_value = config.plugins.FootOnSat.notify.value
 		pre_selected_count = sum(1 for values in (
 			("1", "4", "6", "7"),
 			("1", "3", "5", "7"),
 			("1", "2", "5", "6")
 		) if notify_value in values)
-
 		total_selected = pre_selected_count + len(selected_events)
 		total_options = 3 + len(all_event_keys)
-
 		if total_selected == total_options:
 			live_events_text = title339
 		elif total_selected:
@@ -581,7 +754,29 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 		)
 		self.list.append(getConfigListEntry(title334, self.live_events_display, title335))
 		self.list.append(getConfigListEntry(_("%s") % title59, config.plugins.FootOnSat.notify_zap, _("%s") % title60))
-		self.list.append(getConfigListEntry(_("%s") % title63, config.plugins.FootOnSat.notiffile, _("%s") % title64))
+		selected_path = config.plugins.FootOnSat.soundspath.value
+		normalized_path = os.path.normpath(selected_path)
+		if normalized_path == "/etc/enigma2/footonsat" or normalized_path.endswith("/footonsat"):
+			data_dir = normalized_path
+		else:
+			data_dir = os.path.join(normalized_path, "footonsat")
+		config_file = os.path.join(data_dir, "sounds.json")
+		sound_count = 0
+		if os.path.exists(config_file):
+			try:
+				with open(config_file, 'r') as f:
+					s_data = json.load(f)
+					for k, v in s_data.items():
+						if v != title379:
+							sound_count += 1
+			except: pass
+		if sound_count > 0:
+			sound_text = title341 % sound_count
+		else:
+			sound_text = title379
+		self.sound_display = ConfigSelection(default=sound_text, choices=[(sound_text, sound_text)])
+		self.list.append(getConfigListEntry(_("%s") % title63, self.sound_display, _("%s") % title64))
+		self.list.append(getConfigListEntry(_("%s") % title381, config.plugins.FootOnSat.soundspath, _("%s") % title382))
 		self.list.append(getConfigListEntry(_("%s") % title297, config.plugins.FootOnSat.WakingUp, _("%s") % title298))
 		self.list.append(getConfigListEntry(title95))
 		self.list.append(getConfigListEntry(_("%s") % title65, config.plugins.FootOnSat.useDashMP4, _("%s") % title66))
@@ -676,12 +871,8 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 			self.session.open(SelectionScreen)
 		if cur and len(cur) > 1 and cur[1] == self.live_events_display:
 			self.session.openWithCallback(self.liveEventsClosed, CombinedNotificationsScreen)
-		if cur and len(cur) > 1 and cur[1] == config.plugins.FootOnSat.notiffile:
-			tone_list = self.getToneList()
-			if tone_list:
-				self.session.openWithCallback(self.saveToneSelection, ChoiceBox, title=_("%s") % title101, list=tone_list)
-			else:
-				self.session.open(MessageBox, _("%s") % title102, MessageBox.TYPE_INFO)
+		if cur and len(cur) > 1 and cur[1] == self.sound_display:
+			self.session.open(NotifSoundScreen)
 		if cur and len(cur) > 1 and hasattr(self, 'backup_custom_display') and cur[1] == self.backup_custom_display:
 			self.select_backup_custom()
 			return
@@ -720,8 +911,8 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 					break
 		# 3. fallback to default
 		if not found_file:
-			found_file = join(plugin_path, "notif1.wav")
-			config.plugins.FootOnSat.notiffile.value = "notif1"
+			found_file = join(plugin_path, "default.wav")
+			config.plugins.FootOnSat.notiffile.value = "default"
 			config.plugins.FootOnSat.notiffile.save()
 			configfile.save()
 		return found_file
@@ -741,10 +932,10 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 						tone_files.add(os.path.splitext(f)[0])
 		# check if current config value exists, else fallback
 		if config.plugins.FootOnSat.notiffile.value not in tone_files:
-			config.plugins.FootOnSat.notiffile.value = "notif1"
+			config.plugins.FootOnSat.notiffile.value = "default"
 			config.plugins.FootOnSat.notiffile.save()
 			configfile.save()
-			tone_files.add("notif1")
+			tone_files.add("default")
 		# natural sort
 		def natural_key(s):
 			return [int(t) if t.isdigit() else t.lower() for t in re.split(r'(\d+)', s)]
@@ -957,9 +1148,6 @@ class MenuFootOnSat(ConfigListScreen, Screen):
 
 		# Check if languages has actually changed
 		if self.lang != config.plugins.FootOnSat.lang.value: Restart_changed = True
-
-		# Check if notiffile has actually changed
-		if self.old_notiffile != config.plugins.FootOnSat.notiffile.value: Restart_changed = True
 
 		# Check if plugin icon has actually changed
 		if self.pluginicon != config.plugins.FootOnSat.pluginicon.value: Restart_changed = True

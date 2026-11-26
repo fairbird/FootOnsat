@@ -305,3 +305,43 @@ SKIN_BackupSelectionScreen = """
 	<eLabel position="1070,880" size="260,5" backgroundColor="#0000FF" />
 	<widget name="key_blue" position="1070,820" size="260,50" font="FootFont;46" halign="center" valign="center" foregroundColor="#ffffff" transparent="1" />
 </screen>"""
+
+if DreamOS():
+	SKIN_NotifSoundFileSelect = """
+	<screen name="NotifSoundFileSelect" position="center,center" size="1400,850" title="%s">
+		<eLabel position="300,780" size="250,4" foregroundColor="#00ff2525" backgroundColor="#00ff2525"/>
+		<eLabel position="800,780" size="250,4" foregroundColor="#00389416" backgroundColor="#00389416"/>
+		<widget name="list_head" position="20,20" size="1360,50" foregroundColor="#00cccc40"/>
+		<widget name="checkList" position="20,80" size="1360,620" scrollbarMode="showOnDemand"/>
+		<widget source="key_red" render="Label" position="300,720" zPosition="1" size="250,50" font="Regular;36" halign="center" valign="center" backgroundColor="#9f1313" transparent="1" />
+		<widget source="key_green" render="Label" position="800,720" zPosition="1" size="250,50" font="Regular;36" halign="center" valign="center" backgroundColor="#1f771f" transparent="1" />
+	</screen>""".format(title378)
+else:
+	SKIN_NotifSoundFileSelect = """
+	<screen name="NotifSoundFileSelect" position="center,center" size="1400,850" title="%s">
+		<eLabel position="300,780" size="250,4" foregroundColor="#00ff2525" backgroundColor="#00ff2525"/>
+		<eLabel position="800,780" size="250,4" foregroundColor="#00389416" backgroundColor="#00389416"/>
+		<widget name="list_head" position="20,20" size="1360,50" font="Regular;36" foregroundColor="#00cccc40"/>
+		<widget name="checkList" position="20,80" size="1360,620" font="Regular;42" itemHeight="65" scrollbarMode="showOnDemand"/>
+		<widget source="key_red" render="Label" position="300,720" zPosition="1" size="250,50" font="Regular;36" halign="center" valign="center" backgroundColor="#9f1313" transparent="1" />
+		<widget source="key_green" render="Label" position="800,720" zPosition="1" size="250,50" font="Regular;36" halign="center" valign="center" backgroundColor="#1f771f" transparent="1" />
+	</screen>""".format(title378)
+
+if DreamOS():
+	SKIN_NotifSoundScreen = """
+	<screen name="NotifSoundScreen" position="center,center" size="1400,850" title="%s">
+		<eLabel position="300,780" size="250,4" foregroundColor="#00ff2525" backgroundColor="#00ff2525"/>
+		<eLabel position="800,780" size="250,4" foregroundColor="#00389416" backgroundColor="#00389416"/>
+		<widget name="config" position="20,20" size="1360,740" scrollbarMode="showOnDemand"/>
+		<widget source="key_red" render="Label" position="300,720" zPosition="1" size="250,50" font="Regular;36" halign="center" valign="center" backgroundColor="#9f1313" transparent="1" />
+		<widget source="key_green" render="Label" position="800,720" zPosition="1" size="250,50" font="Regular;36" halign="center" valign="center" backgroundColor="#1f771f" transparent="1" />
+		</screen>""".format(title369)
+else:
+	SKIN_NotifSoundScreen = """
+	<screen name="NotifSoundScreen" position="center,center" size="1400,850" title="%s">
+		<eLabel position="300,780" size="250,4" foregroundColor="#00ff2525" backgroundColor="#00ff2525"/>
+		<eLabel position="800,780" size="250,4" foregroundColor="#00389416" backgroundColor="#00389416"/>
+		<widget name="config" position="20,20" size="1360,740" font="Regular;42" itemHeight="65" scrollbarMode="showOnDemand"/>
+		<widget source="key_red" render="Label" position="300,720" zPosition="1" size="250,50" font="Regular;36" halign="center" valign="center" backgroundColor="#9f1313" transparent="1" />
+		<widget source="key_green" render="Label" position="800,720" zPosition="1" size="250,50" font="Regular;36" halign="center" valign="center" backgroundColor="#1f771f" transparent="1" />
+		</screen>""".format(title369)

@@ -4446,7 +4446,7 @@ class FootOnsatNotifScreen(Screen):
 			self.LiveEventsTimer_conn = self.LiveEventsTimer.timeout.connect(self._check_live_events_timer)
 		self.LiveEventsTimer.start(10000) # Check every 10 seconds
 
-	def _update_display_only(self, match, compet, team1, team2, message=None, allow_zap=True):
+	def _update_display_only(self, match, compet, team1, team2, message=None, allow_zap=True, event_type=None):
 		if not self.instance:
 			return
 		
@@ -4496,7 +4496,7 @@ class FootOnsatNotifScreen(Screen):
 			if zap_ref:
 				# Zap channel found: Execute Zap immediately with sound.
 				if debug_zap: logdata("Notification", "Zap Only mode: Executing Zap to %s" % str(zap_ref))
-				self._play_tone() 
+				self._play_tone(event_type) 
 				time.sleep(2.0)
 				InfoBar.instance.session.nav.playService(zap_ref)
 				InfoBar.instance.servicelist.addToHistory(zap_ref)
@@ -4510,9 +4510,9 @@ class FootOnsatNotifScreen(Screen):
 			return # Exit to prevent calling _do_actual_display
 		
 		# Default path (Option "1" or Zap disabled): Proceed to display the notification
-		self._do_actual_display(match, compet, team1, team2, message, zap_ref=zap_ref)
+		self._do_actual_display(match, compet, team1, team2, message, zap_ref=zap_ref, event_type=event_type)
 
-	def _do_actual_display(self, match, compet, team1, team2, message=None, zap_ref=None):
+	def _do_actual_display(self, match, compet, team1, team2, message=None, zap_ref=None, event_type=None):
 		"""Show notification popup and execute Zap AFTER a 2.0s delay if a channel is found."""
 		if not self.instance:
 			return
@@ -4541,7 +4541,7 @@ class FootOnsatNotifScreen(Screen):
 		self['flag2'].instance.setPixmapFromFile(str(flag2 if fileExists(flag2) else default_flag))
 
 		# Play sound now, tied to the notification display (Option "1")
-		self._play_tone() 
+		self._play_tone(event_type) 
 
 		FootOnSatNotifDialog.dialog.show()
 		
@@ -4573,6 +4573,7 @@ class FootOnsatNotifScreen(Screen):
 		# Get the next match to display
 		match_data = self.matches_queue.pop(0)
 		allow_zap = match_data.get('allow_zap', True)
+		event_type = match_data.get('event_type')
 
 		# Display the current match info 
 		self._update_display_only(
@@ -4581,7 +4582,8 @@ class FootOnsatNotifScreen(Screen):
 			match_data['team1'], 
 			match_data['team2'], 
 			match_data['message'],
-			allow_zap=allow_zap
+			allow_zap=allow_zap,
+			event_type=event_type
 		)
 		
 		COMPENSATION_MS = 3000
@@ -4597,18 +4599,81 @@ class FootOnsatNotifScreen(Screen):
 			# Start final timer with compensated value
 			self.onhideTimer.start(compensated_milliseconds)
 
-	def _play_tone(self):
-		"""Plays the notification tone."""
-		# Do not remove, Move or change this import (It is important like this)
+	def _play_tone(self, event_type=None):
 		from .launcher import MenuFootOnSat
+		import json
+		
 		tone_file = MenuFootOnSat.getToneFile()
-		if exists("/usr/bin/aplay"):
-			os.system('aplay "{}" &'.format(tone_file))
-		elif exists("/usr/bin/gst-launch-1.0"):
-			os.system('(gst-launch-1.0 -q --no-fault filesrc location="{}" ! wavparse ! audioconvert ! audioresample ! alsasink > /dev/null 2>&1 &) &'.format(tone_file))
+		
+		if event_type:
+			try:
+				selected_path = config.plugins.FootOnSat.soundspath.value
+				normalized_path = os.path.normpath(selected_path)
+				if normalized_path == "/etc/enigma2/footonsat" or normalized_path.endswith("/footonsat"):
+					data_dir = normalized_path
+				else:
+					data_dir = os.path.join(normalized_path, "footonsat")
+				config_file = os.path.join(data_dir, "sounds.json")
+				
+				if exists(config_file):
+					if PY3:
+						f = open(config_file, 'r')
+					else:
+						import io
+						f = io.open(config_file, 'r', encoding='utf-8')
+						
+					with f:
+						s_data = json.load(f)
+						if event_type in s_data:
+							custom_path = s_data[event_type]
+							if custom_path and custom_path != title379 and exists(custom_path):
+								tone_file = custom_path
+			except Exception:
+				pass
+				
+		try:
+			if not PY3 and isinstance(tone_file, unicode):
+				tone_file = tone_file.encode('utf-8', 'ignore')
+			elif not isinstance(tone_file, str):
+				tone_file = str(tone_file)
+		except:
+			tone_file = str(tone_file)
+			
+		is_mp3 = tone_file.lower().endswith('.mp3')
+		
+		if is_mp3:
+			devnull_in = open(os.devnull, 'r')
+			devnull_out = open(os.devnull, 'w')
+			try:
+				process = subprocess.Popen(
+					[
+						"gst-launch-1.0", "-q",
+						"filesrc", "location=%s" % tone_file,
+						"!", "decodebin",
+						"!", "audioconvert",
+						"!", "audioresample",
+						"!", "alsasink"
+					],
+					stdin=devnull_in,
+					stdout=devnull_out,
+					stderr=devnull_out,
+					close_fds=True
+				)
+				if debug_Notif:
+					logdata("FootOnSatNotif", "MP3 started: %s PID=%s" % (tone_file, process.pid))
+			except Exception as e:
+				if debug_Notif:
+					logdata("FootOnSatNotif", "MP3 playback error: %s" % str(e))
+			finally:
+				devnull_in.close()
+				devnull_out.close()
 		else:
-			if debug_Notif: logdata("FootOnSatNotif", "No supported sound player found (aplay/gst-launch).")
-			pass
+			if exists("/usr/bin/aplay"):
+				os.system('aplay "%s" &' % tone_file)
+			elif exists("/usr/bin/gst-launch-1.0"):
+				os.system('(gst-launch-1.0 -q --no-fault filesrc location="%s" ! wavparse ! audioconvert ! audioresample ! alsasink > /dev/null 2>&1 &) &' % tone_file)
+			else:
+				if debug_Notif: logdata("FootOnSatNotif", "No WAV player found (aplay).")
 
 	def _start_sequential_display(self):
 		"""Starts the sequential display process if not already running."""
@@ -4683,7 +4748,7 @@ class FootOnsatNotifScreen(Screen):
 									# 1a. Trigger Notification if option includes 30 min (1, 4, 6, 7)
 									if user_choice in ("1", "4", "6", "7"):
 										# Zap NOT allowed here
-										self.notify(match_name.strip(), row[1], row[3], row[4], row[8], allow_zap=False)
+										self.notify(match_name.strip(), row[1], row[3], row[4], row[8], allow_zap=False, event_type="before_30")
 									
 									# 1b. Determine Next Notification Time & Message
 									if user_choice in ("1", "3", "5", "7"):
@@ -4711,7 +4776,7 @@ class FootOnsatNotifScreen(Screen):
 									# 2a. Trigger Notification if option includes 15 min (1, 3, 5, 7)
 									if user_choice in ("1", "3", "5", "7"):
 										# Zap NOT allowed here
-										self.notify(match_name.strip(), row[1], row[3], row[4], row[8], allow_zap=False)
+										self.notify(match_name.strip(), row[1], row[3], row[4], row[8], allow_zap=False, event_type="before_15")
 									
 									# 2b. Determine Next Notification Time & Message
 									if user_choice in ("1", "2", "5", "6"):
@@ -4735,7 +4800,7 @@ class FootOnsatNotifScreen(Screen):
 									# 3a. Trigger Notification if option includes Start (1, 2, 5, 6)
 									if user_choice in ("1", "2", "5", "6"):
 										# Zap IS allowed here
-										self.notify(match_name.strip(), row[1], row[3], row[4], allow_zap=True)
+										self.notify(match_name.strip(), row[1], row[3], row[4], allow_zap=True, event_type="match_start")
 										if debug_Notif: logdata("FootOnSatNotif", "TRIGGER: Match Start Notif and DB delete for match: %s" % match_name)
 									else:
 										# Log deletion without triggering final notification
@@ -4811,7 +4876,7 @@ class FootOnsatNotifScreen(Screen):
 						pass
 			conn.commit()
 
-	def notify(self, match, compet, team1, team2, message=None, allow_zap=True):
+	def notify(self, match, compet, team1, team2, message=None, allow_zap=True, event_type=None):
 		"""
 		Queues the notification and starts a sequential display timer.
 		Includes a check to prevent duplicate notifications in the queue.
@@ -4825,6 +4890,7 @@ class FootOnsatNotifScreen(Screen):
 				'team2': team2,
 				'message': message,
 				'allow_zap': allow_zap,
+				'event_type': event_type,
 			}
 
 			# 2. Check for duplicates in the queue
@@ -5052,7 +5118,15 @@ class FootOnsatNotifScreen(Screen):
 					if is_new_match:
 						continue
 					if debug_Notif: logdata("NotifScreen", "New Live Event: %s - %s" % (match_name, msg))
-					self.notify(match_name, compet, team1, team2, message=msg, allow_zap=False)
+					sound_event = itype
+					if itype == 'card': sound_event = 'red_card'
+					elif itype == 'period':
+						if msg == title129: sound_event = 'half_time'
+						elif msg == title211: sound_event = 'second_half'
+						elif msg == title126: sound_event = 'full_time'
+						elif msg == title216: sound_event = 'extra_time'
+						elif msg == title217: sound_event = 'penalties'
+					self.notify(match_name, compet, team1, team2, message=msg, allow_zap=False, event_type=sound_event)
 
 			if is_finished:
 				try:
