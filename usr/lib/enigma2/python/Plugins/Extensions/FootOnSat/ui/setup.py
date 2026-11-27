@@ -428,6 +428,8 @@ class NotifSoundFileSelect(Screen):
 			if os.path.exists(dir_path):
 				start_dir = dir_path
 
+		if not PY3 and isinstance(start_dir, unicode):
+			start_dir = start_dir.encode('utf-8', 'ignore')
 		self.filelist = FileList(start_dir, matchingPattern="")
 		self["checkList"] = self.filelist
 		self.onLayoutFinish.append(self.layoutFinished)
@@ -492,12 +494,14 @@ class NotifSoundScreen(Screen):
 		self["key_red"] = StaticText(title97)
 		self["key_green"] = StaticText(title98)
 		
-		self["actions"] = ActionMap(["SetupActions", "ColorActions"],
+		self["actions"] = ActionMap(["SetupActions", "ColorActions", "DirectionActions"],
 		{
 			"ok": self.ok,
-			"red": self.close,
-			"green": self.close,
-			"cancel": self.close,
+			"left": self.toggle_state,
+			"right": self.toggle_state,
+			"red": self.cancel,
+			"green": self.save,
+			"cancel": self.cancel,
 		}, -1)
 		
 		self.events = [
@@ -527,20 +531,23 @@ class NotifSoundScreen(Screen):
 		self.config_file = os.path.join(data_dir, "sounds.json")
 		self.config_data = {}
 		self.load_config()
+		self.current_selection = {}
+		for ev_key, ev_name in self.events:
+			self.current_selection[ev_key] = self.config_data.get(ev_key, "default")
 		self.update_list()
-		
+
 	def load_config(self):
 		if os.path.exists(self.config_file):
 			try:
 				with open(self.config_file, 'r') as f:
 					self.config_data = json.load(f)
 			except: pass
-			
+
 	def update_list(self):
 		res = []
 		for ev_key, ev_name in self.events:
-			val = self.config_data.get(ev_key, "")
-			if not val or os.path.basename(val) == "default.wav":
+			val = self.current_selection.get(ev_key, "default")
+			if not val or val == "default" or os.path.basename(val) == "default.wav":
 				display_val = title379
 			else:
 				display_val = os.path.basename(val)
@@ -558,7 +565,38 @@ class NotifSoundScreen(Screen):
 					
 			res.append(("%s : %s" % (ev_name, display_val), ev_key))
 		self["config"].setList(res)
-		
+
+	def toggle_state(self):
+		current = self["config"].getCurrent()
+		if not current: return
+		ev_key = current[1]
+		curr_val = self.current_selection.get(ev_key, "default")
+
+		if curr_val == "default":
+			if ev_key in self.config_data:
+				self.current_selection[ev_key] = self.config_data[ev_key]
+		else:
+			self.current_selection[ev_key] = "default"
+		self.update_list()
+
+	def save(self):
+		for ev_key, ev_name in self.events:
+			val = self.current_selection.get(ev_key, "default")
+			if val == "default" or os.path.basename(val) == "default.wav":
+				if ev_key in self.config_data:
+					del self.config_data[ev_key]
+			else:
+				self.config_data[ev_key] = val
+				
+		try:
+			with open(self.config_file, 'w') as f:
+				json.dump(self.config_data, f, indent=4)
+		except: pass
+		self.close()
+
+	def cancel(self):
+		self.close()
+
 	def ok(self):
 		current = self["config"].getCurrent()
 		if not current: return
@@ -570,19 +608,13 @@ class NotifSoundScreen(Screen):
 			NotifSoundFileSelect,
 			current_path
 		)
-		
+
 	def file_selected(self, path, ev_key):
 		if path:
 			if os.path.basename(path) == "default.wav":
-				if ev_key in self.config_data:
-					del self.config_data[ev_key]
+				self.current_selection[ev_key] = "default"
 			else:
-				self.config_data[ev_key] = path
-				
-			try:
-				with open(self.config_file, 'w') as f:
-					json.dump(self.config_data, f, indent=4)
-			except: pass
+				self.current_selection[ev_key] = path
 			self.update_list()
 
 
